@@ -7,7 +7,7 @@
 // the checkpoint afterwards. A CLI that respects the filesystem cannot touch
 // them; one that chmods its way through is caught by the checkpoint anyway.
 
-import { chmod, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { chmod, lstat, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { isForbidden } from '../checkpoint.mjs';
 import { writeWhole } from '../json-file.mjs';
@@ -37,6 +37,12 @@ export async function forbiddenTargets(projectRoot, { maxDepth = 4 } = {}) {
   return targets;
 }
 
+// A .env that git ignores (the usual) is not in the checkpoint, so a CLI that gave itself the write
+// bit back could change it and nothing saw it (external review #9, 2026-11-03; SECURITY.md promised
+// otherwise). Each forbidden file is kept as it was, in memory only and never on disk — they hold
+// secrets — and `restoreChanged` puts back the one a turn changed or deleted.
+const KEEP_AT_MOST = 1024 * 1024;
+
 // Locks the targets. Returns what was locked and a function that unlocks them, in any case.
 // `record`: a file outside the project where what was locked, and how it was before, is written
 // for the length of the turn (2026-10-12, LOG-13 of the 1.0 review). A room that dies in the
@@ -46,7 +52,14 @@ export async function forbiddenTargets(projectRoot, { maxDepth = 4 } = {}) {
 export async function guardForbidden(projectRoot, { record = null } = {}) {
   const targets = await forbiddenTargets(projectRoot);
   const locked = [];
+  const kept = [];
   for (const target of targets) {
+    if (target.kind === 'file') {
+      try {
+        const info = await lstat(target.path);
+        if (info.isFile() && info.size <= KEEP_AT_MOST) kept.push({ path: target.path, rel: relative(projectRoot, target.path), bytes: await readFile(target.path), mode: info.mode & 0o777 });
+      } catch { /* unreadable: the checkpoint still covers it if git sees it */ }
+    }
     try {
       const info = await stat(target.path);
       const readOnly = info.mode & 0o555;
@@ -60,7 +73,24 @@ export async function guardForbidden(projectRoot, { record = null } = {}) {
     for (const item of locked) { try { await chmod(item.path, item.mode); } catch { /* removed during the turn */ } }
     if (record) await rm(record, { force: true }).catch(() => {});
   };
-  return { locked: locked.map((item) => item.rel + (item.kind === 'dir' ? '/' : '')), release };
+  // What the turn changed or deleted among them, put back as it was (still read-only until release
+  // gives the mode back). A link put in a file's place is removed first, never written through.
+  const restoreChanged = async () => {
+    const back = [];
+    for (const item of kept) {
+      const now = await lstat(item.path).catch(() => null);
+      if (now?.isFile() && (await readFile(item.path).catch(() => null))?.equals(item.bytes)) continue;
+      try {
+        if (now && !now.isFile()) await rm(item.path, { recursive: true, force: true });
+        else if (now) await chmod(item.path, item.mode | 0o600);
+        await writeFile(item.path, item.bytes, { mode: item.mode | 0o600 });
+        await chmod(item.path, locked.some((one) => one.path === item.path) ? item.mode & 0o555 : item.mode);
+        back.push(item.rel);
+      } catch { /* not ours to write: said by the checkpoint's own diff if git sees it */ }
+    }
+    return back;
+  };
+  return { locked: locked.map((item) => item.rel + (item.kind === 'dir' ? '/' : '')), release, restoreChanged };
 }
 
 // What a room that died mid-turn left locked: each path given back the mode it had, unless someone

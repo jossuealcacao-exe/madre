@@ -112,8 +112,10 @@ export class ControlDesk {
       const restored = await restoreCheckpoint(this.#projectRoot, run.checkpoint, { paths: [...toRevert] });
       reverted = [...restored.restored, ...restored.removed];
     }
+    // The .env files git ignores never reach the diff: they come back from the guard's own copy.
+    const unseen = (await run.guard?.restoreChanged?.() ?? []).filter((path) => !toRevert.has(path));
     const kept = diff.files.filter((file) => !toRevert.has(file.path));
-    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, ...(diff.afterTree ? { afterTree: diff.afterTree } : {}), forbiddenReverted: [...controls, ...reverted.filter((path) => diff.forbidden.includes(path) && !mine(path))], existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [], ...(deleted.size ? { deletesReverted: [...deleted] } : {}) };
+    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, ...(diff.afterTree ? { afterTree: diff.afterTree } : {}), forbiddenReverted: [...controls, ...reverted.filter((path) => diff.forbidden.includes(path) && !mine(path)), ...unseen], existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [], ...(deleted.size ? { deletesReverted: [...deleted] } : {}) };
     const count = changes.files.length;
     const notes = [
       changes.forbiddenReverted.length ? `${changes.forbiddenReverted.length} write(s) into forbidden zones were reverted.` : null,
