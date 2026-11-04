@@ -61,7 +61,7 @@ if (process.argv.includes('--icon')) await drawIcon();
 
 // makensis reads every File from its working folder: the pieces go together in one.
 const build = await mkdtemp(join(tmpdir(), 'madre-nsis-'));
-for (const file of ['madre.nsi', 'launcher.nsi', 'inside-setup.sh', 'madre.ico']) await copyFile(join(source, file), join(build, file));
+for (const file of ['madre.nsi', 'launcher.nsi', 'inside-setup.sh', 'windows-ready.ps1', 'madre.ico']) await copyFile(join(source, file), join(build, file));
 // makensis on macOS and Linux reads the accents of the Spanish texts only under a UTF-8 locale.
 const nsis = (script, defines = []) => execFileSync('makensis', ['-V2', '-INPUTCHARSET', 'UTF8', ...defines, script], { cwd: build, stdio: 'inherit', env: { ...process.env, LC_ALL: process.platform === 'linux' ? 'C.UTF-8' : 'en_US.UTF-8' } });
 nsis('launcher.nsi');

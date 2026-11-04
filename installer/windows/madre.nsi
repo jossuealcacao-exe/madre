@@ -7,7 +7,10 @@
 ;   1. turns WSL on when it is off: the only step that asks Windows for permission, and the only
 ;      one that may need a restart (after it, «MADRE» on the desktop finishes the install). It asks
 ;      for that restart once: if Windows already restarted and WSL still is not the one MADRE needs,
-;      what is missing is a Windows update, and it says so instead of asking again (1.0.1);
+;      what is missing is a Windows update, and it says so instead of asking again (1.0.1). When the
+;      Linux will not start, it asks Windows why (windows-ready.ps1) before blaming the BIOS: with
+;      virtualization on, what is off is Windows' Virtual Machine Platform, which it turns on
+;      (1.0.2);
 ;   2. creates a Linux of MADRE's own named «MADRE», from Ubuntu 24.04, with no account to create:
 ;      the person's Ubuntu, if there is one, is never touched;
 ;   3. inside it, as root, runs inside-setup.sh: the user, Node, zstd, wslu and MADRE;
@@ -36,7 +39,7 @@ SetCompress off
 !include "x64.nsh"
 
 ; The installer's own number, not MADRE's.
-!define VERSION "1.0.1"
+!define VERSION "1.0.2"
 !ifndef OUTFILE
   !define OUTFILE "MADRE-Instalador.exe"
 !endif
@@ -101,16 +104,22 @@ LangString StepInside ${LANG_ENGLISH} "Installing Node.js and MADRE inside it…
 LangString StepInside ${LANG_SPANISH} "Instalando Node.js y MADRE adentro…"
 LangString StepShortcuts ${LANG_ENGLISH} "Adding MADRE to the Start menu and the desktop…"
 LangString StepShortcuts ${LANG_SPANISH} "Agregando MADRE al menú Inicio y al escritorio…"
-LangString Restart ${LANG_ENGLISH} "WSL is on. Windows needs to restart to finish turning it on.$\r$\n$\r$\nWhen you come back, open «MADRE» on your desktop and the install finishes. Restart now?"
-LangString Restart ${LANG_SPANISH} "WSL ya está encendido. Windows tiene que reiniciar para terminar de encenderlo.$\r$\n$\r$\nAl volver, abre «MADRE» en tu escritorio y termina de instalarse. ¿Reiniciar ahora?"
+LangString Restart ${LANG_ENGLISH} "Windows needs to restart to finish turning on what MADRE needs.$\r$\n$\r$\nWhen you come back, open «MADRE» on your desktop and the install finishes. Restart now?"
+LangString Restart ${LANG_SPANISH} "Windows tiene que reiniciar para terminar de encender lo que MADRE necesita.$\r$\n$\r$\nAl volver, abre «MADRE» en tu escritorio y termina de instalarse. ¿Reiniciar ahora?"
 LangString RestartLater ${LANG_ENGLISH} "Restart Windows when you can. Then open «MADRE» on your desktop and the install finishes."
 LangString RestartLater ${LANG_SPANISH} "Reinicia Windows cuando puedas. Después abre «MADRE» en tu escritorio y termina de instalarse."
-LangString NoPermission ${LANG_ENGLISH} "Without Windows' permission, WSL cannot be turned on, and MADRE needs it.$\r$\n$\r$\nOpen this installer again and say Yes when Windows asks."
-LangString NoPermission ${LANG_SPANISH} "Sin el permiso de Windows no se puede encender WSL, y MADRE lo necesita.$\r$\n$\r$\nVuelve a abrir este instalador y responde Sí cuando Windows pregunte."
+LangString StepPlatform ${LANG_ENGLISH} "Turning on Windows' Virtual Machine Platform. Windows will ask for permission once."
+LangString StepPlatform ${LANG_SPANISH} "Encendiendo la Plataforma de máquina virtual de Windows. Windows te pedirá permiso una vez."
+LangString NoPermission ${LANG_ENGLISH} "Without Windows' permission, WSL cannot be turned on, and MADRE needs it.$\r$\n$\r$\nOpen this installer again and say Yes when Windows asks. If Windows asks for a password you don't have, this account is not an administrator: whoever manages this computer has to say Yes."
+LangString NoPermission ${LANG_SPANISH} "Sin el permiso de Windows no se puede encender WSL, y MADRE lo necesita.$\r$\n$\r$\nVuelve a abrir este instalador y responde Sí cuando Windows pregunte. Si Windows pide una contraseña que no tienes, esta cuenta no es de administrador: quien administra esta computadora tiene que responder Sí."
 LangString WslStillOld ${LANG_ENGLISH} "Windows already restarted, but it still doesn't have the WSL MADRE needs. Restarting again won't fix it: what's missing is a Windows update.$\r$\n$\r$\nOpen Windows Update, install everything pending (on Windows 10, KB5020030 or newer), restart, and open «MADRE» on your desktop again.$\r$\n$\r$\nThe help page shows it step by step. Open it?"
 LangString WslStillOld ${LANG_SPANISH} "Windows ya se reinició, pero sigue sin el WSL que MADRE necesita. Reiniciar otra vez no lo arregla: falta una actualización de Windows.$\r$\n$\r$\nAbre Windows Update, instala todo lo pendiente (en Windows 10, la KB5020030 o más nueva), reinicia y vuelve a abrir «MADRE» en tu escritorio.$\r$\n$\r$\nLa página de ayuda lo explica paso a paso. ¿Abrirla?"
-LangString NoVirtualization ${LANG_ENGLISH} "Windows could not start MADRE's Linux. The usual reason is that virtualization is off in this computer's BIOS/UEFI.$\r$\n$\r$\nThe help page shows how to turn it on, step by step. Open it?"
-LangString NoVirtualization ${LANG_SPANISH} "Windows no pudo arrancar el Linux de MADRE. Lo más común es que la virtualización esté apagada en la BIOS/UEFI de esta computadora.$\r$\n$\r$\nLa página de ayuda explica cómo encenderla, paso a paso. ¿Abrirla?"
+LangString NoVirtualization ${LANG_ENGLISH} "Windows says virtualization is off on this computer, so MADRE's Linux cannot start. It is turned on in the BIOS/UEFI; if this is a virtual machine, in the program that runs it (nested virtualization).$\r$\n$\r$\nThe help page shows how, step by step. Open it?"
+LangString NoVirtualization ${LANG_SPANISH} "Windows dice que la virtualización está apagada en esta computadora, así que el Linux de MADRE no puede arrancar. Se enciende en la BIOS/UEFI; si es una máquina virtual, en el programa que la corre (virtualización anidada).$\r$\n$\r$\nLa página de ayuda explica cómo, paso a paso. ¿Abrirla?"
+LangString PlatformStillOff ${LANG_ENGLISH} "Windows already restarted, but its Virtual Machine Platform is still off, and MADRE's Linux needs it.$\r$\n$\r$\nThe help page shows how to turn it on by hand. Open it?"
+LangString PlatformStillOff ${LANG_SPANISH} "Windows ya se reinició, pero su Plataforma de máquina virtual sigue apagada, y el Linux de MADRE la necesita.$\r$\n$\r$\nLa página de ayuda explica cómo encenderla a mano. ¿Abrirla?"
+LangString LinuxFailed ${LANG_ENGLISH} "Virtualization and WSL are on, but Windows could not create or start MADRE's Linux. It downloads about 400 MB: check your internet connection and open this installer again.$\r$\n$\r$\nShow details has Windows' own error, and the help page says what to check. Open it?"
+LangString LinuxFailed ${LANG_SPANISH} "La virtualización y WSL están encendidos, pero Windows no pudo crear o arrancar el Linux de MADRE. Descarga unos 400 MB: revisa tu conexión a internet y vuelve a abrir este instalador.$\r$\n$\r$\nEn «Mostrar detalles» está el error de Windows, y la página de ayuda dice qué revisar. ¿Abrirla?"
 LangString InsideFailed ${LANG_ENGLISH} "MADRE could not finish installing inside its Linux. Check your internet connection and open this installer again: it continues where it stopped.$\r$\n$\r$\nThe details (Show details) say what failed."
 LangString InsideFailed ${LANG_SPANISH} "MADRE no pudo terminar de instalarse dentro de su Linux. Revisa tu conexión a internet y vuelve a abrir este instalador: sigue donde se quedó.$\r$\n$\r$\nEn «Mostrar detalles» dice qué falló."
 LangString RemoveLinux ${LANG_ENGLISH} "Also delete MADRE's Linux and everything saved inside it (your projects there included)?$\r$\n$\r$\nIf you say No, it stays, and installing MADRE again finds it as it was."
@@ -155,6 +164,27 @@ FunctionEnd
   Pop ${result}
 !macroend
 
+; A System32 program run as administrator, after Windows' permission, waiting for it. The error
+; flag is the permission refused. This installer is 32-bit and sees System32 as Sysnative, but the
+; elevation is done by a 64-bit Windows service that has no Sysnative: handed that path, it fails
+; even when the person says Yes (1.0.1's «without Windows' permission», MR-B7MVZ5). So the elevated
+; cmd finds the real program itself, whichever cmd Windows starts.
+!macro RunAsAdmin exe args
+  ClearErrors
+  ExecShellWait "runas" "$SYSDIR\cmd.exe" '/d /c if exist "%WINDIR%\Sysnative\${exe}" ("%WINDIR%\Sysnative\${exe}" ${args}) else ("%WINDIR%\System32\${exe}" ${args})' SW_HIDE
+!macroend
+
+; Why MADRE's Linux does not start, from Windows itself (windows-ready.ps1): 0 nothing missing,
+; 1 virtualization off, 2 the Virtual Machine Platform off, anything else Windows did not say.
+!macro WindowsReady result
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
+  File "windows-ready.ps1"
+  nsExec::Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\windows-ready.ps1"'
+  Pop ${result}
+  SetOutPath "$INSTDIR"
+!macroend
+
 ; Is MADRE's Linux there and answering? 0 when it is.
 !macro DistroAnswers result
   nsExec::Exec '"$Wsl" -d ${DISTRO} -u root -- true'
@@ -175,8 +205,7 @@ Section "MADRE" Main
     DetailPrint "$(StepWslOn)"
     ; The error flag is Windows' permission refused: then nothing was turned on, and no restart
     ; would change that.
-    ClearErrors
-    ExecShellWait "runas" "$Wsl" "--install --no-distribution --web-download" SW_HIDE
+    !insertmacro RunAsAdmin "wsl.exe" "--install --no-distribution --web-download"
     ${If} ${Errors}
       MessageBox MB_ICONEXCLAMATION "$(NoPermission)"
       Abort
@@ -194,8 +223,7 @@ Section "MADRE" Main
     ${If} $0 != 0
     ${AndIf} $TurnedOn == "0"
       DetailPrint "$(StepUpdate)"
-      ClearErrors
-      ExecShellWait "runas" "$Wsl" "--update --web-download" SW_HIDE
+      !insertmacro RunAsAdmin "wsl.exe" "--update --web-download"
       ${If} ${Errors}
         MessageBox MB_ICONEXCLAMATION "$(NoPermission)"
         Abort
@@ -205,43 +233,84 @@ Section "MADRE" Main
     ${EndIf}
     !insertmacro DistroAnswers $0
     ${If} $0 != 0
+      ; Whether a restart was asked for, and whether Windows has restarted since: «pending» is a
+      ; restart still owed, «done» one that already happened (BootTime moved). Then the reason
+      ; comes from Windows itself, never assumed (1.0.2): only virtualization that Windows reports
+      ; off is the BIOS.
+      !insertmacro BootTime $1
+      StrCpy $6 "none"
+      ClearErrors
+      ReadRegStr $2 HKCU "${STATE_KEY}" "RestartAsked"
+      ${IfNot} ${Errors}
+        System::Int64Op $1 - $2
+        Pop $3
+        System::Int64Op $3 > 60
+        Pop $3
+        StrCpy $6 "pending"
+        ${If} $3 == 1
+          StrCpy $6 "done"
+        ${EndIf}
+      ${EndIf}
+      ${If} $6 == "pending"
+        Goto restart
+      ${EndIf}
+      !insertmacro WindowsReady $5
+      ${If} $5 == "1"
+        MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(NoVirtualization)" IDNO stop
+          ExecShell "open" "${HELP_URL}#virtualizacion"
+        stop:
+        Abort
+      ${EndIf}
       ${If} $TurnedOn == "1"
         ; `wsl --version` failing again after the restart this installer asked for is a Windows
         ; without the Store's WSL (Windows 10 without KB5020030): another restart would bring the
         ; person back here forever. A shutdown with Fast Startup keeps the session's start, so it
         ; asks once more; a restart, which is what it asks for, does not.
-        !insertmacro BootTime $1
-        ClearErrors
-        ReadRegStr $2 HKCU "${STATE_KEY}" "RestartAsked"
-        ${IfNot} ${Errors}
-          System::Int64Op $1 - $2
-          Pop $3
-          System::Int64Op $3 > 60
-          Pop $3
-          ${If} $3 == 1
-            MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WslStillOld)" IDNO old
-              ExecShell "open" "${HELP_URL}#actualizar"
-            old:
-            Abort
-          ${EndIf}
+        ${If} $6 == "done"
+          MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WslStillOld)" IDNO old
+            ExecShell "open" "${HELP_URL}#actualizar"
+          old:
+          Abort
         ${EndIf}
-        WriteRegStr HKCU "${STATE_KEY}" "RestartAsked" "$1"
-        ; WSL was just turned on: Windows finishes it on restart. Until then «MADRE» on the desktop
-        ; and in the Start menu is a copy of this installer, which picks up here; step 4 points them
-        ; at MADRE.exe. Never RunOnce: writing into the next sign-in is what malware does.
-        CopyFiles /SILENT "$EXEPATH" "$INSTDIR\Instalar MADRE.exe"
-        CreateShortCut "$SMPROGRAMS\MADRE.lnk" "$INSTDIR\Instalar MADRE.exe"
-        CreateShortCut "$DESKTOP\MADRE.lnk" "$INSTDIR\Instalar MADRE.exe"
-        MessageBox MB_YESNO|MB_ICONINFORMATION "$(Restart)" IDNO later
-          Reboot
-        later:
-        MessageBox MB_ICONINFORMATION "$(RestartLater)"
-        Quit
+        Goto restart
       ${EndIf}
-      MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(NoVirtualization)" IDNO stop
-        ExecShell "open" "${HELP_URL}#virtualizacion"
-      stop:
+      ${If} $5 == "2"
+        ; WSL is there and virtualization is on: what is off is Windows' own part. The Store's
+        ; WSL never turns it on by itself, and without it the Linux cannot start.
+        ${If} $6 == "done"
+          MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(PlatformStillOff)" IDNO platform
+            ExecShell "open" "${HELP_URL}#plataforma"
+          platform:
+          Abort
+        ${EndIf}
+        DetailPrint "$(StepPlatform)"
+        !insertmacro RunAsAdmin "dism.exe" "/online /enable-feature /featurename:VirtualMachinePlatform /all /norestart"
+        ${If} ${Errors}
+          MessageBox MB_ICONEXCLAMATION "$(NoPermission)"
+          Abort
+        ${EndIf}
+        Goto restart
+      ${EndIf}
+      ; Virtualization and the platform are on, or Windows did not say: something else stopped it,
+      ; most often the download. Details hold Windows' own words.
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(LinuxFailed)" IDNO failed
+        ExecShell "open" "${HELP_URL}#no-arranca"
+      failed:
       Abort
+
+      restart:
+      WriteRegStr HKCU "${STATE_KEY}" "RestartAsked" "$1"
+      ; Windows finishes it on restart. Until then «MADRE» on the desktop and in the Start menu is
+      ; a copy of this installer, which picks up here; step 4 points them at MADRE.exe. Never
+      ; RunOnce: writing into the next sign-in is what malware does.
+      CopyFiles /SILENT "$EXEPATH" "$INSTDIR\Instalar MADRE.exe"
+      CreateShortCut "$SMPROGRAMS\MADRE.lnk" "$INSTDIR\Instalar MADRE.exe"
+      CreateShortCut "$DESKTOP\MADRE.lnk" "$INSTDIR\Instalar MADRE.exe"
+      MessageBox MB_YESNO|MB_ICONINFORMATION "$(Restart)" IDNO later
+        Reboot
+      later:
+      MessageBox MB_ICONINFORMATION "$(RestartLater)"
+      Quit
     ${EndIf}
   ${EndIf}
 

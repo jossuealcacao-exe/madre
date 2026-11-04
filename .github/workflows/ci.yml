@@ -63,3 +63,18 @@ jobs:
         with:
           name: MADRE-Instalador
           path: out/windows/MADRE-Instalador.exe
+
+  # What the installer asks Windows when MADRE's Linux will not start (installer 1.0.2): on a real
+  # Windows, the script runs as the installer runs it and answers one of its three codes.
+  windows-ready:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: windows-ready.ps1 answers 0, 1 or 2
+        shell: pwsh
+        run: |
+          & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File installer/windows/windows-ready.ps1
+          $code = $LASTEXITCODE
+          Write-Output "windows-ready.ps1 answered $code"
+          if ($code -notin 0, 1, 2) { exit 1 }
+          exit 0
