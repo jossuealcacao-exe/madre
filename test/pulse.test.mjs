@@ -3363,3 +3363,21 @@ test('a failure says the last thing the agent said in words, not the raw event i
   assert.equal(lastWords('Attempt 3 failed with status 503'), 'Attempt 3 failed with status 503');
   assert.equal(lastWords('{"type":"turn.started"}'), null);
 });
+
+// D-1 (2026-11-03): with no cache, the guessed names were offered to ChatGPT accounts that refuse
+// them; and what Codex hides from its own chooser is not offered either.
+test('models: Codex offers only what its own list shows, and its refusal of a model is explained', async () => {
+  const cache = JSON.stringify({ models: [{ slug: 'gpt-6-sol', visibility: 'list' }, { slug: 'gpt-6-hidden', visibility: 'hide' }] });
+  assert.deepEqual(parseCodexModelCache(cache), ['gpt-6-sol']);
+  const home = await mkdtemp(join(tmpdir(), 'pulse-models-home-'));
+  try {
+    const found = await discoverModels({ agents: [{ id: 'codex', detected: true, ready: true, path: '/x' }], home });
+    assert.deepEqual(found.codex.models, [], 'no names MADRE made up');
+    assert.equal(found.codex.source, 'known');
+    assert.match(found.codex.note, /after its first answer/);
+  } finally {
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+  const { diagnose } = await import('../public/troubleshooting.js');
+  assert.deepEqual(diagnose("The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account.", 'codex').map((one) => one.code), ['MU-075']);
+});

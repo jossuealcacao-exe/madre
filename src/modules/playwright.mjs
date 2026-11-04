@@ -6,7 +6,7 @@
 // room's own address: nothing else on the network is reachable through it.
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { t } from '../i18n.mjs';
@@ -61,18 +61,41 @@ function runToEnd(command, args, { cwd, env, timeoutMs = 900000 } = {}) {
   });
 }
 
+// Where npm installs for every project is often not this person's to write: Node from apt or the
+// distribution keeps it in /usr/lib/node_modules, and `npm install -g` ends in EACCES, exit 243
+// (report MR-5NY24Y and the diagnostics of 1.1.2). MADRE never asks for sudo; it keeps the server in
+// a folder of its own instead, and tells npm and npx where with npm_config_prefix (2026-11-03).
+export const ownNpmPrefix = (stateRoot) => join(stateRoot, 'npm-global');
+const refusedWrite = (said, code) => code === 243 || /EACCES|EPERM|permission denied/i.test(String(said ?? ''));
+// The environment the server is looked for and started with: MADRE's own folder once the server
+// lives there, the person's own otherwise.
+export async function playwrightEnv({ env = process.env, stateRoot = null } = {}) {
+  if (!stateRoot) return env;
+  const prefix = ownNpmPrefix(stateRoot);
+  const there = await readFile(join(prefix, 'lib', 'node_modules', ...PLAYWRIGHT_PACKAGE.split('/'), 'package.json'), 'utf8').then(() => true, () => false);
+  return there ? { ...env, npm_config_prefix: prefix } : env;
+}
+
 // What the switch puts in place by itself before it gives up (2026-10-18): the person turned it
 // on, and a browser to download is MADRE's to fetch, not a line to copy into a terminal. The
 // server, globally (where `npx --no` finds it at turn time), when it is missing; then the browser
 // the server itself downloads for the engine chosen. Asked again after.
-export async function preparePlaywright({ browser = 'chromium', env = process.env, cwd = process.cwd(), run = runToEnd, starts = playwrightStarts, version = playwrightVersion } = {}) {
+export async function preparePlaywright({ browser = 'chromium', env = process.env, cwd = process.cwd(), stateRoot = null, run = runToEnd, starts = playwrightStarts, version = playwrightVersion } = {}) {
   const engine = PLAYWRIGHT_BROWSERS.includes(browser) ? browser : 'chromium';
   let installed = await version({ env, projectRoot: cwd, fresh: true });
   const steps = [];
   if (!installed) {
-    const server = await run('npm', ['install', '-g', PLAYWRIGHT_PACKAGE], { cwd, env });
+    let server = await run('npm', ['install', '-g', PLAYWRIGHT_PACKAGE], { cwd, env });
     steps.push({ display: `npm install -g ${PLAYWRIGHT_PACKAGE}`, code: server.code });
     installed = await version({ env, projectRoot: cwd, fresh: true });
+    // The global folder is not this person's to write: the same install, into MADRE's own.
+    if (!installed && stateRoot && refusedWrite(server.said, server.code)) {
+      const prefix = ownNpmPrefix(stateRoot);
+      env = { ...env, npm_config_prefix: prefix };
+      server = await run('npm', ['install', '-g', PLAYWRIGHT_PACKAGE], { cwd, env });
+      steps.push({ display: `npm install -g --prefix ${prefix} ${PLAYWRIGHT_PACKAGE}`, code: server.code });
+      installed = await version({ env, projectRoot: cwd, fresh: true });
+    }
     if (!installed) return { ok: false, steps, problem: server.said ?? t('the browser server could not be installed') };
   }
   const fetched = await run('npx', ['--no', PLAYWRIGHT_PACKAGE, 'install-browser', engine], { cwd, env });
@@ -169,7 +192,7 @@ export function forgetPlaywrightHealth(result = null, browser = null) { started 
 // What the browser may open: this room, and the servers the human started from RUNS in this project
 // while they listen on 127.0.0.1. RIPLEY's sealed frame keeps no data, so an app that stores its
 // data could only be tried through it half-blind. Nothing else on the network.
-export function playwrightServerFor({ port, outputDir, browser = 'chromium', headless = true, servers = [], preview = '/preview' }) {
+export function playwrightServerFor({ port, outputDir, browser = 'chromium', headless = true, servers = [], preview = '/preview', prefix = null }) {
   const origins = [port, ...servers.filter((one) => Number.isInteger(one) && one !== port)].flatMap((one) => [`http://127.0.0.1:${one}`, `http://localhost:${one}`]);
   const served = servers.filter((one) => Number.isInteger(one) && one !== port);
   return {
@@ -183,7 +206,8 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
     // recently added route first — so a blocked `*`, registered after both, wins over the
     // allowlist and aborts even this room with ERR_BLOCKED_BY_CLIENT.
     args: ['--no', '@playwright/mcp', '--', ...(headless ? ['--headless'] : []), '--isolated', '--browser', browser, '--allowed-origins', origins.join(';'), '--output-dir', outputDir, '--no-sandbox'],
-    env: {},
+    // npx finds a server kept in MADRE's own folder only when told where it is.
+    env: prefix ? { npm_config_prefix: prefix } : {},
     tools: PLAYWRIGHT_TOOLS,
     brief: `a headless browser that reaches only this MADRE at http://127.0.0.1:${port}${served.length ? ` and the project's servers the human started (${served.map((one) => `http://127.0.0.1:${one}`).join(', ')})` : ''}. Open a project file rendered by RIPLEY at http://127.0.0.1:${port}${preview}/project/<path>, click, read the console and network, take screenshots (they land in ${outputDir}). RIPLEY's preview keeps no data (no localStorage, no cookies)${served.length ? '; to try an app with its data, open it on its server' : ''}. Nothing else on the network is reachable through it.`,
   };
@@ -191,17 +215,17 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
 
 async function playwrightReady(ctx) {
   const browser = ctx.settings.browser ?? 'chromium';
-  let check = await playwrightStarts({ browser, env: ctx.env, cwd: ctx.projectRoot });
+  let check = await playwrightStarts({ browser, env: await playwrightEnv(ctx), cwd: ctx.projectRoot });
   // Something missing: MADRE fetches it, then asks again, before saying anything to the person.
   if (!check.ok && process.platform !== 'win32') {
     await ctx.record('extension.preparing', { id: 'playwright', name: 'PLAYWRIGHT', browser });
-    check = await preparePlaywright({ browser, env: ctx.env, cwd: ctx.projectRoot });
+    check = await preparePlaywright({ browser, env: await playwrightEnv(ctx), cwd: ctx.projectRoot, stateRoot: ctx.stateRoot });
   }
   forgetPlaywrightHealth(check, browser);
   if (check.ok) return null;
   // The server is there and only the browser is missing: say which one, and the one line that
   // installs it. Without the server, both lines.
-  const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });
+  const version = await playwrightVersion({ env: await playwrightEnv(ctx), projectRoot: ctx.projectRoot });
   return { status: 412, body: { error: version
     ? t('TEST BROWSER stays off: MADRE downloaded the {browser} browser and it still does not start ({problem}). Check your internet connection and turn it on again, or choose another browser in its settings.', { problem: String(check.problem).replace(/[.\s]+$/, ''), browser })
     : t('TEST BROWSER stays off: MADRE could not install its browser server ({problem}). Check your internet connection and turn it on again.', { problem: String(check.problem).replace(/[.\s]+$/, '') }), code: 'MU-054' } };
@@ -231,8 +255,9 @@ export default defineModule({
     },
   ],
   async status(ctx) {
-    const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });
-    const health = ctx.settings.enabled && version ? playwrightHealth({ browser: ctx.settings.browser ?? 'chromium', env: ctx.env, cwd: ctx.projectRoot }) : null;
+    const env = await playwrightEnv(ctx);
+    const version = await playwrightVersion({ env, projectRoot: ctx.projectRoot });
+    const health = ctx.settings.enabled && version ? playwrightHealth({ browser: ctx.settings.browser ?? 'chromium', env, cwd: ctx.projectRoot }) : null;
     return {
       runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
@@ -247,25 +272,29 @@ export default defineModule({
   // where `npx --no` looks for it at turn time without downloading anything.
   async updatePlan(ctx, { latest = null } = {}) {
     const target = latest ? `${PLAYWRIGHT_PACKAGE}@${latest}` : PLAYWRIGHT_PACKAGE;
+    // Kept in MADRE's own folder, it is updated there.
+    const prefix = (await playwrightEnv(ctx)).npm_config_prefix;
+    const where = prefix ? ['--prefix', prefix] : [];
     return {
       command: 'npm',
-      args: ['install', '-g', target],
-      display: `npm install -g ${target}`,
+      args: ['install', '-g', ...where, target],
+      display: `npm install -g ${[...where, target].join(' ')}`,
       note: 'Installs the browser server for every project on this computer. A browser itself may still be missing; the card says so if it is.',
-      after: async () => { await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot, fresh: true }); },
+      after: async () => { await playwrightVersion({ env: await playwrightEnv(ctx), projectRoot: ctx.projectRoot, fresh: true }); },
     };
   },
   async toolsForTurn(ctx, turn) {
-    if (!(await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot }))) return [];
+    const env = await playwrightEnv(ctx);
+    if (!(await playwrightVersion({ env, projectRoot: ctx.projectRoot }))) return [];
     if (turn.mode === 0) return [];   // a ghost turn leaves no screenshots and opens no browser
     // Only for a turn that asks for what a browser does. Its tool list goes into every call the CLI
     // makes inside the turn: a one-line change cost Codex 576 thousand tokens of reading, and the
     // browser it carried was never opened.
     if (turn.text !== undefined && !wantsBrowser(turn.text)) return [];
     // A browser known not to start is not handed to anyone: every call to it would fail.
-    if (playwrightHealth({ browser: ctx.settings.browser ?? 'chromium', env: ctx.env, cwd: ctx.projectRoot })?.ok === false) return [];
+    if (playwrightHealth({ browser: ctx.settings.browser ?? 'chromium', env, cwd: ctx.projectRoot })?.ok === false) return [];
     const outputDir = turn.scratchDir ?? join(turn.roomDir ?? ctx.stateRoot, 'playwright');
-    return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false, servers: turn.servers ?? [], preview: turn.preview ?? '/preview' })];
+    return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false, servers: turn.servers ?? [], preview: turn.preview ?? '/preview', prefix: env.npm_config_prefix ?? null })];
   },
   // Before it turns on, in one project or in all: the server starts and has its browser, or MADRE
   // fetches what is missing and asks again. `null` is ready; anything else is the refusal.

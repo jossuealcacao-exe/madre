@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -219,6 +219,47 @@ test('test browser · turned on, MADRE installs the missing server and browser, 
   ran.length = 0;
   const noServer = await preparePlaywright({ run: async (command, args) => { ran.push(command); return { code: 1, said: 'EACCES' }; }, version: async () => null, starts: async () => ({ ok: true }) });
   assert.deepEqual([noServer.ok, noServer.problem, ran], [false, 'EACCES', ['npm']]);
+});
+
+// D-9 (report MR-5NY24Y, 2026-11-03): Node from the distribution keeps its global folder in
+// /usr/lib and `npm install -g` needs sudo. MADRE installs the server into a folder of its own and
+// every later step, and every turn, is told where.
+test('test browser · a global folder that needs sudo sends the server to MADRE\'s own folder', async () => {
+  const { preparePlaywright, playwrightEnv, playwrightServerFor, ownNpmPrefix } = await import('../src/modules/playwright.mjs');
+  const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-npm-own-'));
+  try {
+    const prefix = ownNpmPrefix(stateRoot);
+    const calls = [];
+    let server = null;
+    const run = async (command, args, { env }) => {
+      calls.push([command, args.join(' '), env.npm_config_prefix ?? null]);
+      if (command !== 'npm') return { code: 0, said: null };
+      if (!env.npm_config_prefix) return { code: 243, said: "EACCES: permission denied, mkdir '/usr/lib/node_modules/@playwright'" };
+      server = '0.0.70';
+      return { code: 0, said: null };
+    };
+    const ready = await preparePlaywright({ run, stateRoot, env: {}, version: async ({ env }) => (env.npm_config_prefix === prefix ? server : null), starts: async ({ env }) => ({ ok: env.npm_config_prefix === prefix }) });
+    assert.equal(ready.ok, true);
+    assert.deepEqual(calls, [
+      ['npm', 'install -g @playwright/mcp', null],
+      ['npm', 'install -g @playwright/mcp', prefix],
+      ['npx', '--no @playwright/mcp install-browser chromium', prefix],
+    ]);
+    assert.match(ready.steps[1].display, /--prefix .*npm-global @playwright\/mcp$/);
+    // Without a state folder, or for another failure, nothing is retried elsewhere.
+    calls.length = 0;
+    await preparePlaywright({ run: async (command, args, { env }) => { calls.push(env.npm_config_prefix ?? null); return { code: 1, said: 'ETIMEDOUT' }; }, stateRoot, env: {}, version: async () => null, starts: async () => ({ ok: true }) });
+    assert.deepEqual(calls, [null]);
+    // Once the server lives there, it is looked for there and every turn's npx is told.
+    assert.equal((await playwrightEnv({ env: { A: '1' }, stateRoot })).npm_config_prefix, undefined);
+    await mkdir(join(prefix, 'lib', 'node_modules', '@playwright', 'mcp'), { recursive: true });
+    await writeFile(join(prefix, 'lib', 'node_modules', '@playwright', 'mcp', 'package.json'), '{"version":"0.0.70"}');
+    assert.deepEqual(await playwrightEnv({ env: { A: '1' }, stateRoot }), { A: '1', npm_config_prefix: prefix });
+    assert.deepEqual(playwrightServerFor({ port: 4317, outputDir: '/o', prefix }).env, { npm_config_prefix: prefix });
+    assert.deepEqual(playwrightServerFor({ port: 4317, outputDir: '/o' }).env, {});
+  } finally {
+    await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
 });
 
 test('test browser · npm\'s reason is the line that says why, never the one pointing at its log', async () => {

@@ -36,12 +36,17 @@ export async function findOnPath(name, envPath = process.env.PATH ?? '') {
 // Nothing is executed. Asking a package for its own --version through npx is not a test of
 // anything: when the package is not installed at all, npx answers with npm's version and exits
 // cleanly, which is how PLAYWRIGHT came to report a browser server that was never there.
-let globalRoot;
+// Kept per npm prefix: a module that keeps its packages in a folder of its own (npm_config_prefix,
+// the test browser on a Node whose global folder needs sudo) asks about that folder, not the other.
+const globalRoots = new Map();
 async function npmGlobalRoot(env = process.env) {
-  if (globalRoot !== undefined) return globalRoot;
-  try { const { stdout } = await execFileAsync('npm', ['root', '-g'], { env, timeout: 10000 }); globalRoot = stdout.trim() || null; }
-  catch { globalRoot = null; }
-  return globalRoot;
+  const key = env.npm_config_prefix ?? '';
+  if (globalRoots.has(key)) return globalRoots.get(key);
+  let root = null;
+  try { const { stdout } = await execFileAsync('npm', ['root', '-g'], { env, timeout: 10000 }); root = stdout.trim() || null; }
+  catch { root = null; }
+  globalRoots.set(key, root);
+  return root;
 }
 
 export async function packageVersion(name, { projectRoot = process.cwd(), env = process.env } = {}) {

@@ -5714,6 +5714,15 @@ export const ES = {
   'MADRE changed version while it was open. Close it and open it again.': 'MADRE cambió de versión mientras estaba abierta. Ciérrala y vuelve a abrirla.',
   'Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.': 'Para instalarla hace falta zstd, y este Linux no lo tiene. En una terminal: sudo apt install -y zstd, y vuelve a intentar.',
   'Codex has reached its usage limit': 'Codex llegó a su límite de uso',
+  // MU-075 (2026-11-03): un modelo que la cuenta de ChatGPT no incluye.
+  'Codex does not offer that model on this account': 'Codex no ofrece ese modelo en esta cuenta',
+  '# the models your account lists: ~/.codex/models_cache.json': '# los modelos que lista tu cuenta: ~/.codex/models_cache.json',
+  'The model chosen for this turn is not one your ChatGPT account can use in Codex, so Codex refused the turn before starting. Nothing in the project changed.':
+    'El modelo elegido para este turno no es uno que tu cuenta de ChatGPT pueda usar en Codex, así que Codex rechazó el turno antes de empezar. No cambió nada en el proyecto.',
+  'Choose «default» in the model menu of the Write box, or one of the models listed there: they are the ones your account offers.':
+    'Elige «default» en el menú de modelo del cuadro de escritura, o uno de los modelos que aparecen ahí: son los que ofrece tu cuenta.',
+  "Codex lists your plan's models after its first answer. Until then, «default» uses the one Codex chooses.":
+    'Codex muestra los modelos de tu plan después de su primera respuesta. Mientras tanto, «default» usa el que Codex elija.',
   'Your ChatGPT account has used up the Codex usage its plan gives for this period, and Codex refuses every turn until it renews. Codex says when that is at the end of its message. It is OpenAI\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de ChatGPT ya usó todo lo que su plan da de Codex en este periodo, y Codex rechaza cada turno hasta que se renueve. Al final de su mensaje Codex dice cuándo. Es un límite de OpenAI, no de MADRE: no hay nada mal en el proyecto.',
   'Wait until the date Codex gives, change your ChatGPT plan, or ask another agent in the meantime.': 'Espera a la fecha que da Codex, cambia tu plan de ChatGPT o pregúntale a otro agente mientras tanto.',
   'YOUR CHOICE': 'Tu elección',

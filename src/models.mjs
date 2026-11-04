@@ -12,9 +12,14 @@ import { OPENCODE_PROVIDERS } from './credentials.mjs';
 
 export const CURSOR_FREE_NOTE = 'Your Cursor plan answers only with Auto: the other models need a paid plan.';
 export const KNOWN_MODELS = {
+  // No names of its own (2026-11-03): with no cache to read, the four written here were offered to
+  // ChatGPT accounts that refuse them, and the turn failed («The 'gpt-5.5' model is not supported
+  // when using Codex with a ChatGPT account», 6 copies of 1.1.2). Codex writes its list after its
+  // first turn; until then «default» is the choice.
   codex: {
-    defaults: ['gpt-5.6-sol', 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.5'],
+    defaults: [],
     note: 'The models your plan offers in Codex. «default» is the one Codex uses on its own.',
+    unread: 'Codex lists your plan\'s models after its first answer. Until then, «default» uses the one Codex chooses.',
   },
   claude: {
     defaults: ['fable', 'opus', 'sonnet', 'haiku'],
@@ -97,7 +102,8 @@ export function parseCodexModelCache(json) {
     const slugs = new Set();
     const walk = (node) => {
       if (!node || typeof node !== 'object') return;
-      if (typeof node.slug === 'string' && /^gpt-/.test(node.slug) && !/reserve|auto-review/.test(node.slug)) slugs.add(node.slug);
+      // What Codex itself hides from its chooser is not offered either.
+      if (typeof node.slug === 'string' && /^gpt-/.test(node.slug) && !/reserve|auto-review/.test(node.slug) && node.visibility !== 'hide') slugs.add(node.slug);
       for (const value of Object.values(node)) walk(value);
     };
     walk(data);

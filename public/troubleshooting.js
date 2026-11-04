@@ -216,6 +216,19 @@ export const CONDITIONS = [
     fixes: same(['# plan and usage: https://chatgpt.com/codex/settings/usage']),
   },
   {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03): a model the ChatGPT plan does not include
+    // reached the room as Codex's own English line.
+    id: 'codex-model-plan',
+    code: 'MU-075',
+    agent: 'codex',
+    severity: 'blocking',
+    title: 'Codex does not offer that model on this account',
+    match: /model is not supported when using Codex with a ChatGPT account/i,
+    diagnosis: 'The model chosen for this turn is not one your ChatGPT account can use in Codex, so Codex refused the turn before starting. Nothing in the project changed.',
+    remedy: 'Choose «default» in the model menu of the Write box, or one of the models listed there: they are the ones your account offers.',
+    fixes: same(['# the models your account lists: ~/.codex/models_cache.json', 'codex   # then /model']),
+  },
+  {
     id: 'not-signed-in',
     code: 'MU-008',
     solvedIn: 'connections',
