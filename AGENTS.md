@@ -70,6 +70,10 @@ Zonas donde ya se sabe que el código asume POSIX y por eso merecen doble cuidad
 - Los errores se llevan en `~/madre-logs`, fuera de este repositorio porque trae datos de
   clientes: un archivo por error, clasificado, con su estado y su `commit`. Antes de arreglar
   uno, lee su `AGENTS.md`. Nada de ahí se copia a este repositorio ni a sus mensajes.
+- Aquí trabajan a la vez Claude, Codex y Antigravity. Antes de cualquier trabajo en este
+  repositorio, anótate en `~/madre-logs/EN-CURSO.md` con la zona que vas a tocar, y sigue sus
+  reglas 12–23: lo que no escribiste no se toca ni entra en tu `commit` (`git add` por nombre,
+  nunca `-A`), sin reescribir la historia ni cambiar de rama, y todo dato con su fuente.
 
 ## Dónde está qué
 
