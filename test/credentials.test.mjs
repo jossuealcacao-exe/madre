@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, readFile, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyKey, normalizeKey, keyPlanFor, OPENCODE_PROVIDERS } from '../src/credentials.mjs';
+import http from 'node:http';
+import { anthropicTakesKey, applyKey, normalizeKey, keyPlanFor, OPENCODE_PROVIDERS } from '../src/credentials.mjs';
 import { createPulseServer } from '../src/server.mjs';
 
 const KEY = 'AIzaSyD-not-a-real-key-000000000000000';
@@ -85,6 +86,59 @@ test('Claude: the key goes into the settings its own CLI reads, and everything e
       await rm(fresh, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     }
   } finally {
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+// MR-R92AWX (a copy on Ubuntu over SSH, 2026-11-03): `claude auth status` says «logged in» for a
+// made-up key, so MADRE said Claude was connected and the first message failed. Anthropic is asked.
+test('Claude: a key Anthropic refuses is not written, and one it cannot be asked about is left to the CLI (MR-R92AWX)', async () => {
+  const KEY_ANTHROPIC = 'sk-ant-api03-not-a-real-key-0000000000';
+  const asked = [];
+  const anthropic = http.createServer((request, response) => {
+    asked.push({ url: request.url, key: request.headers['x-api-key'], version: request.headers['anthropic-version'] });
+    const taken = request.headers['x-api-key'] === 'sk-ant-api03-good-key-00000000000000';
+    response.writeHead(taken ? 200 : 401, { 'content-type': 'application/json' });
+    response.end(JSON.stringify(taken ? { data: [] } : { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }));
+  });
+  await new Promise((resolve) => anthropic.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${anthropic.address().port}`;
+  const home = await mkdtemp(join(tmpdir(), 'pulse-key-claude-check-'));
+  const file = join(home, '.claude', 'settings.json');
+  // A gateway in the environment is the case at the end; the terminal running the suite may have one.
+  const gateway = process.env.ANTHROPIC_BASE_URL;
+  delete process.env.ANTHROPIC_BASE_URL;
+  try {
+    // The check itself: the key in a header, never in the address, and only the models are asked.
+    assert.deepEqual(await anthropicTakesKey(KEY_ANTHROPIC, { base }), { ok: false, status: 401 });
+    assert.deepEqual(await anthropicTakesKey('sk-ant-api03-good-key-00000000000000', { base }), { ok: true });
+    assert.deepEqual(asked[0], { url: '/v1/models', key: KEY_ANTHROPIC, version: '2023-06-01' });
+    // Offline, Anthropic says nothing about the key: not the key's fault.
+    assert.deepEqual(await anthropicTakesKey(KEY_ANTHROPIC, { base: 'http://127.0.0.1:9' }), { ok: null, status: null });
+
+    let probed = 0;
+    const probe = async () => { probed += 1; return { state: 'signed-in', detail: 'via api_key' }; };
+    const verify = (key) => anthropicTakesKey(key, { base });
+    // Refused: nothing written, the CLI not even asked, and the person told where to make a key.
+    const refused = await applyKey({ agent: 'claude', key: KEY_ANTHROPIC, home, probe, verify });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /Anthropic did not accept this key \(HTTP 401\)[\s\S]*console\.anthropic\.com[\s\S]*Nothing was changed/);
+    await assert.rejects(readFile(file, 'utf8'), 'a refused key was written');
+    assert.equal(probed, 0);
+    // Taken: written and confirmed by the CLI as before.
+    const taken = await applyKey({ agent: 'claude', key: 'sk-ant-api03-good-key-00000000000000', home, probe, verify });
+    assert.deepEqual(taken, { ok: true, detail: 'via api_key' });
+    assert.equal(JSON.parse(await readFile(file, 'utf8')).env.ANTHROPIC_API_KEY, 'sk-ant-api03-good-key-00000000000000');
+    // Anthropic unreachable: the CLI's status decides, as before.
+    assert.equal((await applyKey({ agent: 'claude', key: KEY_ANTHROPIC, home, probe, verify: async () => ({ ok: null, status: null }) })).ok, true);
+    // A Claude pointed at a gateway of its own takes keys Anthropic never sees: it is not asked.
+    await writeFile(file, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://gateway.example.test' } }));
+    const before = asked.length;
+    assert.equal((await applyKey({ agent: 'claude', key: KEY_ANTHROPIC, home, probe, verify })).ok, true);
+    assert.equal(asked.length, before, 'Anthropic was asked about a gateway\'s key');
+  } finally {
+    if (gateway !== undefined) process.env.ANTHROPIC_BASE_URL = gateway;
+    await new Promise((resolve) => anthropic.close(resolve));
     await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

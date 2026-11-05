@@ -152,6 +152,15 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // Whether Anthropic takes the Claude key a person pastes (credentials.mjs, MR-R92AWX): Claude's
+    // own status says «logged in» for any key it finds, even a made-up one.
+    id: 'anthropic-key', host: 'api.anthropic.com', match: (url) => /^\/v1\/models\/?$/.test(url.pathname), to: 'Anthropic · whether it takes your Claude key',
+    what: 'The API key you paste for Claude, so Anthropic says whether it takes it. It lists models and spends no credit. Nothing about you or your project.',
+    when: 'once, when you save a Claude API key in Settings › Agents',
+    where: 'Settings › Agents › Claude · without a pasted key it is never asked',
+    inside: true,
+  },
+  {
     id: 'anthropic', host: 'api.anthropic.com', to: 'Anthropic',
     what: 'Your Claude Code token, to read how much of your plan is left. It is read from where Claude keeps it and never stored by MADRE.',
     when: 'while a Claude session is being watched for its quota',

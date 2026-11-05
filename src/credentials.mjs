@@ -177,10 +177,26 @@ async function applyGeminiKey(key, { home, probe }) {
   }
 }
 
-// ---- Claude: `env.ANTHROPIC_API_KEY` in its own settings, confirmed by `claude auth status`.
-// The CLI reads that env block before it runs, which is why a key there is a session: its own
-// status answers `api_key` afterwards. Everything else in the file is left as it was.
-async function applyClaudeKey(key, { home, probe }) {
+// Whether Anthropic takes a key (MR-R92AWX, a copy on Ubuntu over SSH, 2026-11-03): `claude auth
+// status` answers «logged in» for any key it finds, a made-up one too, so MADRE said Claude was
+// connected and the first message failed with «Invalid API key». Listing the models spends no
+// credit. `ok: null` when Anthropic said nothing about the key (offline, its own trouble): that is
+// not the key's fault, and the CLI's status decides as before. A key with no credit left passes
+// here; its first turn says so (MU-059).
+export async function anthropicTakesKey(key, { fetchImpl = globalThis.fetch, base = process.env.PULSE_ANTHROPIC_URL ?? 'https://api.anthropic.com', timeoutMs = 8000 } = {}) {
+  try {
+    const answer = await fetchImpl(`${base}/v1/models`, { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(timeoutMs) });
+    if (answer.ok) return { ok: true };
+    return { ok: answer.status === 401 || answer.status === 403 ? false : null, status: answer.status };
+  } catch {
+    return { ok: null, status: null };
+  }
+}
+
+// ---- Claude: `env.ANTHROPIC_API_KEY` in its own settings, confirmed by Anthropic and by
+// `claude auth status`. The CLI reads that env block before it runs, which is why a key there is a
+// session: its own status answers `api_key` afterwards. Everything else in the file is left as it was.
+async function applyClaudeKey(key, { home, probe, verify = anthropicTakesKey }) {
   const dir = join(home, '.claude');
   const file = join(dir, 'settings.json');
   await mkdir(dir, { recursive: true });
@@ -189,6 +205,11 @@ async function applyClaudeKey(key, { home, probe }) {
     let settings = {};
     try { settings = JSON.parse(before ?? '{}') ?? {}; } catch { settings = {}; }
     if (typeof settings !== 'object' || Array.isArray(settings)) settings = {};
+    // A Claude pointed at another address (a gateway of its own) takes keys Anthropic never sees.
+    if (!(settings.env?.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL)) {
+      const taken = await verify(key);
+      if (taken.ok === false) return { ok: false, error: t('Anthropic did not accept this key (HTTP {status}): check you copied all of it, or make a new one at console.anthropic.com. Nothing was changed.', { status: taken.status }) };
+    }
     settings.env = { ...(settings.env ?? {}), ANTHROPIC_API_KEY: key };
     await writeFile(file, `${JSON.stringify(settings, null, 2)}\n`, { mode: OWNER_ONLY });
     await chmod(file, OWNER_ONLY).catch(() => {});
@@ -268,11 +289,11 @@ const runOpenCode = async (executable, args) => {
 };
 
 // Writes the key for one agent and answers whether that agent is signed in now.
-export async function applyKey({ agent, key, provider = null, home = homedir(), probe, executable = null, run = null }) {
+export async function applyKey({ agent, key, provider = null, home = homedir(), probe, executable = null, run = null, verify = anthropicTakesKey }) {
   const checked = normalizeKey(key);
   if (!checked.ok) return checked;
   if (agent === 'codex') return applyCodexKey(checked.key, { home, probe, executable: executable ?? 'codex', run: run ?? runWithInput });
-  if (agent === 'claude') return applyClaudeKey(checked.key, { home, probe });
+  if (agent === 'claude') return applyClaudeKey(checked.key, { home, probe, verify });
   if (agent === 'gemini') return applyGeminiKey(checked.key, { home, probe });
   if (agent === 'opencode') return applyOpenCodeKey(checked.key, { home, provider, executable: executable ?? 'opencode', run: run ?? runOpenCode });
   return { ok: false, error: t('{agent} does not take a key here: it signs in with a click.', { agent }) };

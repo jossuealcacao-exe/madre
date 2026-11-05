@@ -6406,6 +6406,7 @@ export const ES = {
   'The key could not be written: {error}': 'No se pudo guardar la llave: {error}',
   'Codex did not take the key ({why}). Nothing was changed.': 'Codex no aceptó la llave ({why}). No se cambió nada.',
   'Codex did not take the key. Nothing was changed.': 'Codex no aceptó la llave. No se cambió nada.',
+  'Anthropic did not accept this key (HTTP {status}): check you copied all of it, or make a new one at console.anthropic.com. Nothing was changed.': 'Anthropic no aceptó esta llave (HTTP {status}): revisa que la copiaste completa, o crea una nueva en console.anthropic.com. No se cambió nada.',
   'Pick the provider this key belongs to.': 'Elige el proveedor de esta llave.',
   'OpenCode does not list {provider} after the key was written, so MADRE put the file back. Run `opencode auth login` in a terminal for this one.': 'OpenCode no muestra {provider} después de guardar la llave, así que MADRE dejó el archivo como estaba. Para este, ejecuta `opencode auth login` en una terminal.',
   '{agent} does not take a key here: it signs in with a click.': '{agent} no usa llave aquí: se conecta con un clic.',
