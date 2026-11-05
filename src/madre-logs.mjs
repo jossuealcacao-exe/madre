@@ -51,7 +51,9 @@ export function readWorking(text) {
     const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
     if (cells.length < 3 || !cells[0] || /^agente$/i.test(cells[0])) continue;
     const [who, what = '', zone = '', since = '', notes = ''] = cells;
-    rows.push({ who, agent: agentOf(who), what, zone, since, notes, ids: [...new Set(`${what} ${notes}`.match(ERROR_ID) ?? [])] });
+    // The errors it works on are the ones «Qué hace» names; a note may mention another one in passing
+    // («RX-3 cerró…») and that one is not being worked on.
+    rows.push({ who, agent: agentOf(who), what, zone, since, notes, ids: [...new Set(what.match(ERROR_ID) ?? [])] });
   }
   return rows;
 }

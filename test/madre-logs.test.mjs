@@ -90,7 +90,7 @@ test('madre-logs · each new group of the diagnostics is filed once, classified 
 test('madre-logs · who is working now, from EN-CURSO.md and from each error, with the three agents named', async () => {
   const { agentOf, readWorking } = await import('../src/madre-logs.mjs');
   for (const [said, agent] of [['antigravity · 2026-11-05', 'antigravity'], ['Anti-gravity', 'antigravity'], ['agy', 'antigravity'], ['codex · 2026-11-04', 'codex'], ['claude · sesión 2026-11-05', 'claude'], ['Ana', null]]) assert.equal(agentOf(said), agent, said);
-  const table = '| Agente | Qué hace | Zona (archivos o carpetas) | Desde | Notas |\n|---|---|---|---|---|\n| antigravity · 2026-11-05 | Investigar D-3 y D-6 | src/modules/ollama.mjs | 2026-11-05 | |\n| codex · 2026-11-04 | Corregir RX-2 | src/modules/index.mjs | 2026-11-04 | |\n';
+  const table = '| Agente | Qué hace | Zona (archivos o carpetas) | Desde | Notas |\n|---|---|---|---|---|\n| antigravity · 2026-11-05 | Investigar D-3 y D-6 | src/modules/ollama.mjs | 2026-11-05 | |\n| codex · 2026-11-04 | Corregir RX-2 | src/modules/index.mjs | 2026-11-04 | RX-3 cerró y liberó app.js |\n';
   assert.deepEqual(readWorking(table).map((one) => [one.agent, one.ids]), [['antigravity', ['D-3', 'D-6']], ['codex', ['RX-2']]]);
   const dir = await mkdtemp(join(tmpdir(), 'madre-logs-working-'));
   try {
