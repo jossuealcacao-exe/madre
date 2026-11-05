@@ -193,7 +193,7 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
   const fetch = async (address, options = {}) => globalThis.fetch(address, { ...options, headers: { ...(options.headers ?? {}), ...(await fichaHeaders(state)) } });
   const bin = join(process.cwd(), 'bin', 'madre.mjs');
   const children = [];
-  const run = (args, cwd, { until = /MADRE (?:is ready|está lista)|already open for this project|ya está abierto para este proyecto/ } = {}) => new Promise((resolve) => {
+  const run = (args, cwd, { until = /MADRE (?:is ready|está lista)|already open for this project|ya está abierta para este proyecto/ } = {}) => new Promise((resolve) => {
     const child = spawn(process.execPath, [bin, ...args], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
     children.push(child);
     let out = '';
@@ -258,6 +258,15 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
     const inside = await fetch(`http://127.0.0.1:${port}/api/state`).then((answer) => answer.json());
     assert.equal(inside.salas, false);
     assert.equal(await realpath(inside.projectRoot), await realpath(project));
+    // Q-3 (2026-11-05): the same project started again on a port the look before starting does not
+    // reach — as the Windows shortcut did, in a Linux slow to answer it. The room says it is taken
+    // and where: the CLI shows that one and ends well, instead of failing with nothing to show.
+    const far = await freePort();
+    const twice = await run(['start', '--no-open', '--port', String(far)], project);
+    const ended = await twice.done;
+    assert.equal(ended.code, 0, ended.out());
+    assert.match(ended.out(), /MADRE is already open for this project/);
+    assert.match(ended.out(), new RegExp(`http://127\\.0\\.0\\.1:${port}`), 'it does not say where the project is open');
     fourth.child.kill('SIGTERM');
     assert.equal((await fourth.done).code, 0);
   } finally {
@@ -267,4 +276,26 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
     await rm(state, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
+});
+
+// Q-1 (2026-11-03, the ficha's test): «MADRE is already open for this project» came out in English
+// in a MADRE that speaks Spanish, and Home found the address only after the English sentence.
+test('a project already open is said in the language MADRE speaks, and Home finds its address in either', async () => {
+  const { ALREADY_OPEN } = await import('../src/server.mjs');
+  const { ES } = await import('../public/es.js');
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const lines = [
+    'MADRE is already open for this project\n\n  http://127.0.0.1:4318/?ficha=abc\n  Project: /p',
+    'MADRE ya está abierta para este proyecto\n\n  http://127.0.0.1:4318/?ficha=abc\n  Proyecto: /p',
+    '  MADRE › MADRE is already open for this project at http://127.0.0.1:4318 (process 12). Close that room first, or open another conversation inside it.',
+    '  MADRE › MADRE ya está abierta para este proyecto en http://127.0.0.1:4318 (proceso 12). Cierra primero ese proyecto, o abre otra conversación dentro de él.',
+  ];
+  for (const said of lines) {
+    assert.equal([...said.matchAll(ALREADY_OPEN)].at(-1)?.[1], 'http://127.0.0.1:4318', said);
+    assert.equal(diagnose(said)[0]?.id, 'conversations', said);
+  }
+  for (const key of ['MADRE is already open for this project', 'Close that room first if you want a fresh one.', 'MADRE is already open for this project at {address} (process {pid}). Close that room first, or open another conversation inside it.']) {
+    assert.ok(ES[key], `not said in Spanish: ${key}`);
+  }
+  assert.equal(ES['MADRE is already open for this project'], 'MADRE ya está abierta para este proyecto', 'Home reads this sentence: change it here and in ALREADY_OPEN together');
 });

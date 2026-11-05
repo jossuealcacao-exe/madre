@@ -64,12 +64,23 @@ const option = (name, fallback) => cli.option(name.replace(/^--/, ''), fallback)
 
 // Is a MADRE already serving this very project nearby? `start` walks ports, so look along the
 // same short stretch and compare the project each one reports.
+// A MADRE already open for this project: its address with the ficha, said in the language MADRE
+// speaks (Q-1; Home reads the address after it in either, src/server.mjs ALREADY_OPEN), and its page
+// opened unless --no-open.
+async function showOpen(url, { openBrowser = true, openPath = '' } = {}) {
+  const address = withFicha(`${url}${openPath}`, await readFicha(salasHome));
+  console.log(`\n${t('MADRE is already open for this project')}\n\n  ${address}\n  ${t('Project:')} ${projectRoot}\n  ${t('Close that room first if you want a fresh one.')}\n`);
+  if (openBrowser) await openUrl(address);
+}
+
 async function roomAlreadyOpen(port, projectRoot, span = 8) {
   const mine = await realpath(projectRoot).catch(() => resolve(projectRoot));
   for (let candidate = port; candidate < port + span; candidate += 1) {
     try {
       // With the ficha (src/ficha.mjs): without it a MADRE says only that it is one, not which project.
-      const response = await fetch(`http://127.0.0.1:${candidate}/api/version`, { headers: await fichaHeaders(), signal: AbortSignal.timeout(500) });
+      // Two seconds (Q-3): a Linux that is just starting (WSL after Windows boots) took longer than
+      // the half second this had, and the CLI walked past the MADRE that was already open.
+      const response = await fetch(`http://127.0.0.1:${candidate}/api/version`, { headers: await fichaHeaders(), signal: AbortSignal.timeout(2000) });
       if (!response.ok) continue;
       const info = await response.json();
       const theirs = info?.project ? await realpath(info.project).catch(() => info.project) : null;
@@ -145,8 +156,14 @@ async function openRoom(options) {
     try {
       return await startPulse({ ...options, port });
     } catch (error) {
-      // The room itself says it is taken, whatever port this attempt used.
-      if (error.code === 'ROOM_IN_USE') { console.error(`\n  MADRE › ${error.message}\n`); process.exit(2); }
+      // The room itself says it is taken, whatever port this attempt used. Where it says it is open,
+      // that page is shown, as a MADRE found before starting is (Q-3: the Windows shortcut opened a
+      // second time, in a Linux slow to answer the look below, left the person with nothing).
+      if (error.code === 'ROOM_IN_USE') {
+        if (Number.isInteger(error.port)) { await showOpen(`http://127.0.0.1:${error.port}`, options); process.exit(0); }
+        console.error(`\n  MADRE › ${error.message}\n`);
+        process.exit(2);
+      }
       if (error.code !== 'EADDRINUSE') throw error;
       if (explicit) {
         console.error(`\n  MADRE › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
@@ -301,9 +318,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   // A room for this project may already be open. Show that one instead of starting a second.
   const running = await roomAlreadyOpen(port, projectRoot);
   if (running) {
-    const address = withFicha(`${running.url}${openPath}`, await readFicha(salasHome));
-    console.log(`\nMADRE is already open for this project\n\n  ${address}\n  Project: ${projectRoot}\n  Close that room first if you want a fresh one.\n`);
-    if (!noOpen) await openUrl(address);
+    await showOpen(running.url, { openBrowser: !noOpen, openPath });
     process.exit(0);
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen, openPath });

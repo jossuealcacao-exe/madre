@@ -48,6 +48,9 @@ const OWN_MODULE_IDS = new Set(MODULES.map((one) => one.id));
 // Where the author's token for the usage widget is kept: a vault name no module can take (module
 // ids are kebab-case, src/modules/sdk.mjs), so no module ever reads it.
 export const OWNER_VAULT = 'madre_owner';
+// What a room that found its project already open writes in start.log, in either language MADRE
+// speaks (Q-1): Home reads the address that follows to say where the project is open.
+export const ALREADY_OPEN = /(?:already open for this project|ya está abierta para este proyecto)(?:\s+(?:at|en))?\s+(http:\/\/127\.0\.0\.1:\d+)/g;
 let crashHandlersInstalled = false;
 
 // RIPLEY's bridge, injected into every page it renders: reports the page's path
@@ -359,8 +362,9 @@ export async function createPulseServer({
   // is taken only if that room also answers on its port.
   const answers = async (port) => Number.isInteger(port) && await fetch(`http://127.0.0.1:${port}/api/version`, { signal: AbortSignal.timeout(1500) }).then((response) => response.ok, () => false);
   if (held && Number.isInteger(held.pid) && held.pid !== process.pid && alive(held.pid) && await answers(held.port)) {
-    const error = new Error(`MADRE is already open for this project at http://127.0.0.1:${held.port} (process ${held.pid}). Close that room first, or open another conversation inside it.`);
+    const error = new Error(t('MADRE is already open for this project at {address} (process {pid}). Close that room first, or open another conversation inside it.', { address: `http://127.0.0.1:${held.port}`, pid: held.pid }));
     error.code = 'ROOM_IN_USE';
+    error.port = held.port;
     throw error;
   }
   // The room is this one's now. A room that died in the middle of a turn left the project's .env
@@ -2803,7 +2807,7 @@ export async function createPulseServer({
           // The commonest reason, said as itself: another MADRE (another Home, `madre start`) already
           // has this folder open, and one folder is one room. Where it is, so the person can go there.
           const said = (await readFile(join(root, 'rooms', room.id, 'start.log'), 'utf8').catch(() => '')).slice(logFrom);
-          const there = [...said.matchAll(/already open for this project\s+(http:\/\/127\.0\.0\.1:\d+)/g)].at(-1)?.[1];
+          const there = [...said.matchAll(ALREADY_OPEN)].at(-1)?.[1];
           if (there) return sendJson(response, 409, { error: t('This project is already open in another MADRE, at {address}. Use that one, or close it there first.', { address: there }), address: there });
           return sendJson(response, 504, { error: t('The project did not open. What it said on the way up is in start.log, beside its record.') });
         }
