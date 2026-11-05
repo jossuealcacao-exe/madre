@@ -1487,6 +1487,7 @@ export const ES = {
   ' changed 1 file': ' cambió 1 archivo',
   ' changed nothing': ' no cambió nada',
   ' wrote only in folders git ignores': ' escribió solo en carpetas que git ignora',
+  'In folders git ignores (created; UNDO removes them): {where}': 'En carpetas que git ignora (creados; «Deshacer» los elimina): {where}',
   'Outside the restore point, because git ignores them; UNDO does not bring them back: {where}': 'Fuera del punto de restauración, porque git los ignora; «Deshacer» no los regresa: {where}',
   'added': 'agregado',
   'modified': 'modificado',

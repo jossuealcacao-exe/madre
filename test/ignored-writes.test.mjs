@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ControlDesk } from '../src/room/control.mjs';
@@ -9,7 +9,8 @@ import { ControlDesk } from '../src/room/control.mjs';
 // L-5 (Carlos's server, 2026-11-04): a #3 turn created PRUEBA-01 with its record and measurements
 // under `pacientes/`, which git ignores, and the card said «@claude changed nothing» twice. The
 // restore point never holds ignored files; the card now says what was written there.
-test('a turn that writes where git does not look is told as written outside the restore point (L-5)', async () => {
+// L-5b: UNDO removes newly created files in light ignored folders, so test records do not stay behind.
+test('a turn that writes where git does not look reports it, and UNDO removes what was created (L-5, L-5b)', async () => {
   const root = await mkdtemp(join(tmpdir(), 'madre-ignored-'));
   try {
     const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: root, stdio: 'ignore' });
@@ -37,19 +38,42 @@ test('a turn that writes where git does not look is told as written outside the 
     await desk.release(run);
     assert.equal(changes.files.length, 0, 'git sees nothing');
     assert.deepEqual(changes.outsideRestore, ['pacientes/PRUEBA-01/ficha.md', 'pacientes/PRUEBA-01/mediciones.csv']);
-    assert.match(changes.message, /2 file\(s\) in folders git ignores were written too \(pacientes\/PRUEBA-01\/ficha\.md, pacientes\/PRUEBA-01\/mediciones\.csv\); the restore point does not hold them, so UNDO does not bring them back\./);
+    assert.deepEqual(changes.outsideCreated, ['pacientes/PRUEBA-01/ficha.md', 'pacientes/PRUEBA-01/mediciones.csv']);
+    assert.match(changes.message, /2 file\(s\) created in folders git ignores \(pacientes\/PRUEBA-01\/ficha\.md, pacientes\/PRUEBA-01\/mediciones\.csv\); UNDO will remove them\./);
     assert.doesNotMatch(changes.message, /changed nothing in the project\. *$/);
+
+    // L-5b: UNDO removes newly created files and their empty parent folder.
+    const undone = await desk.undo(changes.checkpointId);
+    assert.equal(undone.ok, true);
+    assert.deepEqual(undone.removed, ['pacientes/PRUEBA-01/ficha.md', 'pacientes/PRUEBA-01/mediciones.csv']);
+    assert.equal(await access(join(root, 'pacientes', 'PRUEBA-01', 'ficha.md')).then(() => true, () => false), false, 'new patient record removed');
+    assert.equal(await access(join(root, 'pacientes', 'PRUEBA-01')).then(() => true, () => false), false, 'empty folder removed');
+    assert.equal(await access(join(root, 'pacientes', 'PLANTILLA', 'ficha.md')).then(() => true, () => false), true, 'preexisting template stays');
+
     // A turn that wrote nowhere ignored says nothing of the kind.
     const second = await desk.begin({ agent: { id: 'claude' }, messageId: 'm-ignored-2', enabledScopes: {}, mode: 3 });
     const quiet = await desk.settle(second.run);
     await desk.release(second.run);
     assert.equal(quiet.outsideRestore, undefined);
 
+    // Modifying a preexisting ignored file warns that UNDO cannot bring it back.
+    const third = await desk.begin({ agent: { id: 'claude' }, messageId: 'm-ignored-3', enabledScopes: {}, mode: 3 });
+    await writeFile(join(root, 'pacientes', 'PLANTILLA', 'ficha.md'), 'plantilla modificada\n');
+    const modified = await desk.settle(third.run);
+    await desk.release(third.run);
+    assert.deepEqual(modified.outsideModified, ['pacientes/PLANTILLA/ficha.md']);
+    assert.match(modified.message, /1 preexisting file\(s\) in folders git ignores were modified \(pacientes\/PLANTILLA\/ficha\.md\); the restore point does not hold them, so UNDO does not bring them back\./);
+    const undoThird = await desk.undo(modified.checkpointId);
+    assert.equal(undoThird.ok, true);
+    assert.equal(await readFile(join(root, 'pacientes', 'PLANTILLA', 'ficha.md'), 'utf8'), 'plantilla modificada\n', 'preexisting file is not deleted');
+
     // The card says it instead of «changed nothing».
     const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
-    assert.match(app, /outsideRestore\.length \? t\(' wrote only in folders git ignores'\) : t\(' changed nothing'\)/);
+    assert.match(app, /\(outsideRestore\.length \|\| outsideCreated\.length\) \? t\(' wrote only in folders git ignores'\) : t\(' changed nothing'\)/);
     const { ES } = await import('../public/es.js');
-    assert.ok(ES[' wrote only in folders git ignores'] && ES['Outside the restore point, because git ignores them; UNDO does not bring them back: {where}']);
+    assert.ok(ES[' wrote only in folders git ignores']);
+    assert.ok(ES['In folders git ignores (created; UNDO removes them): {where}']);
+    assert.ok(ES['Outside the restore point, because git ignores them; UNDO does not bring them back: {where}']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -240,6 +240,30 @@ async function checkpointOne(root, { id, label, exclude = [] }) {
   return { commit, tree, head, via };
 }
 
+// Ignored folders skipped when walking user data (L-5, L-5b).
+const HEAVY = new Set(['node_modules', '.git', '.venv', 'venv', '__pycache__', 'dist', 'build', '.next', '.nuxt', 'target', '.cache', '.turbo', 'coverage', '.gradle', 'Pods', 'vendor']);
+
+// What exists in light ignored folders (Carlos's `pacientes/`) before a turn begins (L-5b).
+export async function listIgnored(root, { via = undefined, limit = 500, budget = 5000 } = {}) {
+  const listed = await git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'], { via }).catch(() => '');
+  const files = [];
+  const folders = [];
+  let visits = 0;
+  const walk = async (path) => {
+    if (files.length >= limit || visits >= budget) return;
+    visits += 1;
+    const bare = path.replace(/\/$/, '');
+    if (HEAVY.has(bare.split('/').pop()) || isForbidden(bare)) return;
+    const info = await lstat(join(root, bare)).catch(() => null);
+    if (info?.isDirectory()) {
+      folders.push(bare);
+      for (const entry of (await readdir(join(root, bare)).catch(() => [])).sort()) await walk(`${bare}/${entry}`);
+    } else if (info?.isFile()) files.push(bare);
+  };
+  for (const path of listed.split('\0').filter(Boolean)) await walk(path);
+  return { files, folders };
+}
+
 export async function createCheckpoint(root, { id, label = 'MADRE checkpoint' } = {}) {
   const dirs = await nestedRepos(root);
   const outer = await checkpointOne(root, { id, label, exclude: dirs });
@@ -249,7 +273,10 @@ export async function createCheckpoint(root, { id, label = 'MADRE checkpoint' } 
   }
   const controls = [await photographControls(root, outer.via, outer.via ? 'MADRE · ' : '.git/')];
   for (const part of nested) controls.push(await photographControls(join(root, part.dir), part.via, `${part.dir}/.git/`));
-  return { id, ...outer, nested, exclude: dirs, controls: controls.filter(Boolean), createdAt: new Date().toISOString() };
+  const ignoredBefore = await listIgnored(root, { via: outer.via });
+  const ignoredExisting = new Set(ignoredBefore.files);
+  const ignoredFolders = new Set(ignoredBefore.folders);
+  return { id, ...outer, nested, exclude: dirs, controls: controls.filter(Boolean), ignoredExisting, ignoredFolders, createdAt: new Date().toISOString() };
 }
 
 // After a turn that could write, before git runs again: the repositories' own settings, hooks and
@@ -295,7 +322,6 @@ async function diffOne(root, before, prefix = '', exclude = []) {
 // own list of what it ignores, without walking what is ignored for its size (dependencies, builds,
 // caches), MADRE's own folders or the .env files the guard already puts back; bounded, because it
 // is a note on the card and not a record.
-const HEAVY = new Set(['node_modules', '.git', '.venv', 'venv', '__pycache__', 'dist', 'build', '.next', '.nuxt', 'target', '.cache', '.turbo', 'coverage', '.gradle', 'Pods', 'vendor']);
 export async function ignoredWrittenSince(root, checkpoint, since, { limit = 20, budget = 5000 } = {}) {
   const listed = await git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'], { via: checkpoint?.via }).catch(() => '');
   const found = [];
@@ -376,6 +402,17 @@ export async function restoreCheckpoint(root, checkpoint, { paths = null } = {})
       }
       await git(repo.dir, ['restore', '--source', repo.commit, '--worktree', '--', repo.inner], { via: repo.via });
       restored.push(file.path);
+    }
+  }
+  // When restoring the full checkpoint on UNDO (paths === null), also remove newly created
+  // files in light ignored folders (e.g. Carlos's pacientes/) that the turn added (L-5b).
+  if (!paths && Array.isArray(checkpoint?.ignoredCreated)) {
+    for (const path of checkpoint.ignoredCreated) {
+      const absolute = resolve(root, path);
+      if (!absolute.startsWith(canonicalRoot + sep)) continue;
+      if (isForbidden(path)) continue;
+      const done = await unlink(absolute).then(() => true, () => false);
+      if (done) removed.push(path);
     }
   }
   await dropFoldersBornAfter(root, removed, Date.parse(checkpoint.createdAt));

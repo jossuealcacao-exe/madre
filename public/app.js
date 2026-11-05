@@ -6595,12 +6595,12 @@ function renderControlStarted(event) {
   return node;
 }
 function renderControlChanged(event) {
-  const { agent, checkpointId, files = [], stat, forbiddenReverted = [], message, unreadable = null, outsideRestore = [] } = event.payload;
-  const node = el('div', `system control changed${files.length || unreadable || outsideRestore.length ? '' : ' quiet'}`);
+  const { agent, checkpointId, files = [], stat, forbiddenReverted = [], message, unreadable = null, outsideRestore = [], outsideCreated = [], outsideModified = [] } = event.payload;
+  const node = el('div', `system control changed${files.length || unreadable || outsideRestore.length || outsideCreated.length ? '' : ' quiet'}`);
   node.id = `control-${checkpointId}`;
   tint(node, agent);
   const head = el('div', 'head');
-  head.append(el('b', null, sentence(t('EDIT'))), el('b', 'who', `@${agent}`), el('span', null, (unreadable ? t('could not read what changed') : files.length === 1 ? t(' changed 1 file') : files.length ? t(' changed {n} files', { n: files.length }) : outsideRestore.length ? t(' wrote only in folders git ignores') : t(' changed nothing')).trim()));
+  head.append(el('b', null, sentence(t('EDIT'))), el('b', 'who', `@${agent}`), el('span', null, (unreadable ? t('could not read what changed') : files.length === 1 ? t(' changed 1 file') : files.length ? t(' changed {n} files', { n: files.length }) : (outsideRestore.length || outsideCreated.length) ? t(' wrote only in folders git ignores') : t(' changed nothing')).trim()));
   node.append(head);
   // The turn finished; only the reading of it did not. The checkpoint is still the way back.
   if (unreadable) node.append(el('div', 'forbidden', t('Git could not list the changes ({reason}). The restore point from before the turn is still there.', { reason: unreadable.slice(0, 160) })));
@@ -6621,10 +6621,12 @@ function renderControlChanged(event) {
     if (stat) { const pre = el('pre', 'stat', statWords(stat.split('\n').slice(-1)[0])); pre.title = stat; node.append(pre); }
   }
   if (forbiddenReverted.length) node.append(el('div', 'forbidden', t('{n} writes into forbidden zones reverted: {where}', { n: forbiddenReverted.length, where: forbiddenReverted.join(', ') })));
-  // Written where git does not look (L-5): the restore point does not hold it, and saying «changed
-  // nothing» hid patient records an agent had written.
-  if (outsideRestore.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: outsideRestore.slice(0, 8).join(', ') + (outsideRestore.length > 8 ? ', …' : '') })));
-  if (files.length || unreadable) {
+  // Written where git does not look (L-5, L-5b): newly created files in light ignored folders
+  // will be removed on UNDO; preexisting ones that were modified cannot be brought back.
+  if (outsideCreated.length) node.append(el('div', 'forbidden', t('In folders git ignores (created; UNDO removes them): {where}', { where: outsideCreated.slice(0, 8).join(', ') + (outsideCreated.length > 8 ? ', …' : '') })));
+  if (outsideModified.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: outsideModified.slice(0, 8).join(', ') + (outsideModified.length > 8 ? ', …' : '') })));
+  else if (!outsideCreated.length && outsideRestore.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: outsideRestore.slice(0, 8).join(', ') + (outsideRestore.length > 8 ? ', …' : '') })));
+  if (files.length || unreadable || outsideCreated.length) {
     const undo = el('button', 'undo', t('UNDO · GO BACK TO THE RESTORE POINT'));
     undo.type = 'button';
     undo.title = t('Put the project back exactly as it was before this EDIT turn.');
