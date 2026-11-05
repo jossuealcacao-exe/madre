@@ -331,7 +331,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   // ---- 3 · YOUR AGENTS: Home's own panel, with what each one needs said first.
   function explainAgent(agent, state) {
     const env = s.env ?? {};
-    if (agent.id === 'gemini' && !state.ok) return el('p', 'wl-agent-why', t('Sign in with your Google account (Workspace / business) or paste a free Gemini API key from Google AI Studio (recommended for personal accounts).'));
+    if (agent.id === 'gemini' && !state.ok) return el('p', 'wl-agent-why', t('Sign in with your Google account (Workspace / business) or paste a Gemini API key from Google AI Studio, free or paid (recommended for personal accounts).'));
     if (agent.id === 'cursor' && !agent.detected) return el('p', 'wl-agent-why', t('Cursor installs with its own installer. For your safety MADRE does not run installers downloaded from the internet: copy the line below into a terminal (the window where you type commands), once, then press «I did it». Or skip it: it is optional.'));
     if (env.place === 'ssh' && agent.detected && !state.ok && (agent.login?.methods ?? []).some((method) => method.id === 'device')) return el('p', 'wl-agent-why', t('You\'re connected from another computer: choose «With a code», and type the code on the page from any device.'));
     if (env.place === 'ssh' && agent.detected && !state.ok) return el('p', 'wl-agent-why', t('You\'re connected from another computer: open the page it gives you on your own computer, and paste back here the code it shows.'));
