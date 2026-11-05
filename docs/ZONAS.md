@@ -321,7 +321,7 @@ Por orden de riesgo, de menor a mayor:
 
 ### 6.5 · Nota práctica
 
-Esta sala corre sobre trabajo de Come Verde. Un corpus de aquí llevaría nombres
+Una sala real corre sobre trabajo de clientes. Un corpus de ahí llevaría nombres
 de proyecto y lógica interna en cada línea. Cualquier prueba de donación se hace
 sobre una sala de juguete, nunca sobre una sala real.
 
