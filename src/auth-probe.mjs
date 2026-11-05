@@ -69,7 +69,8 @@ export function geminiAuthState({ settings, hasOauth, hasApiKey }) {
   if (type === 'gemini-api-key') return hasApiKey ? { state: 'signed-in', detail: 'via API key' } : { state: 'signed-out', detail: 'API key selected but not found' };
   if (type === 'oauth-personal' || type === 'oauth-enterprise') return hasOauth ? { state: 'signed-in', detail: 'via Google account' } : { state: 'signed-out', detail: 'Google login selected but no token' };
   if (type === 'vertex-ai') return { state: 'signed-in', detail: 'via Vertex AI' };
-  if (hasApiKey || hasOauth) return { state: 'unknown', detail: 'credentials present, auth type not selected' };
+  if (hasApiKey) return { state: 'signed-in', detail: 'via API key' };
+  if (hasOauth) return { state: 'unknown', detail: 'credentials present, auth type not selected' };
   return { state: 'signed-out', detail: 'never signed in' };
 }
 

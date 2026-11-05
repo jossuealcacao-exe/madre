@@ -6,6 +6,7 @@ import { homedir, tmpdir, userInfo } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { resolveGeminiKey } from './mcp/image-server.mjs';
 
 const accountHome = () => { try { return userInfo().homedir || homedir(); } catch { return homedir(); } };
 
@@ -176,19 +177,32 @@ async function readVersion(path, args) {
 export const toolsPrefix = (env = process.env) => join(env.PULSE_HOME ?? join(homedir(), '.pulse'), 'tools');
 export const toolsBin = (env = process.env) => (process.platform === 'win32' ? toolsPrefix(env) : join(toolsPrefix(env), 'bin'));
 
-export async function detectAgents({ env = process.env } = {}) {
+export async function detectAgents({ env = process.env, keyResolver = resolveGeminiKey, finder = findExecutable } = {}) {
   const searchPath = [env.PATH ?? '', toolsBin(env)].filter(Boolean).join(delimiter);
   return Promise.all(definitions.map(async (definition) => {
-    const path = await findExecutable(definition.candidates, searchPath);
-    const detected = Boolean(path);
+    const path = await finder(definition.candidates, searchPath, env);
+    let detected = Boolean(path);
+    let ready = detected && Boolean(definition.adapter);
+    let version = path ? await readVersion(path, definition.versionArgs) : null;
+    let adapter = definition.adapter ?? null;
+
+    if (definition.id === 'gemini' && !detected) {
+      const hasKey = Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY) || await keyResolver(env).catch(() => null);
+      if (hasKey) {
+        detected = true;
+        ready = true;
+        version = 'Google AI Studio REST';
+      }
+    }
+
     return {
       id: definition.id,
       label: definition.label,
       detected,
-      ready: detected && Boolean(definition.adapter),
-      adapter: definition.adapter ?? null,
+      ready,
+      adapter,
       path,
-      version: path ? await readVersion(path, definition.versionArgs) : null,
+      version,
       route: agentRouteFromEnvironment(definition.id, env),
     };
   }));
