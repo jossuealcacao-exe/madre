@@ -67,6 +67,9 @@ Zonas donde ya se sabe que el código asume POSIX y por eso merecen doble cuidad
   para el dueño, y de cada teléfono se guarda la huella, nunca el token.
 - La traducción al español se hace literal por literal, a mano. Nunca con un codemod.
 - La copia del producto no menciona el proceso de desarrollo ni sus fricciones.
+- Los errores se llevan en `~/madre-logs`, fuera de este repositorio porque trae datos de
+  clientes: un archivo por error, clasificado, con su estado y su `commit`. Antes de arreglar
+  uno, lee su `AGENTS.md`. Nada de ahí se copia a este repositorio ni a sus mensajes.
 
 ## Dónde está qué
 
