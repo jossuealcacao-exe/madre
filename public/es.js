@@ -2719,6 +2719,7 @@ export const ES = {
   'fixed': 'arreglado',
   'verified': 'verificados',
   'Last changes': 'Últimos cambios',
+  'Working now': 'Trabajando ahora',
   'to verify': 'por verificar',
   'Urgent · P0 and P1': 'Urgentes · P0 y P1',
   'Minor · P2': 'Menores · P2',

@@ -84,3 +84,33 @@ test('madre-logs · each new group of the diagnostics is filed once, classified 
   const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
   assert.match(server, /if \(Date\.now\(\) - logsSyncedAt > 600000\) \{[\s\S]{0,900}await keepSync\(await syncDiagnostics\(\{ groups: body\.errors \}\)\);/);
 });
+
+// 2026-11-05: Claude, Codex and Antigravity build MADRE at once. Whoever registers its work in
+// EN-CURSO.md shows as working, with its badge, even before it touches the error's state.
+test('madre-logs · who is working now, from EN-CURSO.md and from each error, with the three agents named', async () => {
+  const { agentOf, readWorking } = await import('../src/madre-logs.mjs');
+  for (const [said, agent] of [['antigravity · 2026-11-05', 'antigravity'], ['Anti-gravity', 'antigravity'], ['agy', 'antigravity'], ['codex · 2026-11-04', 'codex'], ['claude · sesión 2026-11-05', 'claude'], ['Ana', null]]) assert.equal(agentOf(said), agent, said);
+  const table = '| Agente | Qué hace | Zona (archivos o carpetas) | Desde | Notas |\n|---|---|---|---|---|\n| antigravity · 2026-11-05 | Investigar D-3 y D-6 | src/modules/ollama.mjs | 2026-11-05 | |\n| codex · 2026-11-04 | Corregir RX-2 | src/modules/index.mjs | 2026-11-04 | |\n';
+  assert.deepEqual(readWorking(table).map((one) => [one.agent, one.ids]), [['antigravity', ['D-3', 'D-6']], ['codex', ['RX-2']]]);
+  const dir = await mkdtemp(join(tmpdir(), 'madre-logs-working-'));
+  try {
+    await mkdir(join(dir, 'errores'));
+    const base = { clase: 'Instalación', tipo: 'WSL y Linux', nivel: 'Investigar', origen: 'Diagnóstico', abierto: '2026-11-03' };
+    await writeFile(join(dir, 'errores', 'D-3.md'), entry({ id: 'D-3', titulo: 'WSL sin DNS', estado: 'investigando', ...base }));
+    await writeFile(join(dir, 'errores', 'RX-2.md'), entry({ id: 'RX-2', titulo: 'Módulos', estado: 'en-curso', responsable: 'codex · 2026-11-04', ...base, nivel: 'P2' }));
+    await writeFile(join(dir, 'errores', 'Q-9.md'), entry({ id: 'Q-9', titulo: 'Nadie lo tiene', estado: 'abierto', ...base, nivel: 'P2' }));
+    await writeFile(join(dir, 'EN-CURSO.md'), table);
+    const reading = await readLogs({ dir, run: async () => '' });
+    const byId = Object.fromEntries(reading.toFix.map((one) => [one.id, one]));
+    assert.deepEqual([byId['D-3'].estado, byId['D-3'].agent, byId['D-3'].responsable], ['en-curso', 'antigravity', 'antigravity · 2026-11-05'], 'Antigravity registered D-3 and it did not show as in progress');
+    assert.deepEqual([byId['RX-2'].estado, byId['RX-2'].agent], ['en-curso', 'codex']);
+    assert.deepEqual([byId['Q-9'].estado, byId['Q-9'].agent], ['abierto', null]);
+    assert.equal(reading.counts.inProgress, 2);
+    assert.deepEqual(reading.working.map((one) => one.agent), ['antigravity', 'codex']);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(page, /const AGENTS = \{ claude: 'Claude', codex: 'Codex', antigravity: 'Antigravity' \};/);
+  assert.match(page, /if \(one\.estado === 'en-curso' && \(one\.agent \|\| one\.responsable\)\) top\.append\(badge\(one\.agent, one\.responsable\)\);/);
+});

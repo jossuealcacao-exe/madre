@@ -31,6 +31,31 @@ export function readFields(text) {
   return fields;
 }
 
+// The three agents that build MADRE (2026-11-05): Claude, Codex and Antigravity. However a file or
+// a row of EN-CURSO.md writes the name, it is one of these, or nobody MADRE knows.
+export function agentOf(text) {
+  const said = String(text ?? '');
+  if (/anti-?\s?gravity|\bagy\b|gemini/i.test(said)) return 'antigravity';
+  if (/codex/i.test(said)) return 'codex';
+  if (/claude/i.test(said)) return 'claude';
+  return null;
+}
+const ERROR_ID = /\b(?:D|S|MR|L|RX|Q|W|CI)-[A-Z0-9]+\b/g;
+
+// Who is working on what now: the rows of EN-CURSO.md (madre-logs' rule 12), with the errors each one
+// names. A row written in another shape is skipped, never guessed at.
+export function readWorking(text) {
+  const rows = [];
+  for (const line of String(text ?? '').split('\n')) {
+    if (!/^\|/.test(line) || /^\|\s*-{3}/.test(line)) continue;
+    const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
+    if (cells.length < 3 || !cells[0] || /^agente$/i.test(cells[0])) continue;
+    const [who, what = '', zone = '', since = '', notes = ''] = cells;
+    rows.push({ who, agent: agentOf(who), what, zone, since, notes, ids: [...new Set(`${what} ${notes}`.match(ERROR_ID) ?? [])] });
+  }
+  return rows;
+}
+
 const quiet = (command, args) => new Promise((resolve) => {
   try { execFile(command, args, { timeout: 4000 }, (error, stdout) => resolve(error ? '' : String(stdout))); } catch { resolve(''); }
 });
@@ -47,6 +72,15 @@ export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now
     const changed = (await stat(file).catch(() => null))?.mtimeMs ?? null;
     errors.push({ id: fields.id, title: fields.titulo ?? '', clase: fields.clase ?? '', tipo: fields.tipo ?? '', nivel: fields.nivel ?? '', origen: fields.origen ?? '', estado: fields.estado ?? '', responsable: fields.responsable || null, commit: fields.commit || null, changed });
   }
+  // An error is in progress when its file says so, or when a row of EN-CURSO.md names it: an agent
+  // that registered its work and did not yet touch the error's state still shows who has it.
+  const working = readWorking(await readFile(join(dir, 'EN-CURSO.md'), 'utf8').catch(() => ''));
+  for (const one of errors) {
+    const row = working.find((work) => work.ids.includes(one.id));
+    one.agent = agentOf(one.responsable) ?? row?.agent ?? null;
+    if (!one.responsable && row) one.responsable = row.who;
+    if (row && (one.estado === 'abierto' || one.estado === 'investigando')) one.estado = 'en-curso';
+  }
   const byLevel = (a, b) => (LEVELS.indexOf(a.nivel) - LEVELS.indexOf(b.nivel)) || a.id.localeCompare(b.id, 'es', { numeric: true });
   const tally = (list, key) => Object.entries(list.reduce((all, one) => ({ ...all, [one[key]]: (all[one[key]] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
   const toFix = errors.filter((one) => TO_FIX.includes(one.estado)).sort(byLevel);
@@ -58,6 +92,7 @@ export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now
     available: true,
     total: errors.length,
     counts: { toFix: toFix.length, toVerify: toVerify.length, verified: errors.filter((one) => one.estado === 'verificado').length, inProgress: errors.filter((one) => one.estado === 'en-curso').length },
+    working,
     byClase: tally(toFix, 'clase'),
     byTipo: tally(toFix, 'tipo'),
     toFix,

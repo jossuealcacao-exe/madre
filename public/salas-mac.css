@@ -2325,7 +2325,15 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 .sm-logs-state { flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--text-2); background: color-mix(in srgb, var(--text) 8%, transparent); }
 .is-en-curso .sm-logs-state { color: var(--s-acc, var(--phosphor)); background: color-mix(in srgb, var(--s-acc, var(--phosphor)) 16%, transparent); }
 .sm-logs-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--text-3); }
-.sm-logs-meta .sm-logs-who { color: var(--s-acc, var(--phosphor)); }
+/* The agent that has an error or a task: Claude, Codex or Antigravity, each in its own colour. */
+.sm-logs-agent { --ag: var(--text-2); flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 650; color: var(--ag); background: color-mix(in srgb, var(--ag) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ag) 40%, transparent); }
+.sm-logs-agent.ag-claude { --ag: #d97757; }
+.sm-logs-agent.ag-codex { --ag: #10a37f; }
+.sm-logs-agent.ag-antigravity { --ag: #5b9cf5; }
+.sm-logs-working { gap: 0; }
+.sm-logs-work { display: grid; gap: 3px; padding: 9px 0 9px 10px; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); box-shadow: inset 2px 0 0 var(--s-acc, var(--phosphor)); }
+.sm-logs-work:last-child { border-bottom: 0; }
+.sm-logs-zone { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-3); }
 .sm-logs-meta code { font-size: 11px; }
 .sm-logs-move { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font-size: 12.5px; color: var(--text-2); }
 .sm-logs-move:last-child { border-bottom: 0; }

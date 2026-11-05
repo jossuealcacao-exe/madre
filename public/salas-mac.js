@@ -2524,6 +2524,24 @@ const WIDGET_PAINT = {
       row.append(box);
       return row;
     };
+    // Who is working now (madre-logs' EN-CURSO.md): Claude, Codex and Antigravity each with its badge.
+    const AGENTS = { claude: 'Claude', codex: 'Codex', antigravity: 'Antigravity' };
+    const badge = (agent, who) => el('span', `sm-logs-agent ag-${agent ?? 'other'}`, AGENTS[agent] ?? String(who ?? '').split('·')[0].trim());
+    if (reading.working?.length) {
+      const now = el('section', 'sm-logs-group sm-logs-working');
+      const head = el('header', 'sm-logs-group-head');
+      head.append(el('span', null, t('Working now')), el('small', null, String(reading.working.length)));
+      now.append(head);
+      for (const work of reading.working) {
+        const row = el('div', 'sm-logs-work');
+        const top = el('div', 'sm-logs-top');
+        top.append(badge(work.agent, work.who), el('b', 'sm-logs-title', work.what));
+        row.append(top);
+        if (work.zone) row.append(el('small', 'sm-logs-zone', work.zone));
+        now.append(row);
+      }
+      body.append(now);
+    }
     if (reading.byClase.length) body.append(tags(t('Class'), reading.byClase), tags(t('Type'), reading.byTipo));
     const STATE = { 'en-curso': t('in progress'), abierto: t('open'), investigando: t('investigating'), decision: t('your decision'), arreglado: t('fixed'), publicado: t('published'), verificado: t('verified') };
     const GROUPS = [
@@ -2539,10 +2557,11 @@ const WIDGET_PAINT = {
       side.append(el('code', 'sm-logs-id', one.id), el('span', 'sm-logs-level', one.nivel === 'Investigar' ? t('Investigate') : one.nivel === 'Vigilar' ? t('Watch') : one.nivel === 'Decisión' ? t('Decide') : one.nivel));
       const main = el('div', 'sm-logs-main');
       const top = el('div', 'sm-logs-top');
-      top.append(el('b', 'sm-logs-title', one.title), el('span', 'sm-logs-state', STATE[one.estado] ?? one.estado));
+      top.append(el('b', 'sm-logs-title', one.title));
+      if (one.estado === 'en-curso' && (one.agent || one.responsable)) top.append(badge(one.agent, one.responsable));
+      top.append(el('span', 'sm-logs-state', STATE[one.estado] ?? one.estado));
       const meta = el('div', 'sm-logs-meta');
       for (const word of [one.clase, one.tipo, one.origen].filter(Boolean)) meta.append(el('span', null, word));
-      if (one.estado === 'en-curso' && one.responsable) meta.append(el('span', 'sm-logs-who', one.responsable));
       if (one.commit) meta.append(el('code', null, one.commit));
       main.append(top, meta);
       row.append(side, main);
