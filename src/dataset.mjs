@@ -235,29 +235,39 @@ export function preferencesFromAberrations(notes, { project = 'project', home, u
   return pairs;
 }
 
-// Deterministic split: the sequence decides, so re-exports keep lines on the same side.
+// Deterministic split: the sequence decides, so re-exports keep lines on the same side. One in ten
+// checks training as it goes (valid); another one in ten is never trained on, for the test after it
+// (RX-30): `mlx_lm.lora --test` reads test.jsonl and stops without it, so train.sh ended in an error
+// after training. A pair that was held out for checking stays where it was.
 export function split(pairs, { validEvery = 10 } = {}) {
   const train = [];
   const valid = [];
-  for (const pair of pairs) (pair.sequence % validEvery === 0 ? valid : train).push(pair);
+  const test = [];
+  const half = Math.floor(validEvery / 2);
+  for (const pair of pairs) {
+    const at = pair.sequence % validEvery;
+    (at === 0 ? valid : at === half ? test : train).push(pair);
+  }
   if (!valid.length && train.length > 1) valid.push(train.pop());
-  return { train, valid };
+  if (!test.length && train.length > 1) test.push(train.pop());
+  return { train, valid, test };
 }
 
 export async function exportDataset({ events, notes = [], dir, project = 'project', home, user, privacy = null, linked = [] }) {
   const pairs = [...pairsFromEvents(events, { project, home, user, privacy }), ...pairsFromNotes(notes, { project, home, user, privacy }), ...pairsFromLinked(linked, { home, user, privacy })].sort((a, b) => a.sequence - b.sequence);
   const preferences = preferencesFromAberrations(notes, { project, home, user, privacy });
-  const { train, valid } = split(pairs);
+  const { train, valid, test } = split(pairs);
   await mkdir(dir, { recursive: true });
   const line = (pair) => JSON.stringify({ messages: pair.messages });
   await writeFile(join(dir, 'train.jsonl'), train.map(line).join('\n') + (train.length ? '\n' : ''));
   await writeFile(join(dir, 'valid.jsonl'), valid.map(line).join('\n') + (valid.length ? '\n' : ''));
+  await writeFile(join(dir, 'test.jsonl'), test.map(line).join('\n') + (test.length ? '\n' : ''));
   // Kept in a file of its own: it is a different shape and a different kind of training, and
   // nothing that reads the chat files should ever pick it up by accident.
   await writeFile(join(dir, 'preferences.jsonl'), preferences.map((pair) => JSON.stringify({ prompt: pair.prompt, chosen: pair.chosen, rejected: pair.rejected })).join('\n') + (preferences.length ? '\n' : ''));
   const byAgent = {};
   for (const pair of pairs) byAgent[pair.agent] = (byAgent[pair.agent] ?? 0) + 1;
-  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => POSITIVE_VERDICTS.includes(p.rating)).length, notes: pairs.filter((p) => p.kind === 'note').length, linked: (linked ?? []).map((one) => ({ room: one.from, name: one.name, notes: pairs.filter((p) => p.kind === 'linked' && p.from === one.from).length, source: one.source ?? 'live', at: one.at ?? null })), aberrations: preferences.length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
+  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => POSITIVE_VERDICTS.includes(p.rating)).length, notes: pairs.filter((p) => p.kind === 'note').length, linked: (linked ?? []).map((one) => ({ room: one.from, name: one.name, notes: pairs.filter((p) => p.kind === 'linked' && p.from === one.from).length, source: one.source ?? 'live', at: one.at ?? null })), aberrations: preferences.length, train: train.length, valid: valid.length, test: test.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'test.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
   await writeFile(join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { dir, ...manifest };
 }

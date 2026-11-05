@@ -10,7 +10,7 @@ Desde **Ajustes › Lo que recuerda › Entrena tu propia IA › Exportar** (al 
 npx @jossuealcala/madre dataset   # en la carpeta del proyecto
 ```
 
-Escribe `~/.pulse/rooms/<proyecto>/dataset/{train.jsonl, valid.jsonl, manifest.json}`. Cada línea es `{"messages":[{role:"system"},{role:"user"},{role:"assistant"}]}`: las respuestas reales del proyecto, redactados (sin rutas, nombres, correos ni claves), más las notas resumidas como pares de recuerdo. Lo que se envió en #0 INCÓGNITO nunca está.
+Escribe `~/.pulse/rooms/<proyecto>/dataset/{train.jsonl, valid.jsonl, test.jsonl, manifest.json}`: uno de cada diez pares va a `valid.jsonl`, para medir mientras entrena, y otro de cada diez a `test.jsonl`, que nunca se entrena, para la prueba del final. Cada línea es `{"messages":[{role:"system"},{role:"user"},{role:"assistant"}]}`: las respuestas reales del proyecto, redactados (sin rutas, nombres, correos ni claves), más las notas resumidas como pares de recuerdo. Lo que se envió en #0 INCÓGNITO nunca está.
 
 Cuánto hace falta: con menos de ~200 pares el modelo aprende el tono y poco más; a partir de ~1000 empieza a valer. Exporta cada tanto; el split es determinista, así que las líneas no cambian de lado.
 

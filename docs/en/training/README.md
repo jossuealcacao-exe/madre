@@ -10,7 +10,7 @@ From **Settings › What it remembers › Train your own AI › Export** (when i
 npx @jossuealcala/madre dataset   # in the project folder
 ```
 
-It writes `~/.pulse/rooms/<project>/dataset/{train.jsonl, valid.jsonl, manifest.json}`. Each line is `{"messages":[{role:"system"},{role:"user"},{role:"assistant"}]}`: the project's real answers, redacted (no paths, names, emails or keys), plus the summarized notes as recall pairs. Messages sent in #0 INCOGNITO are never there.
+It writes `~/.pulse/rooms/<project>/dataset/{train.jsonl, valid.jsonl, test.jsonl, manifest.json}`: one pair in ten goes to `valid.jsonl`, to measure while it trains, and another one in ten to `test.jsonl`, never trained on, for the test at the end. Each line is `{"messages":[{role:"system"},{role:"user"},{role:"assistant"}]}`: the project's real answers, redacted (no paths, names, emails or keys), plus the summarized notes as recall pairs. Messages sent in #0 INCOGNITO are never there.
 
 How much you need: with fewer than ~200 pairs the model learns the tone and little more; from ~1000 on it starts to be worth it. Export every so often; the split is deterministic, so lines don't switch sides.
 

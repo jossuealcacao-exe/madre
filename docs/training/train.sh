@@ -7,6 +7,9 @@ ROOM="${1:?room dir, e.g. ~/.pulse/rooms/<sala>}"
 BASE="${2:-Qwen/Qwen2.5-1.5B-Instruct}"
 ITERS="${3:-600}"
 [ -f "$ROOM/dataset/train.jsonl" ] || { echo "no dataset: run 'madre dataset' first"; exit 2; }
+# The test at the end reads test.jsonl, never trained on; a dataset exported before MADRE wrote it
+# has none, and mlx-lm stops there (RX-30).
+[ -s "$ROOM/dataset/test.jsonl" ] || { echo "no test.jsonl: export the dataset again with 'madre dataset'"; exit 2; }
 PAIRS=$(wc -l < "$ROOM/dataset/train.jsonl")
 [ "$PAIRS" -ge 50 ] || { echo "only $PAIRS training pairs; let the room grow (aim for a few hundred)"; exit 3; }
 python3 -c "import mlx_lm" 2>/dev/null || { echo "pip install mlx-lm (inside a venv) first"; exit 4; }

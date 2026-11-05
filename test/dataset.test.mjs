@@ -49,9 +49,10 @@ test('dataset: user/assistant pairs by parent, redacted, without ghosts, delegat
   assert.equal(notes[0].kind, 'note');
   assert.match(notes[0].messages[1].content, /^What does the room remember about this\? Kind: decision\. Topic: The webhook verifies the Stripe signature before parsing/);
   assert.match(notes[0].messages[2].content, /\[#1–#4\]$/);
-  const { train, valid } = split([...pairs, ...notes]);
+  const { train, valid, test: held } = split([...pairs, ...notes]);
   assert.equal(valid.length, 1, 'one of the four lands in valid');
-  assert.equal(train.length, 3);
+  assert.equal(held.length, 1, 'and one in test, never trained on (RX-30)');
+  assert.equal(train.length, 2);
 
   const dir = await mkdtemp(join(tmpdir(), 'pulse-dataset-'));
   try {
@@ -149,11 +150,11 @@ test('dataset: what the room got wrong trains against itself, and never as somet
   const dir = await mkdtemp(join(tmpdir(), 'pulse-aberration-'));
   try {
     const result = await exportDataset({ events: [], notes, dir, project: 'pulse' });
-    assert.deepEqual(result.files, ['train.jsonl', 'valid.jsonl', 'preferences.jsonl']);
+    assert.deepEqual(result.files, ['train.jsonl', 'valid.jsonl', 'test.jsonl', 'preferences.jsonl']);
     assert.equal(result.aberrations, 1);
     const written = await readFile(join(dir, 'preferences.jsonl'), 'utf8');
     assert.deepEqual(Object.keys(JSON.parse(written.trim())).sort(), ['chosen', 'prompt', 'rejected']);
-    for (const file of ['train.jsonl', 'valid.jsonl']) {
+    for (const file of ['train.jsonl', 'valid.jsonl', 'test.jsonl']) {
       const body = await readFile(join(dir, file), 'utf8');
       assert.ok(!/after parsing the body|Rust core/.test(body), `${file} carries a hallucination`);
     }
@@ -214,4 +215,44 @@ test('dataset · D-S15: the Coordinator learns each linked project under its own
   await pruneCorpora(dir, new Set());
   assert.equal(await keptCorpus(dir, corpus.from), null, 'a project that no longer allows it is forgotten');
   await rm(dir, { recursive: true, force: true });
+});
+
+// RX-30 (external review of 1.1.1, #30): train.sh ran `mlx_lm.lora … --test`, which reads
+// test.jsonl and stops without it («Test set not found or empty»), and MADRE never wrote one: the
+// script ended in an error after training. One pair in ten is now held out for that test.
+test('dataset: one pair in ten is held out for the test after training, and train.sh asks for it (RX-30)', async () => {
+  const many = Array.from({ length: 40 }, (_, at) => ({ sequence: at + 1, messages: [{ role: 'user', content: `q${at + 1}` }, { role: 'assistant', content: `a${at + 1}` }] }));
+  const { train, valid, test: held } = split(many);
+  assert.deepEqual(valid.map((pair) => pair.sequence), [10, 20, 30, 40], 'the pairs held out to check stay where they were');
+  assert.deepEqual(held.map((pair) => pair.sequence), [5, 15, 25, 35]);
+  assert.equal(train.length, 32);
+  const seen = new Set([...train, ...valid, ...held].map((pair) => pair.sequence));
+  assert.equal(seen.size, 40, 'a pair landed twice or nowhere');
+  assert.deepEqual(split(many), { train, valid, test: held }, 'not deterministic');
+  // Few pairs still give the test one.
+  assert.equal(split(many.slice(0, 3)).test.length, 1);
+
+  const events = [];
+  for (let n = 1; n <= 12; n += 1) {
+    events.push(ev(n * 2 - 1, { messageId: `u${n}`, role: 'user', sender: 'you', target: 'codex', text: `How does part ${n} of the router mount its handlers?`, mode: 1 }));
+    events.push(ev(n * 2, { messageId: `a${n}`, parentMessageId: `u${n}`, role: 'assistant', sender: 'codex', target: 'you', text: `Part ${n} mounts its handlers after the API routes, so the static files never shadow them.`, mode: 1 }));
+  }
+  const dir = await mkdtemp(join(tmpdir(), 'pulse-dataset-test-'));
+  try {
+    const result = await exportDataset({ events, dir, project: 'pulse', home: '/Users/dallas' });
+    const lines = async (file) => (await readFile(join(dir, file), 'utf8')).split('\n').filter(Boolean);
+    assert.equal((await lines('test.jsonl')).length, result.test);
+    assert.ok(result.test >= 1, 'no pair held out for the test');
+    const trained = new Set(await lines('train.jsonl'));
+    for (const line of await lines('test.jsonl')) assert.ok(!trained.has(line), 'a test pair is also trained on');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  // The script stops before training when the dataset has no test set, instead of after it.
+  const script = await readFile(new URL('../docs/training/train.sh', import.meta.url), 'utf8');
+  const asks = script.indexOf('[ -s "$ROOM/dataset/test.jsonl" ]');
+  assert.ok(asks > 0 && asks < script.indexOf('mlx_lm.lora --model "$BASE" --train'), 'train.sh does not check for test.jsonl before training');
+  for (const manual of ['../docs/training/README.md', '../docs/en/training/README.md']) {
+    assert.match(await readFile(new URL(manual, import.meta.url), 'utf8'), /test\.jsonl, manifest\.json\}/, `${manual} does not say test.jsonl is written`);
+  }
 });

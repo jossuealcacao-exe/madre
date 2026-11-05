@@ -256,7 +256,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   const result = await exportDataset({ events: await store.readAll(), notes: memory ? memory.memories({ limit: 5000 }) : [], dir: join(roomDir, 'dataset'), project: basename(canonical), home: homedir() });
   memory?.close();
   if (has('--json')) console.log(JSON.stringify(result, null, 2));
-  else console.log(`\nMADRE dataset · ${result.project}\n\n  pairs      ${result.pairs} (${result.turns} turns · ${result.notes} notes)\n  train      ${result.train}\n  valid      ${result.valid}\n  by agent   ${Object.entries(result.byAgent).map(([id, n]) => `@${id} ${n}`).join(' · ') || '-'}\n  folder     ${result.dir}\n\n  Train it: docs/training/README.md (mlx-lm on Apple Silicon), then \`ollama create madre-${result.project.toLowerCase().replace(/[^a-z0-9]+/g, '-')}\` and @madre picks it up.\n`);
+  else console.log(`\nMADRE dataset · ${result.project}\n\n  pairs      ${result.pairs} (${result.turns} turns · ${result.notes} notes)\n  train      ${result.train}\n  valid      ${result.valid}\n  test       ${result.test}\n  by agent   ${Object.entries(result.byAgent).map(([id, n]) => `@${id} ${n}`).join(' · ') || '-'}\n  folder     ${result.dir}\n\n  Train it: docs/training/README.md (mlx-lm on Apple Silicon), then \`ollama create madre-${result.project.toLowerCase().replace(/[^a-z0-9]+/g, '-')}\` and @madre picks it up.\n`);
   process.exitCode = 0;
 } else if (command === 'doctor') {
   const agents = await detectAgents();
