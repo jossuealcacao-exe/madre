@@ -4531,8 +4531,8 @@ function askOverrideKey(stage, { again = false } = {}) {
   // Back at the first ask (a new key, or one the project turned down), the key says it again.
   if (!again && override.arm) override.arm.textContent = override.module ? t('Install') : override.copilot ? t('Turn on') : override.mode === 4 ? t('Open') : t('Unlock');
 }
-// A module installed by hand runs with the person's permissions, as #4 does: the project asks for
-// the #4 key with the install (2026-11-02). Answers what was typed, or null if they walked away.
+// A module installed by hand still asks for the #4 key with the install (2026-11-02).
+// Answers what was typed, or null if they walked away.
 function askModuleKey({ title, what, safe = t('MADRE checks that it loads and keeps to the house rules; what it intends, only you can judge.') }) {
   return new Promise((resolve) => {
     if (!override.dialog) { resolve(null); return; }
@@ -4620,7 +4620,7 @@ override.form?.addEventListener('submit', async (event) => {
     askOverrideKey(override.stage, { again: true });
     override.reply.textContent = override.stage === 'phrase' ? t('Type it once more to open it.') : t('Confirm once more to open it: what leaves your computer does not come back.');
     override.reply.className = 'key-reply';
-    if (override.module) override.reply.textContent = override.stage === 'phrase' ? t('Type it once more to install it.') : t('Confirm once more to install it: it will run with your permissions.');
+    if (override.module) override.reply.textContent = override.stage === 'phrase' ? t('Type it once more to install it.') : t('Confirm once more to install it: review its code and network destinations.');
     if (override.stage === 'confirm') override.arm.textContent = override.module ? t('Yes, install') : t('Yes, open #4');
     (override.input.hidden ? override.arm : override.input).focus();
     return;
@@ -5810,7 +5810,7 @@ function claimHead(node, kind, who) {
 // module · @codex
 // Wrote read-mail.module.mjs.
 // [INSTALL FOR EVERY ROOM] [INSTALL FOR THIS PROJECT]
-// Read it first: a module runs inside MADRE with your permissions.
+// Read the module file and its network destinations before installing it.
 function renderModuleProposed(event) {
   const { agent, path, name, responseMessageId } = event.payload;
   const node = el('div', 'system module-proposed');
@@ -5821,7 +5821,7 @@ function renderModuleProposed(event) {
   said.append(t('Wrote '), link);
   node.append(said);
   const install = async (scope, button) => {
-    const words = await askModuleKey({ title: t('Install {name}?', { name: String(name ?? path).split('/').pop() }), what: t('A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.') });
+    const words = await askModuleKey({ title: t('Install {name}?', { name: String(name ?? path).split('/').pop() }), what: t('A module runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.') });
     if (!words) return;
     button.disabled = true;
     try {
@@ -5837,7 +5837,7 @@ function renderModuleProposed(event) {
   const thisProject = el('button', 'claim-act', t('INSTALL FOR THIS PROJECT')); thisProject.type = 'button'; thisProject.addEventListener('click', () => install('project', thisProject));
   const acts = el('span', 'claim-acts');
   acts.append(everyRoom, thisProject);
-  node.append(acts, el('span', 'claim-note', t('Read it first: a module runs inside MADRE with your permissions.')));
+  node.append(acts, el('span', 'claim-note', t('Read the module file and its network destinations before installing it.')));
   // An agent asked to fix a module writes a new file beside the old one; the room keeps running
   // the copy that was installed until this one is. The card says so, or a fixed module looks
   // installed while the broken one keeps answering.
@@ -15508,9 +15508,8 @@ function cardControls(panel, item) {
   box.append(row);
 }
 
-// Somebody's own module, handed to MADRE from the panel. A module runs inside MADRE with the
-// human's permissions, so the choice is theirs to make knowingly: the file is named, what it
-// means is said in one line, and MADRE checks it before it is installed rather than after.
+// Somebody's own module, handed to MADRE from the panel. The file is named and its limits are
+// stated before the human confirms it; MADRE checks it before installing it.
 modules.add?.addEventListener('click', () => modules.file?.click());
 modules.file?.addEventListener('change', async () => {
   const file = modules.file.files?.[0];
@@ -15520,7 +15519,7 @@ modules.file?.addEventListener('change', async () => {
   // The question is the #4 key itself: a module can do what #4 can.
   const words = await askModuleKey({
     title: t('Install {name}?', { name: file.name }),
-    what: t('A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.'),
+    what: t('A module runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.'),
   });
   if (!words) return;
   let text;

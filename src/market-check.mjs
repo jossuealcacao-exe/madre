@@ -122,7 +122,7 @@ export function submissionMarkdown(result, entry = {}) {
   lines.push(result.reaches.length ? result.reaches.map((one) => `- ${one.words}`).join('\n') : `- ${t('Nothing beyond what MADRE hands every module.')}`);
   for (const one of result.undeclared) lines.push(`- ⚠️ ${one}`);
   if (result.module?.unknown?.length) lines.push(`- ⚠️ ${t('Fields MADRE does not know: {list}', { list: result.module.unknown.join(', ') })}`);
-  lines.push('', `_${t('Checked by MADRE (src/market-check.mjs). A person still reads the code before it is signed: a module runs with the permissions of whoever opens MADRE.')}_`);
+  lines.push('', `_${t('Checked by MADRE (src/market-check.mjs). A person still reads the code before it is signed: an installed module runs in a separate process, but Node cannot guarantee containment of malicious code.')}_`);
   return lines.join('\n');
 }
 

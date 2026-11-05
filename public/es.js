@@ -1404,7 +1404,7 @@ export const ES = {
   'Visual': 'Visual',
   'PRIVACY': 'Privacidad',
   'Wrote ': 'Escribió ',
-  'Read it first: a module runs inside MADRE with your permissions.': 'Léelo antes de instalarlo: un módulo corre dentro de MADRE con tus permisos.',
+  'Read the module file and its network destinations before installing it.': 'Lee el archivo del módulo y los destinos de red que declara antes de instalarlo.',
   'Installed from the Market for every project by {who}, and on.': 'Instalado desde el Mercado para todos los proyectos por {who}, y encendido.',
   'Installed for {where} by {who}. Switch it on in MODULES.': 'Instalado para {where} por {who}. Enciéndelo en «Módulos».',
   'Removed by {who}.': 'Quitado por {who}.',
@@ -2097,8 +2097,8 @@ export const ES = {
     'Pulsa el botón junto a la versión, lee el comando y córrelo. Si npm lo rechaza con EACCES, dale a npm una carpeta tuya o usa un gestor de versiones, y vuelve a pulsarlo.',
 
   'Installing a module somebody else wrote': 'Instalar un módulo que escribió alguien más',
-  'Modules has + Add a module for a .mjs somebody wrote. It comes through the same door as everything else: written to a scratch copy, imported there, checked against the house rules, and installed only if it passes. Three things get a file refused, each with the reason: an id that belongs to a module MADRE ships with, a route outside its own corner of the API (/api/x/<id>/), and a file that will not load at all. Said plainly, because it is what it is: a module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and stays in its corral; what the code intends is the one thing nobody can check for you.':
-    'Módulos tiene + Agregar un módulo para un .mjs que escribió alguien. Entra por la misma puerta que todo lo demás: se escribe en una copia aparte, se importa ahí, se revisa contra las reglas de la casa, y se instala solo si pasa. Tres cosas hacen que un archivo se rechace, cada una con su razón: un id que le pertenece a un módulo que viene con MADRE, una ruta fuera de su propio rincón de la API (/api/x/<id>/), y un archivo que de plano no carga. Dicho claro, porque es lo que es: un módulo corre dentro de MADRE, con tus permisos, en esta computadora. MADRE comprueba que cargue y que se quede en su corral; lo que el código pretende hacer es lo único que nadie puede comprobar por ti.',
+  'Modules has + Add a module for a .mjs somebody wrote. MADRE checks it in a separate process and installs it only if it passes. Three things get a file refused, each with the reason: an id that belongs to a module MADRE ships with, a route outside its own corner of the API (/api/x/<id>/), and a file that will not load at all. Once installed, each call runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code: review its code and network destinations before installing it.':
+    'Módulos tiene + Agregar un módulo para un .mjs que escribió alguien. MADRE lo revisa en un proceso separado y solo lo instala si pasa. Tres cosas hacen que un archivo se rechace, cada una con su razón: un id que pertenece a un módulo de MADRE, una ruta fuera de su propio rincón de la API (/api/x/<id>/) y un archivo que no carga. Una vez instalado, cada llamada corre en un proceso Node separado con permisos limitados. Node no garantiza contener código malicioso: revisa el código y sus destinos de red antes de instalarlo.',
   'Install it only if you trust where it came from. A module you wrote can also be updated from where you publish it: declare updates: { url } in the file, or install it from a file and MADRE remembers which, and its page in Modules carries Get a newer file.':
     'Instálalo solo si confías en de dónde viene. Un módulo tuyo también se puede actualizar desde donde lo publiques: declara updates: { url } en el archivo, o instálalo desde un archivo y MADRE recuerda cuál, y su ficha en Módulos lleva Traer un archivo más nuevo.',
 
@@ -2124,8 +2124,8 @@ export const ES = {
     'Qué sale de esta computadora y cómo apagar cada envío',
   'MADRE runs here and keeps what it knows in a file you own, and the list that qualifies that sentence is inside the core, under OUTBOUND. Seven addresses, each saying what it carries and where it is switched off: the briefing, which goes to whoever runs the agent you sent the turn to; Gemini embeddings, which carry the text of your memories; the image model, which carries the prompt an agent wrote; the npm registry and GitHub, which get a package name and nothing else; the error collector, which gets a redacted condition and only with your press; and Anthropic, for how much of your Claude plan is left. Ollama is on the list to be seen staying here.':
     'MADRE corre aquí y lo que sabe se guarda en un archivo tuyo; las excepciones están listadas dentro del núcleo, en ENVÍOS. Siete destinos, cada uno con qué lleva y dónde se apaga: lo que MADRE le envía al agente, que va a la empresa que opera ese agente; la búsqueda por significado de Gemini, que lleva el texto de tus memorias; el modelo de imagen, que lleva la instrucción que escribió un agente; el registro de npm y GitHub, que reciben un nombre de paquete y nada más; el recolector de errores, que recibe un resumen sin datos privados y solo si das clic; y Anthropic, para saber cuánto queda de tu plan de Claude. Ollama está en la lista precisamente para que se vea que se queda en tu computadora.',
-  "Under the list is the log itself: every request this process made, MADRE's own and any a module made, because a module runs inside MADRE and cannot opt out of the wrapper. No body, no header and no query value is ever written there — only which parameters were set. An address nothing declares is reported as exactly that.":
-    'Debajo de la lista está el detalle: cada petición que hizo MADRE y cualquier módulo, porque un módulo corre dentro de MADRE y no puede saltarse este registro. Ahí nunca se escribe el contenido, ni los encabezados, ni el valor de un parámetro: solo qué parámetros venían. Si una dirección no la declara nadie, se reporta así.',
+  "Under the list is the fetch log for MADRE and its modules, including a module's separate process and its one-file MCP server. It does not include network calls made through other Node protocols or by an agent CLI. No body, header or query value is written there — only which parameters were set. An address nothing declares is reported as exactly that.":
+    'Debajo de la lista está el registro de llamadas fetch de MADRE y sus módulos, incluidos el proceso separado de cada módulo y su servidor MCP de un solo archivo. No incluye las llamadas hechas con otros protocolos de Node ni las de las CLI de los agentes. Ahí nunca se escriben el contenido, los encabezados ni los valores de consulta: solo qué parámetros venían. Si una dirección no la declara nadie, se reporta así.',
 
   // ── LAS ESFERAS, EL GLOBO DE USO, EL CANAL DE RELEASES Y EL CENTINELA ─────
   'Ready': 'Listo',
@@ -2775,8 +2775,8 @@ export const ES = {
   'Uninstall {name}?': '¿Desinstalar {name}?',
   'Keep it': 'Conservarlo',
   'Uninstall': 'Desinstalar',
-  'A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.':
-    'Un módulo se ejecuta dentro de MADRE, con tus permisos, en esta computadora. Antes de instalarlo, MADRE comprueba que cargue y que respete las reglas de la casa, pero no puede saber qué pretende hacer. Instálalo solo si confías en su origen.',
+  'A module runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.':
+    'Un módulo corre en un proceso Node separado con permisos limitados. Node no garantiza contener código malicioso. Revisa el archivo y sus destinos de red antes de instalarlo.',
   'That file could not be read: {error}': 'Ese archivo no se pudo leer: {error}',
   'Diagnostics › {name} is already {version} · {from}': 'Diagnóstico › {name} ya está en {version} · {from}',
   'what is published': 'lo que está publicado',
@@ -4340,7 +4340,7 @@ export const ES = {
   'Adds commands to the box: {commands}.': 'Agrega comandos a la caja de texto: {commands}.',
   'Serves pages of its own inside MADRE.': 'Sirve páginas propias dentro de MADRE.',
   'Writes in your project, with a command you read and confirm before it runs.': 'Escribe en tu proyecto, con un comando que lees y confirmas antes de que corra.',
-  'A module runs inside MADRE with your permissions. MADRE checks its signature and what it declares, not everything its code does: install only what you trust.': 'Un módulo corre dentro de MADRE con tus permisos. MADRE revisa su firma y lo que declara, no todo lo que hace su código: instala solo lo que te dé confianza.',
+  'A module runs in a separate process with limited permissions. MADRE checks its signature and declarations; Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.': 'Un módulo corre en un proceso separado con permisos limitados. MADRE revisa su firma y lo que declara; Node no garantiza contener código malicioso. Revisa el archivo y sus destinos de red antes de instalarlo.',
   'MADRE could not reach the Market. Check your internet connection and try again.': 'MADRE no pudo llegar al Mercado. Revisa tu conexión a internet e inténtalo de nuevo.',
   'madre.run · the Market': 'madre.run · el Mercado',
   "Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author's signature before it is used.": 'Nada sobre ti: pide el catálogo de módulos, y el archivo de un módulo que obtuviste o que tiene una versión más nueva. Cada archivo se revisa contra la firma del autor antes de usarse.',
@@ -4794,9 +4794,9 @@ export const ES = {
   'Phrase, twice': 'Frase, dos veces',
   'Type your phrase again': 'Escribe tu frase otra vez',
   'Type it once more to open it.': 'Escríbela una vez más para desbloquearlo.',
-  // Instalar un módulo a mano pide la llave de #4 (2026-11-02): un módulo puede lo mismo que #4.
+  // Instalar un módulo a mano pide la llave de #4 (2026-11-02).
   'Type it once more to install it.': 'Escríbela una vez más para instalarlo.',
-  'Confirm once more to install it: it will run with your permissions.': 'Confirma una vez más para instalarlo: va a correr con tus permisos.',
+  'Confirm once more to install it: review its code and network destinations.': 'Confirma una vez más para instalarlo: revisa su código y sus destinos de red.',
   'Yes, install': 'Sí, instalar',
   'MADRE checks that it loads and keeps to the house rules; what it intends, only you can judge.': 'MADRE revisa que cargue y respete las reglas de la casa; lo que pretende hacer, solo tú puedes juzgarlo.',
   'External image · {host}': 'Imagen externa · {host}',
@@ -6047,7 +6047,7 @@ export const ES = {
   'What its code reaches for': 'A qué llega su código',
   'Nothing beyond what MADRE hands every module.': 'Nada más allá de lo que MADRE le da a todo módulo.',
   'Fields MADRE does not know: {list}': 'Campos que MADRE no conoce: {list}',
-  'Checked by MADRE (src/market-check.mjs). A person still reads the code before it is signed: a module runs with the permissions of whoever opens MADRE.': 'Revisado por MADRE (src/market-check.mjs). Una persona lee el código antes de firmarlo: un módulo corre con los permisos de quien abre MADRE.',
+  'Checked by MADRE (src/market-check.mjs). A person still reads the code before it is signed: an installed module runs in a separate process, but Node cannot guarantee containment of malicious code.': 'Revisado por MADRE (src/market-check.mjs). Una persona lee el código antes de firmarlo: un módulo instalado corre en un proceso separado, pero Node no garantiza contener código malicioso.',
   'Only a module you made can be sent to the Market.': 'Solo un módulo hecho por ti se puede enviar al Mercado.',
   '{name} came from the Market: its author sends its new versions.': '{name} vino del Mercado: sus versiones nuevas las envía su autor.',
   'The file of {name} is no longer where it was.': 'El archivo de {name} ya no está donde estaba.',

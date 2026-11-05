@@ -150,7 +150,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // A module from the catalog is got first — its signed file, checked, for every project — and
   // then turned on wherever the person said.
   // BEFORE IT IS INSTALLED (2026-10-25): what the module declares, read from its signed file, and the
-  // one thing every module is — code that runs with the person's permissions. Nothing is installed
+  // one thing every module is — code that needs the person's review. Nothing is installed
   // until the person says so, and then it is that same file (its sha256).
   let reviewing = null;
   const reviewLines = (declares) => {
@@ -174,7 +174,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     head.append(appIcon(item, 44), el('h2', null, t('Before installing {name}', { name: nameOf(item) })));
     const list = el('ul', 'mk-review-list');
     for (const line of reviewLines(review.declares)) list.append(el('li', null, line));
-    const warn = el('p', 'mk-review-warn', t('A module runs inside MADRE with your permissions. MADRE checks its signature and what it declares, not everything its code does: install only what you trust.'));
+    const warn = el('p', 'mk-review-warn', t('A module runs in a separate process with limited permissions. MADRE checks its signature and declarations; Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.'));
     const keys = el('div', 'mk-review-keys');
     const done = (yes) => { reviewing = null; sheet.remove(); resolve(yes); };
     const no = button('mk-get big quiet', t('Not now'), () => done(false));
