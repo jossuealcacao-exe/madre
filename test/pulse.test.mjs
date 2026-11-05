@@ -979,6 +979,42 @@ test('rejects oversized messages before invoking the agent', async () => {
   }
 });
 
+// D-15 (and D-13): a long text pasted for an agent was refused whole and nothing said what to do.
+// The page learns the cap and sends what passes it as a text attachment, which the agent reads whole.
+test('a text longer than a message goes as an attachment the agent reads whole (D-15)', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pulse-d15-')));
+  const project = join(root, 'project');
+  await mkdir(project, { recursive: true });
+  const read = [];
+  const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  const invokers = { 'codex-readonly': async ({ prompt, attachments }) => { read.push({ prompt, texts: await Promise.all(attachments.map((file) => readFile(file.path, 'utf8'))) }); return { text: 'Leído.', usage: null }; } };
+  const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: join(root, 'state'), agents, invokers, maxMessageChars: 50, testMode: true });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    assert.equal((await fetch(`${base}/api/state`).then((answer) => answer.json())).maxMessageChars, 50, 'the page cannot know the cap');
+    const long = `registro del servidor\n${'línea con datos '.repeat(10)}`;
+    const uploaded = await fetch(`${base}/api/attachments`, { method: 'POST', headers: { 'x-pulse-filename': encodeURIComponent('texto pegado.txt'), 'content-type': 'text/plain;charset=utf-8' }, body: long }).then((answer) => answer.json());
+    assert.equal(uploaded.attachment.name, 'texto pegado.txt');
+    const sent = await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '@codex Mi mensaje va en el texto adjunto.', target: 'codex', attachments: [uploaded.attachment.id] }) });
+    assert.ok(sent.ok, `the message was refused (${sent.status})`);
+    for (let tries = 0; !read.length && tries < 100; tries += 1) await new Promise((resolve) => setTimeout(resolve, 40));
+    assert.equal(read.length, 1, 'the agent was not asked');
+    assert.deepEqual(read[0].texts, [long], 'the agent did not get the whole text');
+    assert.match(read[0].prompt, /The human attached 1 file/);
+    assert.equal((await store.readAll()).some((event) => event.type === 'message.failed'), false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+  // The page: what would not fit when pasted goes beside the message, and a message already past the
+  // cap is sent with its text attached and who it is for kept.
+  const page = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(page, /state\.maxMessageChars = Number\(initial\.maxMessageChars\) \|\| 20000;/);
+  assert.match(page, /if \(pasted && kept \+ pasted\.length > state\.maxMessageChars\) \{\s*event\.preventDefault\(\);\s*void attachText\(pasted\)/);
+  assert.match(page, /if \(text\.length > state\.maxMessageChars && !text\.startsWith\('\/'\)\) \{\s*if \(!\(await attachText\(text\)\)\) return;/);
+});
+
 test('blocks an untrusted custom endpoint before building or sending a briefing', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-custom-route-'));
   try {

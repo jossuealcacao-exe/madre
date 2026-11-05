@@ -12939,6 +12939,7 @@ state.ripley = Boolean(initial.ripley?.enabled);
 state.projectRoot = initial.projectRoot ?? '';
 state.projectName = initial.projectName ?? '';
 state.platform = initial.platform ?? null;
+state.maxMessageChars = Number(initial.maxMessageChars) || 20000;
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 for (const agent of initial.agents) {
   const window = initial.budgetWindow?.[agent.id];
@@ -13770,6 +13771,14 @@ function renderPendingAttachments() {
     els.attachments.append(chip);
   }
 }
+// A text longer than a message may be goes as a file, as the agents read every attachment (D-15, a
+// copy in WSL, 2026-11-05): the room refused it for length and nothing told the person what to do.
+// Its name says it was pasted; the agent reads it whole. True once it is attached.
+async function attachText(text) {
+  const before = state.pending.length;
+  await addFiles([new File([text], `${t('pasted text')}.txt`, { type: 'text/plain;charset=utf-8' })]);
+  return state.pending.length > before;
+}
 async function addFiles(files) {
   for (const file of files) {
     const item = { name: file.name || 'pasted-image.png', uploading: true, id: null, previewUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : null };
@@ -13938,7 +13947,14 @@ els.attach.addEventListener('click', () => els.fileInput.click());
 els.fileInput.addEventListener('change', () => { void addFiles([...els.fileInput.files]); els.fileInput.value = ''; });
 els.input.addEventListener('paste', (event) => {
   const files = [...(event.clipboardData?.files ?? [])];
-  if (files.length) { event.preventDefault(); void addFiles(files); }
+  if (files.length) { event.preventDefault(); void addFiles(files); return; }
+  // A text that would not fit in the message goes beside it, and what was written stays (D-15).
+  const pasted = event.clipboardData?.getData('text/plain') ?? '';
+  const kept = els.input.value.length - (els.input.selectionEnd - els.input.selectionStart);
+  if (pasted && kept + pasted.length > state.maxMessageChars) {
+    event.preventDefault();
+    void attachText(pasted).then((attached) => { if (attached) toast(t('The text is too long for a message: it goes as an attachment. Say what to do with it and send.'), { tone: 'note' }); });
+  }
 });
 for (const type of ['dragenter', 'dragover']) els.composer.addEventListener(type, (event) => { event.preventDefault(); els.composer.classList.add('dropping'); });
 for (const type of ['dragleave', 'drop']) els.composer.addEventListener(type, (event) => { event.preventDefault(); els.composer.classList.remove('dropping'); });
@@ -13968,6 +13984,15 @@ els.composer.addEventListener('submit', async (event) => {
     autosize();
     syncModuleComposer();
     await stopAll();
+    return;
+  }
+  // Longer than a message may be, written or pasted bit by bit: the text goes as an attachment and
+  // the message keeps who it is for (D-15). The room refused it whole before.
+  if (text.length > state.maxMessageChars && !text.startsWith('/')) {
+    if (!(await attachText(text))) return;
+    els.input.value = `${text.match(/^(?:@[a-z0-9_-]+[\s,]+)*/i)[0]}${t('My message is in the attached text.')}`;
+    autosize();
+    els.composer.requestSubmit();
     return;
   }
   let outgoing = text;

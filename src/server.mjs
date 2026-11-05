@@ -3472,6 +3472,8 @@ export async function createPulseServer({
           phonePreview: viaPhone ? true : await phonePreview(),
           // The room of Salas knows it is: true only there, false in every other room.
           salas: salasRoom,
+          // The longest message the room takes (D-15): a longer one goes as a text attachment.
+          maxMessageChars,
           room: basename(roomDir),
           phones: viaPhone ? undefined : await phonePreview() ? (await readStore(root).catch(() => ({ devices: [] }))).devices.length : 0,
           // Which MADRE this is. The page prints it in the corner: the one fact a bug report
