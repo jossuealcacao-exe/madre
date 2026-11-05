@@ -75,7 +75,7 @@ test('the route saves the attachment the way attachments travel: from this conve
   try {
     const pdf = Buffer.from('%PDF-1.4 guía de curación\n%%EOF\n');
     const uploaded = await fetch(`${base}/api/attachments`, { method: 'POST', headers: { 'x-pulse-filename': encodeURIComponent('guía.pdf'), 'content-type': 'application/pdf' }, body: pdf }).then((answer) => answer.json());
-    const keep = (to) => fetch(`${base}/api/attachments/keep`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fileName: uploaded.attachment.fileName, to }) });
+    const keep = (to, extra = {}) => fetch(`${base}/api/attachments/keep`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fileName: uploaded.attachment.fileName, to, ...extra }) });
     const saved = await keep('conocimiento/guia-curacion.pdf');
     assert.equal(saved.status, 201);
     assert.deepEqual(await saved.json(), { ok: true, path: 'conocimiento/guia-curacion.pdf', bytes: pdf.length });
@@ -87,6 +87,16 @@ test('the route saves the attachment the way attachments travel: from this conve
     assert.equal(again.status, 409);
     assert.match((await again.json()).error, /already there|ya existe/i);
     assert.equal((await keep('.pulse/guia.pdf')).status, 403);
+    // A place an attachment never goes is refused before the project's name is asked: nobody types
+    // it to be refused anyway.
+    const secret = await keep('datos/.env');
+    assert.equal(secret.status, 403);
+    assert.equal((await secret.json()).guarded, undefined, 'the name was asked for a place refused anyway');
+    // A place the project guards and an attachment may go asks for the name, and then saves.
+    const guarded = await keep('.claude/settings.local.json');
+    assert.equal(guarded.status, 403);
+    assert.equal((await guarded.json()).guarded, true);
+    assert.equal((await keep('.claude/settings.local.json', { designation: 'skinhealth' })).status, 201);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });

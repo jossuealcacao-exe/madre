@@ -110,7 +110,7 @@ import { migrateOpenCodeHealth, noteOpenCodeTurn, openCodeHealth, suggestOpenCod
 import { normalizeMode, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
-import { listDirectory, searchFiles, readServable, storeAttachment, keepAttachment, resolveInside, createEmptyFile, writeEdited, MAX_ATTACHMENT_BYTES, MAX_EDIT_BYTES } from './files.mjs';
+import { listDirectory, searchFiles, readServable, storeAttachment, keepAttachment, attachmentPlaceRefused, ATTACHMENT_REFUSED, resolveInside, createEmptyFile, writeEdited, MAX_ATTACHMENT_BYTES, MAX_EDIT_BYTES } from './files.mjs';
 import { planFileOp, freeCopyPath, needsDesignationOnDisk, CREATIONS } from './file-ops.mjs';
 import { ServerSentinel } from './server-sentinel.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
@@ -3739,6 +3739,7 @@ export async function createPulseServer({
         const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const to = String(payload.to ?? '').trim().replace(/^\/+/, '');
+        if (attachmentPlaceRefused(to)) return sendJson(response, 403, { error: t(ATTACHMENT_REFUSED) });
         if (to && await needsDesignationOnDisk(canonicalProjectRoot, to) && !designationOk(payload.designation)) {
           return sendJson(response, 403, { error: t('This file is one the project guards. Type the project name to save it.'), guarded: true });
         }

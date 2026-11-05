@@ -237,6 +237,14 @@ export async function createEmptyFile(root, relative) {
   return { status: 201, path: parts.join('/') };
 }
 
+// Where an attachment never goes, whatever is typed after: judged part by part, as createEmptyFile
+// splits them («datos\.env» is datos/.env too). Asked before the project's name, so nobody types it
+// to be refused anyway.
+export const ATTACHMENT_REFUSED = 'That place is MADRE\'s own or a secret\'s: choose another folder.';
+export function attachmentPlaceRefused(to) {
+  return String(to ?? '').split(/[/\\]+/).some((part) => /^\.(pulse|madre|git)$/i.test(part) || /^\.env(\.|$)/i.test(part));
+}
+
 // An attachment of the conversation, saved into the project where the person says (L-2, Carlos's
 // server, 2026-11-04): a patient's photo into pacientes/…/fotos/, a guide into conocimiento/. Until
 // now a PDF or a photo stayed in MADRE's store; copying it in took a `cp`, which is #4. The person
@@ -246,11 +254,7 @@ export async function keepAttachment({ attachmentsRoot, projectRoot, fileName, t
   const from = await resolveInside(attachmentsRoot, String(fileName ?? ''));
   if (!from || !(await stat(from).catch(() => null))?.isFile()) return { status: 404, error: 'That attachment is no longer here.' };
   const clean = String(to ?? '').trim().replace(/^[/\\]+/, '');
-  const parts = clean.split(/[/\\]+/).filter(Boolean);
-  // Judged part by part, as createEmptyFile splits them: «datos\.env» is datos/.env too.
-  if (parts.some((part) => /^\.(pulse|madre|git)$/i.test(part) || /^\.env(\.|$)/i.test(part))) {
-    return { status: 403, error: 'That place is MADRE\'s own or a secret\'s: choose another folder.' };
-  }
+  if (attachmentPlaceRefused(clean)) return { status: 403, error: ATTACHMENT_REFUSED };
   // Fenced and checked the way a new, empty file is; then the attachment is copied over it.
   const made = await createEmptyFile(projectRoot, clean);
   if (made.status !== 201) return made;
