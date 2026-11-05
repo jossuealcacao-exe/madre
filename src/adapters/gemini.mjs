@@ -377,20 +377,21 @@ export async function invokeGemini({
           error.code = firstTrouble.code;
           throw error;
         }
-        if (diagnosis?.code === 'AUTH' || diagnosis?.code === 'INELIGIBLE' || diagnosis?.code === 'CREDITS_DEPLETED') {
+        if (diagnosis?.code === 'AUTH' || diagnosis?.code === 'INELIGIBLE') {
           error.message = `${diagnosis.message} ${diagnosis.hint}`;
           error.code = diagnosis.code;
           throw error;
         }
-        // Capacity trouble (503) or a rate limit on the chosen model: one more
-        // try on a lighter, explicit model before giving up.
-        if ((diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED') && !produced && !signal?.aborted && fallbackModel && !switched && currentModel !== fallbackModel) {
+        // Capacity trouble (503), rate limit (429), or depleted credits on the chosen model: one more
+        // try on a lighter, explicit model before giving up (L-12: a free-tier Flash model may answer
+        // when the default preview/pro router refuses for lack of prepayment credits).
+        if ((diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED' || diagnosis?.code === 'CREDITS_DEPLETED') && !produced && !signal?.aborted && fallbackModel && !switched && currentModel !== fallbackModel) {
           switched = true;
           firstTrouble = diagnosis;
           currentModel = fallbackModel;
           continue;
         }
-        if (diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED') {
+        if (diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED' || diagnosis?.code === 'CREDITS_DEPLETED') {
           error.message = `${diagnosis.message} ${diagnosis.hint}${switched ? t(' (also tried {model})', { model: fallbackModel }) : ''}`;
           error.code = diagnosis.code;
           throw error;

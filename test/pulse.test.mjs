@@ -2884,6 +2884,52 @@ test('invokeGemini: when the spare model is refused, the person still reads why 
   }
 });
 
+test('invokeGemini retries on a fallback model when prepayment credits are depleted (L-12)', async () => {
+  const calls = [];
+  const depletedStderr = 'status: 429 RESOURCE_EXHAUSTED Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing.';
+  const recovering = async ({ args }) => {
+    const model = args.includes('--model') ? args[args.indexOf('--model') + 1] : 'auto';
+    calls.push(model);
+    if (model === 'auto') {
+      const err = new Error('Credits depleted');
+      err.code = 'CREDITS_DEPLETED';
+      err.partialStderr = depletedStderr;
+      err.partialOutput = '';
+      throw err;
+    }
+    return { text: `distilled by ${model}`, usage: null };
+  };
+  const result = await invokeGemini({
+    executable: 'gemini',
+    projectRoot: process.cwd(),
+    prompt: 'distill memory',
+    run: recovering,
+    fallbackModel: 'gemini-3-flash-preview',
+  });
+  assert.equal(result.text, 'distilled by gemini-3-flash-preview');
+  assert.deepEqual(calls, ['auto', 'gemini-3-flash-preview']);
+
+  // When fallback also fails, reports the depleted credits and notes both models
+  const failing = async ({ args }) => {
+    const model = args.includes('--model') ? args[args.indexOf('--model') + 1] : 'auto';
+    const err = new Error('Credits depleted');
+    err.code = 'CREDITS_DEPLETED';
+    err.partialStderr = depletedStderr;
+    err.partialOutput = '';
+    throw err;
+  };
+  await assert.rejects(
+    invokeGemini({
+      executable: 'gemini',
+      projectRoot: process.cwd(),
+      prompt: 'distill memory',
+      run: failing,
+      fallbackModel: 'gemini-3-flash-preview',
+    }),
+    (error) => error.code === 'CREDITS_DEPLETED' && /prepaid credits left/.test(error.message) && /also tried gemini-3-flash-preview/.test(error.message),
+  );
+});
+
 
 test('budgetTokens weighs cache reads a tenth and handles Codex counting cached inside input', () => {
   assert.equal(budgetTokens({ source: 'claude-json', inputTokens: 16, cacheCreationInputTokens: 22181, cachedInputTokens: 162817, outputTokens: 5442, reasoningTokens: 0, totalTokens: 190456 }), 16 + 22181 + 5442 + Math.round(162817 * 0.1));
