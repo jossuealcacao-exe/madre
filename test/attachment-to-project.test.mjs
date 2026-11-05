@@ -79,3 +79,27 @@ test('the route saves the attachment the way attachments travel: from this conve
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// Q-5 (2026-11-05): «guía de curación.pdf» was shown and offered as «gu_a de curaci_n.pdf».
+test('an attachment keeps the name it was written with; only the file on disk is plain (Q-5)', async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'madre-q5-')));
+  try {
+    const attachmentsRoot = join(home, 'attachments');
+    const projectRoot = join(home, 'skinhealth');
+    await mkdir(projectRoot);
+    const stored = await storeAttachment(attachmentsRoot, { name: 'guía de curación — señora Núñez.pdf', bytes: Buffer.from('%PDF') });
+    assert.equal(stored.name, 'guía de curación — señora Núñez.pdf');
+    assert.match(stored.fileName, /^[0-9a-f]{8}-[\w.\- ]+$/, 'the file on disk is no longer plain');
+    // What could break a line or a path never reaches the name.
+    const tricky = await storeAttachment(attachmentsRoot, { name: '../año\n2026/herida\\día.jpg', bytes: Buffer.from('x') });
+    assert.doesNotMatch(tricky.name, /[\n/\\]|^\./);
+    assert.match(tricky.name, /año/);
+    // Saved into the project with that very name, accents and all.
+    const saved = await keepAttachment({ attachmentsRoot, projectRoot, fileName: stored.fileName, to: `conocimiento/${stored.name}` });
+    assert.equal(saved.status, 201, saved.error);
+    assert.equal(saved.path, 'conocimiento/guía de curación — señora Núñez.pdf');
+    assert.deepEqual(await readFile(join(projectRoot, 'conocimiento', 'guía de curación — señora Núñez.pdf')), Buffer.from('%PDF'));
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});

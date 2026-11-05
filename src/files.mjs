@@ -261,6 +261,10 @@ export async function keepAttachment({ attachmentsRoot, projectRoot, fileName, t
 }
 
 const safeName = (name) => String(name ?? 'file').replace(/[^\w.\- ]+/g, '_').replace(/^\.+/, '').slice(0, 120) || 'file';
+// The name a person reads and is offered to save with (Q-5): «guía de curación.pdf» stays as it was
+// written, accents and eñes included. Only what could break a line or a path is taken out; the file
+// on disk keeps the plain name above.
+const shownName = (name) => String(name ?? 'file').normalize('NFC').replace(/[\u0000-\u001f\u007f/\\]+/g, '_').replace(/^\.+/, '').trim().slice(0, 120) || 'file';
 
 export async function storeAttachment(attachmentsRoot, { name, bytes }) {
   if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new Error('Attachment is empty.');
@@ -272,7 +276,7 @@ export async function storeAttachment(attachmentsRoot, { name, bytes }) {
   await writeFile(path, bytes, { mode: 0o600 });
   return {
     id,
-    name: safeName(name),
+    name: shownName(name),
     fileName,
     path,
     size: bytes.length,
