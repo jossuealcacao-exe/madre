@@ -2284,15 +2284,51 @@ dialog.home-news .wn-card-line { display: block; -webkit-line-clamp: unset; over
    something runs (styles.css, .activity-button). */
 .sm-barkey.activity-button.working { color: var(--s-acc, var(--phosphor)); }
 
-/* madre-logs (the author's widget, 2026-11-05): the errors still to fix, each with its id, state and
-   classification, and the folder's last changes. P0 and P1 wear the alarm colour on their id. */
-.sm-logs { display: grid; gap: 8px; }
-.sm-logs-row { display: grid; gap: 2px; min-width: 0; }
-.sm-logs-id { flex: none; font-size: 11.5px; color: var(--text-2); }
-.sm-logs-row.is-urgent .sm-logs-id { color: var(--danger, #e5484d); font-weight: 600; }
-.sm-logs-row.is-en-curso .sm-w-tag { color: var(--s-acc, var(--phosphor)); background: color-mix(in srgb, var(--s-acc, var(--phosphor)) 16%, transparent); }
-.sm-logs-row.is-decision .sm-w-tag { color: var(--text-1, inherit); }
-.sm-logs-facts { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-2); }
-.sm-logs-moves { display: grid; gap: 4px; }
-.sm-logs-head { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
-.sm-logs-moves .sm-w-line b { font-size: 12.5px; font-weight: 500; }
+/* madre-logs (the author's widget, 2026-11-05): four figures, the classes and types as chips, then
+   the errors grouped by level. Each error is its own row: id and level in a column of their own on
+   the left, a hairline between rows, and the level's colour on the row's edge. */
+.w-madrelogs .sm-w-body { gap: 14px; }
+.sm-logs-lead { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.sm-logs-fig { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--text) 5%, transparent); }
+.sm-logs-fig b { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text); }
+.sm-logs-fig span { font-size: 12px; color: var(--text-2); }
+.sm-logs-fig.is-due b { color: var(--session-wait, #d9a90f); }
+.sm-logs-fig.is-busy b { color: var(--s-acc, var(--phosphor)); }
+.sm-logs-tally { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: start; }
+.sm-logs-tally-label { padding-top: 3px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.sm-logs-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.sm-logs-chip { padding: 2px 8px; border-radius: 999px; font-size: 11.5px; color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); white-space: nowrap; }
+.sm-logs-group { display: grid; }
+.sm-logs-group-head { display: flex; align-items: baseline; gap: 8px; padding: 0 0 6px; border-bottom: 1px solid var(--line, color-mix(in srgb, var(--text) 14%, transparent)); font-size: 11.5px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); }
+.sm-logs-group-head small { font-size: 11.5px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
+summary.sm-logs-group-head { cursor: pointer; list-style: none; }
+summary.sm-logs-group-head::-webkit-details-marker { display: none; }
+summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
+.sm-logs-wait[open] > summary.sm-logs-group-head::before { content: '▾'; }
+.sm-logs-item {
+  --lv: var(--text-3);
+  display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; padding: 10px 0 10px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); box-shadow: inset 2px 0 0 var(--lv);
+}
+.sm-logs-item:last-child { border-bottom: 0; }
+.lv-urgent { --lv: var(--danger, #e5484d); }
+.lv-minor { --lv: var(--session-wait, #d9a90f); }
+.lv-look { --lv: #5b9cf5; }
+.lv-watch, .lv-decide { --lv: var(--text-3); }
+.lv-done { --lv: var(--session-ok, var(--s-acc)); }
+.sm-logs-side { display: grid; align-content: start; gap: 4px; }
+.sm-logs-id { justify-self: start; padding: 0; background: none; font-size: 12.5px; font-weight: 650; color: var(--text); }
+.sm-logs-level { justify-self: start; padding: 0 6px; border-radius: 5px; font-size: 10.5px; font-weight: 650; color: var(--lv); background: color-mix(in srgb, var(--lv) 14%, transparent); }
+.sm-logs-main { display: grid; gap: 5px; min-width: 0; }
+.sm-logs-top { display: flex; align-items: flex-start; gap: 10px; }
+.sm-logs-title { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; line-height: 1.35; color: var(--text); }
+.sm-logs-state { flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--text-2); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.is-en-curso .sm-logs-state { color: var(--s-acc, var(--phosphor)); background: color-mix(in srgb, var(--s-acc, var(--phosphor)) 16%, transparent); }
+.sm-logs-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--text-3); }
+.sm-logs-meta .sm-logs-who { color: var(--s-acc, var(--phosphor)); }
+.sm-logs-meta code { font-size: 11px; }
+.sm-logs-move { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font-size: 12.5px; color: var(--text-2); }
+.sm-logs-move:last-child { border-bottom: 0; }
+.sm-logs-move span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-logs-move small { flex: none; font-size: 11.5px; color: var(--text-3); }
+@media (max-width: 640px) { .sm-logs-lead { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

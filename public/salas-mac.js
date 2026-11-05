@@ -1536,7 +1536,7 @@ const WIDGETS = {
   'w-rumbo': { kind: 'rumbo', owner: true, name: () => t('MADRE\'s course'), about: () => t('The variables that decide where MADRE goes: from a visit to a habit, what the numbers decide, and GitHub and npm. Only you see this.'), size: 12, sizes: [12] },
   // The author's error log (2026-11-05, src/madre-logs.mjs): ~/madre-logs as agents add and close
   // errors, read from this Mac's disk every few seconds. Only in the author's copy run from source.
-  'w-madrelogs': { kind: 'madrelogs', owner: true, every: 5000, name: () => 'madre-logs', about: () => t('MADRE\'s errors as they are added and fixed: what is still to fix by class and type, what waits to be verified, and the last changes. Read from this Mac; only you see this.'), size: 8, rows: 5 },
+  'w-madrelogs': { kind: 'madrelogs', owner: true, every: 5000, name: () => 'madre-logs', about: () => t('MADRE\'s errors as they are added and fixed: what is still to fix by class and type, what waits to be verified, and the last changes. Read from this Mac; only you see this.'), size: 8, rows: 8 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -2507,37 +2507,74 @@ const WIDGET_PAINT = {
   // What fails in every copy, the widest first (2026-10-28). Each with what it is (its MU code when
   // Diagnostics knows it), how many copies and times, which versions and systems, MADRE's own lines
   // it went through, and the author's word on it.
-  // madre-logs (2026-11-05): what is to fix, by class and type, the open ones by level, and what
-  // the agents saved last. Each one says its state; one in progress says who has it.
+  // madre-logs (2026-11-05): what is to fix, grouped by level (P0 and P1 first), each error in a row
+  // of its own: id and level on the left, what happens and its state, then its class, type and
+  // origin as tags. Then what waits to be verified, folded, and what the agents saved last.
   madrelogs(body, reading) {
     const { counts } = reading;
-    const lead = el('div', 'sm-usage-lead');
-    lead.append(el('b', 'sm-w-big', String(counts.toFix)), el('span', null, t('to fix')), el('small', 'sm-usage-trend', t('{verify} to verify · {verified} verified · {total} in all', { verify: counts.toVerify, verified: counts.verified, total: reading.total })));
+    const lead = el('div', 'sm-logs-lead');
+    const figure = (n, words, tone) => { const one = el('div', `sm-logs-fig${tone ? ` ${tone}` : ''}`); one.append(el('b', null, String(n)), el('span', null, words)); return one; };
+    lead.append(figure(counts.toFix, t('to fix'), counts.toFix ? 'is-due' : ''), figure(counts.inProgress, t('in progress'), counts.inProgress ? 'is-busy' : ''), figure(counts.toVerify, t('to verify')), figure(counts.verified, t('verified')));
     body.append(lead);
-    const lines = el('div', 'sm-usage-lines');
-    for (const [label, list] of [[t('Class'), reading.byClase], [t('Type'), reading.byTipo]]) {
-      const row = el('div', 'sm-w-line');
-      row.append(el('b', null, label), el('small', null, list.length ? list.map((one) => `${one.name} ${one.n}`).join(' · ') : '—'));
-      lines.append(row);
-    }
-    body.append(lines);
+    const tags = (label, list) => {
+      const row = el('div', 'sm-logs-tally');
+      row.append(el('span', 'sm-logs-tally-label', label));
+      const box = el('div', 'sm-logs-chips');
+      for (const one of list) box.append(el('span', 'sm-logs-chip', `${one.name} ${one.n}`));
+      row.append(box);
+      return row;
+    };
+    if (reading.byClase.length) body.append(tags(t('Class'), reading.byClase), tags(t('Type'), reading.byTipo));
     const STATE = { 'en-curso': t('in progress'), abierto: t('open'), investigando: t('investigating'), decision: t('your decision'), arreglado: t('fixed'), publicado: t('published'), verificado: t('verified') };
-    const list = el('div', 'sm-logs');
-    for (const one of reading.toFix.slice(0, 12)) {
-      const row = el('div', `sm-logs-row is-${one.estado}${one.nivel === 'P0' || one.nivel === 'P1' ? ' is-urgent' : ''}`);
-      const top = el('div', 'sm-w-line');
-      top.append(el('code', 'sm-logs-id', one.id), el('b', null, one.title), el('span', 'sm-w-tag', one.estado === 'en-curso' && one.responsable ? `${STATE[one.estado]} · ${one.responsable}` : STATE[one.estado] ?? one.estado));
-      row.append(top, el('small', 'sm-logs-facts', [one.clase, one.tipo, one.nivel, one.origen].filter(Boolean).join(' · ')));
-      list.append(row);
+    const GROUPS = [
+      [t('Urgent · P0 and P1'), (one) => one.nivel === 'P0' || one.nivel === 'P1', 'lv-urgent'],
+      [t('Minor · P2'), (one) => one.nivel === 'P2', 'lv-minor'],
+      [t('To investigate'), (one) => one.nivel === 'Investigar', 'lv-look'],
+      [t('To watch'), (one) => one.nivel === 'Vigilar', 'lv-watch'],
+      [t('Your decision'), (one) => one.nivel === 'Decisión', 'lv-decide'],
+    ];
+    const card = (one, tone) => {
+      const row = el('article', `sm-logs-item ${tone} is-${one.estado}`);
+      const side = el('div', 'sm-logs-side');
+      side.append(el('code', 'sm-logs-id', one.id), el('span', 'sm-logs-level', one.nivel === 'Investigar' ? t('Investigate') : one.nivel === 'Vigilar' ? t('Watch') : one.nivel === 'Decisión' ? t('Decide') : one.nivel));
+      const main = el('div', 'sm-logs-main');
+      const top = el('div', 'sm-logs-top');
+      top.append(el('b', 'sm-logs-title', one.title), el('span', 'sm-logs-state', STATE[one.estado] ?? one.estado));
+      const meta = el('div', 'sm-logs-meta');
+      for (const word of [one.clase, one.tipo, one.origen].filter(Boolean)) meta.append(el('span', null, word));
+      if (one.estado === 'en-curso' && one.responsable) meta.append(el('span', 'sm-logs-who', one.responsable));
+      if (one.commit) meta.append(el('code', null, one.commit));
+      main.append(top, meta);
+      row.append(side, main);
+      return row;
+    };
+    const left = [...reading.toFix];
+    for (const [title, fits, tone] of GROUPS) {
+      const these = left.filter(fits);
+      if (!these.length) continue;
+      const group = el('section', `sm-logs-group ${tone}`);
+      const head = el('header', 'sm-logs-group-head');
+      head.append(el('span', null, title), el('small', null, String(these.length)));
+      group.append(head);
+      for (const one of these) group.append(card(one, tone));
+      body.append(group);
     }
-    if (reading.toFix.length > 12) list.append(el('small', 'sm-hint', t('… and {n} more', { n: reading.toFix.length - 12 })));
-    body.append(list);
+    if (reading.toVerify.length) {
+      const wait = el('details', 'sm-logs-group sm-logs-wait');
+      const head = el('summary', 'sm-logs-group-head');
+      head.append(el('span', null, t('Fixed, to verify')), el('small', null, String(reading.toVerify.length)));
+      wait.append(head);
+      for (const one of reading.toVerify) wait.append(card(one, 'lv-done'));
+      body.append(wait);
+    }
     if (reading.log.length) {
-      const moves = el('div', 'sm-logs-moves');
-      moves.append(el('small', 'sm-logs-head', t('Last changes')));
+      const moves = el('section', 'sm-logs-group sm-logs-moves');
+      const head = el('header', 'sm-logs-group-head');
+      head.append(el('span', null, t('Last changes')));
+      moves.append(head);
       for (const one of reading.log.slice(0, 5)) {
-        const row = el('div', 'sm-w-line');
-        row.append(el('b', null, one.said), el('small', null, ago(one.at)));
+        const row = el('div', 'sm-logs-move');
+        row.append(el('span', null, one.said), el('small', null, ago(one.at)));
         row.title = `${one.hash} · ${one.said}`;
         moves.append(row);
       }
