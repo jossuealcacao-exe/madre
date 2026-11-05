@@ -38,6 +38,9 @@ export function memoryServerFor({ dbFile, projectRoot, env = process.env }) {
       ...(env.PULSE_EMBED_FAKE ? { PULSE_EMBED_FAKE: env.PULSE_EMBED_FAKE } : {}),
       ...(env.PULSE_EMBED_MODEL ? { PULSE_EMBED_MODEL: env.PULSE_EMBED_MODEL } : {}),
       ...(env.PULSE_EMBED_DIMS ? { PULSE_EMBED_DIMS: env.PULSE_EMBED_DIMS } : {}),
+      // Where this server writes what it sends (RX-20): the room's own «What leaves», as the mail,
+      // GitHub and image servers do. A search embedded by Gemini from here was the one send missing.
+      ...(env.PULSE_OUTBOUND_LOG ? { PULSE_OUTBOUND_LOG: env.PULSE_OUTBOUND_LOG } : {}),
     },
   };
 }

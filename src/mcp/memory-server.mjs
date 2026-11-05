@@ -20,6 +20,7 @@ import { createEmbedder } from '../embeddings.mjs';
 import { loadConfig } from '../config.mjs';
 import { Privacy, privacySettings } from '../privacy.mjs';
 import { resolveGeminiKey } from './image-server.mjs';
+import { OutboundLog } from '../outbound.mjs';
 
 const SERVER_NAME = 'pulse-memory';
 const SERVER_VERSION = '0.1.0';
@@ -228,9 +229,18 @@ export function serve({ input = process.stdin, output = process.stdout, context 
   input.on('end', () => { ended = true; finish(); });
 }
 
+// What this process sends lands in the room's «What leaves» (RX-20, external review #20): the
+// searches it embeds with Gemini went to Google from here, outside the log that promises to see
+// every fetch. Bodies and queries are never written, only where it went and whether it answered.
+export function watchOutbound(env = process.env, target = globalThis) {
+  if (!env.PULSE_OUTBOUND_LOG) return null;
+  return new OutboundLog({ file: env.PULSE_OUTBOUND_LOG }).install(target);
+}
+
 const invokedDirectly = process.argv[1] && (await realpath(process.argv[1]).catch(() => process.argv[1])) === (await realpath(new URL(import.meta.url).pathname).catch(() => null));
 if (invokedDirectly) {
   try {
+    watchOutbound();
     const memory = await openMemory();
     serve({ context: { memory, projectRoot: process.env.PULSE_PROJECT_ROOT, agent: process.env.PULSE_MEMORY_AGENT ?? 'agent', mode: process.env.PULSE_MEMORY_MODE ?? '1', messageId: process.env.PULSE_MEMORY_MESSAGE ?? null } });
   } catch (error) {
