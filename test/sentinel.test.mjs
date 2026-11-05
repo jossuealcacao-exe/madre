@@ -209,3 +209,25 @@ test('the sentinel · limits, credits, keys and plans of 1.1.2 are known, each b
     assert.equal(told.at(-1).code, code, error);
   }
 });
+
+// 1.1.1 diagnostics (2026-11-04, D-12): a copy in WSL wrote to @madre five times with Ollama off.
+// Only the card on @madre matched, which explains the agent and is no reason for a failure, so it
+// reached the author as unknown and the person was not told how to start Ollama.
+test('the sentinel · @madre without Ollama is known: the card says how to start Ollama', async () => {
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const told = [];
+  const sentinel = new ErrorSentinel({ pkg: { name: '@jossuealcala/madre', version: '1.1.2' }, agents: [], told: (one) => told.push(one) });
+  const failed = (target, error) => ({ type: 'message.failed', timestamp: new Date().toISOString(), payload: { target, error } });
+  for (const error of [
+    '@madre left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.',
+    '@madre salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
+  ]) {
+    assert.equal(await sentinel.observe(failed('madre', error)), null, 'filed as unknown');
+    assert.equal(told.at(-1).code, 'MU-067', error);
+    assert.equal(told.at(-1).message, '', 'a known failure travels by its code alone');
+    // The card the conversation shows is the first blocking one: how to start Ollama.
+    assert.equal(diagnose(error, 'madre').find((condition) => condition.severity === 'blocking')?.code, 'MU-067');
+  }
+  // Ollama running without a chat model is not this card: starting Ollama would not help.
+  assert.ok(!diagnose('@madre left the project: Ollama has no chat model running', 'madre').some((condition) => condition.code === 'MU-067'));
+});

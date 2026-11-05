@@ -6433,7 +6433,7 @@ export const ES = {
   '# Home → Settings → Agents → Sign in again': '# Inicio → Ajustes → Agentes → Iniciar sesión de nuevo',
   '# or in a terminal on the computer where MADRE runs:': '# o en una terminal de la computadora donde corre MADRE:',
   'Ollama does not start': 'Ollama no arranca',
-  'Ollama is installed but nothing answers on its port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, or on Linux its service did not start.': 'Ollama está instalado pero nada contesta en su puerto (11434). Casi siempre está cerrado (en una Mac, la app no está abierta), otra copia de Ollama ya ocupa el puerto, o en Linux su servicio no arrancó.',
+  'Nothing answers on Ollama\'s port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, on Linux its service did not start, or it is not installed yet.': 'Nada contesta en el puerto de Ollama (11434). Casi siempre está cerrado (en una Mac, la app no está abierta), otra copia de Ollama ya ocupa el puerto, en Linux su servicio no arrancó, o aún no está instalado.',
   'On a Mac, open the Ollama app. On Linux, start its service. Then press «I did it», or Check again in Settings › Local AI.': 'En una Mac, abre la app de Ollama. En Linux, enciende su servicio. Luego pulsa «Ya lo hice», o Revisar otra vez en Ajustes › IA local.',
   '# without systemd (WSL without it, a container):': '# sin systemd (WSL sin él, un contenedor):',
   'A model download stopped': 'Se cortó la descarga de un modelo',

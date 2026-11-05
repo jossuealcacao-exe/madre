@@ -889,8 +889,11 @@ export const CONDITIONS = [
     code: 'MU-067',
     severity: 'blocking',
     title: 'Ollama does not start',
-    match: /Ollama did not answer|listen tcp 127\.0\.0\.1:11434: bind|address already in use[^\n]*11434|could not connect to ollama/i,
-    diagnosis: 'Ollama is installed but nothing answers on its port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, or on Linux its service did not start.',
+    // «@madre left the project: Ollama is not running» too (D-12, a copy in WSL wrote to @madre five
+    // times in nine minutes): only the card on @madre matched it, which explains the agent and is
+    // filed as unknown, not how to start Ollama.
+    match: /Ollama did not answer|Ollama is not running|Ollama no está (?:corriendo|encendido)|listen tcp 127\.0\.0\.1:11434: bind|address already in use[^\n]*11434|could not connect to ollama/i,
+    diagnosis: 'Nothing answers on Ollama\'s port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, on Linux its service did not start, or it is not installed yet.',
     remedy: 'On a Mac, open the Ollama app. On Linux, start its service. Then press «I did it», or Check again in Settings › Local AI.',
     fixes: {
       darwin: ['open -a Ollama', 'curl http://127.0.0.1:11434/api/version'],
