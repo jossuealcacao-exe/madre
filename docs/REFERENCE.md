@@ -201,7 +201,7 @@ Cambia a quién va y las palabras cambian; sube el modo y aparece el permiso que
 
 **THE LAUNCH.** Debajo del documento, el comando exacto que MADRE correría para entregarlo: el ejecutable, el directorio, cada bandera y el lugar donde entra el briefing. No es una descripción — lo arman los mismos adaptadores que lo armarían de verdad. Debajo, lo que mantiene la corrida dentro del turno (la sesión que no persiste, el hogar temporal que se borra al terminar) y los servidores MCP que podría llamar, con sus herramientas contadas. **De ese comando nunca se imprime un valor de entorno, solo los nombres**: una línea de comandos es algo que la gente fotografía.
 
-**Envíos.** El registro de salidas: cada destino al que MADRE o un agente llamó, con su cuenta. Nunca cuerpos, ni cabeceras, ni valores de consulta — solo a dónde y cuántas veces.
+**Envíos.** El registro de llamadas `fetch` de MADRE y de sus módulos, incluidos los módulos aislados y sus servidores MCP de un solo archivo. No observa otros protocolos de Node ni las conexiones de las CLI de los agentes. Nunca guarda cuerpos, cabeceras ni valores de consulta: solo el destino y cuántas veces se llamó.
 
 **La consola.** Dentro del núcleo, Diagnóstico contesta desde lo que el proyecto ya tiene. Tres respuestas que no entiende y la interfaz se cierra.
 

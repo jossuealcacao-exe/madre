@@ -32,6 +32,8 @@ import bishop from './bishop.mjs';
 import mcpConnect from './mcp-connect.mjs';
 import { isSalasRoom } from '../salas.mjs';
 import { defineModule, matchRoute, understandsSdk } from './sdk.mjs';
+import { settingsIn } from '../module-scope.mjs';
+import { fencedTools, permissionArgs, runExternal } from './isolated.mjs';
 import { builtinFile, newer, readBuiltinRecord, trustedBytes } from '../builtin-updates.mjs';
 
 // The lab: modules that are built and tested but not offered yet, because they are not finished
@@ -91,23 +93,26 @@ async function importModuleFile(file) {
 // never the module itself. src/modules/check-alone.mjs answers with it.
 export async function inspectModuleFile(file) {
   const module = await importModuleFile(file);
+  const snapshot = JSON.parse(JSON.stringify(module, (_, value) => value instanceof RegExp ? { madreRegExp: value.source, flags: value.flags } : value));
   return {
     id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', words: module.words ?? null, credit: module.credit ?? null, updates: module.updates ?? null, unknown: module.unknown ?? [], declares: declaredBy(module),
     routes: (module.routes ?? []).map((route) => ({ path: typeof route.path === 'string' ? route.path : { source: route.path?.source ?? '' } })),
+    snapshot,
+    hooks: Object.fromEntries(['describe', 'onEvent', 'toolsForTurn', 'updatePlan', 'detect', 'preflight', 'installCommand', 'setControl', 'toggle', 'scope'].map((key) => [key, typeof module[key] === 'function'])),
+    routeHooks: (module.routes ?? []).map((route) => typeof route.handler === 'function'),
+    slashHooks: (module.slash ?? []).map((command) => ({ execute: typeof command.execute === 'function', available: typeof command.available === 'function' })),
   };
 }
 
 // Loads a candidate in a node of its own, fenced by Node's permission model (check-alone.mjs says
 // what it may and may not do), so that asking what a file is never runs it inside MADRE.
 const CHECK_ALONE = fileURLToPath(new URL('./check-alone.mjs', import.meta.url));
-const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const CHECK_MS = 15000;
-const FENCE = ['--permission', '--experimental-permission'].find((flag) => process.allowedNodeEnvironmentFlags.has(flag)) ?? null;
 async function inspectAlone(probe) {
-  const [folder, root] = await Promise.all([realpath(dirname(probe)), realpath(PACKAGE_ROOT)]);
-  const fence = FENCE ? [FENCE, `--allow-fs-read=${folder}`, `--allow-fs-read=${root}`] : [];
+  const [folder, canonical] = await Promise.all([realpath(dirname(probe)), realpath(probe)]);
+  const fence = permissionArgs(canonical);
   return new Promise((done, fail) => {
-    execFile(process.execPath, [...fence, CHECK_ALONE, join(folder, basename(probe))], { env: {}, cwd: folder, timeout: CHECK_MS, maxBuffer: 1 << 20, windowsHide: true }, (error, stdout, stderr) => {
+    execFile(process.execPath, [...fence, CHECK_ALONE, canonical], { env: {}, cwd: folder, timeout: CHECK_MS, maxBuffer: 1 << 20, windowsHide: true }, (error, stdout, stderr) => {
       if (error?.killed) return fail(new Error(`it did not finish loading in ${CHECK_MS / 1000} s, so MADRE stopped it: a module only declares what it is, and loading it must not wait on anything`));
       const said = String(stdout ?? '').split('\n').reverse().map((line) => { try { return JSON.parse(line); } catch { return null; } }).find((one) => one && typeof one.ok === 'boolean');
       if (!said) return fail(new Error(String(stderr ?? '').trim().split('\n').at(-1) || error?.message || 'it ended before saying what it is'));
@@ -116,6 +121,44 @@ async function inspectAlone(probe) {
       return done(said.module);
     });
   });
+}
+
+const revive = (value) => {
+  if (Array.isArray(value)) return value.map(revive);
+  if (!value || typeof value !== 'object') return value;
+  if (typeof value.madreRegExp === 'string') return new RegExp(value.madreRegExp, value.flags ?? '');
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, revive(item)]));
+};
+
+function externalProxy(checked, file, origin) {
+  const snapshot = revive(checked.snapshot);
+  const invoke = (operation, ctx, args = [], index = null) => runExternal({
+    file, id: checked.id, configKey: snapshot.configKey, reaches: snapshot.reaches ?? [], operation, index, ctx, args,
+  });
+  const module = {
+    ...snapshot,
+    external: true, origin, file,
+    settingsFrom: (config, roomId = null) => ({ ...snapshot.defaults, ...settingsIn(config?.modules?.[snapshot.configKey] ?? {}, roomId) }),
+    describe: async (ctx) => ({ ...(await invoke('describe', ctx)), external: true, origin, file }),
+    routes: (snapshot.routes ?? []).map((route, index) => ({ ...route, handler: checked.routeHooks[index]
+      ? (ctx, request) => invoke('route', ctx, [{ method: request.request?.method, url: request.url?.href ?? null, headers: request.request?.headers ?? {}, payload: request.payload, params: request.params, viaPhone: request.viaPhone }], index)
+      : null })),
+    slash: (snapshot.slash ?? []).map((command, index) => ({ ...command,
+      ...(checked.slashHooks[index]?.execute ? { execute: (ctx, args) => invoke('slash', ctx, [args], index) } : {}),
+      ...(checked.slashHooks[index]?.available ? { available: (ctx) => invoke('available', ctx, [], index) } : {}),
+    })),
+  };
+  for (const hook of ['onEvent', 'updatePlan', 'setControl', 'toggle', 'scope']) {
+    if (checked.hooks[hook]) module[hook] = (ctx, ...args) => invoke(hook, ctx, args);
+  }
+  for (const hook of ['detect', 'preflight', 'installCommand']) {
+    if (checked.hooks[hook]) module[hook] = (...args) => invoke(hook, {}, args);
+  }
+  module.toolsForTurn = checked.hooks.toolsForTurn ? async (ctx, turn) => {
+    try { return await fencedTools(await invoke('toolsForTurn', ctx, [turn]), { file, id: checked.id, reaches: snapshot.reaches ?? [], turn, outboundLog: ctx.env?.PULSE_OUTBOUND_LOG ?? null }); }
+    catch (error) { console.error(`MADRE module ${checked.id}: toolsForTurn failed: ${error.message}`); return []; }
+  } : null;
+  return Object.freeze(module);
 }
 
 export async function loadExternalModules({ stateRoot, projectRoot }) {
@@ -132,8 +175,8 @@ export async function loadExternalModules({ stateRoot, projectRoot }) {
     for (const name of files) {
       const file = join(dir, name);
       try {
-        const module = checkExternal(await importModuleFile(file));
-        MODULES.push(Object.freeze({ ...module, external: true, origin, file }));
+        const module = checkExternal(externalProxy(await inspectAlone(file), file, origin));
+        MODULES.push(module);
         if (module.reaches) declareDestinations(module.id, module.reaches);
       } catch (error) {
         loadFailures.push({ file, origin, error: error.message });
@@ -186,8 +229,8 @@ export async function adoptBuiltinUpdates({ stateRoot, enabled = true, factoryKe
 
 // The one door every module comes through, whoever wrote it and wherever the text came from: it
 // is written to a scratch copy, loaded there in a fenced node of its own (inspectAlone) and checked
-// against the house rules. An installed module runs inside MADRE with the human's own permissions,
-// so the check is the point — and checking runs nothing in MADRE (2026-11-01, external review #1).
+// against the house rules. Each later call also runs in a fenced process (RX-2); checking and
+// running a human module never execute its JavaScript in MADRE's server process.
 // Checking installs nothing and touches no registry — asking what a file is must never change
 // what is loaded.
 export async function verifyModuleText({ text, name = null, replace = true }) {
@@ -216,7 +259,7 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
 // installed (2026-10-25). Only what the file itself declares: where it reaches, the keys it asks
 // for, whether it hands tools to the agents or reads the conversations, the pages and commands it
 // adds, and whether it writes in the project. What the code does beyond that nobody can promise —
-// which is why the page also says, every time, that a module runs with the person's permissions.
+// its declared destinations still need the person's review before installation.
 export function declaredBy(module) {
   return {
     reaches: (module.reaches ?? []).map(({ host, to, what, when }) => ({ host: host ?? null, to: to ?? null, what: what ?? null, when: when ?? null })),
@@ -240,7 +283,7 @@ export async function verifyBuiltinText({ text, id }) {
   try {
     const probe = join(scratch, `${id}.mjs`);
     await writeFile(probe, text);
-    const module = await importModuleFile(probe);
+    const module = (await inspectAlone(probe)).snapshot;
     if (module.id !== id) throw new Error(`The file says it is "${module.id}", not "${id}".`);
     if (!understandsSdk(module.sdk)) throw new Error(`${id} needs contract ${module.sdk} of the SDK.`);
     if (!module.version || !newer(module.version, packaged.version ?? '0.0.0')) throw new Error(`${id} ${module.version ?? '(no version)'} is not newer than the ${packaged.version} MADRE comes with.`);

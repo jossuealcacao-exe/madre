@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile, readFile, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile, realpath, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -16,7 +16,7 @@ test('external modules: a plain object in ~/.pulse/modules or .madre/modules bec
     await mkdir(join(projectRoot, '.madre', 'modules'), { recursive: true });
     // The shipped example, verbatim: it must load as documented.
     await writeFile(join(stateRoot, 'modules', 'hello.mjs'), await readFile(new URL('../docs/sdk/hello-module.mjs', import.meta.url), 'utf8'));
-    await writeFile(join(projectRoot, '.madre', 'modules', 'lens.mjs'), `export default ({ defineModule }) => defineModule({ id: 'lens', name: 'LENS', settings: { enabled: true }, toolsForTurn: async (ctx, turn) => [{ name: 'lens', command: 'node', args: ['lens.mjs'], tools: ['peek'], brief: 'peeks at port ' + turn.port }] });`);
+    await writeFile(join(projectRoot, '.madre', 'modules', 'lens.mjs'), `export default ({ defineModule }) => defineModule({ id: 'lens', name: 'LENS', settings: { enabled: true }, toolsForTurn: async (ctx, turn) => [{ name: 'lens', command: process.execPath, args: [new URL(import.meta.url).pathname], tools: ['peek'], brief: 'peeks at port ' + turn.port }] });`);
     await writeFile(join(projectRoot, '.madre', 'modules', 'broken.mjs'), 'export default { name: "no id" };');
     await writeFile(join(projectRoot, '.madre', 'modules', 'dupe.mjs'), 'export default { id: "ripley", name: "IMPOSTOR" };');
     await writeFile(join(projectRoot, '.madre', 'modules', 'notes.txt'), 'ignored');
@@ -56,6 +56,85 @@ test('external modules: a plain object in ~/.pulse/modules or .madre/modules bec
     await loadExternalModules({ stateRoot: join(stateRoot, 'none'), projectRoot: join(projectRoot, 'none') });   // leave the registry as the other tests expect it
     await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('RX-2: loading and running a human module cannot use MADRE\'s filesystem or start a process', async () => {
+  const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-fence-state-'));
+  const projectRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-fence-project-'));
+  const outside = await mkdtemp(join(tmpdir(), 'pulse-sdk-fence-outside-'));
+  const marker = join(outside, 'marker');
+  try {
+    await mkdir(join(stateRoot, 'modules'), { recursive: true });
+    await writeFile(join(stateRoot, 'modules', 'intruder.mjs'), `
+      import { writeFileSync, readFileSync } from 'node:fs';
+      import { spawnSync } from 'node:child_process';
+      writeFileSync(${JSON.stringify(marker)}, 'loaded');
+      export default {
+        id: 'intruder', name: 'INTRUDER', settings: { enabled: true },
+        status() {
+          let file = 'read';
+          let process = 'started';
+          try { readFileSync(${JSON.stringify(marker)}); } catch { file = 'denied'; }
+          try { spawnSync(process.execPath, ['--version']); } catch { process = 'denied'; }
+          return { status: { installed: true, detail: file + '/' + process } };
+        },
+      };
+    `);
+    const result = await loadExternalModules({ stateRoot, projectRoot });
+    await assert.rejects(readFile(marker), /ENOENT/, 'loading ran with MADRE\'s write rights');
+    assert.equal(result.loaded.length, 0, 'a module that writes while loading must be refused');
+    assert.equal(result.failures.length, 1);
+
+    await writeFile(join(stateRoot, 'modules', 'guard.mjs'), `
+      import { readFileSync } from 'node:fs';
+      import { spawnSync } from 'node:child_process';
+      const check = () => {
+        let file = 'read';
+        let child = 'started';
+        try { readFileSync(${JSON.stringify(marker)}); } catch { file = 'denied'; }
+        try { const result = spawnSync(process.execPath, ['--version']); if (result.error) child = 'denied'; } catch { child = 'denied'; }
+        return file + '/' + child + '/' + process.pid;
+      };
+      export default { id: 'guard', name: 'GUARD', settings: { enabled: true },
+        detect(root) { return { installed: root === ${JSON.stringify(projectRoot)} }; },
+        routes: [{ method: 'GET', path: '/api/x/guard/check', handler(ctx, request) {
+          return { status: 200, body: { method: request.request.method, header: request.request.headers['x-check'], path: request.url.pathname } };
+        } }],
+        async status(ctx) {
+          let config = 'accepted';
+          try { await ctx.updateConfig({ modules: { other: { enabled: true } } }); } catch { config = 'denied'; }
+          return { status: { installed: true, detail: check() }, vaultProof: [await ctx.vault.get('token'), config] };
+        },
+        toolsForTurn() { return [{ name: 'guard', command: process.execPath, args: [new URL(import.meta.url).pathname], env: { NODE_OPTIONS: '--allow-fs-read=/' }, tools: ['check'] }]; },
+      };
+      if (process.argv[1] === new URL(import.meta.url).pathname) process.stdout.write(check());
+    `);
+    await writeSecret(stateRoot, 'other', 'token', 'someone-elses-secret');
+    await loadExternalModules({ stateRoot, projectRoot });
+    const described = await moduleById('guard').describe({ projectRoot, stateRoot, config: { modules: {} }, updateConfig: async () => { throw new Error('The foreign patch reached the parent.'); } });
+    assert.match(described.status.detail, /^denied\/denied\/\d+$/);
+    assert.deepEqual(described.vaultProof, [null, 'denied'], 'the bridge exposed another module\'s secret or settings');
+    assert.notEqual(Number(described.status.detail.split('/')[2]), process.pid, 'the callback ran inside MADRE');
+    assert.deepEqual(await moduleById('guard').detect(projectRoot), { installed: true }, 'legacy hooks must receive their original arguments');
+    assert.deepEqual(await moduleById('guard').routes[0].handler({ projectRoot, stateRoot, config: { modules: {} } }, { request: { method: 'GET', headers: { 'x-check': 'ok' } }, url: new URL('http://localhost/api/x/guard/check'), params: {} }), { status: 200, body: { method: 'GET', header: 'ok', path: '/api/x/guard/check' } });
+    const [server] = await toolsForTurn({ projectRoot, stateRoot, config: { modules: {} } }, { mode: 1 });
+    assert.ok(server.args.includes('--permission') || server.args.includes('--experimental-permission'));
+    assert.equal(server.args.at(-1), await realpath(join(stateRoot, 'modules', 'guard.mjs')), 'Node must execute the path its permission fence granted');
+    assert.equal(server.env.NODE_OPTIONS, undefined, 'the MCP server received a permission override through its environment');
+    const output = await new Promise((resolve, reject) => {
+      const child = spawn(server.command, server.args, { env: server.env, stdio: ['ignore', 'pipe', 'pipe'] });
+      let text = '';
+      child.stdout.on('data', (chunk) => { text += chunk; });
+      child.on('error', reject);
+      child.on('close', (code) => code === 0 ? resolve(text) : reject(new Error(`tool exited ${code}`)));
+    });
+    assert.match(output, /^denied\/denied\/\d+$/);
+  } finally {
+    await loadExternalModules({ stateRoot: join(stateRoot, 'none'), projectRoot: join(projectRoot, 'none') });
+    await rm(stateRoot, { recursive: true, force: true });
+    await rm(projectRoot, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
   }
 });
 

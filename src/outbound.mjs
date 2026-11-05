@@ -14,10 +14,10 @@
 // there, what puts it on and where you turn it off. It is written by hand because it says what a
 // request MEANS, and no wrapper can know that.
 //
-// The log is the check on the declaration. Every fetch the room's process makes goes through one
-// wrapper — MADRE's own calls and any a module makes, because a module installed tomorrow runs
-// inside this process and cannot opt out of it — and lands in a line saying where it went and
-// when. An address nobody declared shows up as one nobody declared, which is the whole point.
+// The log is the check on the declaration. The room wraps its fetch calls; an installed module's
+// separate process reports its fetch calls through the restricted bridge, and its one-file MCP
+// server installs the same wrapper. Calls made through other protocols or an agent CLI do not
+// pass through this wrapper. An address nobody declared shows up as one nobody declared.
 //
 // What is never recorded: bodies, headers, and the values of query parameters. The names stay.
 // The Gemini embedding endpoint takes the key in the URL, and a log of what left this machine
@@ -353,7 +353,7 @@ export class OutboundLog {
     return watched;
   }
 
-  // Everything in this process, including whatever a module calls. Returns the undo.
+  // Fetch in this process. An external module is logged through its own bridge. Returns the undo.
   install(target = globalThis) {
     if (this.#restore) return this.#restore;
     const original = target.fetch;
@@ -389,8 +389,8 @@ export function outboundView({ log = null, state = {}, agents = [] } = {}) {
     when: t(one.when),
     where: t(one.where),
     local: Boolean(one.local),
-    // Whether the call lands in the log at all. Everything MADRE starts does, the image studio
-    // from its own process included; the crew's own conversation with its provider does not.
+    // Whether MADRE's fetch call lands in the log. The image studio and one-file module servers
+    // install their own wrapper; other protocols and agent CLI traffic do not pass through it.
     inside: Boolean(one.inside),
     on: state[one.id] ?? null,
     calls: counts[one.id]?.calls ?? 0,

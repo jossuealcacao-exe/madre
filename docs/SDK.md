@@ -36,9 +36,9 @@ export default {
 };
 ```
 
-**Tu módulo no importa paquetes.** Ni a MADRE, ni al SDK, ni nada de npm. Antes de instalarlo, MADRE copia tu archivo a una carpeta temporal aparte y lo carga ahí —así revisa qué es sin que corra donde vive— y en esa carpeta no hay `node_modules`: un `import` por nombre de paquete no resuelve y la instalación falla.
+**Tu módulo no importa paquetes.** Ni a MADRE, ni al SDK, ni nada de npm. Antes de instalarlo, MADRE copia tu archivo a una carpeta temporal aparte y lo carga en un proceso con permisos limitados; en esa carpeta no hay `node_modules`: un `import` por nombre de paquete no resuelve y la instalación falla. Ya instalado, cada llamada al módulo también corre en un proceso separado.
 
-Los **builtins de Node sí**, siempre: `node:fs`, `node:url`, `node:tls`, `node:child_process`. Con eso alcanza para hablar cualquier protocolo. Lo que no hay es nada que instalar.
+Los **builtins de Node se pueden importar**: `node:fs`, `node:url`, `node:tls`, `node:child_process`. El cerco limita lo que hacen: un módulo tuyo no puede leer archivos ajenos, escribir directamente ni abrir procesos. Para hablar con un servicio externo puede usar `fetch` o los protocolos de Node según las reglas de red de la versión de Node. No hay paquetes que instalar.
 
 Si necesitas `defineModule` —para calcular algo antes de definir el módulo, por ejemplo— **MADRE te lo entrega**: exporta una función y lo recibes como argumento.
 
@@ -77,7 +77,7 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 | `credit` | De quién fue la idea, si no fue tuya: un nombre. MADRE lo dice en la ficha del módulo y en el Mercado («Idea de …») |
 | `icon` | El ícono de tu módulo: `{ svg, color }`. `svg` es el dibujo —sus formas (`<path d="…"/>`) o un `<svg>` entero, en la cuadrícula que quieras— y `color` el de su mosaico, `#rrggbb`. MADRE lo ajusta solo para que se vea como los suyos: lo centra y lo escala al mismo cuadro, lo pinta en blanco y de un solo color, usa el color de MADRE más parecido al tuyo y quita lo que no sea dibujo (scripts, imágenes, enlaces, estilos, degradados). Sin `icon`, tu módulo lleva la pieza de rompecabezas en gris. Hasta 8000 caracteres |
 | `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text, link }`. La sala los muestra como tarjeta y los agentes los leen. `link` es opcional: `{ href, label }` con una ruta tuya (`/api/x/<id>/…`), y la tarjeta la ofrece como botón que abre otra pestaña; una dirección fuera de tus rutas se ignora |
-| `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente. `turn` trae el agente, el modo, el arriendo, la carpeta, el puerto y `turn.turn`: el id de la respuesta que ese turno escribirá. Si tu servidor llama de vuelta a la sala en nombre del turno, manda ese id; `ctx.room.runningTurn(id)` dice si sigue corriendo y para qué agente |
+| `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. Para un módulo tuyo, `command` debe ser Node y el primer argumento debe ser **el mismo archivo del módulo**; MADRE lo arranca con el mismo cerco de permisos. Un ejecutable diferente no se ofrece al agente. `turn` trae el agente, el modo, el arriendo, la carpeta, el puerto y `turn.turn`: el id de la respuesta que ese turno escribirá |
 | `toolsForTurn` → `sends` | Cuáles de tus herramientas **mandan algo fuera**. El núcleo las retira por debajo de `#4` AIRLOCK: ni se le cuenta al modelo que existen. Ver abajo |
 | `reaches` | A dónde llega tu módulo, en las mismas cuatro respuestas que da MADRE de las suyas. Ver abajo |
 | `secrets` | Las llaves que necesitas, declaradas en vez de dibujadas: `[{ name, label, note, where }]`. MADRE pinta el campo, la guarda en su bodega bajo tu id y te la devuelve por `ctx.vault`. Ver abajo |
@@ -236,7 +236,7 @@ terminando, y mientras tanto solo se activa a propósito con `PULSE_LABS=correo`
 
 La ficha de un módulo tuyo trae **GET A NEWER FILE**: MADRE va por el archivo —a la `url` que declaraste o al archivo desde el que lo instalaste—, lo verifica en una copia aparte y solo reemplaza al instalado si carga, respeta las reglas de la casa y dice una versión distinta. Verificar no instala nada.
 
-Y en la cabecera de MODULES hay **+ ADD A MODULE** para instalar el `.mjs` de alguien más. Pasa por la misma puerta que todo lo demás. Dicho claro, porque es lo que es: un módulo corre **dentro de MADRE, con los permisos de quien la abre**. MADRE comprueba que cargue y que no se salga de su corral —id propio, rutas solo bajo `/api/x/<id>/`, jamás encima de un módulo de MADRE—; lo que el código *pretende* no lo puede comprobar nadie más que tú.
+Y en la cabecera de MODULES hay **+ ADD A MODULE** para instalar el `.mjs` de alguien más. Pasa por la misma puerta que todo lo demás. MADRE lo carga y ejecuta aparte: las API ordinarias pueden leer su archivo y el código del SDK, pero no escribir tus archivos ni abrir procesos. Si ofrece una herramienta MCP, también debe ser ese mismo archivo y corre con esos límites. Cuando Node ofrece `--allow-net`, solo un módulo que declara un destino recibe acceso a la red; en versiones anteriores, el modelo de permisos no restringe la red. La declaración no limita los dominios a los que puede llamar. **El modelo de permisos de Node no es una barrera de seguridad contra código malicioso.** Revisa el código y los destinos antes de instalarlo.
 
 ### En el Mercado, para todos
 
@@ -276,12 +276,12 @@ Un módulo que se instala en el proyecto en vez de encenderse conserva su tarjet
 ctx = {
   projectRoot, stateRoot,          // el proyecto y ~/.pulse
   config, settings,                // config.json completo y tus ajustes con defaults
-  env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
+  env, agents, room,               // env vacío para módulos tuyos; agentes detectados; sala mediada
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
   language, t(text, vars),         // el idioma de la sala, 'es' o 'en', y tus palabras en él (sdk: 2):
                                    // una frase en inglés que MADRE ya conoce, o la tuya en { es, en }
-  services: { history, imageKey, ollama: { state, generate }, … }, // lo que el servidor ofrece;
+  services: { history, ollama: { state, generate } }, // lo que el servidor ofrece a módulos tuyos;
                                    // ollama.generate({ system, prompt, json }) contesta con el modelo local (sdk: 2)
   vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
@@ -329,7 +329,7 @@ Un módulo tuyo lleva la etiqueta «Tuyo» y se quita desde su ficha con «Quita
 
 ## Lo que un módulo no puede tocar
 
-Un módulo corre dentro del proceso de MADRE con tus permisos: instala solo lo que leíste. MADRE, por su parte, protege su núcleo así:
+Un módulo tuyo corre en un proceso separado. El modelo de permisos de Node limita las API ordinarias a su archivo y el código del SDK, sin escritura directa ni apertura de otros procesos. Las funciones de `ctx` pasan por MADRE: la bodega solo entrega los secretos de ese módulo y `updateConfig` solo acepta su bloque de ajustes. Una herramienta MCP del módulo usa el mismo archivo y cerco; si el turno tiene carpeta de borrador, puede escribir allí. El modelo de Node no garantiza contener código malicioso: revisa el código y los destinos de red antes de instalarlo. MADRE protege su núcleo así:
 
 - Sus rutas HTTP viven bajo `/api/x/<id>/`; un módulo con rutas fuera de ahí no carga, así ninguno puede suplantar `/api/state`, `/api/messages` o cualquier ruta propia de MADRE.
 - No puede usar el `id` de un módulo integrado ni de otro ya cargado.

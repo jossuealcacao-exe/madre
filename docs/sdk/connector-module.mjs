@@ -10,7 +10,7 @@
 //
 // ─── The one shape worth copying ──────────────────────────────────────────────────────────────
 //
-// A connector needs two things that look like they need two files: a module MADRE imports, and
+// A connector needs two things that look like they need two files: a module MADRE loads separately, and
 // an MCP server MADRE runs as its own process. They are the same file. It is the spec when
 // imported and the server when executed, and it tells the two apart at the bottom.
 //

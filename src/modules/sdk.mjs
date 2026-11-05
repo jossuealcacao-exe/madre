@@ -202,7 +202,9 @@ export function defineModule(spec) {
   };
   // A project reads its own word on `enabled` when it said one (module-scope.mjs).
   const settingsFrom = (config, roomId = null) => ({ ...defaults, ...settingsIn(config?.modules?.[configKey] ?? {}, roomId) });
-  const mine = (ctx, settings) => ({ ...ctx, settings, vault: vaultFor(spec.id, ctx.stateRoot) });
+  // A module running in a separate process receives a mediated vault. Never replace it with
+  // direct filesystem access: only the parent may open its credential file.
+  const mine = (ctx, settings) => ({ ...ctx, settings, vault: ctx.vault ?? vaultFor(spec.id, ctx.stateRoot) });
   const scopeHere = (ctx) => {
     const block = ctx.config?.modules?.[configKey] ?? {};
     const own = ctx.roomId ? roomsOf(block)[ctx.roomId] : undefined;
@@ -260,7 +262,7 @@ export function defineModule(spec) {
         canUpdate: Boolean(spec.updatePlan),
         controls: base.controls.map((control) => ({ ...control, value: settings[control.key] ?? null })),
         // What is in the vault for this module: names and lengths, never values.
-        ...(base.secrets.length ? { held: await vaultSummary(ctx.stateRoot, spec.id).catch(() => []) } : {}),
+        ...(base.secrets.length ? { held: await (ctx.vault?.held?.() ?? vaultSummary(ctx.stateRoot, spec.id)).catch(() => []) } : {}),
         ships: this.external ? null : await madreRelease(),
         runs,
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },

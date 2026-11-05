@@ -33,7 +33,7 @@ export default {
     return { status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? `on · says "${ctx.settings.greeting}"` : 'off' } };
   },
 
-  // Slash commands: they run on the server, inside MADRE, and their answer lands in the room as a
+  // Slash commands: they run in a separate process, and their answer lands in the room as a
   // fact card that the human and every agent read. Only while the module is on.
   slash: [
     {

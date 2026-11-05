@@ -1024,8 +1024,8 @@ export async function createPulseServer({
     return /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) && (site === undefined || site === 'same-origin' || site === 'none') && request.headers.origin === `http://${host}`;
   };
   const onlyPressed = (mode) => !overrideSettings(overrideConfig).keys[mode].startsWith('phrase');
-  // A module installed by hand runs inside MADRE with the person's permissions, as #4 does, so it
-  // asks for the #4 key (2026-11-02, external review #5): before, any program on the computer
+  // Installing a module by hand still asks for the #4 key (2026-11-02, external review #5):
+  // before, any program on the computer
   // installed one with a single POST and it ran the next time the modules loaded. The answer is
   // the refusal to send, or null when the key holds.
   const moduleKeyRefused = (request, payload) => {
@@ -4512,9 +4512,8 @@ export async function createPulseServer({
         const result = await room.runExam(String(payload.which ?? ''), { findings: eyecat.findings() });
         return sendJson(response, result?.error ? 409 : 200, { ...result, exams: await room.exams() });
       }
-      // Somebody's own module, handed to MADRE from the panel. It runs inside MADRE with the
-      // human's permissions, so it goes through the same door as everything else: written to a
-      // scratch copy, imported there, checked against the house rules, and only then installed.
+      // Somebody's own module, handed to MADRE from the panel. It goes through the same door as
+      // everything else: checked in a fenced scratch copy, then installed for isolated calls.
       if (request.method === 'POST' && url.pathname === '/api/extensions/upload') {
         const payload = await body(request).catch(() => ({}));
         const refused = moduleKeyRefused(request, payload);

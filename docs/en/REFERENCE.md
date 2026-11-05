@@ -201,7 +201,7 @@ Change who it goes to and the words change; raise the mode and the permission it
 
 **THE LAUNCH.** Below the document, the exact command MADRE would run to deliver it: the executable, the directory, every flag and the place where the briefing goes in. It is not a description — it is built by the same adapters that would build it for real. Below that, what keeps the run inside the turn (the session that does not persist, the temporary home that is deleted when it ends) and the MCP servers it could call, with their tools counted. **No environment value from that command is ever printed, only the names**: a command line is something people take photos of.
 
-**Outbound.** The record of what went out: every destination MADRE or an agent called, with its count. Never bodies, headers or query values — only where and how many times.
+**Outbound.** The record of MADRE's and its modules' `fetch` calls, including isolated modules and their one-file MCP servers. It does not observe other Node protocols or agent CLI connections. It never stores bodies, headers or query values: only destinations and call counts.
 
 **The console.** Inside the core, Diagnostics answers from what the project already has. Three answers it does not understand and the interface closes.
 

@@ -36,9 +36,9 @@ export default {
 };
 ```
 
-**Your module does not import packages.** Not MADRE, not the SDK, nothing from npm. Before installing it, MADRE copies your file to a separate temporary folder and loads it there —that way it checks what it is without running it where it lives— and that folder has no `node_modules`: an `import` by package name doesn't resolve and the installation fails.
+**Your module does not import packages.** Not MADRE, not the SDK, nothing from npm. Before installing it, MADRE copies your file to a separate temporary folder and loads it in a restricted process. That folder has no `node_modules`: an `import` by package name doesn't resolve and the installation fails. Once installed, each call also runs in a separate process.
 
-**Node builtins do work**, always: `node:fs`, `node:url`, `node:tls`, `node:child_process`. That's enough to speak any protocol. What there isn't is anything to install.
+**Node builtins can be imported**: `node:fs`, `node:url`, `node:tls`, `node:child_process`. The fence limits what they can do: your module cannot read other files, write directly or start processes. It can use `fetch` or Node protocols for an outside service under the network rules of the installed Node version. There are no packages to install.
 
 If you need `defineModule` —to compute something before defining the module, for example— **MADRE hands it to you**: export a function and you receive it as an argument.
 
@@ -77,7 +77,7 @@ the suite compares this table against the code, so if they ever drift apart, it'
 | `credit` | Whose idea it was, if it was not yours: a name. MADRE says it on the module's card and in the Market («Idea by …») |
 | `icon` | Your module's icon: `{ svg, color }`. `svg` is the drawing — its shapes (`<path d="…"/>`) or a whole `<svg>`, on whatever grid you like — and `color` its tile's, `#rrggbb`. MADRE fits it on its own so it looks like MADRE's: centred and scaled to the same square, drawn in white in one color, on the MADRE color nearest to yours, with anything that is not drawing taken out (scripts, images, links, styles, gradients). Without `icon`, your module wears the grey puzzle piece. Up to 8000 characters |
 | `slash` | `/name` commands that run on the server with your `ctx` and return `{ ok, title, text, link }`. The room shows them as a card and the agents read them. `link` is optional: `{ href, label }` with a route of yours (`/api/x/<id>/…`), and the card offers it as a key that opens another tab; an address outside your routes is ignored |
-| `toolsForTurn(ctx, turn)` | MCP servers for an agent's turn: `[{ name, command, args, env, tools, sends, brief }]`. MADRE attaches them to the CLI in its isolated run and describes `brief` to the agent. `turn` carries the agent, the mode, the lease, the folder, the port, and `turn.turn`: the id of the reply that turn will write. If your server calls back to the room on behalf of the turn, send that id; `ctx.room.runningTurn(id)` tells you whether it is still running and for which agent |
+| `toolsForTurn(ctx, turn)` | MCP servers for an agent's turn: `[{ name, command, args, env, tools, sends, brief }]`. For a module of yours, `command` must be Node and the first argument must be **the module's own file**; MADRE starts it with the same permission fence. Another executable is withheld. `turn` carries the agent, mode, lease, folder, port and `turn.turn`: the id of the reply the turn will write |
 | `toolsForTurn` → `sends` | Which of your tools **send something outside**. The core withdraws them below `#4` AIRLOCK: the model isn't even told they exist. See below |
 | `reaches` | Where your module reaches, in the same four answers MADRE gives about its own. See below |
 | `secrets` | The keys you need, declared instead of drawn: `[{ name, label, note, where }]`. MADRE draws the field, keeps it in its vault under your id, and gives it back to you through `ctx.vault`. See below |
@@ -236,7 +236,7 @@ finishing it, and in the meantime it can only be turned on deliberately with `PU
 
 The page of a module of yours has **GET A NEWER FILE**: MADRE fetches the file —from the `url` you declared or from the file you installed it from—, verifies it in a separate copy, and only replaces the installed one if it loads, follows the house rules, and states a different version. Verifying installs nothing.
 
-And in the MODULES header there is **+ ADD A MODULE** to install someone else's `.mjs`. It goes through the same door as everything else. Said plainly, because it is what it is: a module runs **inside MADRE, with the permissions of whoever opens it**. MADRE checks that it loads and that it doesn't leave its pen —its own id, routes only under `/api/x/<id>/`, never on top of a MADRE module—; what the code *intends* is something nobody but you can check.
+And in the MODULES header there is **+ ADD A MODULE** to install someone else's `.mjs`. It goes through the same door as everything else. MADRE loads and runs it separately: ordinary APIs can read the module file and SDK code, but cannot directly write your files or start processes. An MCP tool it offers must use that same file and limits. Where Node offers `--allow-net`, only modules declaring an outside destination receive network access; older versions do not restrict network access. A declaration does not limit the hosts it can contact. **Node's permission model is not a security boundary against malicious code.** Review the code and destinations before installing it.
 
 ### In the Market, for everyone
 
@@ -276,12 +276,12 @@ A module that installs into the project instead of being turned on keeps its ins
 ctx = {
   projectRoot, stateRoot,          // el proyecto y ~/.pulse
   config, settings,                // config.json completo y tus ajustes con defaults
-  env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
+  env, agents, room,               // empty env for your modules; detected agents; mediated room
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
   language, t(text, vars),         // the room's language, 'es' or 'en', and your words in it (sdk: 2):
                                    // an English sentence MADRE already knows, or your own { es, en }
-  services: { history, imageKey, ollama: { state, generate }, … }, // what the server offers;
+  services: { history, ollama: { state, generate } }, // what the server offers your modules;
                                    // ollama.generate({ system, prompt, json }) answers with the local model (sdk: 2)
   vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
@@ -329,7 +329,7 @@ A module of yours carries the «Yours» tag and is removed from its page with «
 
 ## What a module cannot touch
 
-A module runs inside MADRE's process with your permissions: install only what you've read. MADRE, for its part, protects its core like this:
+A module of yours runs in a separate process. Node limits ordinary APIs to its file and the SDK code and denies direct writes and child processes. The `ctx` functions pass through MADRE: the vault returns only that module's secrets, and `updateConfig` accepts only its settings block. Its one-file MCP server uses the same limits and may write to the turn's scratch folder when one exists. Node does not guarantee containment of malicious code: review its code and network destinations before installing it. MADRE also protects its core like this:
 
 - Its HTTP routes live under `/api/x/<id>/`; a module with routes outside that doesn't load, so none can impersonate `/api/state`, `/api/messages`, or any route of MADRE's own.
 - It cannot use the `id` of a built-in module or of another one already loaded.
