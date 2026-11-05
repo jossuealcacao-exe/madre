@@ -7,9 +7,11 @@
 // leaves it: the folder holds clients' data. Only the author's copy run from source has it.
 
 import { execFile } from 'node:child_process';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { CONDITIONS } from '../public/troubleshooting.js';
+import { ES } from '../public/es.js';
 
 export const logsFolder = (env = process.env) => env.MADRE_LOGS_DIR || join(homedir(), 'madre-logs');
 
@@ -64,4 +66,96 @@ export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now
     log,
     at: new Date(now).toISOString(),
   };
+}
+
+// ---- The diagnostics, filed on their own (2026-11-05). Each group the copies report (madre.run's
+// /api/telemetry, read with the author's token) becomes an error here the first time it is seen:
+// D-n, with its fingerprint, a classification guessed from what kind of failure it is, and level
+// «Investigar» until somebody looks at it. A group already filed only gets its copies brought up to
+// date. Groups first seen before `desde` were filed by hand from the reading of 2026-11-03.
+
+export const DIAGNOSTICS_SINCE = '2026-11-04T00:00:00.000Z';
+const KIND_CLASS = {
+  agent: ['Fallo', 'Agentes'], model: ['Fallo', 'IA local'], startup: ['Instalación', 'Servidor y arranque'],
+  route: ['Fallo', 'Servidor y arranque'], crash: ['Fallo', 'Servidor y arranque'], page: ['Fallo', 'Conversación'], other: ['Fallo', 'Diagnóstico'],
+};
+export function guessClass(group) {
+  if (group.kind === 'install') return ['Instalación', group.agent ? 'Agentes' : /ollama|modelo|model/i.test(group.message ?? '') ? 'IA local' : 'Módulos y Mercado'];
+  return KIND_CLASS[group.kind] ?? KIND_CLASS.other;
+}
+const oneLine = (text, max = 110) => String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+// A group with no words of its own (an MU code with an empty message) is named by its sheet, in Spanish.
+const sheetTitle = (code) => { const sheet = code ? CONDITIONS.find((one) => one.code === code) : null; return sheet ? (ES[sheet.title] ?? sheet.title) : null; };
+
+function entryFor(id, group) {
+  const [clase, tipo] = guessClass(group);
+  const day = (iso) => String(iso ?? '').slice(0, 10);
+  const words = oneLine(group.message, 90) || sheetTitle(group.code) || group.kind;
+  const what = `${group.code ? `${group.code} · ` : ''}${group.agent ? `@${group.agent} · ` : ''}${words}`;
+  return [
+    '---', `id: ${id}`, `titulo: ${oneLine(what, 120).replace(/\n/g, ' ')}`, `clase: ${clase}`, `tipo: ${tipo}`, 'nivel: Investigar', 'origen: Diagnóstico', 'estado: abierto',
+    'responsable:', `copias: ${group.copies ?? ''}`, `version: ${(group.versions ?? []).join(', ')}`, `abierto: ${day(group.first_seen)}`, 'cerrado:', 'commit:', `fp: ${group.fp}`, '---', '',
+    '## Qué pasa', '', `Dado de alta solo desde el diagnóstico de las copias; **la clase y el tipo son una suposición** por su clase de falla (\`${group.kind}\`): revisarlos al investigarlo.`, '',
+    '```', String(group.message ?? '').slice(0, 1500), '```', '',
+    '## Evidencia', '',
+    `- Copias: ${group.copies ?? '?'} · veces: ${group.hits ?? '?'}`,
+    `- Versiones: ${(group.versions ?? []).join(', ') || '?'} · sistemas: ${(group.systems ?? []).join(', ') || '?'}${group.wsl ? ' · WSL' : ''}`,
+    `- Primera vez: ${group.first_seen ?? '?'} · última: ${group.last_seen ?? '?'}`,
+    `- Huella: \`${group.fp}\`${group.code ? ` · ficha ${group.code}` : ''} · estado en madre.run: ${group.status ?? '?'}`, '',
+    '## Causa', '', ...(group.frames?.length ? ['Líneas de MADRE por donde pasó:', '', '```', ...group.frames.slice(0, 12), '```'] : ['Pendiente.']), '',
+    '## Arreglo', '', 'Pendiente.', '', '## Cómo verificar', '', 'Que el grupo no vuelva en la siguiente lectura del diagnóstico con la versión que lo arregle.', '',
+  ].join('\n');
+}
+
+// Files the new groups and brings the copies of the filed ones up to date. Returns what changed.
+export async function syncDiagnostics({ dir = logsFolder(), groups = [], since = DIAGNOSTICS_SINCE } = {}) {
+  const folder = join(dir, 'errores');
+  const names = await readdir(folder).catch(() => null);
+  if (!names) return { added: [], updated: [] };
+  const byFp = new Map();
+  let last = 0;
+  for (const name of names.filter((one) => one.endsWith('.md'))) {
+    const text = await readFile(join(folder, name), 'utf8').catch(() => '');
+    const fields = readFields(text);
+    if (!fields?.id) continue;
+    const number = /^D-(\d+)$/.exec(fields.id)?.[1];
+    if (number) last = Math.max(last, Number(number));
+    // One error may carry several groups: `fp: a1b2…, c3d4…`.
+    const one = { name, text, fields };
+    for (const fp of String(fields.fp ?? '').split(/[\s,]+/).filter(Boolean)) byFp.set(fp, one);
+  }
+  const added = [];
+  const updated = [];
+  // An error that carries several groups counts the copies of all of them.
+  const copiesOf = new Map();
+  for (const group of groups) {
+    if (!/^[0-9a-f]{8,64}$/i.test(String(group?.fp ?? ''))) continue;
+    const filed = byFp.get(group.fp);
+    if (filed) {
+      if (filed.text) copiesOf.set(filed, (copiesOf.get(filed) ?? 0) + (Number(group.copies) || 0));
+      continue;
+    }
+    if (['ignored', 'fixed'].includes(group.status) || String(group.first_seen ?? '') < since) continue;
+    last += 1;
+    const id = `D-${last}`;
+    await writeFile(join(folder, `${id}.md`), entryFor(id, group));
+    byFp.set(group.fp, { name: `${id}.md`, text: '', fields: { id } });
+    added.push(id);
+  }
+  for (const [filed, copies] of copiesOf) {
+    if (!copies || filed.fields.copias === String(copies)) continue;
+    await writeFile(join(folder, filed.name), filed.text.replace(/^copias:.*$/m, `copias: ${copies}`));
+    updated.push(filed.fields.id);
+  }
+  return { added, updated };
+}
+
+// After a sync: INDICE.md written again and the change kept in the folder's own history.
+export async function keepSync({ dir = logsFolder(), added = [], updated = [], run = quiet } = {}) {
+  if (!added.length && !updated.length) return false;
+  await run(process.execPath, [join(dir, 'indice.mjs')]);
+  const said = [added.length ? `alta automática de ${added.join(', ')}` : null, updated.length ? `copias al día en ${updated.join(', ')}` : null].filter(Boolean).join('; ');
+  await run('git', ['-C', dir, 'add', '-A']);
+  await run('git', ['-C', dir, 'commit', '-q', '-m', `Diagnóstico: ${said}`]);
+  return true;
 }

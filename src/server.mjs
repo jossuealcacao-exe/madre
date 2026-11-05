@@ -139,7 +139,7 @@ import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
-import { readLogs } from './madre-logs.mjs';
+import { keepSync, readLogs, syncDiagnostics } from './madre-logs.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -623,10 +623,27 @@ export async function createPulseServer({
     } catch { /* the plain count below */ }
     return { bytes: freemem(), source: 'freemem' };
   }
+  let logsSyncedAt = 0;
   async function homeWidget(kind) {
     // The author's error log (src/madre-logs.mjs): read from this disk every time, so Home shows it
     // as agents add and close errors. Only in the copy run from source, and only Home serves it.
-    if (kind === 'madrelogs') return FROM_SOURCE && salasRoom ? readLogs() : null;
+    if (kind === 'madrelogs') {
+      if (!FROM_SOURCE || !salasRoom) return null;
+      // The diagnostics filed on their own (src/madre-logs.mjs, syncDiagnostics): every ten minutes
+      // while the widget is read, with the author's token, never waited for by the reading.
+      if (Date.now() - logsSyncedAt > 600000) {
+        logsSyncedAt = Date.now();
+        void (async () => {
+          const token = await readSecret(root, OWNER_VAULT, 'usage');
+          if (!token) return;
+          const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10000) }).catch(() => null);
+          const body = answer?.ok ? await answer.json().catch(() => null) : null;
+          if (!Array.isArray(body?.errors)) return;
+          await keepSync(await syncDiagnostics({ groups: body.errors }));
+        })().catch((error) => console.error(`MADRE could not file the diagnostics in madre-logs: ${error.message}`));
+      }
+      return readLogs();
+    }
     const kept = widgetReadings.get(kind);
     // madre.run's count moves once a day: the author's reading is kept ten minutes, the Mac's thirty seconds.
     if (kept && Date.now() - kept.at < (kind === 'usage' || kind === 'errors' ? 600000 : 30000)) return kept.reading;

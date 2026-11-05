@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFields, readLogs } from '../src/madre-logs.mjs';
+import { DIAGNOSTICS_SINCE, guessClass, keepSync, readFields, readLogs, syncDiagnostics } from '../src/madre-logs.mjs';
 
 const entry = (fields) => `---\n${Object.entries(fields).map(([key, value]) => `${key}: ${value}`).join('\n')}\n---\n\n## Qué pasa\n\nalgo\n`;
 
@@ -37,7 +37,50 @@ test('madre-logs · Home reads what is to fix, what waits to be verified and the
   }
   // Home serves it only in the author's copy run from source, every few seconds, never to a phone.
   const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
-  assert.match(server, /if \(kind === 'madrelogs'\) return FROM_SOURCE && salasRoom \? readLogs\(\) : null;/);
+  assert.match(server, /if \(kind === 'madrelogs'\) \{\n\s*if \(!FROM_SOURCE \|\| !salasRoom\) return null;[\s\S]{0,1200}return readLogs\(\);/);
   const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
   assert.match(page, /'w-madrelogs': \{ kind: 'madrelogs', owner: true, every: 5000,/);
+});
+
+// 2026-11-05: what the copies report is filed on its own, without waiting for somebody to read it.
+test('madre-logs · each new group of the diagnostics is filed once, classified as a guess, and the filed ones keep their copies', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'madre-logs-sync-'));
+  try {
+    await mkdir(join(dir, 'errores'));
+    const base = { clase: 'Fallo', tipo: 'Agentes', nivel: 'P1', origen: 'Diagnóstico', estado: 'arreglado', abierto: '2026-11-03', commit: 'e54205a' };
+    await writeFile(join(dir, 'errores', 'D-1.md'), entry({ id: 'D-1', titulo: 'Codex', copias: '6', fp: 'aaaaaaaaaaaaaaaa', ...base }));
+    await writeFile(join(dir, 'errores', 'D-2.md'), entry({ id: 'D-2', titulo: 'Ollama', copias: '1', fp: 'bbbbbbbbbbbbbbbb, cccccccccccccccc', ...base }));
+    const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, stdio: 'ignore' });
+    git('init', '-q'); git('add', '.'); git('commit', '-qm', 'inicio');
+    const after = '2026-11-04T20:45:32.364Z';
+    const groups = [
+      { fp: 'aaaaaaaaaaaaaaaa', kind: 'agent', copies: 7, first_seen: '2026-10-30T00:00:00Z', status: 'new' },
+      { fp: 'bbbbbbbbbbbbbbbb', kind: 'model', copies: 2, first_seen: '2026-10-30T00:00:00Z', status: 'new' },
+      { fp: 'cccccccccccccccc', kind: 'install', copies: 3, first_seen: '2026-10-30T00:00:00Z', status: 'new' },
+      { fp: '50bde83e78e727c4', kind: 'agent', code: 'MU-014', agent: 'opencode', message: '', copies: 1, hits: 2, versions: ['1.1.2'], systems: ['linux'], frames: ['src/adapters/opencode.mjs:120'], first_seen: after, last_seen: after, status: 'new' },
+      { fp: 'dddddddddddddddd', kind: 'install', message: 'install failed · ahp', copies: 2, first_seen: after, status: 'new' },
+      { fp: 'eeeeeeeeeeeeeeee', kind: 'crash', message: 'viejo', copies: 9, first_seen: '2026-10-20T00:00:00Z', status: 'new' },
+      { fp: 'ffffffffffffffff', kind: 'crash', message: 'ignorado', copies: 9, first_seen: after, status: 'ignored' },
+      { fp: 'no es huella', kind: 'crash', message: 'x', first_seen: after },
+    ];
+    const first = await syncDiagnostics({ dir, groups });
+    assert.deepEqual(first.added, ['D-3', 'D-4'], 'only the new groups since the day the log began, never ignored ones');
+    assert.deepEqual(first.updated.sort(), ['D-1', 'D-2']);
+    const d2 = await readFile(join(dir, 'errores', 'D-2.md'), 'utf8');
+    assert.match(d2, /^copias: 5$/m, 'an error with two groups counts both');
+    const d3 = readFields(await readFile(join(dir, 'errores', 'D-3.md'), 'utf8'));
+    assert.deepEqual([d3.nivel, d3.origen, d3.estado, d3.clase, d3.tipo, d3.fp, d3.copias, d3.abierto], ['Investigar', 'Diagnóstico', 'abierto', 'Fallo', 'Agentes', '50bde83e78e727c4', '1', '2026-11-04']);
+    assert.match(d3.titulo, /^MU-014 · @opencode · \S/, 'a group with no words is named by its sheet');
+    assert.deepEqual(guessClass({ kind: 'install', message: 'install failed · ahp' }), ['Instalación', 'Módulos y Mercado']);
+    // Read again: nothing new, nothing written.
+    assert.deepEqual(await syncDiagnostics({ dir, groups }), { added: [], updated: [] });
+    // Kept in the folder's own history.
+    assert.equal(await keepSync({ dir, ...first }), true);
+    assert.match(execFileSync('git', ['log', '-1', '--format=%s'], { cwd: dir, encoding: 'utf8' }), /^Diagnóstico: alta automática de D-3, D-4; copias al día en D-1, D-2/);
+    assert.equal(DIAGNOSTICS_SINCE, '2026-11-04T00:00:00.000Z');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /if \(Date\.now\(\) - logsSyncedAt > 600000\) \{[\s\S]{0,900}await keepSync\(await syncDiagnostics\(\{ groups: body\.errors \}\)\);/);
 });
