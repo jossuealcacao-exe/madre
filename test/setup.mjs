@@ -14,6 +14,9 @@ process.env.PULSE_MARKET_URL ??= 'http://127.0.0.1:9/mercado/catalogo.json';
 process.env.PULSE_TELEMETRY_URL ??= 'http://127.0.0.1:9/api/telemetry';
 // Nor the error reports, which go out on their own by default since 1.1.0 (src/sentinel-errors.mjs).
 process.env.PULSE_REPORT_URL ??= 'http://127.0.0.1:9/v1/reports';
+// Nor does the suite's own load make the memory's background work wait (src/room/busy.mjs, L-11):
+// a full test run keeps every core busy on purpose. test/memory.test.mjs checks the wait itself.
+process.env.PULSE_BUSY_SHARE ??= '1000';
 // MADRE's license is accepted for the suite (src/terms.mjs); test/terms.test.mjs checks the gate itself.
 process.env.PULSE_TERMS ??= 'accepted';
 

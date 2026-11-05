@@ -6,6 +6,7 @@
 // room either way. The room hands in what it knows through `deps`.
 
 import { pickDistiller, distillPrompt, parseDistillation, OLLAMA_ARCHIVIST } from '../distiller.mjs';
+import { BUSY_WAIT_MS } from './busy.mjs';
 
 export const BENCH_MS = 30 * 60 * 1000;
 // The local model distils in the background, where nobody waits for it, on computers that may have
@@ -53,7 +54,7 @@ export class Archivist {
   #failures = new Map();   // fromSequence -> failed attempts on that batch
   #bench = new Map();      // agent -> until (ms)
 
-  // deps: agents(), invokers(), busyAgents(), turnsInFlight(), timeoutFor(id), localTimeoutMs(), projectName(), emit(type, payload), recordUsage(agent, usage), stopped(), noSession(), failureMessage(error)
+  // deps: agents(), invokers(), busyAgents(), turnsInFlight(), timeoutFor(id), localTimeoutMs(), projectName(), emit(type, payload), recordUsage(agent, usage), stopped(), noSession(), machineBusy(), failureMessage(error)
   constructor({ memory, settings, deps }) {
     this.#memory = memory;
     this.#settings = settings;
@@ -135,6 +136,14 @@ export class Archivist {
     let agent = pickDistiller(candidates, { preferred: this.#settings.agent, busy, invokers, benched });
     if (!agent && benched.size) { this.#bench.clear(); agent = pickDistiller(candidates, { preferred: this.#settings.agent, busy, invokers }); }
     if (!agent) return null;
+    // The local model waits for a computer that is not already full (L-11, src/room/busy.mjs): tried
+    // again in a few minutes, not handed to a paid agent, and not counted as a failure.
+    if (agent.adapter === 'ollama' && this.#deps.machineBusy?.()) {
+      clearTimeout(this.#timer);
+      this.#timer = setTimeout(() => { this.#timer = null; void this.runNow(); }, BUSY_WAIT_MS);
+      this.#timer.unref?.();
+      return { agent: agent.id, local: true, postponed: true };
+    }
     const started = Date.now();
     try {
       const local = agent.adapter === 'ollama';

@@ -28,6 +28,7 @@ import { Escalation } from './room/escalation.mjs';
 import { Budget, budgetTokens } from './room/budget.mjs';
 import { VectorWorker } from './room/vectors.mjs';
 import { Archivist, distillDefaults, LOCAL_DISTILL_MS } from './room/archivist.mjs';
+import { machineBusy } from './room/busy.mjs';
 import { OLLAMA_ARCHIVIST } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
 import { CODE000_STRIKES } from './mother.mjs';
@@ -243,7 +244,7 @@ export class Room {
     this.#budget.seed(historicalEvents, this.#sentinel);
     // What this room has been charged per character, from its own past turns.
     this.#rate = observedRate(historicalEvents);
-    this.#vectors = new VectorWorker({ memory, stopped: () => this.#shuttingDown });
+    this.#vectors = new VectorWorker({ memory, stopped: () => this.#shuttingDown, busy: () => machineBusy() });
     this.#archivist = new Archivist({
       memory,
       settings: distillDefaults(distill),
@@ -260,6 +261,7 @@ export class Room {
         recordUsage: (agent, usage) => this.#recordUsage(agent, usage),
         stopped: () => this.#shuttingDown,
         // Who MADRE already knows cannot answer: no session, or not installed (L-9).
+        machineBusy: () => machineBusy(),
         noSession: () => new Set(Object.entries(this.#sessions).filter(([, one]) => ['signed-out', 'not-installed'].includes(one?.state)).map(([id]) => id)),
         failureMessage,
       },

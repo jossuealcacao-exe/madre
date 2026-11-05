@@ -6,6 +6,8 @@
 
 // One batch at a time per memory, as distilling (room/archivist.mjs, LOG-06): every conversation
 // alive at once has its worker, and each embedded the same pending rows and paid for them.
+import { BUSY_WAIT_MS } from './busy.mjs';
+
 const embedding = new WeakMap();   // memory -> the batch being embedded
 
 export class VectorWorker {
@@ -14,10 +16,12 @@ export class VectorWorker {
   #running = null;
   #warned = false;
   #stopped = () => false;
+  #busy = () => false;
 
-  constructor({ memory, stopped = () => false } = {}) {
+  constructor({ memory, stopped = () => false, busy = () => false } = {}) {
     this.#memory = memory;
     this.#stopped = stopped;
+    this.#busy = busy;
   }
   get inflight() { return this.#running; }
 
@@ -37,6 +41,8 @@ export class VectorWorker {
     this.#running = (async () => {
       try {
         while (embedding.has(this.#memory)) await embedding.get(this.#memory).catch(() => null);
+        // Embedding on this computer waits while it is already full (L-11, src/room/busy.mjs).
+        if (this.#memory.embedder?.local && this.#busy()) { next = BUSY_WAIT_MS; return 0; }
         const batch = this.#memory.embedPending({ limit: 100 });
         embedding.set(this.#memory, batch);
         let stored;

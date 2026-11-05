@@ -1730,3 +1730,51 @@ test('the archivist never hands a summary to an agent MADRE knows has no session
   assert.match(room, /if \(type === 'sessions\.updated' && payload\?\.sessions[^\n]*\) this\.#sessions = \{ \.\.\.payload\.sessions \};/);
   assert.match(room, /noSession: \(\) => new Set\(Object\.entries\(this\.#sessions\)\.filter\(\(\[, one\]\) => \['signed-out', 'not-installed'\]\.includes\(one\?\.state\)\)/);
 });
+
+// L-11 (Carlos's server, 2026-11-04): the memory's local summary and its embeddings took every core
+// while Carlos ran his own model — a load of 32 on 16 cores. Background local work now waits.
+test('background local work waits while the computer is already full, and is never handed to a paid agent (L-11)', async () => {
+  const { Archivist } = await import('../src/room/archivist.mjs');
+  const { VectorWorker } = await import('../src/room/vectors.mjs');
+  const { machineBusy, BUSY_WAIT_MS } = await import('../src/room/busy.mjs');
+  assert.equal(machineBusy({ load: 32, cores: 16, share: 0.75 }), true);
+  assert.equal(machineBusy({ load: 11, cores: 16, share: 0.75 }), false);
+  assert.equal(machineBusy({ load: 0, cores: 8, share: 0.75 }), false, 'Windows reports no load: it never waits');
+  assert.equal(BUSY_WAIT_MS, 5 * 60 * 1000);
+  const asked = [];
+  const reports = [];
+  let busy = true;
+  const memory = {
+    undistilled: () => ({ entries: [{ sequence: 1, role: 'user', sender: 'you', target: 'claude', text: 'Curaciones cada 48 horas.' }], fromSequence: 1, throughSequence: 1, sequences: [1], remaining: 0 }),
+    undistilledCount: () => 1, briefing: () => ({ standing: [], discarded: [] }), addMemories: (notes) => notes.length, markDistilled: () => {}, memoryCount: () => 0,
+  };
+  const archivist = new Archivist({ memory, settings: { enabled: true, every: 10, idleMs: 60000, maxChars: 6000, agent: null, model: null, allowed: null }, deps: {
+    agents: () => [{ id: 'gemini', detected: true, ready: true, adapter: 'gemini', path: '/bin/gemini' }],
+    invokers: () => ({ ollama: async () => { asked.push('ollama'); return { text: '{"memories":[]}', usage: null }; }, gemini: async () => { asked.push('gemini'); return { text: '{"memories":[]}', usage: null }; } }),
+    busyAgents: () => new Set(), turnsInFlight: () => 0, timeoutFor: () => 120000, localTimeoutMs: () => 900000,
+    projectName: () => 'skinhealth', projectRoot: () => '/tmp', emit: async (type, payload) => { reports.push(payload); }, recordUsage: async () => {}, stopped: () => false,
+    noSession: () => new Set(), machineBusy: () => busy, failureMessage: (error) => error.message,
+  } });
+  const waited = await archivist.runNow();
+  assert.deepEqual(waited, { agent: 'ollama', local: true, postponed: true });
+  assert.deepEqual(asked, [], 'nobody was asked, not even the paid agent');
+  assert.equal(reports.length, 0, 'waiting is not a failure');
+  busy = false;
+  assert.equal((await archivist.runNow()).agent, 'ollama');
+  assert.deepEqual(asked, ['ollama']);
+  archivist.stop();
+  // The embeddings on this computer wait the same way; a remote embedder does not.
+  let embedded = 0;
+  const vectorMemory = (local) => ({ embedder: { local }, embedPending: async () => { embedded += 1; return 0; }, pendingVectors: () => ({ entries: [], memories: [] }) });
+  const local = new VectorWorker({ memory: vectorMemory(true), busy: () => true });
+  assert.equal(await local.runNow(), 0);
+  assert.equal(embedded, 0);
+  local.stop?.();
+  const remote = new VectorWorker({ memory: vectorMemory(false), busy: () => true });
+  await remote.runNow();
+  assert.equal(embedded, 1);
+  remote.stop?.();
+  const room = await readFileP(new URL('../src/room.mjs', import.meta.url), 'utf8');
+  assert.match(room, /new VectorWorker\(\{ memory, stopped: \(\) => this\.#shuttingDown, busy: \(\) => machineBusy\(\) \}\)/);
+  assert.match(room, /machineBusy: \(\) => machineBusy\(\),/);
+});
