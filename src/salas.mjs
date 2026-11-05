@@ -90,11 +90,55 @@ export function projectRootFor({ command, named = true, project, cwd, home, stat
 
 // Where the project is, kept beside its record (S-002): the room's id is a hash of the path and
 // cannot be turned back into it, and a room that is closed has to be found to be opened again.
-// Written whole or not at all.
-export async function markProject(roomDir, projectRoot, { now = new Date() } = {}) {
+// Written whole or not at all. With the port it opened on (L-6): what else the record holds stays.
+export async function markProject(roomDir, projectRoot, { now = new Date(), port = null, keepOpen = null } = {}) {
   await mkdir(roomDir, { recursive: true });
   const file = join(roomDir, 'project.json');
-  await oneAtATime(file, () => writeWhole(file, `${JSON.stringify({ root: projectRoot, name: basename(projectRoot), lastOpened: now.toISOString() })}\n`));
+  await oneAtATime(file, async () => {
+    const was = await readJson(file);
+    await writeWhole(file, `${JSON.stringify({ ...(was ?? {}), root: projectRoot, name: basename(projectRoot), lastOpened: now.toISOString(), ...(Number.isInteger(port) ? { port } : {}), ...(typeof keepOpen === 'boolean' ? { keepOpen } : {}) })}\n`);
+  });
+}
+
+// Whether a project comes back when MADRE starts as a service (L-3): set when it opens, taken away
+// only when the person closes it. A restart of the computer or a fall of MADRE leaves it on.
+export async function keepOpenProject(stateRoot, id, keepOpen) {
+  if (typeof id !== 'string' || !/^[^/\\]+$/.test(id) || id === '.' || id === '..') return false;
+  const file = join(stateRoot, 'rooms', id, 'project.json');
+  return oneAtATime(file, async () => {
+    const was = await readJson(file);
+    if (!was) return false;
+    await writeWhole(file, `${JSON.stringify({ ...was, keepOpen: Boolean(keepOpen) })}\n`);
+    return true;
+  });
+}
+
+// Each project keeps its port (L-6, Carlos's server, 2026-11-04). A project opened from Home took
+// the first free port from 4317, so its number depended on the order things were opened in and
+// changed after a restart; on a server reached through a tunnel the new one fell outside the
+// tunnel, and links between projects need the same number on both ends. What a project opened on
+// is kept in its record; the next time it asks for that one first, and a project with none skips
+// the ports other projects already keep.
+export async function keptPorts(stateRoot, projectRoot) {
+  const mine = projectRoomId(projectRoot);
+  const dir = join(stateRoot, 'rooms');
+  const others = new Set();
+  let own = null;
+  for (const id of await readdir(dir).catch(() => [])) {
+    const port = (await readJson(join(dir, id, 'project.json')))?.port;
+    if (!Number.isInteger(port)) continue;
+    if (id === mine) own = port; else others.add(port);
+  }
+  return { mine: own, others };
+}
+
+// The port to try: its own when it has one and it is free, else the first free one from `base`
+// that no other project keeps. `taken(port)` says whether something is listening there.
+export async function choosePort({ base, mine = null, others = new Set(), taken }) {
+  if (Number.isInteger(mine) && !(await taken(mine))) return mine;
+  let port = base;
+  while (others.has(port) || await taken(port)) port += 1;
+  return port;
 }
 
 // ---- The lobby: adding projects (2026-10-10). A browser cannot hand MADRE the path of a folder,
@@ -195,7 +239,7 @@ export async function associateProject({ root, home, stateRoot, now = new Date()
   const file = join(roomDir, 'project.json');
   const before = await oneAtATime(file, async () => {
     const was = await readJson(file);
-    await writeWhole(file, `${JSON.stringify({ root: folder, name: basename(folder), lastOpened: was?.lastOpened ?? null, added: was?.added ?? now.toISOString() })}\n`);
+    await writeWhole(file, `${JSON.stringify({ ...(was ?? {}), root: folder, name: basename(folder), lastOpened: was?.lastOpened ?? null, added: was?.added ?? now.toISOString() })}\n`);
     return was;
   });
   return { id, name: basename(folder), root: folder, already: Boolean(before) };
@@ -375,6 +419,7 @@ export async function knownRooms(stateRoot) {
       name: typeof where?.name === 'string' ? where.name : typeof mark?.project === 'string' ? mark.project : id.replace(/-[0-9a-f]{16}$/, ''),
       root: there ? root : null,
       lastOpened: where?.lastOpened ?? mark?.at ?? null,
+      keepOpen: where?.keepOpen === true,
       open,
     });
   }

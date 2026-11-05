@@ -5867,6 +5867,30 @@ function fillProjects(host) {
   sxRow(block, t('See the welcome again'), t('Agents, AI on your computer, memory and a project, step by step.'), sxButton(t('Open'), () => { settingsSheet?.close(); openHomeWelcome({ at: 'hello' }); }));
   const back = homeTour.path() === 'back';
   sxRow(block, back ? t('The tour of MADRE 1.0') : t('Getting to know MADRE'), back ? t('Everything new, chapter by chapter. ? opens the gestures anywhere.') : t('The essentials, chapter by chapter. ? opens the gestures anywhere.'), sxButton(t('See the tour'), () => { settingsSheet?.close(); homeTour.openChapters(); }));
+  void drawService(host);
+}
+// MADRE as a service of this Linux (src/service.mjs, L-3, Carlos's server): Home starts with the
+// computer and again if it falls, with the projects that were open. Only where it can be: a Mac,
+// or a Linux without systemd for the user, shows nothing.
+async function drawService(host) {
+  const state = await fetch('/api/madre/service', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!state?.supported || !host.isConnected) return;
+  const block = sxBlock(host, t('When this computer starts'), t('For a server: Home opens with it, and again if it falls, with the projects that were open. A project you close stays closed.'));
+  const said = el('p', 'sx-hint');
+  const paint = (now) => {
+    block.rows.replaceChildren();
+    const key = sxButton(now.enabled ? t('Turn off') : t('Turn on'), async () => {
+      key.disabled = true;
+      said.textContent = '';
+      const answer = await post('/api/madre/service', { on: !now.enabled });
+      if (!answer.ok) { key.disabled = false; said.textContent = answer.body?.error ?? t('It did not change.'); return; }
+      paint(answer.body);
+    }, { tone: now.enabled ? null : 'primary' });
+    sxRow(block, now.enabled ? t('Starts with the computer') : t('Does not start on its own'), now.enabled ? t('Home starts with this computer.') : t('MADRE starts only when you open it.'), key);
+    if (now.enabled && !now.linger) sxRow(block, t('One more step, once'), t('For it to start before anyone signs in, this computer asks for its password. Run this in its terminal: {command}', { command: now.lingerCommand }), null, { stack: true });
+    block.rows.append(said);
+  };
+  paint(state);
 }
 function fillRelease(host) {
   const info = versionSeen;

@@ -137,7 +137,8 @@ import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from 
 import { keepHistory, readGithub, readHistory, readNpm, rumboModel } from './rumbo.mjs';
 import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
-import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
+import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
+import { disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -368,7 +369,7 @@ export async function createPulseServer({
   // The mark also says which project and which MADRE, for the bridge's list of rooms on the phone.
   let openPort = null;
   // Where the project is, too (src/salas.mjs): a room that is closed can be opened again from Salas.
-  const markOpen = async (port) => { openPort = port; await mkdir(roomDir, { recursive: true }).catch(() => {}); await writeFile(openMark, JSON.stringify({ pid: process.pid, port, at: new Date().toISOString(), project: basename(canonicalProjectRoot), version: PACKAGE.version ?? null })).catch(() => {}); await markProject(roomDir, canonicalProjectRoot).catch(() => {}); };
+  const markOpen = async (port) => { openPort = port; await mkdir(roomDir, { recursive: true }).catch(() => {}); await writeFile(openMark, JSON.stringify({ pid: process.pid, port, at: new Date().toISOString(), project: basename(canonicalProjectRoot), version: PACKAGE.version ?? null })).catch(() => {}); await markProject(roomDir, canonicalProjectRoot, { port, keepOpen: true }).catch(() => {}); };
   // The phone (docs/MOBILE.md) is not offered in MADRE 1.0 (2026-10-11, hidden 2026-10-12): Safari
   // in HTTPS-only mode refuses the bridge's http, and the relay that fixes it is not built. Only a
   // copy run from source (FROM_SOURCE, above) on a Mac that turned it on — `phone.preview` in
@@ -501,6 +502,20 @@ export async function createPulseServer({
   await adoptBuiltinUpdates({ stateRoot: root, enabled: marketOn(), ...factoryKeyed }).catch((error) => console.error(`MADRE modules: ${error.message}`));
   void syncMarket().catch(() => null);
   const install = detectInstall({ projectRoot: canonicalProjectRoot });
+  // Home as a service of this computer (src/service.mjs, L-3): the script it starts with says the
+  // version and the PATH of now, and when the service started it the projects that were open come
+  // back, each on the port it keeps (L-6). Not waited for by the start.
+  const homeLauncher = () => launcherScript({ install, name: PACKAGE.name, version: PACKAGE.version, port: openPort ?? 4317, env: process.env });
+  const afterOpen = async () => {
+    if (!salasRoom || testMode) return;
+    await refreshLauncher({ stateRoot: root, launcher: homeLauncher() }).catch(() => false);
+    if (process.env.MADRE_SERVICE !== '1') return;
+    const here = basename(roomDir);
+    for (const one of await knownRooms(root).catch(() => [])) {
+      if (one.id === here || one.open || !one.keepOpen || !one.root) continue;
+      try { startRoom({ projectRoot: one.root, roomDir: join(root, 'rooms', one.id) }); } catch (error) { console.error(`MADRE could not reopen ${one.name}: ${error.message}`); }
+    }
+  };
   async function versionView({ force = false } = {}) {
     const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
     return { project: canonicalProjectRoot, ...check, notes: Boolean(notesFor(PACKAGE.version)), name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest, roomLanguage()) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
@@ -2899,6 +2914,8 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/salas/close') {
         const payload = await body(request).catch(() => ({}));
         const room = (await knownRooms(root)).find((one) => one.id === payload.room);
+        // Closed by the person: it does not come back when MADRE starts as a service (L-3).
+        if (room) await keepOpenProject(root, room.id, false).catch(() => false);
         if (!room?.open) return sendJson(response, 200, { room: payload.room ?? null, closed: true });
         if (room.id === basename(roomDir)) {
           sendJson(response, 202, { room: room.id, closing: true, here: true });
@@ -2927,6 +2944,19 @@ export async function createPulseServer({
         sendJson(response, 202, { closing: true, closed, stuck });
         setTimeout(() => server.emit('madre:close'), 150);
         return undefined;
+      }
+      // MADRE as a service of this Linux (src/service.mjs, L-3), from Home's Settings on this computer.
+      if (url.pathname === '/api/madre/service' && (request.method === 'GET' || request.method === 'POST')) {
+        const host = String(request.headers.host ?? '');
+        if (!salasRoom || viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) return sendJson(response, 403, { error: t('This is done from Home, on this computer.') });
+        if (request.method === 'GET') return sendJson(response, 200, await serviceState());
+        const site = request.headers['sec-fetch-site'];
+        if ((site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('This is done from Home, on this computer.') });
+        const payload = await body(request).catch(() => ({}));
+        const state = payload?.on === true ? await enableService({ stateRoot: root, launcher: homeLauncher() }) : await disableService({ stateRoot: root });
+        if (state.refused === 'install') return sendJson(response, 409, { ...state, error: t('This copy of MADRE was installed inside a project; install it with npx or npm -g to start it with the computer.') });
+        if (state.refused) return sendJson(response, 500, { ...state, error: t('systemd did not turn the service on: {detail}', { detail: state.detail ?? '' }) });
+        return sendJson(response, 200, state);
       }
       // Uninstalling MADRE (2026-10-29), from Home's Settings only (src/uninstall.mjs). GET says what
       // would go and what stays; POST, from a page of this computer, closes every open project the
@@ -2959,6 +2989,10 @@ export async function createPulseServer({
       // This room, asked to close by Salas: what is running stops and the room closes the way a
       // signal closes it (startPulse listens). Nothing here ends the process itself.
       if (request.method === 'POST' && url.pathname === '/api/room/close') {
+        // From its own page, by the person: it stays closed when MADRE starts as a service (L-3).
+        // Home turning everything off asks without it, and those come back.
+        const payload = await body(request).catch(() => ({}));
+        if (payload?.forget === true) await keepOpenProject(root, basename(roomDir), false).catch(() => false);
         sendJson(response, 202, { closing: true });
         setTimeout(() => server.emit('madre:close'), 150);
         return undefined;
@@ -5232,11 +5266,11 @@ export async function createPulseServer({
   server.on('close', () => { for (const timer of [...aliveTimers, ...hereTimers]) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });
-  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms, currentFicha };
+  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen };
 }
 
 export async function startPulse({ port, projectRoot, openBrowser, openPath = '' }) {
-  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms, currentFicha } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources(), ficha: true, renewFicha: Boolean(openBrowser) });
+  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources(), ficha: true, renewFicha: Boolean(openBrowser) });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);
@@ -5244,6 +5278,7 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   const address = server.address();
   // The room is taken from here on, and says so on disk for anyone who tries to open it again.
   await markOpen(address.port);
+  void afterOpen().catch(() => null);
   // From here this room offers to host the phone's bridge, when there is a phone to reach it.
   phone.start();
   const url = `http://127.0.0.1:${address.port}`;

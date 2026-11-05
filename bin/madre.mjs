@@ -13,7 +13,7 @@ import { probeAll } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig } from '../src/config.mjs';
 import { isOnline, runSetup } from '../src/setup.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
-import { ensureSalasProject, isSalasRoom, projectRootFor } from '../src/salas.mjs';
+import { choosePort, ensureSalasProject, isSalasRoom, keptPorts, projectRootFor } from '../src/salas.mjs';
 import { forgetNpxLaunch } from '../src/npm-launch.mjs';
 import { fichaHeaders, readFicha, withFicha } from '../src/ficha.mjs';
 import { createServer } from 'node:net';
@@ -95,11 +95,12 @@ const HELP_TEXT = `MADRE
               Opens Home: every project on this computer, in one place.
   madre start [--project PATH] [--port 4317] [--no-open] [--setup]
               Opens the project in this folder (or PATH) directly.
-              Without --port, a busy 4317 falls through to the next free port.
+              Without --port, the project opens on the port it kept, or the next free one.
   madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)
   madre setup [--project PATH] [--port 4317] [--no-open]
   madre doctor [--project PATH] [--json]
   madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]
+  madre servicio [activar|quitar|estado]   (Linux)
 
   (none)  Opens Home. From there you add projects, connect the agents
           and enter any project. The Coordinator lives there.
@@ -107,6 +108,8 @@ const HELP_TEXT = `MADRE
   setup   Detects the agents on this computer, shows who has a session,
           and runs each agent's own sign-in from here.
   doctor  Prints the same diagnosis without the wizard.
+  servicio  Home starts with this Linux and comes back if it falls,
+          with the projects that were open.
 `;
 
 // Where a room without --port starts looking (QA 1.1.0, GEN-02): 4317, or PULSE_PORT_BASE for the
@@ -130,6 +133,14 @@ async function openRoom(options) {
     console.error(`\n  MADRE › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
     process.exit(2);
   }
+  // Without --port, a project asks for the port it kept, and one with none skips the ports other
+  // projects keep (src/salas.mjs, L-6): a project's number no longer depends on what opened first.
+  let others = new Set();
+  if (!explicit) {
+    const kept = await keptPorts(salasHome, await realpath(projectRoot).catch(() => resolve(projectRoot)));
+    others = kept.others;
+    port = await choosePort({ base: port, mine: kept.mine, others, taken: portTaken });
+  }
   for (let attempt = 0; attempt < 20; attempt += 1) {
     try {
       return await startPulse({ ...options, port });
@@ -141,8 +152,9 @@ async function openRoom(options) {
         console.error(`\n  MADRE › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
         process.exit(2);
       }
-      console.error(`  MADRE › port ${port} in use, trying ${port + 1}.`);
-      port += 1;
+      const busy = port;
+      do port += 1; while (others.has(port));
+      console.error(`  MADRE › port ${busy} in use, trying ${port}.`);
     }
   }
   console.error(`\n  MADRE › no free port between ${options.port} and ${port}. Pass --port explicitly.\n`);
@@ -312,6 +324,27 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   if (has('--json')) console.log(JSON.stringify({ ...result, markdown: undefined }, null, 2));
   else console.log(result.markdown);
   process.exitCode = result.ok ? 0 : 1;
+} else if (command === 'servicio' || command === 'service') {
+  // MADRE as a service of this Linux (src/service.mjs, L-3): the same switch as Home › Settings.
+  const { disableService, enableService, launcherScript, serviceState } = await import('../src/service.mjs');
+  const { detectInstall } = await import('../src/updates.mjs');
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const action = process.argv.slice(3).find((word) => !word.startsWith('-')) ?? 'estado';
+  const launcher = launcherScript({ install: detectInstall({ projectRoot: process.cwd() }), name: pkg.name, version: pkg.version, port: Number(option('--port', DEFAULT_PORT)) });
+  const state = ['activar', 'on', 'enable'].includes(action) ? await enableService({ stateRoot: salasHome, launcher })
+    : ['quitar', 'off', 'disable'].includes(action) ? await disableService({ stateRoot: salasHome })
+    : ['estado', 'status'].includes(action) ? await serviceState()
+    : null;
+  if (!state) { console.error(t('Usage: madre servicio [activar|quitar|estado]')); process.exit(2); }
+  if (!state.supported) console.log(`\n  ${state.why === 'linux' ? t('MADRE starts with the computer only on Linux, as a systemd service.') : t('This Linux has no systemd for your user, so MADRE cannot start with it.')}\n`);
+  else if (state.refused === 'install') console.log(`\n  ${t('This copy of MADRE was installed inside a project; install it with npx or npm -g to start it with the computer.')}\n`);
+  else if (state.refused) console.log(`\n  ${t('systemd did not turn the service on: {detail}', { detail: state.detail ?? '' })}\n`);
+  else {
+    console.log(`\n  ${state.enabled ? t('On: Home starts when this computer does, and again if it falls, with the projects that were open.') : t('Off: MADRE starts only when you open it.')}`);
+    if (state.enabled && !state.linger) console.log(`  ${t('For it to start before anyone signs in, run this once: {command}', { command: state.lingerCommand })}`);
+    console.log('');
+  }
+  process.exitCode = state.supported && !state.refused ? 0 : 1;
 } else if (command === 'help') {
   console.log(t(HELP_TEXT));
 } else {

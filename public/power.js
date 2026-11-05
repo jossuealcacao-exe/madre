@@ -286,7 +286,7 @@ export async function askCloseProject() {
     cancel.disabled = true;
     go.textContent = t('Closing…');
     try {
-      const response = await fetch('/api/room/close', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      const response = await fetch('/api/room/close', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ forget: true }) });
       if (!response.ok) throw new Error(t('MADRE did not answer. Check that it is still open.'));
     } catch (error) {
       reply.textContent = error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message;
