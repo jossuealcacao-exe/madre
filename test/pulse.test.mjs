@@ -1513,6 +1513,22 @@ test('a missing project folder is named in the adapter error, not hidden behind 
   }), /Codex could not start: .*ENOENT.*project folder \/definitely\/not\/here exists/);
 });
 
+test('a Node crash shows its exception instead of the trailing runtime version', async () => {
+  await assert.rejects(runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', "throw new Error('D-6 root cause')"],
+    cwd: process.cwd(),
+    label: 'Codex',
+    parse: () => ({ text: '' }),
+  }), (error) => {
+    assert.equal(error.exitCode, 1);
+    assert.match(error.partialStderr, /Error: D-6 root cause/);
+    assert.match(failureMessage(error), /(?:Last output|Última salida): Error: D-6 root cause/);
+    assert.doesNotMatch(failureMessage(error), /Node\.js v/);
+    return true;
+  });
+});
+
 test('failed turns appear in the conversation context so an orchestrator knows why a step is missing', () => {
   const events = [
     { sequence: 1, type: 'message.created', payload: { messageId: 'a', role: 'user', sender: 'you', target: 'gemini', text: 'q' } },

@@ -94,6 +94,17 @@ function eventWords(event) {
   return null;
 }
 
+function failureLine(stderr) {
+  const lines = stderr.split('\n').map((line) => line.trim()).filter(Boolean);
+  const last = lines.at(-1);
+  // Node prints its version after an uncaught exception. That footer displaced the actual
+  // exception from the one-line room error, making a crash look like a Node version problem.
+  if (!/^Node\.js v\d+\.\d+\.\d+/.test(last ?? '')) return last;
+  return lines.find((line) => /^(?:[A-Za-z_$][\w$]*(?:Error|Exception)|Error)(?: \[[^\]]+\])?:\s*\S/.test(line))
+    ?? lines.at(-2)
+    ?? last;
+}
+
 export function runReadonlyProcess({
   executable,
   args,
@@ -225,9 +236,9 @@ export function runReadonlyProcess({
       // facts that actually diagnose the turn — the exit code, or a clean exit with nothing to
       // show — were discarded by the `||` and never reached the human. A warning is not a cause.
       const printed = stderr.trim();
-      // The room keeps one line of a failure, so the last thing the CLI printed rides on it —
+      // The room keeps one line of a failure, so a useful diagnostic from stderr rides on it —
       // labelled as output, the way a timeout carries it, and never as the cause.
-      const lastLine = printed.split('\n').map((line) => line.trim()).filter(Boolean).at(-1);
+      const lastLine = failureLine(printed);
       const why = response.error ?? ((code === 0
         ? t('{label} exited cleanly without an answer.', { label })
         : endedBy(code, closedBy, label)) + (lastLine ? t(' Last output: {output}', { output: lastLine.slice(0, 200) }) : ''));
