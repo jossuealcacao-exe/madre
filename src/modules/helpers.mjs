@@ -23,6 +23,19 @@ export async function gitToplevel(projectRoot) {
   }
 }
 
+// Why git will not read a repository that is there (D-10): «dubious ownership», a folder that belongs
+// to another user of the computer, as a project under /mnt/c can in WSL. gitToplevel reads it as no
+// repository at all. Asked in English so the words are the same in every language. `null` when git
+// reads the folder, or when there is simply no repository in it.
+export async function gitRefused(projectRoot) {
+  try {
+    await execFileAsync('git', ['-C', projectRoot, 'rev-parse', '--show-toplevel'], { timeout: 5000, env: { ...process.env, LC_ALL: 'C', LANGUAGE: 'C' } });
+    return null;
+  } catch (error) {
+    return /dubious ownership/i.test(String(error?.stderr ?? '')) ? 'dubious-ownership' : null;
+  }
+}
+
 export async function findOnPath(name, envPath = process.env.PATH ?? '') {
   for (const directory of envPath.split(delimiter).filter(Boolean)) {
     const candidate = join(directory, name);

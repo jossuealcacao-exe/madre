@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { t } from '../i18n.mjs';
 import { realpath } from 'node:fs/promises';
 import { defineModule } from './sdk.mjs';
-import { readJson, gitToplevel, findOnPath, packageVersion } from './helpers.mjs';
+import { readJson, gitToplevel, gitRefused, findOnPath, packageVersion } from './helpers.mjs';
 
 // AHP+ platform names for the agents MADRE knows about. Gemini has no AHP+
 // adapter yet, so it is simply not requested.
@@ -46,14 +46,19 @@ export async function gitReady({ platform = process.platform, find = findOnPath,
 // first when it can do it for the person (2026-10-17): a project that does not use git yet gets
 // `git init` from MADRE, in the same confirmed install, instead of a trip to the terminal. A Mac
 // with no git gets the key that opens Apple's own installer.
-async function preflight(projectRoot, { toplevel = gitToplevel, npx = findOnPath, git = gitReady, platform = process.platform } = {}) {
+// A repository git refuses to read is not a project without git (D-10, two copies in WSL; seen with
+// git's own switch for it): MADRE ran `git init` over it, git only said «Reinitialized», and AHP+
+// stopped with GIT_REQUIRED. Said before anything runs, with the line that lets git read it.
+async function preflight(projectRoot, { toplevel = gitToplevel, refused = gitRefused, npx = findOnPath, git = gitReady, platform = process.platform } = {}) {
   const root = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const problems = [];
   const prepare = [];
   let fix = null;
   if (!(await npx('npx'))) problems.push(t('npx is not on PATH for the MADRE server; start MADRE from a terminal where `npx --version` works.'));
   const top = await toplevel(root);
-  if (!top) {
+  if (!top && await refused(root) === 'dubious-ownership') {
+    problems.push(t('Git refuses to read this project because its folder belongs to another user of this computer («dubious ownership»), as a project under /mnt/c can in WSL. Let git read it with `git config --global --add safe.directory \'{root}\'`, then come back here.', { root }));
+  } else if (!top) {
     if (await git()) {
       prepare.push({ command: 'git', args: ['init'], display: 'git init', note: t('The project does not use git yet. MADRE runs `git init` in it first: it adds a .git folder and leaves your files as they are.') });
     } else if (platform === 'darwin') {

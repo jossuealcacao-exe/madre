@@ -1397,6 +1397,22 @@ test('modules: AHP+ preflight refuses when the git root is not the project or np
     const linuxNoGit = await ahp.preflight(project, { toplevel: async () => null, npx: async () => '/usr/bin/npx', git: async () => false, platform: 'linux' });
     assert.equal(linuxNoGit.ok, false);
     assert.equal(linuxNoGit.fix, null);
+    // A repository git refuses to read (D-10, WSL under /mnt/c) is not one without git: no
+    // `git init` over it, and the line that lets git read it. Real git, with its own switch for an
+    // owner that is not this user.
+    await execFileAsync('git', ['init', '-q'], { cwd: project });
+    process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
+    try {
+      assert.equal(await gitToplevel(project), null, 'git read a repository of another owner');
+      const dubious = await ahp.preflight(project, { npx: async () => '/usr/bin/npx', git: async () => true });
+      assert.equal(dubious.ok, false);
+      assert.deepEqual(dubious.prepare, [], 'MADRE would run git init over a repository that is there');
+      assert.match(dubious.problems[0], /dubious ownership/);
+      assert.ok(dubious.problems[0].includes(`git config --global --add safe.directory '${real}'`), dubious.problems[0]);
+    } finally {
+      delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
+      await rm(join(project, '.git'), { recursive: true, force: true });
+    }
     // Git root is a parent (the home-directory-was-git-inited case).
     const parent = await ahp.preflight(project, { toplevel: async () => await realpath(root), npx: async () => '/usr/bin/npx' });
     assert.equal(parent.ok, false);
