@@ -21,10 +21,13 @@ set -eu
 if [ -z "${MADRE_SETUP_LOGGED:-}" ]; then
   export MADRE_SETUP_LOGGED=1
   log=./madre-instalacion.log
-  { : > "$log"; } 2>/dev/null || log=/var/log/madre-instalacion.log
+  # In a subshell: a redirection that fails on `:` (a special built-in) ends the whole script in
+  # dash, before `||` is reached (CI on a read-only folder, exit 2 and not a word).
+  ( : > "$log" ) 2>/dev/null || log=/var/log/madre-instalacion.log
   code=$(mktemp)
   # `|| …` keeps set -e from ending the group before the code is written.
-  { sh "$0" "$@" 2>&1 && echo 0 > "$code" || echo $? > "$code"; } | tee "$log"
+  # A log that cannot be written anywhere loses the file, never the exit code: tee still shows it.
+  { sh "$0" "$@" 2>&1 && echo 0 > "$code" || echo $? > "$code"; } | tee "$log" || :
   status=$(cat "$code"); rm -f "$code"
   exit "$status"
 fi

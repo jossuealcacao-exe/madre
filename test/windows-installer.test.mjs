@@ -67,6 +67,20 @@ test('windows installer · the inside step keeps a log and its own exit code', a
       assert.match(ran.stdout, /for José\noops/, 'still shown as it happens');
       assert.equal(execFileSync('cat', ['madre-instalacion.log'], { cwd: dir, encoding: 'utf8' }), 'for José\noops\n');
     }
+    // A folder it cannot write in (CI mounts it read-only, 2026-11-04): the check runs in a subshell,
+    // because a failed redirection on `:` ended the whole script in dash with exit 2 and not a word.
+    assert.match(wrapper, /\( : > "\$log" \) 2>\/dev\/null \|\| log=\/var\/log\/madre-instalacion\.log/);
+    await rm(join(dir, 'madre-instalacion.log'));
+    await writeFile(join(dir, 'step.sh'), `${wrapper}echo "for $1"\nexit 7\n`);
+    const { chmod } = await import('node:fs/promises');
+    await chmod(dir, 0o555);
+    try {
+      const ran = spawnSync('sh', ['step.sh', 'José'], { cwd: dir, encoding: 'utf8' });
+      assert.equal(ran.status, 7, ran.stderr);
+      assert.match(ran.stdout, /for José/);
+    } finally {
+      await chmod(dir, 0o755);
+    }
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
