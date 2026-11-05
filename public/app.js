@@ -3327,8 +3327,15 @@ const keepAttachmentUI = (() => {
     event.preventDefault();
     const to = input?.value.trim();
     if (!to || !current) return;
-    const response = await fetch('/api/attachments/keep', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fileName: current.fileName, to }) }).catch(() => null);
-    const result = await response?.json().catch(() => ({})) ?? {};
+    const send = (extra = {}) => fetch('/api/attachments/keep', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fileName: current.fileName, to, ...extra }) })
+      .then(async (response) => ({ response, result: await response.json().catch(() => ({})) }), () => ({ response: null, result: {} }));
+    let { response, result } = await send();
+    // A place the project guards asks for its name, as a new file in Archivos does.
+    if (response?.status === 403 && result.guarded) {
+      const word = await roomAsk({ title: t('A file the project guards'), body: t('This file is one the project guards. Type the project name to save it.'), input: { placeholder: t('the project folder\'s name') }, choices: [{ value: 'no', label: t('CANCEL') }, { value: 'save', label: t('SAVE'), tone: 'primary', submit: true }] });
+      if (!word) return;
+      ({ response, result } = await send({ designation: word }));
+    }
     if (!response?.ok) { toast(`${t('Diagnostics › ')}${result.error ?? t('That could not be done.')}`); return; }
     try { localStorage.setItem(KEEP_FOLDER, result.path.includes('/') ? result.path.slice(0, result.path.lastIndexOf('/') + 1) : ''); } catch { /* only the suggestion is lost */ }
     toast(t('Saved in the project: {path}', { path: result.path }));
@@ -7023,27 +7030,6 @@ function markChoiceAnswered(text) {
 // An agent asked the human to run commands it cannot run in its mode. One button per line; the
 // press sends only which request and which line, and the server runs what it recorded the agent
 // asked for. A line the parser refused is shown with its reason and no button.
-let packageScriptsCache = null;
-async function resolveScriptForRun(argv) {
-  if (!Array.isArray(argv) || !argv.length) return null;
-  const [pkg, sub, ...rest] = argv;
-  const name = String(pkg ?? '').toLowerCase();
-  if (!['npm', 'pnpm', 'yarn', 'bun'].includes(name)) return null;
-  if (packageScriptsCache === null) {
-    try {
-      const response = await fetch('/api/files?root=project&path=package.json');
-      const data = response.ok ? await response.json() : {};
-      packageScriptsCache = data?.scripts && typeof data.scripts === 'object' ? data.scripts : {};
-    } catch {
-      packageScriptsCache = {};
-    }
-  }
-  if (sub === 'test' || (name !== 'yarn' && sub === 't')) return packageScriptsCache.test ?? null;
-  if ((sub === 'run' || sub === 'run-script') && rest[0]) return packageScriptsCache[rest[0]] ?? null;
-  if (sub && packageScriptsCache[sub]) return packageScriptsCache[sub];
-  return null;
-}
-
 function renderRunRequest(event) {
   const { reason, commands = [], agent, responseMessageId, mode } = event.payload;
   if (!commands.length) return null;
@@ -7061,9 +7047,7 @@ function renderRunRequest(event) {
     button.type = 'button';
     button.dataset.index = String(index);
     const code = el('code', 'choice-text', command.line);
-    if (command.script) {
-      code.append(el('span', 'run-script', command.script));
-    }
+    if (command.script) code.append(el('span', 'run-script', command.script));
     button.append(el('span', 'choice-key', '$'), code);
     if (!command.argv) {
       button.disabled = true;
@@ -7073,18 +7057,10 @@ function renderRunRequest(event) {
       return;
     }
     button.append(el('span', 'choice-tag', t('RUN')));
-    const runTitle = (cmd, script) => script
-      ? t('Runs {command} ({script}) from the project root, with no shell. A restore point is taken first.', { command: cmd, script })
-      : t('Runs {command} from the project root, with no shell. A restore point is taken first.', { command: cmd });
-    button.title = runTitle(command.line, command.script);
-    if (!command.script && command.argv) {
-      void resolveScriptForRun(command.argv).then((script) => {
-        if (!script) return;
-        command.script = script;
-        if (!code.querySelector('.run-script')) code.append(el('span', 'run-script', script));
-        button.title = runTitle(command.line, script);
-      });
-    }
+    // The script package.json held when the agent asked (src/runs.mjs, attachCommandScripts, RX-3).
+    button.title = command.script
+      ? t('Runs {command} ({script}) from the project root, with no shell. A restore point is taken first.', { command: command.line, script: command.script })
+      : t('Runs {command} from the project root, with no shell. A restore point is taken first.', { command: command.line });
     button.addEventListener('click', () => { void pressRun(button, { responseMessageId, index, startedAt: event.timestamp }); });
     list.append(button);
   });
@@ -13278,7 +13254,8 @@ function declineTry(said) {
 
 // Why, in one line: what the request looks like, and what was seen or what gave it away.
 function intentReason(said) {
-  const level = effortLabel(said.effort).toUpperCase();
+  // A way back to the CLI's own default names no rung (D-4): reading one here broke the page.
+  const level = said.effort ? effortLabel(said.effort).toUpperCase() : null;
   const what = t('Looks like {what}', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation') });
   if (said.basis === 'measured' && said.measured?.needsReference) return `${what} · ${t('below {level} it fell short in {n} measured cases', { level, n: said.measured.n })}`;
   // A try that fell short: the next one of its kind offers the way back, once.
@@ -13378,8 +13355,6 @@ function paintIntentTried(box, once) {
 }
 
 function paintIntentOffer(box, said) {
-  // An offer names a rung; one without it has nothing to say and broke here (D-4).
-  if (!said.effort) { hideIntentOffer(); return; }
   if (said.kind === 'invite') {
     paintIntentInvite(box, said);
   } else if (said.kind === 'try') {

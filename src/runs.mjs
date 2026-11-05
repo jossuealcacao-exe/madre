@@ -143,27 +143,22 @@ export function withoutRunRequest(text) {
 }
 
 // Resolves what script package.json defines for a package-manager command (RX-3).
-// Returns the raw script string if defined, or null.
+// Returns the raw script string if defined, or null. Only where the manager really runs that script:
+// npm runs one by its name alone only for test, start, stop and restart (`npm build` is «Unknown
+// command»), and `bun test` and `bun build` are Bun's own test runner and bundler, not the scripts.
 export function resolveScript(argv, packageJson) {
   if (!Array.isArray(argv) || !packageJson || typeof packageJson !== 'object') return null;
   const scripts = packageJson.scripts;
   if (!scripts || typeof scripts !== 'object') return null;
   const [pkg, sub, ...rest] = argv;
-  if (!pkg) return null;
-  const name = String(pkg).toLowerCase();
-  if (name === 'npm' || name === 'pnpm' || name === 'yarn' || name === 'bun') {
-    if (sub === 'test' || (name !== 'yarn' && sub === 't')) {
-      return typeof scripts.test === 'string' ? scripts.test : null;
-    }
-    if (sub === 'run' || sub === 'run-script') {
-      const target = rest[0];
-      return target && typeof scripts[target] === 'string' ? scripts[target] : null;
-    }
-    if (sub && typeof scripts[sub] === 'string') {
-      return scripts[sub];
-    }
-  }
-  return null;
+  const name = String(pkg ?? '').toLowerCase();
+  if (!['npm', 'pnpm', 'yarn', 'bun'].includes(name)) return null;
+  const script = (key) => (key && typeof scripts[key] === 'string' ? scripts[key] : null);
+  if (sub === 'run' || sub === 'run-script') return script(rest[0]);
+  if (name === 'bun') return null;
+  if (sub === 'test' || (name !== 'yarn' && (sub === 't' || sub === 'tst'))) return script('test');
+  if (name === 'npm') return ['start', 'stop', 'restart'].includes(sub) ? script(sub) : null;
+  return script(sub);
 }
 
 // Attaches the real script from package.json to each command when available (RX-3).

@@ -999,6 +999,14 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     assert.equal(back.textContent, 'Volver a MEDIO');
     back.listeners.click[0]();
     assert.equal(state.chosenEffort.codex, undefined, 'going back to the rung already in use remembered it');
+    // A try taken from the CLI's own default: the way back names no rung, and the page says so
+    // instead of breaking on it (D-4).
+    trySuggestion = { ...trySuggestion, effort: null, from: null };
+    registry.get('message').value = '¿cuál es el puerto del vigilante de la sala?';
+    await syncIntentOffer();
+    assert.equal(offer.hidden, false, 'the way back to the default was not offered');
+    assert.match(offer.textContent, /Parece una búsqueda · BAJO no alcanzó la última vez/);
+    assert.equal(offer.children.find((child) => child.className === 'free-go').textContent, 'Volver al nivel predeterminado del agente');
     globalThis.fetch = suggestNow;
 
     // Nothing to say about an agent whose CLI takes no effort.

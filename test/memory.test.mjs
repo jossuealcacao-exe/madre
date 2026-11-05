@@ -1778,3 +1778,44 @@ test('background local work waits while the computer is already full, and is nev
   assert.match(room, /new VectorWorker\(\{ memory, stopped: \(\) => this\.#shuttingDown, busy: \(\) => machineBusy\(\) \}\)/);
   assert.match(room, /machineBusy: \(\) => machineBusy\(\),/);
 });
+
+test('a local summary put off for a full computer does not come back once its room has stopped (L-11)', async (t) => {
+  const { Archivist } = await import('../src/room/archivist.mjs');
+  const { BUSY_WAIT_MS } = await import('../src/room/busy.mjs');
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const asked = [];
+  const archivistWith = (stopped) => {
+    let busy = true;
+    const archivist = new Archivist({
+      memory: {
+        undistilled: () => ({ entries: [{ sequence: 1, role: 'user', sender: 'you', target: 'claude', text: 'Curaciones cada 48 horas.' }], fromSequence: 1, throughSequence: 1, sequences: [1], remaining: 0 }),
+        undistilledCount: () => 1, briefing: () => ({ standing: [], discarded: [] }), addMemories: (notes) => notes.length, markDistilled: () => {}, memoryCount: () => 0,
+      },
+      settings: { enabled: true, every: 10, idleMs: 60000, maxChars: 6000, agent: null, model: null, allowed: null },
+      deps: {
+        agents: () => [], invokers: () => ({ ollama: async () => { asked.push(stopped() ? 'after stop' : 'ollama'); return { text: '{"memories":[]}', usage: null }; } }),
+        busyAgents: () => new Set(), turnsInFlight: () => 0, timeoutFor: () => 120000, localTimeoutMs: () => 900000,
+        projectName: () => 'skinhealth', projectRoot: () => '/tmp', emit: async () => {}, recordUsage: async () => {}, stopped,
+        noSession: () => new Set(), machineBusy: () => busy, failureMessage: (error) => error.message,
+      },
+    });
+    return { archivist, free: () => { busy = false; } };
+  };
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  // Still open: five minutes later it is tried again.
+  const open = archivistWith(() => false);
+  assert.equal((await open.archivist.runNow()).postponed, true);
+  open.free();
+  t.mock.timers.tick(BUSY_WAIT_MS);
+  await flush();
+  assert.deepEqual(asked, ['ollama']);
+  // Stopped meanwhile: nothing comes back.
+  let stopped = false;
+  const closed = archivistWith(() => stopped);
+  assert.equal((await closed.archivist.runNow()).postponed, true);
+  stopped = true;
+  closed.free();
+  t.mock.timers.tick(BUSY_WAIT_MS);
+  await flush();
+  assert.deepEqual(asked, ['ollama'], 'a stopped room distilled again');
+});

@@ -289,8 +289,6 @@ async function diffOne(root, before, prefix = '', exclude = []) {
   return { files, afterTree: after, stat: prefix && stat ? stat.split('\n').map((line) => (line.startsWith(' ') ? ` ${prefix}${line.trimStart()}` : line)).join('\n') : stat };
 }
 
-// What changed since the checkpoint, in the project and in every nested repository, paths
-// relative to the project. Forbidden zones are judged on the path inside each repository too.
 // What a turn wrote where git does not look (L-5, Carlos's server, 2026-11-04: patient records
 // under an ignored `pacientes/`, and the card said the agent «changed nothing»). A restore point
 // never holds ignored files, so these are named as outside it. Read by modification time from git's
@@ -316,6 +314,8 @@ export async function ignoredWrittenSince(root, checkpoint, since, { limit = 20,
   return found;
 }
 
+// What changed since the checkpoint, in the project and in every nested repository, paths
+// relative to the project. Forbidden zones are judged on the path inside each repository too.
 export async function diffCheckpoint(root, checkpoint) {
   const outer = await diffOne(root, checkpoint, '', checkpoint.exclude ?? []);
   const parts = [outer];

@@ -62,8 +62,6 @@ Prefer the terminal? Inside Ubuntu (WSL2):
 }
 const option = (name, fallback) => cli.option(name.replace(/^--/, ''), fallback);
 
-// Is a MADRE already serving this very project nearby? `start` walks ports, so look along the
-// same short stretch and compare the project each one reports.
 // A MADRE already open for this project: its address with the ficha, said in the language MADRE
 // speaks (Q-1; Home reads the address after it in either, src/server.mjs ALREADY_OPEN), and its page
 // opened unless --no-open.
@@ -73,6 +71,8 @@ async function showOpen(url, { openBrowser = true, openPath = '' } = {}) {
   if (openBrowser) await openUrl(address);
 }
 
+// Is a MADRE already serving this very project nearby? `start` walks ports, so look along the
+// same short stretch and compare the project each one reports.
 async function roomAlreadyOpen(port, projectRoot, span = 8) {
   const mine = await realpath(projectRoot).catch(() => resolve(projectRoot));
   for (let candidate = port; candidate < port + span; candidate += 1) {

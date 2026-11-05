@@ -425,3 +425,25 @@ test('the SDK: a module may write its name, what it does and its commands in bot
   // Only an object of es and en is words in two languages; any other object is left alone.
   assert.deepEqual(inRoomLanguage({ es: 'a', other: 'b' }), { es: 'a', other: 'b' });
 });
+
+test('RX-2: a module waiting on MADRE (a slow local model) is not cut; one that hangs on its own still is', async () => {
+  const { runExternal } = await import('../src/modules/isolated.mjs');
+  const folder = await mkdtemp(join(tmpdir(), 'pulse-sdk-clock-'));
+  try {
+    const file = join(folder, 'slow.mjs');
+    await writeFile(file, `export default { id: 'slow', name: 'SLOW', settings: { enabled: true }, slash: [
+      { name: 'ask', usage: '/ask', summary: 'Asks the local model.', async execute(ctx) { const answer = await ctx.services.ollama.generate({ prompt: 'hola' }); return { ok: true, title: 'ASK', text: answer.text }; } },
+      { name: 'hang', usage: '/hang', summary: 'Never answers.', execute() { return new Promise(() => {}); } },
+    ] };`);
+    // On a computer with no graphics card a local answer takes minutes (L-7): here, three times the
+    // module's own limit. MADRE's time answering does not count against the module.
+    const ctx = { services: { ollama: { state: () => null, generate: () => new Promise((resolve) => setTimeout(() => resolve({ text: 'respuesta local' }), 1500)) } } };
+    const asked = await runExternal({ file, id: 'slow', configKey: 'slow', operation: 'slash', index: 0, ctx, args: [[]], limitMs: 500 });
+    assert.equal(asked.text, 'respuesta local');
+    await assert.rejects(runExternal({ file, id: 'slow', configKey: 'slow', operation: 'slash', index: 1, ctx, args: [[]], limitMs: 500 }), /did not answer in 0\.5 s/);
+    // The ceiling holds even what MADRE takes.
+    await assert.rejects(runExternal({ file, id: 'slow', configKey: 'slow', operation: 'slash', index: 0, ctx, args: [[]], limitMs: 500, ceilingMs: 900 }), /did not answer in/);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});

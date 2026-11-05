@@ -82,9 +82,12 @@ async function firstLine(file) {
 export async function agentActivity({ home = homedir(), roots = [MADRE_ROOT, logsFolder()], now = Date.now(), activeMs = ACTIVE_MS } = {}) {
   const since = now - activeMs;
   const inMadre = (folder) => roots.some((root) => folder === root || String(folder ?? '').startsWith(`${root}/`));
-  // Claude: one folder of sessions per project, named after its path.
+  // Claude: one folder of sessions per project, named after its path with every sign as «-». A
+  // worktree inside the project (…-pulse--claude-worktrees-x) counts; a sibling folder such as
+  // ~/pulse-qa (…-pulse-qa) is another project.
   const projects = join(home, '.claude', 'projects');
-  const claudeDirs = await listed(projects, (name) => roots.some((root) => name === root.replace(/[^A-Za-z0-9]/g, '-') || name.startsWith(`${root.replace(/[^A-Za-z0-9]/g, '-')}-`)));
+  const encoded = (root) => root.replace(/[^A-Za-z0-9]/g, '-');
+  const claudeDirs = await listed(projects, (name) => roots.some((root) => name === encoded(root) || name.startsWith(`${encoded(root)}--`)));
   const claude = await newest((await Promise.all(claudeDirs.map((folder) => listed(folder, (name) => name.endsWith('.jsonl'))))).flat(), since);
   // Codex: sessions by day; the first line says the folder.
   const days = [now, now - 86400000].map((at) => { const day = new Date(at); return join(home, '.codex', 'sessions', String(day.getFullYear()), String(day.getMonth() + 1).padStart(2, '0'), String(day.getDate()).padStart(2, '0')); });
@@ -224,10 +227,13 @@ function entryFor(id, group) {
 }
 
 // Files the new groups and brings the copies of the filed ones up to date. Returns what changed.
-export async function syncDiagnostics({ dir = logsFolder(), groups = [], since = DIAGNOSTICS_SINCE } = {}) {
+export async function syncDiagnostics({ dir = logsFolder(), groups = [], since = DIAGNOSTICS_SINCE, run = quiet } = {}) {
   const folder = join(dir, 'errores');
   const names = await readdir(folder).catch(() => null);
   if (!names) return { added: [], updated: [] };
+  // An error another agent has unsaved changes in stays theirs (madre-logs' rule 16): its copies
+  // are brought up to date at a later sync, once they have saved.
+  const unsaved = new Set((await run('git', ['-C', dir, 'status', '--porcelain', '--', 'errores'])).split('\n').map((line) => line.slice(3).trim()).filter(Boolean));
   const byFp = new Map();
   let last = 0;
   for (const name of names.filter((one) => one.endsWith('.md'))) {
@@ -252,14 +258,21 @@ export async function syncDiagnostics({ dir = logsFolder(), groups = [], since =
       continue;
     }
     if (['ignored', 'fixed'].includes(group.status) || String(group.first_seen ?? '') < since) continue;
-    last += 1;
-    const id = `D-${last}`;
-    await writeFile(join(folder, `${id}.md`), entryFor(id, group));
+    // The next number free on disk at the moment of writing: an agent may be filing the same D-n by
+    // hand, and its file is never written over.
+    let id = null;
+    for (let tries = 0; !id && tries < 50; tries += 1) {
+      last += 1;
+      id = `D-${last}`;
+      try { await writeFile(join(folder, `${id}.md`), entryFor(id, group), { flag: 'wx' }); }
+      catch (error) { if (error.code !== 'EEXIST') throw error; id = null; }
+    }
+    if (!id) continue;
     byFp.set(group.fp, { name: `${id}.md`, text: '', fields: { id } });
     added.push(id);
   }
   for (const [filed, copies] of copiesOf) {
-    if (!copies || filed.fields.copias === String(copies)) continue;
+    if (!copies || filed.fields.copias === String(copies) || unsaved.has(`errores/${filed.name}`)) continue;
     await writeFile(join(folder, filed.name), filed.text.replace(/^copias:.*$/m, `copias: ${copies}`));
     updated.push(filed.fields.id);
   }
@@ -271,7 +284,12 @@ export async function keepSync({ dir = logsFolder(), added = [], updated = [], r
   if (!added.length && !updated.length) return false;
   await run(process.execPath, [join(dir, 'indice.mjs')]);
   const said = [added.length ? `alta automática de ${added.join(', ')}` : null, updated.length ? `copias al día en ${updated.join(', ')}` : null].filter(Boolean).join('; ');
-  await run('git', ['-C', dir, 'add', '-A']);
-  await run('git', ['-C', dir, 'commit', '-q', '-m', `Diagnóstico: ${said}`]);
+  // Only what the sync wrote: what another agent has unsaved in the folder, or added to git without
+  // a commit, stays out of this one (madre-logs' rules 16 and 18).
+  // A path git does not find makes it add nothing at all: INDICE.md is left out if it was not written.
+  const paths = [];
+  for (const path of ['INDICE.md', ...[...added, ...updated].map((id) => `errores/${id}.md`)]) if (await stat(join(dir, path)).catch(() => null)) paths.push(path);
+  await run('git', ['-C', dir, 'add', '--', ...paths]);
+  await run('git', ['-C', dir, 'commit', '-q', '-m', `Diagnóstico: ${said}`, '--', ...paths]);
   return true;
 }

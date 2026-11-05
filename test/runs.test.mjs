@@ -359,8 +359,14 @@ test('runs: resolves the real script from package.json for npm/pnpm/yarn/bun (RX
   assert.equal(resolveScript(['pnpm', 'build'], pkg), 'esbuild src/index.js --bundle');
   assert.equal(resolveScript(['yarn', 'test'], pkg), 'node --import ./test/setup.mjs --test');
   assert.equal(resolveScript(['yarn', 'build'], pkg), 'esbuild src/index.js --bundle');
-  assert.equal(resolveScript(['bun', 'test'], pkg), 'node --import ./test/setup.mjs --test');
   assert.equal(resolveScript(['bun', 'run', 'build'], pkg), 'esbuild src/index.js --bundle');
+  // Only what the manager really runs: npm runs a script by its name alone only for test, start,
+  // stop and restart, and `bun test` and `bun build` are Bun's own tools, not the scripts.
+  assert.equal(resolveScript(['npm', 'build'], pkg), null, 'npm build is «Unknown command», not the build script');
+  assert.equal(resolveScript(['npm', 'start'], { scripts: { start: 'node server.js' } }), 'node server.js');
+  assert.equal(resolveScript(['bun', 'test'], pkg), null, 'bun test is Bun\'s own runner');
+  assert.equal(resolveScript(['bun', 'build'], pkg), null, 'bun build is Bun\'s own bundler');
+  assert.equal(resolveScript(['bun', 'run', 'test'], pkg), 'node --import ./test/setup.mjs --test');
   assert.equal(resolveScript(['ls', '-la'], pkg), null);
   assert.equal(resolveScript(['npm', 'test'], null), null);
 

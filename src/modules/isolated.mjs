@@ -17,7 +17,10 @@ const PUBLIC_ROOT = join(PACKAGE_ROOT, 'public');
 const PACKAGE_JSON = join(PACKAGE_ROOT, 'package.json');
 export const FENCE = ['--permission', '--experimental-permission'].find((flag) => process.allowedNodeEnvironmentFlags.has(flag)) ?? null;
 const NETWORK = process.allowedNodeEnvironmentFlags.has('--allow-net') ? '--allow-net' : null;
+// The module's own time for one call. What it waits on MADRE for (a local model on a computer with no
+// graphics card takes minutes, L-7) does not count against it; the ceiling holds both.
 const LIMIT_MS = 30000;
+const CEILING_MS = 15 * 60 * 1000;
 const MAX_BYTES = 1 << 20;
 const MAX_CONTEXT_CALLS = 256;
 
@@ -62,7 +65,7 @@ async function answerContext(id, ctx, method, args) {
   }
 }
 
-export async function runExternal({ file, id, configKey, reaches = [], operation, index = null, ctx = {}, args = [] }) {
+export async function runExternal({ file, id, configKey, reaches = [], operation, index = null, ctx = {}, args = [], limitMs = LIMIT_MS, ceilingMs = CEILING_MS }) {
   const canonical = await realpath(file);
   const flags = permissionArgs(canonical, reaches);
   const room = ctx.room;
@@ -81,14 +84,24 @@ export async function runExternal({ file, id, configKey, reaches = [], operation
     let stdout = '';
     let bytes = 0;
     let contextCalls = 0;
+    let timer = null;
+    let spent = 0;
+    let since = Date.now();
+    let waiting = 0;
     const finish = (error, value) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(ceiling);
       child.kill();
       if (error) rejectDone(error); else resolveDone(value);
     };
-    const timer = setTimeout(() => finish(new Error(`Module ${id} did not answer in ${LIMIT_MS / 1000} s.`)), LIMIT_MS);
+    const tooLong = () => finish(new Error(`Module ${id} did not answer in ${limitMs / 1000} s.`));
+    const ceiling = setTimeout(() => finish(new Error(`Module ${id} did not answer in ${Math.round(ceilingMs / 60000)} min.`)), ceilingMs);
+    timer = setTimeout(tooLong, limitMs);
+    // While MADRE answers one of its calls, the module's clock stops.
+    const pause = () => { if (waiting++ === 0) { spent += Date.now() - since; clearTimeout(timer); } };
+    const resume = () => { if (--waiting === 0 && !settled) { since = Date.now(); timer = setTimeout(tooLong, Math.max(0, limitMs - spent)); } };
     child.on('error', (error) => finish(error));
     child.stdin.on('error', (error) => { if (!settled) finish(error); });
     child.on('close', (code) => {
@@ -109,9 +122,11 @@ export async function runExternal({ file, id, configKey, reaches = [], operation
         if (message.type === 'done') return finish(message.ok ? null : Object.assign(new Error(message.error ?? 'Module failed.'), { code: message.code ?? undefined }), message.value);
         if (message.type !== 'ctx') continue;
         if (++contextCalls > MAX_CONTEXT_CALLS) return finish(new Error(`Module ${id} requested too many context calls.`));
+        pause();
         void Promise.resolve().then(() => answerContext(id, context, message.method, message.args ?? []))
           .then((value) => send(child, { type: 'ctxResult', id: message.id, ok: true, value }),
-            (error) => send(child, { type: 'ctxResult', id: message.id, ok: false, error: String(error?.message ?? error) }));
+            (error) => send(child, { type: 'ctxResult', id: message.id, ok: false, error: String(error?.message ?? error) }))
+          .finally(resume);
       }
     });
     send(child, { type: 'invoke', expectedId: id, operation, index, ctx: input, args });

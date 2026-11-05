@@ -225,9 +225,6 @@ export class IntentsDesk {
     if (!one || one.outcome === 'unknown') return null;
     const ladder = effortLadder(agent);
     const to = tried.from ?? from;
-    // No rung known to go back to (the try was taken with none said, and none is said now): an
-    // offer with effort null broke the page (D-4). It waits until a rung is known.
-    if (to === null && one.outcome !== 'held') return null;
     if (one.outcome === 'held' || (from !== null && to !== null && ladder.indexOf(from) > ladder.indexOf(to))) {
       this.#tried.delete(key);
       return null;

@@ -626,6 +626,21 @@ export async function createPulseServer({
     return { bytes: freemem(), source: 'freemem' };
   }
   let logsSyncedAt = 0;
+  // The author's own reading of what fails in every copy (src/telemetry.mjs, madre.run's
+  // /api/telemetry): the same token as the usage, the same copy run from source. Read once every ten
+  // minutes for the two that use it, the errors widget and madre-logs' filing: behind it is a heavy
+  // query, and madre.run's reads of the day ran out once (2026-11-04).
+  async function errorsReading() {
+    const kept = widgetReadings.get('errors');
+    if (kept && Date.now() - kept.at < 600000) return kept.reading;
+    const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+    if (!token) return null;
+    const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+    const body = answer?.ok ? await answer.json().catch(() => null) : null;
+    const reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
+    widgetReadings.set('errors', { at: Date.now(), reading });
+    return reading;
+  }
   async function homeWidget(kind) {
     // The author's error log (src/madre-logs.mjs): read from this disk every time, so Home shows it
     // as agents add and close errors. Only in the copy run from source, and only Home serves it.
@@ -637,12 +652,9 @@ export async function createPulseServer({
       if (Date.now() - logsSyncedAt > 600000) {
         logsSyncedAt = Date.now();
         void (async () => {
-          const token = await readSecret(root, OWNER_VAULT, 'usage');
-          if (!token) return;
-          const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10000) }).catch(() => null);
-          const body = answer?.ok ? await answer.json().catch(() => null) : null;
-          if (!Array.isArray(body?.errors)) return;
-          await keepSync(await syncDiagnostics({ groups: body.errors }));
+          const reading = await errorsReading();
+          if (!Array.isArray(reading?.errors)) return;
+          await keepSync(await syncDiagnostics({ groups: reading.errors }));
         })().catch((error) => console.error(`MADRE could not file the diagnostics in madre-logs: ${error.message}`));
       }
       return readLogs();
@@ -686,13 +698,8 @@ export async function createPulseServer({
       const body = answer?.ok ? await answer.json().catch(() => null) : null;
       reading = body?.ok ? { available: true, ...body, mine } : { available: false, status: answer?.status ?? 0 };
     } else if (kind === 'errors') {
-      // The author's own reading of what fails in every copy (src/telemetry.mjs, madre.run's
-      // /api/telemetry): the same token as the usage, the same copy run from source.
-      const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
-      if (!token) return null;
-      const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
-      const body = answer?.ok ? await answer.json().catch(() => null) : null;
-      reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
+      reading = await errorsReading();
+      if (!reading) return null;
     } else if (kind === 'live' || kind === 'installs' || kind === 'environments') {
       // The author's board (madre.run's /api/metrics, 2026-10-30): copies on now and off, installs,
       // updates and uninstalls by day, and where they run. One reading for the three widgets, kept a

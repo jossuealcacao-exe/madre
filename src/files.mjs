@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFile, mkdir, readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 
 // Read-only file access for the room UI, and human attachments.
@@ -247,7 +247,8 @@ export async function keepAttachment({ attachmentsRoot, projectRoot, fileName, t
   if (!from || !(await stat(from).catch(() => null))?.isFile()) return { status: 404, error: 'That attachment is no longer here.' };
   const clean = String(to ?? '').trim().replace(/^[/\\]+/, '');
   const parts = clean.split(/[/\\]+/).filter(Boolean);
-  if (parts.some((part) => /^\.(pulse|madre|git)$/i.test(part)) || /(^|\/)\.env(\.|$)/i.test(clean)) {
+  // Judged part by part, as createEmptyFile splits them: «datos\.env» is datos/.env too.
+  if (parts.some((part) => /^\.(pulse|madre|git)$/i.test(part) || /^\.env(\.|$)/i.test(part))) {
     return { status: 403, error: 'That place is MADRE\'s own or a secret\'s: choose another folder.' };
   }
   // Fenced and checked the way a new, empty file is; then the attachment is copied over it.
@@ -255,7 +256,9 @@ export async function keepAttachment({ attachmentsRoot, projectRoot, fileName, t
   if (made.status !== 201) return made;
   const canonicalRoot = await realpath(projectRoot);
   const target = join(canonicalRoot, ...made.path.split('/'));
-  try { await copyFile(from, target); } catch (error) { return { status: 400, error: error.message }; }
+  // A copy that fails takes back the empty file it was going into: the next try is not refused as
+  // «already there».
+  try { await copyFile(from, target); } catch (error) { await rm(target, { force: true }).catch(() => {}); return { status: 400, error: error.message }; }
   const info = await stat(target);
   return { status: 201, path: made.path, bytes: info.size };
 }

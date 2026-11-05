@@ -50,6 +50,8 @@ test('madre-logs · each new group of the diagnostics is filed once, classified 
     const base = { clase: 'Fallo', tipo: 'Agentes', nivel: 'P1', origen: 'Diagnóstico', estado: 'arreglado', abierto: '2026-11-03', commit: 'e54205a' };
     await writeFile(join(dir, 'errores', 'D-1.md'), entry({ id: 'D-1', titulo: 'Codex', copias: '6', fp: 'aaaaaaaaaaaaaaaa', ...base }));
     await writeFile(join(dir, 'errores', 'D-2.md'), entry({ id: 'D-2', titulo: 'Ollama', copias: '1', fp: 'bbbbbbbbbbbbbbbb, cccccccccccccccc', ...base }));
+    // The folder's own index writer, reduced to what changes: how many errors there are.
+    await writeFile(join(dir, 'indice.mjs'), "import { readdirSync, writeFileSync } from 'node:fs';\nwriteFileSync(new URL('./INDICE.md', import.meta.url), `${readdirSync(new URL('./errores', import.meta.url)).length} errores\\n`);\n");
     const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, stdio: 'ignore' });
     git('init', '-q'); git('add', '.'); git('commit', '-qm', 'inicio');
     const after = '2026-11-04T20:45:32.364Z';
@@ -78,11 +80,31 @@ test('madre-logs · each new group of the diagnostics is filed once, classified 
     assert.equal(await keepSync({ dir, ...first }), true);
     assert.match(execFileSync('git', ['log', '-1', '--format=%s'], { cwd: dir, encoding: 'utf8' }), /^Diagnóstico: alta automática de D-3, D-4; copias al día en D-1, D-2/);
     assert.equal(DIAGNOSTICS_SINCE, '2026-11-04T00:00:00.000Z');
+
+    // Another agent at work in the folder (rules 16 and 18): its unsaved row and its unsaved error
+    // stay out of the automatic commit, and its error's copies wait until it has saved.
+    await writeFile(join(dir, 'EN-CURSO.md'), '| Agente | Qué hace |\n|---|---|\n| codex · 2026-11-05 | D-1 |\n');
+    git('add', 'EN-CURSO.md');
+    const d1 = await readFile(join(dir, 'errores', 'D-1.md'), 'utf8');
+    await writeFile(join(dir, 'errores', 'D-1.md'), `${d1}\n## Causa\n\nLo que codex encontró.\n`);
+    // And a D-5 it is filing by hand, not yet with its fields: the next number is taken instead.
+    await writeFile(join(dir, 'errores', 'D-5.md'), 'a medio escribir');
+    const later = groups.map((one) => (one.fp === 'aaaaaaaaaaaaaaaa' ? { ...one, copies: 9 } : one));
+    later.push({ fp: '1234567812345678', kind: 'crash', message: 'nuevo', copies: 1, first_seen: after, status: 'new' });
+    const second = await syncDiagnostics({ dir, groups: later });
+    assert.deepEqual(second, { added: ['D-6'], updated: [] }, 'an unsaved error was written over, or a D-n in progress');
+    assert.equal(await readFile(join(dir, 'errores', 'D-5.md'), 'utf8'), 'a medio escribir');
+    assert.equal(await keepSync({ dir, ...second }), true);
+    const kept = execFileSync('git', ['show', '--name-only', '--format=', 'HEAD'], { cwd: dir, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
+    assert.deepEqual(kept, ['INDICE.md', 'errores/D-6.md'], 'the automatic commit took more, or less, than what it wrote');
+    assert.match(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }), /^A  EN-CURSO\.md$[\s\S]* M errores\/D-1\.md$/m, 'the other agent\'s work did not stay as it was');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
   const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
-  assert.match(server, /if \(Date\.now\(\) - logsSyncedAt > 600000\) \{[\s\S]{0,900}await keepSync\(await syncDiagnostics\(\{ groups: body\.errors \}\)\);/);
+  assert.match(server, /if \(Date\.now\(\) - logsSyncedAt > 600000\) \{[\s\S]{0,400}await errorsReading\(\);[\s\S]{0,200}await keepSync\(await syncDiagnostics\(\{ groups: reading\.errors \}\)\);/);
+  // One reading of madre.run's /api/telemetry for the errors widget and the filing, not one each.
+  assert.equal(server.match(/api\/telemetry', \{ headers:/g)?.length, 1, 'madre.run\'s telemetry is read from more than one place');
 });
 
 // 2026-11-05: Claude, Codex and Antigravity build MADRE at once. Whoever registers its work in
@@ -128,6 +150,8 @@ test('madre-logs · an agent at work without registering is shown, from the time
     const put = async (file, text, at) => { await mkdir(join(file, '..'), { recursive: true }); await writeFile(file, text); await utimes(file, at / 1000, at / 1000); };
     await put(join(home, '.claude', 'projects', '-Users-autor-pulse', 'a.jsonl'), '{}\n', now - 60000);
     await put(join(home, '.claude', 'projects', '-Users-autor-otro', 'b.jsonl'), '{}\n', now - 1000);
+    // ~/pulse-qa is another project, though its folder starts like this one's.
+    await put(join(home, '.claude', 'projects', '-Users-autor-pulse-qa', 'c.jsonl'), '{}\n', now - 500);
     const sessions = join(home, '.codex', 'sessions', String(day.getFullYear()), String(day.getMonth() + 1).padStart(2, '0'), String(day.getDate()).padStart(2, '0'));
     await put(join(sessions, 'rollout-otro.jsonl'), `${JSON.stringify({ type: 'session_meta', payload: { cwd: '/Users/autor/otro' } })}\n`, now - 1000);
     await put(join(sessions, 'rollout-madre.jsonl'), `${JSON.stringify({ type: 'session_meta', payload: { cwd: `${root}/src` } })}\n{}\n`, now - 120000);
@@ -136,6 +160,9 @@ test('madre-logs · an agent at work without registering is shown, from the time
     assert.equal(active.claude, now - 60000, 'Claude in another project counted, or this one not');
     assert.equal(active.codex, now - 120000, 'Codex in another folder counted, or this one not');
     assert.equal(active.antigravity, now - 30000);
+    // A worktree inside the project is the project.
+    await put(join(home, '.claude', 'projects', '-Users-autor-pulse--claude-worktrees-arreglo', 'd.jsonl'), '{}\n', now - 20000);
+    assert.equal((await agentActivity({ home, roots: [root], now })).claude, now - 20000, 'a worktree of the project did not count');
     const quiet = await agentActivity({ home, roots: [root], now: now + 3600000 });
     assert.deepEqual(quiet, { claude: null, codex: null, antigravity: null }, 'an hour later nobody is at work');
 

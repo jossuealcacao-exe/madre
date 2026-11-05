@@ -140,7 +140,7 @@ export class Archivist {
     // again in a few minutes, not handed to a paid agent, and not counted as a failure.
     if (agent.adapter === 'ollama' && this.#deps.machineBusy?.()) {
       clearTimeout(this.#timer);
-      this.#timer = setTimeout(() => { this.#timer = null; void this.runNow(); }, BUSY_WAIT_MS);
+      this.#timer = setTimeout(() => { this.#timer = null; if (!this.#deps.stopped()) void this.runNow(); }, BUSY_WAIT_MS);
       this.#timer.unref?.();
       return { agent: agent.id, local: true, postponed: true };
     }

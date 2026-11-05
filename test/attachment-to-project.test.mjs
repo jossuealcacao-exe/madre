@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { keepAttachment, storeAttachment } from '../src/files.mjs';
@@ -26,9 +26,18 @@ test('an attachment of the conversation is saved into the project where the pers
     assert.equal((await keep('pacientes/PRUEBA-01/fotos/dia-3.jpg')).status, 409);
     assert.deepEqual(await readFile(join(projectRoot, saved.path)), photo);
     // Never outside the project, into MADRE's folders, a repository's, or a secret.
-    for (const to of ['../fuera.jpg', '.pulse/foto.jpg', 'a/.git/foto.jpg', '.env', 'api/.env.local', '.madre/x.jpg']) {
+    for (const to of ['../fuera.jpg', '.pulse/foto.jpg', 'a/.git/foto.jpg', '.env', 'api/.env.local', '.madre/x.jpg', 'datos\\.env', 'api\\.env.local\\x']) {
       const refused = await keep(to);
       assert.ok([400, 403].includes(refused.status), `${to} was accepted (${refused.status})`);
+    }
+    await assert.rejects(readFile(join(projectRoot, 'datos', '.env')), 'a backslash took the attachment into a .env');
+    // A copy that fails leaves nothing behind: the next try is not refused as «already there».
+    if (process.getuid?.() !== 0) {
+      await chmod(stored.path, 0o000);
+      assert.equal((await keep('conocimiento/no-se-pudo.jpg')).status, 400);
+      await assert.rejects(readFile(join(projectRoot, 'conocimiento', 'no-se-pudo.jpg')), 'the empty file stayed');
+      await chmod(stored.path, 0o600);
+      assert.equal((await keep('conocimiento/no-se-pudo.jpg')).status, 201);
     }
     // A leading slash is the project's root, as in Archivos: «/etc/foto.jpg» stays inside the project.
     assert.equal((await keep('/etc/foto.jpg')).path, 'etc/foto.jpg');
@@ -45,6 +54,10 @@ test('an attachment of the conversation is saved into the project where the pers
   const page = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
   assert.match(page, /keepAttachmentUI\?\.show\(root === 'attachments' && path && !url \? \{ fileName: path, name: label \?\? path \} : null\);/);
   assert.match(page, /fetch\('\/api\/attachments\/keep', \{ method: 'POST'/);
+  // A place the project guards asks for the project's name and sends it, as Archivos does: the route
+  // asks for it, and a form that never sent it could not save there at all.
+  const form = page.slice(page.indexOf('const keepAttachmentUI'), page.indexOf('viewer.close.addEventListener'));
+  assert.match(form, /response\?\.status === 403 && result\.guarded[\s\S]{0,600}send\(\{ designation: word \}\)/);
   // Into the real parent of «Open raw»: the head does not hold it directly, and inserting into the
   // head threw at load and stopped the whole page (seen in a test house, 2026-11-05).
   assert.match(page, /viewer\.open\.parentNode\.insertBefore\(button, viewer\.open\);/);
