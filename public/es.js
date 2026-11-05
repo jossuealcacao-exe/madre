@@ -3043,6 +3043,8 @@ export const ES = {
   'Does not run: it {why}.': 'No corre: {why}.',
   'Runs {command} from the project root, with no shell. A restore point is taken first.':
     'Ejecuta {command} en la carpeta principal del proyecto, sin terminal (shell). Antes se guarda un punto de restauración.',
+  'Runs {command} ({script}) from the project root, with no shell. A restore point is taken first.':
+    'Ejecuta {command} ({script}) en la carpeta principal del proyecto, sin terminal (shell). Antes se guarda un punto de restauración.',
   'Each line runs when you press it · from the project root, no shell':
     'Cada línea corre cuando la presionas · desde la carpeta principal del proyecto, sin terminal',
   'When they have run, the output goes back to @{agent} and it goes on at #{n} {label}.':

@@ -45,7 +45,7 @@ import { isModuleFile, sdkPaths } from './modules/index.mjs';
 import { validateAshReply } from './modules/ash-policy.mjs';
 import { PHONE_MAX_MODE } from './bridge/policy.mjs';
 import { parseChoice, withoutChoice } from './choices.mjs';
-import { parseRunRequest, withoutRunRequest, whyText, expandHome } from './runs.mjs';
+import { parseRunRequest, withoutRunRequest, whyText, expandHome, attachCommandScripts } from './runs.mjs';
 import { runSettlement, returnedBlock } from './room/returns.mjs';
 import { copilotSafe, copilotBrief, COPILOT_MAX_ROUNDS } from './room/copilot.mjs';
 import { imageStudioFor } from './image-studio.mjs';
@@ -2059,6 +2059,7 @@ export class Room {
       }
       if (asked) await this.#emit('choice.offered', { messageId, responseMessageId, agent: agent.id, question: asked.question, options: asked.options, recommended: asked.recommended ?? undefined, modes: asked.modes ?? undefined });
       if (requested) {
+        await attachCommandScripts(requested.commands, { projectRoot: this.#projectRoot });
         await this.#emit('run.requested', { messageId, responseMessageId, agent: agent.id, reason: requested.reason, commands: requested.commands, mode: turnMode, copilot: asCopilot && controlRun ? true : undefined });
         if (asCopilot && controlRun) this.#copilotRuns.push(responseMessageId);
       }

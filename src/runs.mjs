@@ -26,6 +26,7 @@
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 export const MAX_COMMANDS = 5;
 const MAX_REASON = 300;
@@ -139,4 +140,47 @@ export function withoutRunRequest(text) {
   if (!parseRunRequest(source)) return source;
   const last = [...source.matchAll(/```pulse-run\s*\n[\s\S]*?```/gi)].at(-1);
   return source.slice(0, last.index).trimEnd();
+}
+
+// Resolves what script package.json defines for a package-manager command (RX-3).
+// Returns the raw script string if defined, or null.
+export function resolveScript(argv, packageJson) {
+  if (!Array.isArray(argv) || !packageJson || typeof packageJson !== 'object') return null;
+  const scripts = packageJson.scripts;
+  if (!scripts || typeof scripts !== 'object') return null;
+  const [pkg, sub, ...rest] = argv;
+  if (!pkg) return null;
+  const name = String(pkg).toLowerCase();
+  if (name === 'npm' || name === 'pnpm' || name === 'yarn' || name === 'bun') {
+    if (sub === 'test' || (name !== 'yarn' && sub === 't')) {
+      return typeof scripts.test === 'string' ? scripts.test : null;
+    }
+    if (sub === 'run' || sub === 'run-script') {
+      const target = rest[0];
+      return target && typeof scripts[target] === 'string' ? scripts[target] : null;
+    }
+    if (sub && typeof scripts[sub] === 'string') {
+      return scripts[sub];
+    }
+  }
+  return null;
+}
+
+// Attaches the real script from package.json to each command when available (RX-3).
+export async function attachCommandScripts(commands, { projectRoot, readFile: read = readFile } = {}) {
+  if (!projectRoot || !Array.isArray(commands) || !commands.length) return commands;
+  let pkg = null;
+  try {
+    const raw = await read(join(projectRoot, 'package.json'), 'utf8');
+    pkg = JSON.parse(raw);
+  } catch {
+    return commands;
+  }
+  for (const command of commands) {
+    if (command?.argv && !command.script) {
+      const script = resolveScript(command.argv, pkg);
+      if (script) command.script = script;
+    }
+  }
+  return commands;
 }

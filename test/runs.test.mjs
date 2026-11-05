@@ -340,3 +340,71 @@ test('runs: a command that opens a port is a server: it answers at once, is not 
     await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('runs: resolves the real script from package.json for npm/pnpm/yarn/bun (RX-3)', async () => {
+  const { resolveScript, attachCommandScripts } = await import('../src/runs.mjs');
+  const pkg = {
+    scripts: {
+      test: 'node --import ./test/setup.mjs --test',
+      build: 'esbuild src/index.js --bundle',
+      check: 'npm test && npm run lint',
+    },
+  };
+
+  assert.equal(resolveScript(['npm', 'test'], pkg), 'node --import ./test/setup.mjs --test');
+  assert.equal(resolveScript(['npm', 't'], pkg), 'node --import ./test/setup.mjs --test');
+  assert.equal(resolveScript(['npm', 'run', 'build'], pkg), 'esbuild src/index.js --bundle');
+  assert.equal(resolveScript(['npm', 'run-script', 'check'], pkg), 'npm test && npm run lint');
+  assert.equal(resolveScript(['pnpm', 'test'], pkg), 'node --import ./test/setup.mjs --test');
+  assert.equal(resolveScript(['pnpm', 'build'], pkg), 'esbuild src/index.js --bundle');
+  assert.equal(resolveScript(['yarn', 'test'], pkg), 'node --import ./test/setup.mjs --test');
+  assert.equal(resolveScript(['yarn', 'build'], pkg), 'esbuild src/index.js --bundle');
+  assert.equal(resolveScript(['bun', 'test'], pkg), 'node --import ./test/setup.mjs --test');
+  assert.equal(resolveScript(['bun', 'run', 'build'], pkg), 'esbuild src/index.js --bundle');
+  assert.equal(resolveScript(['ls', '-la'], pkg), null);
+  assert.equal(resolveScript(['npm', 'test'], null), null);
+
+  const dir = await mkdtemp(join(tmpdir(), 'pulse-runs-pkg-'));
+  try {
+    await writeFile(join(dir, 'package.json'), JSON.stringify(pkg));
+    const commands = [
+      { line: 'npm test', argv: ['npm', 'test'] },
+      { line: 'ls -la', argv: ['ls', '-la'] },
+    ];
+    await attachCommandScripts(commands, { projectRoot: dir });
+    assert.equal(commands[0].script, 'node --import ./test/setup.mjs --test');
+    assert.equal(commands[1].script, undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('runs: Room emits run.requested with the real script from package.json attached (RX-3)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-runs-room-pkg-'));
+  const logDir = await mkdtemp(join(tmpdir(), 'pulse-runs-room-pkg-log-'));
+  try {
+    await gitInit(root);
+    await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node --test test/a.test.mjs' } }));
+    const store = await new EventStore(join(logDir, 'events.jsonl')).initialize();
+    const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '1' }];
+    const room = new Room({
+      store, agents, projectRoot: root, invokers: {
+        'claude-readonly': async () => ({
+          text: 'Hecho.\n\n```pulse-run\nCorrer pruebas del proyecto\n$ npm test\n```',
+          usage: null,
+        }),
+      },
+    });
+    room.setRuns(true);
+    await room.send({ text: 'corre las pruebas', target: 'claude' });
+    const events = await store.readAll();
+    const request = events.find((event) => event.type === 'run.requested');
+    assert.ok(request, 'run.requested was not emitted');
+    assert.equal(request.payload.commands[0].line, 'npm test');
+    assert.equal(request.payload.commands[0].script, 'node --test test/a.test.mjs', 'the real script was not attached to the command');
+    await room.shutdown();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

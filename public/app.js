@@ -6965,6 +6965,27 @@ function markChoiceAnswered(text) {
 // An agent asked the human to run commands it cannot run in its mode. One button per line; the
 // press sends only which request and which line, and the server runs what it recorded the agent
 // asked for. A line the parser refused is shown with its reason and no button.
+let packageScriptsCache = null;
+async function resolveScriptForRun(argv) {
+  if (!Array.isArray(argv) || !argv.length) return null;
+  const [pkg, sub, ...rest] = argv;
+  const name = String(pkg ?? '').toLowerCase();
+  if (!['npm', 'pnpm', 'yarn', 'bun'].includes(name)) return null;
+  if (packageScriptsCache === null) {
+    try {
+      const response = await fetch('/api/files?root=project&path=package.json');
+      const data = response.ok ? await response.json() : {};
+      packageScriptsCache = data?.scripts && typeof data.scripts === 'object' ? data.scripts : {};
+    } catch {
+      packageScriptsCache = {};
+    }
+  }
+  if (sub === 'test' || (name !== 'yarn' && sub === 't')) return packageScriptsCache.test ?? null;
+  if ((sub === 'run' || sub === 'run-script') && rest[0]) return packageScriptsCache[rest[0]] ?? null;
+  if (sub && packageScriptsCache[sub]) return packageScriptsCache[sub];
+  return null;
+}
+
 function renderRunRequest(event) {
   const { reason, commands = [], agent, responseMessageId, mode } = event.payload;
   if (!commands.length) return null;
@@ -6981,7 +7002,11 @@ function renderRunRequest(event) {
     const button = el('button', `choice-option run-line${command.argv ? '' : ' refused'}`);
     button.type = 'button';
     button.dataset.index = String(index);
-    button.append(el('span', 'choice-key', '$'), el('code', 'choice-text', command.line));
+    const code = el('code', 'choice-text', command.line);
+    if (command.script) {
+      code.append(el('span', 'run-script', command.script));
+    }
+    button.append(el('span', 'choice-key', '$'), code);
     if (!command.argv) {
       button.disabled = true;
       button.append(el('span', 'choice-tag', t('WILL NOT RUN')));
@@ -6990,7 +7015,18 @@ function renderRunRequest(event) {
       return;
     }
     button.append(el('span', 'choice-tag', t('RUN')));
-    button.title = t('Runs {command} from the project root, with no shell. A restore point is taken first.', { command: command.line });
+    const runTitle = (cmd, script) => script
+      ? t('Runs {command} ({script}) from the project root, with no shell. A restore point is taken first.', { command: cmd, script })
+      : t('Runs {command} from the project root, with no shell. A restore point is taken first.', { command: cmd });
+    button.title = runTitle(command.line, command.script);
+    if (!command.script && command.argv) {
+      void resolveScriptForRun(command.argv).then((script) => {
+        if (!script) return;
+        command.script = script;
+        if (!code.querySelector('.run-script')) code.append(el('span', 'run-script', script));
+        button.title = runTitle(command.line, script);
+      });
+    }
     button.addEventListener('click', () => { void pressRun(button, { responseMessageId, index, startedAt: event.timestamp }); });
     list.append(button);
   });

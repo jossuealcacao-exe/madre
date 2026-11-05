@@ -2002,6 +2002,8 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* A command an agent asks the human to run: a .choice whose options are command lines. The line
    is code, read before it is pressed; the tag says what pressing does, then what happened. */
 .run-request .choice-text { font-family: var(--mono); font-size: 12px; }
+.run-request .run-script { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; overflow-wrap: anywhere; }
+.run-request .run-script::before { content: '↳ '; opacity: .7; }
 .run-request .choice-key { font-family: var(--mono); }
 .run-request .choice-tag { background: transparent; border: 1px solid var(--agent, var(--phosphor)); color: var(--agent, var(--phosphor)); }
 .run-request .run-line.running { cursor: progress; border-color: var(--agent, var(--phosphor)); }

@@ -262,6 +262,34 @@ test('the room UI boots against a real transcript without throwing', async () =>
   ashToggle.listeners.click[0]();
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'false', 'the human can turn it off per message');
   assert.equal(globalThis.__pulse.state.ash, false);
+  // RX-3: run request card displays the real script from package.json
+  streamInstance.onmessage({
+    data: JSON.stringify({
+      id: 'live-run-rx3',
+      sequence: sequence + 3,
+      type: 'run.requested',
+      payload: {
+        agent: 'claude',
+        responseMessageId: 'resp-rx3',
+        reason: 'Correr pruebas',
+        commands: [
+          { line: 'npm test', argv: ['npm', 'test'], script: 'node --import ./test/setup.mjs --test' },
+        ],
+        mode: 2,
+      },
+    }),
+  });
+  const runCard = column.querySelectorAll('.run-request').find((card) => card.dataset.run === 'resp-rx3');
+  assert.ok(runCard, 'run.requested card was not rendered');
+  const codeNode = runCard.querySelector('.choice-text');
+  assert.ok(codeNode, '.choice-text was not found');
+  assert.match(codeNode.textContent, /npm test/);
+  assert.match(codeNode.textContent, /node --import \.\/test\/setup\.mjs --test/);
+  const scriptSpan = runCard.querySelector('.run-script');
+  assert.ok(scriptSpan, '.run-script element was not rendered');
+  assert.equal(scriptSpan.textContent, 'node --import ./test/setup.mjs --test');
+  const runBtn = runCard.querySelector('.run-line');
+  assert.match(runBtn.title, /node --import \.\/test\/setup\.mjs --test/);
   // Click on a sphere expands session usage, replayed history included.
   const sphere = registry.get('agents').children.find((child) => child instanceof FakeElement);
   assert.ok(sphere, 'agent spheres rendered');
