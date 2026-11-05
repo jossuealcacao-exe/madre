@@ -6,6 +6,9 @@
 // a way out (salas-mac.js, TROUBLE_WORDS). A failure nothing here recognises is `unknown`, and the
 // page shows its last line as it was said rather than guess.
 
+// A name nobody could look up (D-3): Go's resolver, which Ollama uses, says it this way. It is not
+// a download that took too long, though it ends in «i/o timeout».
+const DNS = /\blookup \S+ on \S+:53\b|no such host|server misbehaving|Temporary failure in name resolution/i;
 const NETWORK = /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH|getaddrinfo|socket hang up|network (is )?unreachable|unable to get local issuer|self[- ]signed certificate|request to https?:\/\/\S+ failed/i;
 const PERMISSION = /EACCES|EPERM|permission denied|operation not permitted|access is denied/i;
 const DISK = /ENOSPC|no space left/i;
@@ -19,6 +22,7 @@ export function installTrouble(text = '') {
   if (NO_NPM.test(said)) return 'npm-missing';
   if (NO_ZSTD.test(said)) return 'zstd-missing';
   if (DISK.test(said)) return 'disk';
+  if (DNS.test(said)) return 'dns';
   if (NETWORK.test(said)) return 'network';
   if (PERMISSION.test(said)) return 'permission';
   if (TIMEOUT.test(said)) return 'timeout';

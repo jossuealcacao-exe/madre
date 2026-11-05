@@ -66,11 +66,12 @@ const TROUBLE = {
   network: () => t('It could not download: there is no internet connection, or something on this network blocked it. Check your connection and try again.'),
   disk: () => t('There is not enough free space on this computer. Free up some space or choose a smaller model.'),
   permission: () => t('This computer did not let MADRE install it. Copy the line below into a terminal, once.'),
+  dns: () => t('This computer could not find the address it downloads from (DNS). In WSL, close it from Windows and open it again; with a VPN on, try without it.'),
   timeout: () => t('It took too long and was stopped. Try again.'),
 };
 
 // The card of Diagnostics that explains each of those, with its steps for this system (remedy.js).
-const TROUBLE_CARD = { network: 'install-offline', disk: 'disk-full', permission: 'install-needs-admin', timeout: 'install-offline', 'npm-missing': 'node-missing' };
+const TROUBLE_CARD = { network: 'install-offline', dns: 'name-lookup', disk: 'disk-full', permission: 'install-needs-admin', timeout: 'install-offline', 'npm-missing': 'node-missing' };
 
 // Ollama prints each piece it downloads as «pulling <digest> · 45%» (src/ollama.mjs, pullModel). The
 // first piece is the model itself, by far the heaviest: its share is the download's.
@@ -524,7 +525,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     }
     if (pull?.cancelled) parts.push(note('', t('You cancelled the download. What already arrived stays in Ollama: download it again and it picks up from there.')));
     if (pull?.error) {
-      parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : 'model-download')));
+      parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : pull.trouble === 'dns' ? 'name-lookup' : 'model-download')));
     }
     if (!roomFor(model.sizeGb ?? 0)) parts.push(note('warn', t('There are {free} GB free and this model needs {size} GB plus some room. Free up space or choose a smaller model.', { free: number(s.env.disk.freeGb), size: number(model.sizeGb ?? 0) }), fix('disk-full')));
     const row = el('div', 'wl-row');
@@ -713,7 +714,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
         line.append(el('small', 'wl-tiny', t('{pct} % · {mb} MB', { pct: Math.round(pull.pct ?? 0), mb: EMBED_MB })), el('span', 'wl-grow'), cancelKey(EMBED_MODEL, pull));
         parts.push(bar(pull.pct ?? 0), line);
       } else if (pull?.cancelled) parts.push(note('', t('You cancelled the download. What already arrived stays in Ollama: download it again and it picks up from there.')), button('wl-btn primary small', t('Continue the download'), () => void startPull(EMBED_MODEL)));
-      else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : 'model-download')), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
+      else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : pull.trouble === 'dns' ? 'name-lookup' : 'model-download')), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
       else parts.push(button('wl-btn primary small', t('Download the memory model · {mb} MB', { mb: EMBED_MB }), () => void startPull(EMBED_MODEL)));
     }
     if (s.memoryChoice === 'gemini' && !s.geminiKey) parts.push(button('wl-btn small', t('Go to step 3'), () => go('agents')));

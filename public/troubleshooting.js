@@ -856,6 +856,23 @@ export const CONDITIONS = [
     fixes: same(['# 127.0.0.1, not localhost, on both sides of the tunnel:', 'ssh -L 5317:127.0.0.1:5317 user@server']),
   },
   {
+    // Seen in the diagnostics of 1.1.1 (D-3, two copies in WSL, 2026-11-01): Ollama could not find
+    // registry.ollama.ai, «lookup … on 10.255.255.254:53: i/o timeout». It read as a download that
+    // took too long, and the card said to try again.
+    id: 'name-lookup',
+    code: 'MU-082',
+    severity: 'blocking',
+    title: 'This computer cannot find internet addresses',
+    match: /\blookup \S+ on \S+:53\b|no such host|server misbehaving|Temporary failure in name resolution/i,
+    diagnosis: 'Before downloading, a program asks for the address behind a name such as registry.ollama.ai (DNS), and nobody answered. The browser may still work while this Linux cannot ask: in WSL, the address it asks (10.255.255.254) is Windows passing the question on, and it stops answering with a VPN, after the computer sleeps or when the network changes.',
+    remedy: 'In WSL, close it from Windows and open it again; with a VPN on, try without it. On Linux, check the network connection. Then try again from the same place.',
+    fixes: {
+      darwin: ['# whether this Mac finds the name:', 'dscacheutil -q host -a name registry.ollama.ai'],
+      linux: ['# whether this Linux finds the name (no answer: it finds none):', 'getent hosts registry.ollama.ai', '# which server it asks:', 'resolvectl status'],
+      wsl: ['# in Windows PowerShell, then open Ubuntu again:', 'wsl --shutdown', '# back in Ubuntu, whether the name is found now:', 'getent hosts registry.ollama.ai'],
+    },
+  },
+  {
     id: 'install-offline',
     code: 'MU-064',
     severity: 'transient',

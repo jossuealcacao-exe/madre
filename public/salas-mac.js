@@ -4952,6 +4952,7 @@ const TROUBLE_WORDS = {
     disk: () => t('There is not enough free space on this computer to install it.'),
     'npm-missing': () => t('Installing it needs Node and npm, and this computer does not have them. Install Node from nodejs.org, then try again.'),
     'zstd-missing': () => t('Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.'),
+    dns: () => t('This computer could not find the address it downloads from (DNS). In WSL, close it from Windows and open it again; with a VPN on, try without it.'),
     timeout: () => t('It took too long and was stopped. Try again.'),
     unknown: () => t('It did not install.'),
   },
@@ -4965,7 +4966,7 @@ const TROUBLE_WORDS = {
 };
 // The card of Diagnostics for each of those (public/troubleshooting.js), opened beside the failure.
 const TROUBLE_CARDS = {
-  install: { network: 'install-offline', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing' },
+  install: { network: 'install-offline', dns: 'name-lookup', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing' },
   login: { network: 'install-offline', timeout: 'sign-in-unfinished', cancelled: 'sign-in-unfinished', unknown: 'sign-in-unfinished' },
 };
 const troubleCard = (agent, kind, cause) => (kind === 'login' && cause === 'refused-account' ? (agent === 'gemini' ? 'gemini-ineligible-tier' : 'not-signed-in') : TROUBLE_CARDS[kind]?.[cause] ?? null);
