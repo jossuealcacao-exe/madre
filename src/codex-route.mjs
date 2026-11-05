@@ -87,7 +87,7 @@ function routeForUrl(url, source, env) {
     && (host === 'api.openai.com' || host?.endsWith('.api.openai.com'));
   if (official) return { kind: 'official', destination: 'OpenAI', source, host, custom: false, allowed: true };
   // Let the existing route rule decide whether the person explicitly trusted Codex.
-  const allowed = agentRouteFromEnvironment('codex', { ...env, OPENAI_BASE_URL: 'not-a-url' }).allowed;
+  const allowed = Boolean(host) && agentRouteFromEnvironment('codex', { ...env, OPENAI_BASE_URL: 'not-a-url' }).allowed;
   return { kind: 'custom', destination: host ? `custom endpoint · ${host}` : 'custom endpoint', source, host, custom: true, allowed };
 }
 

@@ -66,6 +66,7 @@ test('Codex route checks config URLs, explicit trust, and ambiguous TOML without
     assert.equal((await codexRoute({ env: { CODEX_HOME: home, PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS: 'claude' } })).allowed, false);
     await writeFile(config, '"openai_base_url" = "https://gateway.example.test/v1"\n');
     assert.equal((await codexRoute({ env: { CODEX_HOME: home } })).custom, true, 'unparsed routing keys must fail closed');
+    assert.equal((await codexRoute({ env: { CODEX_HOME: home, PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS: 'codex' } })).allowed, false, 'explicit trust cannot authorize a route whose destination is unknown');
   } finally {
     await rm(home, { recursive: true, force: true });
   }
