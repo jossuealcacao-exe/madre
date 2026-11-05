@@ -2534,11 +2534,12 @@ const WIDGET_PAINT = {
       head.append(el('span', null, t('Working now')), el('small', null, String((reading.working?.length ?? 0) + loose.length)));
       now.append(head);
       // At work in the last minutes without its row in EN-CURSO.md: what it works on cannot be said.
+      // One that took its row out a few minutes ago finished: its session may still be writing.
       for (const one of loose) {
-        const row = el('div', 'sm-logs-work is-loose');
+        const row = el('div', `sm-logs-work ${one.finished ? 'is-done' : 'is-loose'}`);
         const top = el('div', 'sm-logs-top');
-        top.append(badge(one.agent), el('b', 'sm-logs-title', t('Working without registering in EN-CURSO.md')), el('small', 'sm-logs-when', ago(one.at)));
-        row.append(top, el('small', 'sm-logs-zone', t('Nobody can tell which error it has. Ask it to follow rule 12 of ~/madre-logs/AGENTS.md.')));
+        top.append(badge(one.agent), el('b', 'sm-logs-title', one.finished ? t('Finished its work') : t('Working without registering in EN-CURSO.md')), el('small', 'sm-logs-when', ago(one.finished ?? one.at)));
+        row.append(top, el('small', 'sm-logs-zone', one.finished ? t('It took its row out of EN-CURSO.md; it may still be saving or answering.') : t('Nobody can tell which error it has. Ask it to follow rule 12 of ~/madre-logs/AGENTS.md.')));
         now.append(row);
       }
       for (const work of reading.working ?? []) {

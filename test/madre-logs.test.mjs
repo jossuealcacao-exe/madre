@@ -157,3 +157,30 @@ test('madre-logs · an agent at work without registering is shown, from the time
   const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
   assert.match(page, /for \(const one of loose\) \{[\s\S]{0,300}t\('Working without registering in EN-CURSO\.md'\)/);
 });
+
+// 2026-11-05: an agent that had just closed its error and taken its row out still showed as
+// «working without registering» while its session wrote its last commit and its answer.
+test('madre-logs · an agent that took its row out in these last minutes shows as finished, not as unregistered', async () => {
+  const { readFinished } = await import('../src/madre-logs.mjs');
+  const log = [
+    '@@@ 2026-11-05T04:31:27Z', '-| claude · 2026-11-05 | Corregir Q-5 | src/files.mjs | 2026-11-05 | |',
+    '@@@ 2026-11-05T04:28:00Z', '-| codex · 2026-11-04 | Corregir RX-2 | src/x.mjs | 2026-11-04 | |', '+| codex · 2026-11-04 | Corregir RX-2 | src/x.mjs, src/y.mjs | 2026-11-04 | |',
+    '@@@ 2026-11-05T04:24:29Z', '-| antigravity · 2026-11-04 | Corregir RX-C1 | src/server.mjs | 2026-11-04 | |',
+  ].join('\n');
+  assert.deepEqual(readFinished(log), { claude: '2026-11-05T04:31:27Z', antigravity: '2026-11-05T04:24:29Z' }, 'a row changed in place counted as a finish');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-logs-done-'));
+  try {
+    await mkdir(join(dir, 'errores'));
+    await writeFile(join(dir, 'EN-CURSO.md'), '| Agente | Qué hace | Zona | Desde | Notas |\n|---|---|---|---|---|\n');
+    const now = Date.parse('2026-11-05T04:33:00Z');
+    const reading = await readLogs({ dir, now, run: async (command, args) => (args.includes('log') && args.includes('-p') ? log : ''), activity: async () => ({ claude: now - 10000, codex: now - 20000, antigravity: now - 360000 }) });
+    const byAgent = Object.fromEntries(reading.unregistered.map((one) => [one.agent, one]));
+    assert.equal(byAgent.claude.finished, '2026-11-05T04:31:27.000Z');
+    assert.equal(byAgent.antigravity.finished, '2026-11-05T04:24:29.000Z');
+    assert.equal(byAgent.codex.finished, undefined, 'codex only changed its row: it is still unregistered work');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(page, /one\.finished \? t\('Finished its work'\) : t\('Working without registering in EN-CURSO\.md'\)/);
+});

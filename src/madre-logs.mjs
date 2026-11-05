@@ -98,6 +98,26 @@ export async function agentActivity({ home = homedir(), roots = [MADRE_ROOT, log
   const antigravity = await newest(await listed(join(home, '.gemini', 'antigravity', 'conversations')), since);
   return { claude, codex, antigravity };
 }
+// Who took their row out of EN-CURSO.md in these last minutes: they finished, and their session
+// may still be writing (a last commit, an answer to the author). Read from the folder's own history;
+// a row changed in place (taken out and put back in the same commit) is not a finish.
+export function readFinished(log) {
+  const finished = {};
+  let at = null;
+  let gone = new Set();
+  let back = new Set();
+  const close = () => { for (const agent of gone) if (!back.has(agent) && at && !finished[agent]) finished[agent] = at; };
+  for (const line of String(log ?? '').split('\n')) {
+    if (line.startsWith('@@@ ')) { close(); at = line.slice(4).trim(); gone = new Set(); back = new Set(); continue; }
+    const row = /^([-+])\|\s*([^|]+)\|/.exec(line);
+    const agent = row ? agentOf(row[2]) : null;
+    if (!agent) continue;
+    (row[1] === '-' ? gone : back).add(agent);
+  }
+  close();
+  return finished;
+}
+
 let activityKept = { at: 0, value: null };
 const activityNow = async () => {
   // The test suite never reads this computer's real sessions (test/setup.mjs).
@@ -141,7 +161,9 @@ export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now
   // Active in the last minutes, with no row in EN-CURSO.md and no error in its name.
   const registered = new Set([...working.map((one) => one.agent), ...errors.filter((one) => one.estado === 'en-curso').map((one) => one.agent)].filter(Boolean));
   const active = (await activity()) ?? {};
-  const unregistered = Object.entries(active).filter(([agent, at]) => at && !registered.has(agent)).map(([agent, at]) => ({ agent, at: new Date(at).toISOString() }));
+  const since = new Date(now - ACTIVE_MS).toISOString();
+  const finished = readFinished(await run('git', ['-C', dir, 'log', `--since=${since}`, '--format=@@@ %cI', '-p', '--', 'EN-CURSO.md']));
+  const unregistered = Object.entries(active).filter(([agent, at]) => at && !registered.has(agent)).map(([agent, at]) => ({ agent, at: new Date(at).toISOString(), ...(finished[agent] ? { finished: new Date(finished[agent]).toISOString() } : {}) }));
   return {
     available: true,
     total: errors.length,

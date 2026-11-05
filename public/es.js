@@ -2721,6 +2721,8 @@ export const ES = {
   'Last changes': 'Últimos cambios',
   'Working now': 'Trabajando ahora',
   'Working without registering in EN-CURSO.md': 'Trabaja sin anotarse en EN-CURSO.md',
+  'Finished its work': 'Terminó su trabajo',
+  'It took its row out of EN-CURSO.md; it may still be saving or answering.': 'Quitó su fila de EN-CURSO.md; puede seguir guardando o contestando.',
   'Nobody can tell which error it has. Ask it to follow rule 12 of ~/madre-logs/AGENTS.md.': 'No se sabe qué error tiene. Pídele que siga la regla 12 de ~/madre-logs/AGENTS.md.',
   'to verify': 'por verificar',
   'Urgent · P0 and P1': 'Urgentes · P0 y P1',
