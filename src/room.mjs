@@ -1557,11 +1557,14 @@ export class Room {
       const destination = route.host ?? 'an unrecognised host';
       const source = route.source ?? 'a custom endpoint setting';
       const official = agent.id === 'codex' ? 'OpenAI' : agent.id === 'claude' ? 'Anthropic' : 'the agent\'s official service';
+      const advice = route.host
+        ? `Remove that override to use the official service, or set PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=${agent.id} only if you trust that endpoint.`
+        : 'Remove that override to use the official service.';
       await this.#emit('message.failed', {
         messageId,
         target: targetId,
         planId,
-        error: `MADRE blocked @${agent.id} before sending the briefing: ${source} points to ${destination}, not ${official}. Remove that override to use the official service, or set PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=${agent.id} only if you trust that endpoint.`,
+        error: `MADRE blocked @${agent.id} before sending the briefing: ${source} points to ${destination}, not ${official}. ${advice}`,
       });
       return null;
     }

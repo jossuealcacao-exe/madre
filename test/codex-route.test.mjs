@@ -38,6 +38,13 @@ test('Codex config gateway is blocked before MADRE prepares its briefing', async
     assert.match(events.at(-1).payload.error, /blocked @codex before sending the briefing/);
     assert.match(events.at(-1).payload.error, /gateway\.example\.test/);
     assert.doesNotMatch(JSON.stringify(events), /token=private/);
+    await writeFile(join(home, 'config.toml'), '"openai_base_url" = "https://gateway.example.test/v1"\n');
+    process.env.PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS = 'codex';
+    await room.send({ text: 'unknown route', target: 'codex' });
+    const unknown = (await store.readAll()).at(-1).payload.error;
+    assert.match(unknown, /blocked @codex/);
+    assert.doesNotMatch(unknown, /PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS/, 'a route with no identified host cannot be authorized');
+    delete process.env.PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS;
     await writeFile(join(home, 'config.toml'), 'openai_base_url = "https://api.openai.com/v1"\n');
     await room.send({ text: 'safe retry', target: 'codex' });
     assert.equal(invoked, true, 'a room that was blocked can use an official route after config changes');
