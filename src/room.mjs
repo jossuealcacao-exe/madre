@@ -1803,8 +1803,12 @@ export class Room {
     let controlRun = null;
     let createRun = null;
     let responseMessageId = null;
-    // The copilot's #3 reaches past an agent's max mode, never past what its CLI can write.
-    const asCopilot = copilot === true && mode === 3 && this.copilotOn() && Boolean(agentScopes.write?.capable);
+    // The copilot's #3 reaches past an agent's max mode, never past what its CLI can write. The
+    // window is read once, here: the turn may wait for the project before its prompt is written,
+    // and a window that closed in that wait read as null there and failed the turn (D-16, a copy
+    // in WSL, 2026-11-05). A turn that started under the window ends under it, as one running does.
+    const copilotWindow = copilot === true && mode === 3 ? this.#copilotNow() : null;
+    const asCopilot = Boolean(copilotWindow) && Boolean(agentScopes.write?.capable);
     if (mode >= 3 && (requester === 'you' || planId) && depth <= 1 && (agentScopes.maxMode >= mode || asCopilot) && (enabled.write || asCopilot)) {
       // CONTROL: the project itself is the writable root, and a checkpoint
       // taken now makes every change of this turn reversible. A plan step gets
@@ -1907,7 +1911,7 @@ export class Room {
         : null;
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
-      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, choices: this.#choicesEnabled && turnMode !== 0, runs: this.#runsEnabled && turnMode !== 0 && turnMode < 4, mode: turnMode, escalation, mcpServers, bishop, linked, returned, copilot: asCopilot && controlRun ? copilotBrief(this.#copilotNow()) : null, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
+      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, choices: this.#choicesEnabled && turnMode !== 0, runs: this.#runsEnabled && turnMode !== 0 && turnMode < 4, mode: turnMode, escalation, mcpServers, bishop, linked, returned, copilot: asCopilot && controlRun ? copilotBrief(copilotWindow) : null, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared, servers: [this.#memoryServer?.name, ...mcpServers.map((server) => server.name)].filter(Boolean) });
       // What this turn is about to read, said while it is still reading it. The size is exact;
       // only the conversion to tokens is an estimate, and it is made at this room's own rate.

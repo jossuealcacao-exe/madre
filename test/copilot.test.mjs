@@ -98,6 +98,38 @@ test('copilot: a #3 message needs no key while it lasts, reaches an agent capped
   }
 });
 
+// D-16 (a copy in WSL, 2026-11-05): «Cannot destructure property 'until' of 'object null'». The
+// turn read the window again to write its prompt, after waiting for the project; closed in between.
+test('copilot: a window that closes while the turn gets ready does not fail the turn (D-16)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'madre-copilot-closed-'));
+  const logDir = await mkdtemp(join(tmpdir(), 'madre-copilot-closed-log-'));
+  let room = null;
+  try {
+    await gitInit(root);
+    await writeFile(join(root, 'README.md'), 'v1\n');
+    const store = await new EventStore(join(logDir, 'events.jsonl')).initialize();
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+    const until = Date.UTC(2026, 10, 5, 16, 35);
+    let window = { until };
+    const prompts = [];
+    room = new Room({ store, agents, projectRoot: root, copilot: () => window,
+      // The last wait before the prompt is written: the window ends here.
+      toolsForTurn: async () => { window = null; return []; },
+      invokers: { 'codex-readonly': async ({ prompt }) => { prompts.push(prompt); return { text: 'Listo.', usage: null }; } } });
+    await room.send({ text: 'arregla el README', target: 'codex', mode: 3, copilot: true });
+    const events = await store.readAll();
+    const failed = events.find((event) => event.type === 'message.failed');
+    assert.equal(failed, undefined, `the turn failed: ${failed?.payload.error}`);
+    const reply = events.find((event) => event.type === 'message.created' && event.payload.role === 'assistant');
+    assert.equal(reply.payload.copilot, true, 'a turn that started under the window did not end under it');
+    assert.match(prompts[0], /copilot for this project until 16:35 UTC/);
+  } finally {
+    await room?.shutdown().catch(() => {});
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
 test('copilot: the safe lines run by themselves and go back to the agent; the rest wait; a loop stops after its rounds', async () => {
   const root = await mkdtemp(join(tmpdir(), 'madre-copilot-runs-'));
   const logDir = await mkdtemp(join(tmpdir(), 'madre-copilot-runs-log-'));
