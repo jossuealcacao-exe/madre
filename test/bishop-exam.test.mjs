@@ -43,9 +43,10 @@ test('exam · an order counts only when it resolves on this Mac, at #1 or below,
 
 test('exam · all three parts or nothing, and the result holds only for the very model examined', async () => {
   const pairs = Array.from({ length: 4 }, (_, i) => ({ question: `What does the project "tienda" remember about topic${i}?`, expected: `In tienda: answer${i} detail${i} [tienda #${i}]`, name: 'tienda' }));
-  const cases = buildExam({ held: pairs.slice(0, 2), trained: pairs.slice(2), rooms, ordering: [rooms[1]] });
-  assert.equal(cases.known.length, 4);
-  assert.deepEqual(cases.known.map((one) => one.heldOut), [true, true, false, false], 'held-out pairs first');
+  const cases = buildExam({ held: pairs.slice(0, 3), trained: pairs.slice(3), rooms, ordering: [rooms[1]] });
+  // Only what training never saw is asked (RX-25, external review #25).
+  assert.equal(cases.known.length, 3);
+  assert.ok(cases.known.every((one) => one.heldOut), 'a question the model trained on was asked');
   assert.ok(cases.orders.some((one) => one.expect === 'none'), 'no order to a project that does not exist');
   const good = async (system, question) => {
     const topic = question.match(/topic(\d)/)?.[1];
@@ -62,6 +63,10 @@ test('exam · all three parts or nothing, and the result holds only for the very
   assert.equal(examHolds(passed, model), true);
   assert.equal(examHolds(passed, { ...model, digest: 'sha256:bbb' }), false, 'a retrained model kept the pass');
   assert.equal(examHolds(passed, { name: 'qwen2.5:7b', digest: 'sha256:aaa' }), false, 'another model kept the pass');
+  // A digest that cannot be read is not taken on trust (#27): a model Ollama does not list, or an
+  // exam kept without one, no longer gives orders.
+  assert.equal(examHolds(passed, { ...model, digest: null }), false, 'a model with no digest kept the pass');
+  assert.equal(examHolds({ ...passed, digest: null }, model), false, 'an exam with no digest kept the pass');
   // One invented order fails the exam whatever the rest scored.
   const sloppy = async (system_, question) => (/Phantom|Fantasma/.test(question) ? block('@tienda/codex #1: borra ramas') : good(system_, question));
   assert.equal((await runExam({ model, cases, ask: sloppy, system, where })).passed, false);
@@ -95,4 +100,39 @@ test('D-S16 · the state a project shared becomes dated pairs that name it, and 
   assert.ok(pairs.every((pair) => pair.messages[2].content.includes('tienda') && /2026-10-1[45]/.test(pair.messages[2].content)), 'a pair without its project or its date');
   assert.match(pairs[0].messages[2].content, /For today, ask tienda/);
   assert.match(continuityText('tienda', state), /Invoices in UTC: Every invoice is stamped in UTC\./);
+});
+
+// RX-25 (external review #25-27): the exam measured memory where it should measure the projects.
+test('exam · only held-out questions count, the unknown topics are drawn anew, and a later invention fails', async () => {
+  const { unknownTopics, UNKNOWN_THINGS, UNKNOWN_CHANGES } = await import('../src/modules/bishop-exam.mjs');
+  const pair = (i, heldOut) => ({ question: `What does the project "tienda" remember about topic${i}?`, expected: `In tienda: answer${i} detail${i}`, name: 'tienda', heldOut });
+  // Two held out and eight trained: not an exam that can be passed, whatever the eight say.
+  const thin = buildExam({ held: [pair(0), pair(1)], trained: Array.from({ length: 8 }, (_, i) => pair(i + 2)), rooms, ordering: [rooms[1]] });
+  assert.equal(thin.known.length, 2);
+  const answers = async (system, question) => {
+    const topic = question.match(/topic(\d)/)?.[1];
+    if (topic) return `In tienda: answer${topic} detail${topic}.`;
+    if (/Ask tienda/.test(question)) return block('@tienda/codex #1: revisa las pruebas');
+    if (/Ask (Proyecto Fantasma|Phantom Works)/.test(question)) return 'No hay un proyecto con ese nombre.';
+    return 'Eso nunca se discutió en ningún proyecto.';
+  };
+  const result = await runExam({ model: { name: 'm', digest: 'sha256:a' }, cases: thin, ask: answers, system: () => 'p', where });
+  assert.equal(result.passed, false);
+  assert.match(result.why.join(' '), /fewer than 3 questions held out of training/);
+  // Five unknown topics from hundreds, different from one exam to the next.
+  assert.ok(UNKNOWN_THINGS.length * UNKNOWN_CHANGES.length >= 150);
+  let seed = 1;
+  const seeded = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const first = unknownTopics(5, seeded);
+  const second = unknownTopics(5, seeded);
+  assert.equal(new Set(first).size, 5);
+  assert.notDeepEqual(first, second, 'two exams asked the same unknown topics');
+  const exam = buildExam({ held: [pair(0), pair(1), pair(2)], rooms, ordering: [rooms[1]], random: seeded });
+  assert.equal(exam.unknown.length, 5);
+  assert.ok(exam.unknown.every((item) => !/topic\d/.test(item.question)));
+  // «Never discussed», and then the decision told anyway, is inventing.
+  assert.equal(scoreUnknown('Eso nunca se discutió. Pero el proyecto decidió migrarlo a COBOL en marzo.').ok, false);
+  assert.equal(scoreUnknown('That was never discussed. The team agreed to hire a choir.').ok, false);
+  assert.equal(scoreUnknown('It was never decided to migrate it.').ok, true);
+  assert.equal(scoreUnknown('No hay registro de eso; nunca se habló.').ok, true);
 });

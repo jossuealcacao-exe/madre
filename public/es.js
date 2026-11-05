@@ -5587,7 +5587,7 @@ export const ES = {
   '{model} passed on {date}: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.': '{model} aprobó el {date}: {known} sobre los proyectos, {unknown} dijo que nunca se habló, {orders} órdenes. El Coordinador da órdenes con él hasta #1.',
   '{model} passed, but the model in use is another one now ({now}). Examine it again.': '{model} aprobó, pero ahora se usa otro modelo ({now}). Examínalo otra vez.',
   '{model} did not pass on {date}: {known} about the projects, {unknown} said it never discussed, {orders} orders.{why}': '{model} no aprobó el {date}: {known} sobre los proyectos, {unknown} dijo que nunca se habló, {orders} órdenes.{why}',
-  "fewer than 3 questions about the projects: export the Coordinator's training data first": 'menos de 3 preguntas sobre los proyectos: exporta primero los datos de entrenamiento del Coordinador',
+  "fewer than 3 questions held out of training: the Coordinator needs more conversations with the projects, then export its training data again": 'menos de 3 preguntas apartadas del entrenamiento: al Coordinador le faltan conversaciones con los proyectos; luego exporta otra vez sus datos de entrenamiento',
   'no connection lets the Coordinator give orders, so no order could be tried': 'ninguna conexión deja al Coordinador dar órdenes, así que no se pudo probar ninguna',
   'Examine': 'Examinar',
   'could not start': 'no pudo empezar',
