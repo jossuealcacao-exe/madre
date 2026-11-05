@@ -7,9 +7,10 @@
 // leaves it: the folder holds clients' data. Only the author's copy run from source has it.
 
 import { execFile } from 'node:child_process';
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { CONDITIONS } from '../public/troubleshooting.js';
 import { ES } from '../public/es.js';
 
@@ -58,12 +59,59 @@ export function readWorking(text) {
   return rows;
 }
 
+// ---- Who is active without having registered (2026-11-05). An agent can start without its row in
+// EN-CURSO.md (Antigravity on RX-C1): then the widget cannot say what it works on, but it can say it
+// is at work. Each agent's own sessions say when it last wrote; only their times are read — and,
+// from Codex's, the first line, which names the folder it works in. Nothing leaves this computer.
+export const ACTIVE_MS = 10 * 60 * 1000;
+export const MADRE_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+const newest = async (files, since) => {
+  let at = null;
+  for (const file of files) {
+    const mtime = (await stat(file).catch(() => null))?.mtimeMs ?? 0;
+    if (mtime >= since && (at === null || mtime > at)) at = mtime;
+  }
+  return at;
+};
+const listed = async (folder, keep = () => true) => (await readdir(folder).catch(() => [])).filter(keep).map((name) => join(folder, name));
+async function firstLine(file) {
+  const handle = await open(file, 'r').catch(() => null);
+  if (!handle) return '';
+  try { const { bytesRead, buffer } = await handle.read(Buffer.alloc(262144), 0, 262144, 0); return buffer.subarray(0, bytesRead).toString('utf8').split('\n')[0]; } finally { await handle.close(); }
+}
+export async function agentActivity({ home = homedir(), roots = [MADRE_ROOT, logsFolder()], now = Date.now(), activeMs = ACTIVE_MS } = {}) {
+  const since = now - activeMs;
+  const inMadre = (folder) => roots.some((root) => folder === root || String(folder ?? '').startsWith(`${root}/`));
+  // Claude: one folder of sessions per project, named after its path.
+  const projects = join(home, '.claude', 'projects');
+  const claudeDirs = await listed(projects, (name) => roots.some((root) => name === root.replace(/[^A-Za-z0-9]/g, '-') || name.startsWith(`${root.replace(/[^A-Za-z0-9]/g, '-')}-`)));
+  const claude = await newest((await Promise.all(claudeDirs.map((folder) => listed(folder, (name) => name.endsWith('.jsonl'))))).flat(), since);
+  // Codex: sessions by day; the first line says the folder.
+  const days = [now, now - 86400000].map((at) => { const day = new Date(at); return join(home, '.codex', 'sessions', String(day.getFullYear()), String(day.getMonth() + 1).padStart(2, '0'), String(day.getDate()).padStart(2, '0')); });
+  let codex = null;
+  for (const file of (await Promise.all(days.map((folder) => listed(folder, (name) => name.endsWith('.jsonl'))))).flat()) {
+    const at = await newest([file], since);
+    if (at === null || (codex !== null && at <= codex)) continue;
+    try { if (inMadre(JSON.parse(await firstLine(file))?.payload?.cwd)) codex = at; } catch { /* not a session it can read */ }
+  }
+  // Antigravity: its conversations do not say the folder, so any work of its own counts.
+  const antigravity = await newest(await listed(join(home, '.gemini', 'antigravity', 'conversations')), since);
+  return { claude, codex, antigravity };
+}
+let activityKept = { at: 0, value: null };
+const activityNow = async () => {
+  // The test suite never reads this computer's real sessions (test/setup.mjs).
+  if (process.env.MADRE_LOGS_ACTIVITY === '0') return null;
+  if (Date.now() - activityKept.at > 30000) activityKept = { at: Date.now(), value: await agentActivity().catch(() => null) };
+  return activityKept.value;
+};
+
 const quiet = (command, args) => new Promise((resolve) => {
   try { execFile(command, args, { timeout: 4000 }, (error, stdout) => resolve(error ? '' : String(stdout))); } catch { resolve(''); }
 });
 
 // What the widget draws. Null when there is no such folder: the widget is then not offered.
-export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now() } = {}) {
+export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now(), activity = activityNow } = {}) {
   const names = await readdir(join(dir, 'errores')).catch(() => null);
   if (!names) return null;
   const errors = [];
@@ -90,9 +138,14 @@ export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now
   // The folder's own history: each change an agent saved, newest first.
   const log = (await run('git', ['-C', dir, 'log', '-n', '8', '--format=%h%x09%cI%x09%s']))
     .split('\n').filter(Boolean).map((line) => { const [hash, at, ...said] = line.split('\t'); return { hash, at, said: said.join('\t') }; });
+  // Active in the last minutes, with no row in EN-CURSO.md and no error in its name.
+  const registered = new Set([...working.map((one) => one.agent), ...errors.filter((one) => one.estado === 'en-curso').map((one) => one.agent)].filter(Boolean));
+  const active = (await activity()) ?? {};
+  const unregistered = Object.entries(active).filter(([agent, at]) => at && !registered.has(agent)).map(([agent, at]) => ({ agent, at: new Date(at).toISOString() }));
   return {
     available: true,
     total: errors.length,
+    unregistered,
     counts: { toFix: toFix.length, toVerify: toVerify.length, verified: errors.filter((one) => one.estado === 'verificado').length, inProgress: errors.filter((one) => one.estado === 'en-curso').length },
     working,
     byClase: tally(toFix, 'clase'),

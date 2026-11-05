@@ -2527,12 +2527,21 @@ const WIDGET_PAINT = {
     // Who is working now (madre-logs' EN-CURSO.md): Claude, Codex and Antigravity each with its badge.
     const AGENTS = { claude: 'Claude', codex: 'Codex', antigravity: 'Antigravity' };
     const badge = (agent, who) => el('span', `sm-logs-agent ag-${agent ?? 'other'}`, AGENTS[agent] ?? String(who ?? '').split('·')[0].trim());
-    if (reading.working?.length) {
+    const loose = reading.unregistered ?? [];
+    if (reading.working?.length || loose.length) {
       const now = el('section', 'sm-logs-group sm-logs-working');
       const head = el('header', 'sm-logs-group-head');
-      head.append(el('span', null, t('Working now')), el('small', null, String(reading.working.length)));
+      head.append(el('span', null, t('Working now')), el('small', null, String((reading.working?.length ?? 0) + loose.length)));
       now.append(head);
-      for (const work of reading.working) {
+      // At work in the last minutes without its row in EN-CURSO.md: what it works on cannot be said.
+      for (const one of loose) {
+        const row = el('div', 'sm-logs-work is-loose');
+        const top = el('div', 'sm-logs-top');
+        top.append(badge(one.agent), el('b', 'sm-logs-title', t('Working without registering in EN-CURSO.md')), el('small', 'sm-logs-when', ago(one.at)));
+        row.append(top, el('small', 'sm-logs-zone', t('Nobody can tell which error it has. Ask it to follow rule 12 of ~/madre-logs/AGENTS.md.')));
+        now.append(row);
+      }
+      for (const work of reading.working ?? []) {
         const row = el('div', 'sm-logs-work');
         const top = el('div', 'sm-logs-top');
         top.append(badge(work.agent, work.who), el('b', 'sm-logs-title', work.what));

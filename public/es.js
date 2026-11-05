@@ -2720,6 +2720,8 @@ export const ES = {
   'verified': 'verificados',
   'Last changes': 'Últimos cambios',
   'Working now': 'Trabajando ahora',
+  'Working without registering in EN-CURSO.md': 'Trabaja sin anotarse en EN-CURSO.md',
+  'Nobody can tell which error it has. Ask it to follow rule 12 of ~/madre-logs/AGENTS.md.': 'No se sabe qué error tiene. Pídele que siga la regla 12 de ~/madre-logs/AGENTS.md.',
   'to verify': 'por verificar',
   'Urgent · P0 and P1': 'Urgentes · P0 y P1',
   'Minor · P2': 'Menores · P2',

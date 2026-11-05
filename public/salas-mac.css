@@ -2334,6 +2334,9 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 .sm-logs-work { display: grid; gap: 3px; padding: 9px 0 9px 10px; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); box-shadow: inset 2px 0 0 var(--s-acc, var(--phosphor)); }
 .sm-logs-work:last-child { border-bottom: 0; }
 .sm-logs-zone { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-3); }
+.sm-logs-work.is-loose { box-shadow: inset 2px 0 0 var(--session-wait, #d9a90f); }
+.sm-logs-work.is-loose .sm-logs-title { color: var(--session-wait, #d9a90f); }
+.sm-logs-when { flex: none; font-size: 11.5px; color: var(--text-3); }
 .sm-logs-meta code { font-size: 11px; }
 .sm-logs-move { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font-size: 12.5px; color: var(--text-2); }
 .sm-logs-move:last-child { border-bottom: 0; }

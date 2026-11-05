@@ -114,3 +114,46 @@ test('madre-logs · who is working now, from EN-CURSO.md and from each error, wi
   assert.match(page, /const AGENTS = \{ claude: 'Claude', codex: 'Codex', antigravity: 'Antigravity' \};/);
   assert.match(page, /if \(one\.estado === 'en-curso' && \(one\.agent \|\| one\.responsable\)\) top\.append\(badge\(one\.agent, one\.responsable\)\);/);
 });
+
+// 2026-11-05: Antigravity worked on RX-C1 without its row in EN-CURSO.md, and the widget had no way
+// to say so. Each agent's own sessions say when it last wrote; one at work without a row is shown.
+test('madre-logs · an agent at work without registering is shown, from the times of its own sessions', async () => {
+  const { agentActivity } = await import('../src/madre-logs.mjs');
+  const { utimes } = await import('node:fs/promises');
+  const home = await mkdtemp(join(tmpdir(), 'madre-logs-home-'));
+  try {
+    const root = '/Users/autor/pulse';
+    const now = Date.parse('2026-11-05T03:20:00Z');
+    const day = new Date(now);
+    const put = async (file, text, at) => { await mkdir(join(file, '..'), { recursive: true }); await writeFile(file, text); await utimes(file, at / 1000, at / 1000); };
+    await put(join(home, '.claude', 'projects', '-Users-autor-pulse', 'a.jsonl'), '{}\n', now - 60000);
+    await put(join(home, '.claude', 'projects', '-Users-autor-otro', 'b.jsonl'), '{}\n', now - 1000);
+    const sessions = join(home, '.codex', 'sessions', String(day.getFullYear()), String(day.getMonth() + 1).padStart(2, '0'), String(day.getDate()).padStart(2, '0'));
+    await put(join(sessions, 'rollout-otro.jsonl'), `${JSON.stringify({ type: 'session_meta', payload: { cwd: '/Users/autor/otro' } })}\n`, now - 1000);
+    await put(join(sessions, 'rollout-madre.jsonl'), `${JSON.stringify({ type: 'session_meta', payload: { cwd: `${root}/src` } })}\n{}\n`, now - 120000);
+    await put(join(home, '.gemini', 'antigravity', 'conversations', 'x.db-wal'), 'x', now - 30000);
+    const active = await agentActivity({ home, roots: [root], now });
+    assert.equal(active.claude, now - 60000, 'Claude in another project counted, or this one not');
+    assert.equal(active.codex, now - 120000, 'Codex in another folder counted, or this one not');
+    assert.equal(active.antigravity, now - 30000);
+    const quiet = await agentActivity({ home, roots: [root], now: now + 3600000 });
+    assert.deepEqual(quiet, { claude: null, codex: null, antigravity: null }, 'an hour later nobody is at work');
+
+    // In the widget: only the ones with no row and no error of theirs in progress.
+    const dir = await mkdtemp(join(tmpdir(), 'madre-logs-loose-'));
+    try {
+      await mkdir(join(dir, 'errores'));
+      await writeFile(join(dir, 'errores', 'RX-2.md'), entry({ id: 'RX-2', titulo: 'Módulos', clase: 'Seguridad', tipo: 'Módulos y Mercado', nivel: 'P2', origen: 'Revisión externa', estado: 'en-curso', responsable: 'codex · 2026-11-04', abierto: '2026-11-03' }));
+      await writeFile(join(dir, 'EN-CURSO.md'), '| Agente | Qué hace | Zona | Desde | Notas |\n|---|---|---|---|---|\n| claude · 2026-11-05 | Widget | src/madre-logs.mjs | 2026-11-05 | |\n');
+      const reading = await readLogs({ dir, run: async () => '', activity: async () => active });
+      assert.deepEqual(reading.unregistered.map((one) => one.agent), ['antigravity']);
+      assert.equal(reading.unregistered[0].at, new Date(now - 30000).toISOString());
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+  const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(page, /for \(const one of loose\) \{[\s\S]{0,300}t\('Working without registering in EN-CURSO\.md'\)/);
+});
