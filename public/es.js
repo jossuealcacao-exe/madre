@@ -1832,6 +1832,15 @@ export const ES = {
     'Cambia Gemini a una llave de API de Google AI Studio. MADRE solo copia a su carpeta aislada qué forma de iniciar sesión elegiste, así que la llave de API puede quedarse en el llavero o en ~/.gemini/.env.',
 
   'Gemini key out of prepaid credits': 'La llave de API de Gemini se quedó sin créditos prepagados',
+  'Google is rate-limiting this Gemini key (HTTP 429).': 'Google está limitando las peticiones de esta llave de Gemini (HTTP 429).',
+  "Wait a minute, or pick an explicit model such as gemini-2.5-flash; check the key's quota at aistudio.google.com.": 'Espera un minuto o elige un modelo concreto como gemini-2.5-flash; revisa el límite de la llave en aistudio.google.com.',
+  'Check GEMINI_API_KEY in your environment or ~/.gemini/.env.': 'Revisa GEMINI_API_KEY en tu entorno o en ~/.gemini/.env.',
+  'Google reported that the requested Gemini model does not exist or is not available for this key.': 'Google informó que el modelo de Gemini solicitado no existe o no está disponible para esta llave.',
+  'Check the model name or use gemini-2.5-flash.': 'Revisa el nombre del modelo o usa gemini-2.5-flash.',
+  'Google reported the model as unavailable (HTTP {status}).': 'Google informó que el modelo no está disponible (HTTP {status}).',
+  'Google Gemini API request failed with HTTP {status}.': 'La petición a la API de Gemini falló con HTTP {status}.',
+  'Gemini requires an API key. Set GEMINI_API_KEY or save it in Settings.': 'Gemini necesita una llave de API. Configura GEMINI_API_KEY o guárdala en Ajustes.',
+  'Gemini did not respond before the timeout ({seconds}s).': 'Gemini no respondió antes del tiempo límite ({seconds} s).',
   'The AI Studio project behind the Gemini API key has spent its prepaid balance. Google answers every call, including generations in Images, with HTTP 429 until the balance is topped up. Gemini CLI hides this behind silent retries.':
     'El proyecto de AI Studio asociado a la llave de API de Gemini gastó su saldo prepagado. Google rechaza cada llamada —incluidas las de Imágenes— con HTTP 429 hasta que se recargue. La app de Gemini lo esconde detrás de reintentos silenciosos.',
   'Top up the project in AI Studio, or point the Gemini CLI at a key from another project. Nothing in MADRE changes; retry once billing is fixed.':
@@ -2450,10 +2459,10 @@ export const ES = {
   'Decide which one you mean. To work on the API, this message is only a notice and can be ignored. To work on the plan, take the key out of wherever it is set: your shell profile, or the `env` block of ~/.claude/settings.json if you pasted it into MADRE — then open the project again.':
     'Decide cuál quieres. Para trabajar con la API, este mensaje es solo un aviso y se puede ignorar. Para trabajar con el plan, quita la llave de donde esté puesta: el perfil de tu shell, o el bloque `env` de ~/.claude/settings.json si la pegaste en MADRE; luego vuelve a abrir el proyecto.',
   'The agent is pointed at a custom endpoint': 'El agente se conecta a una dirección no oficial',
-  'The installed CLI inherited a base-URL override from this computer, so its request was going to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. MADRE now names that route and stops before sending the briefing.':
-    'La app de este agente heredó de esta computadora una dirección distinta a la oficial, así que sus peticiones iban a un servicio intermediario y no al servicio oficial del agente. La exigencia de unirse a un canal de Telegram viene de ese intermediario, no de MADRE, Anthropic ni OpenAI. MADRE ahora muestra esa dirección y se detiene antes de enviarle nada al agente.',
-  'Do not subscribe or enter credentials. Remove the base-URL override and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.':
-    'No te suscribas ni escribas credenciales. Quita la dirección modificada y vuelve a abrir MADRE para usar el servicio oficial. Si el intermediario es intencional y verificaste quién lo opera, autoriza explícitamente solo a ese agente.',
+  'The agent has a custom route in this computer\'s environment or, for Codex, in its user configuration. Its request could go to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. When MADRE detects the route before a turn, it stops before preparing the briefing.':
+    'El agente tiene una ruta personalizada en el entorno de esta computadora o, si es Codex, en su configuración de usuario. Su petición podría ir a otro intermediario en lugar del servicio oficial del agente. La exigencia de unirse a un canal de Telegram viene de ese intermediario, no de MADRE, Anthropic ni OpenAI. Cuando MADRE detecta la ruta antes de un turno, se detiene antes de preparar el contexto.',
+  'Do not subscribe or enter credentials. Remove the custom route from the environment or Codex configuration and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.':
+    'No te suscribas ni escribas credenciales. Quita la ruta personalizada del entorno o de la configuración de Codex y vuelve a abrir MADRE para usar el servicio oficial. Si el intermediario es intencional y verificaste quién lo opera, autoriza explícitamente solo a ese agente.',
   // La condición que declara el módulo PLAYWRIGHT. Las de los módulos viven en su archivo, no
   // en troubleshooting.js, y por eso se quedaron fuera del catálogo hasta ahora.
   'TEST BROWSER: the browser server is not installed': 'NAVEGADOR DE PRUEBAS: el servidor de navegador no está instalado',
@@ -2491,6 +2500,8 @@ export const ES = {
     '# quita esa exportación de ~/.zshrc, ~/.zprofile o ~/.zshenv; después:',
   '# remove that export from ~/.bashrc, ~/.profile or ~/.bash_profile; then:':
     '# quita esa exportación de ~/.bashrc, ~/.profile o ~/.bash_profile; después:',
+  '# if MADRE names Codex config.toml, remove openai_base_url or model_provider from ~/.codex/config.toml (or $CODEX_HOME/config.toml)':
+    '# si MADRE menciona Codex config.toml, quita openai_base_url o model_provider de ~/.codex/config.toml (o $CODEX_HOME/config.toml)',
   '# reopen the project; only for a gateway you verified:':
     '# vuelve a abrir el proyecto; solo para un intermediario (gateway) que sí verificaste:',
   '# inside gemini: /auth → "Use Gemini API key" and paste the key from https://aistudio.google.com/app/apikey':

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { invokeCodex, buildCodexArgs } from './adapters/codex.mjs';
+import { codexRoute } from './codex-route.mjs';
 import { t } from './i18n.mjs';
 import { invokeClaude, buildClaudeArgs } from './adapters/claude.mjs';
 import { keptSubagents } from './adapters/subagents.mjs';
@@ -1548,9 +1549,13 @@ export class Room {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${agent.label} was detected, but its MADRE adapter is not enabled yet.` });
       return null;
     }
-    if (agent.route?.custom && !agent.route.allowed) {
-      const destination = agent.route.host ?? 'an unrecognised host';
-      const source = agent.route.source ?? 'a custom endpoint setting';
+    // Codex can change its provider in config.toml while this room is open. Recheck before
+    // reading any conversation or memory, then keep the roster's route current as well.
+    const route = agent.id === 'codex' && agent.route ? await codexRoute() : agent.route;
+    if (agent.id === 'codex' && agent.route) agent.route = route;
+    if (route?.custom && !route.allowed) {
+      const destination = route.host ?? 'an unrecognised host';
+      const source = route.source ?? 'a custom endpoint setting';
       const official = agent.id === 'codex' ? 'OpenAI' : agent.id === 'claude' ? 'Anthropic' : 'the agent\'s official service';
       await this.#emit('message.failed', {
         messageId,

@@ -15,6 +15,7 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 import { detectAgents, toolsPrefix } from './runtime-detection.mjs';
+import { codexRoute } from './codex-route.mjs';
 import { EventStore } from './event-store.mjs';
 import { RoomMemory, travels as memoryTravels } from './memory.mjs';
 import { createEmbedder } from './embeddings.mjs';
@@ -316,7 +317,10 @@ export async function createPulseServer({
   const ripleyOn = async () => moduleOnHere(await readConfig(root), 'ripley');
   agentTimeouts ??= agentTimeoutsFromEnv();
   const detector = detect ?? (providedAgents ? null : detectAgents);
-  const agents = providedAgents ?? await detector();
+  const refreshCodexRoute = async (agent) => agent.id === 'codex' && agent.route
+    ? { ...agent, route: await codexRoute() }
+    : agent;
+  const agents = await Promise.all((providedAgents ?? await detector()).map(refreshCodexRoute));
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
   // Whether this is the room of Salas (docs/MACROVERSO.md, fase 3d): the room whose project is
@@ -1407,7 +1411,8 @@ export async function createPulseServer({
   async function redetectAgents({ announce = true } = {}) {
     if (!detector) return { changed: false, agents };
     let changed = false;
-    for (const next of await detector()) {
+    for (const found of await detector()) {
+      const next = await refreshCodexRoute(found);
       const index = agents.findIndex((item) => item.id === next.id);
       if (index === -1) { agents.push(next); changed = true; continue; }
       const before = agents[index];

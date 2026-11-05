@@ -57,6 +57,11 @@ const loginAgent = {
 
 const same = (commands) => ({ darwin: commands, linux: commands });
 
+const customEndpointFixes = (agent = null) => ({
+  darwin: ['env | grep -E \'^(ANTHROPIC|OPENAI)_BASE_URL=\'', '# remove that export from ~/.zshrc, ~/.zprofile or ~/.zshenv; then:', 'unset ANTHROPIC_BASE_URL OPENAI_BASE_URL', ...(agent === 'codex' ? ['# if MADRE names Codex config.toml, remove openai_base_url or model_provider from ~/.codex/config.toml (or $CODEX_HOME/config.toml)'] : []), ...(agent ? ['# reopen the project; only for a gateway you verified:', `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=${agent} madre start`] : [])],
+  linux: ['env | grep -E \'^(ANTHROPIC|OPENAI)_BASE_URL=\'', '# remove that export from ~/.bashrc, ~/.profile or ~/.bash_profile; then:', 'unset ANTHROPIC_BASE_URL OPENAI_BASE_URL', ...(agent === 'codex' ? ['# if MADRE names Codex config.toml, remove openai_base_url or model_provider from ~/.codex/config.toml (or $CODEX_HOME/config.toml)'] : []), ...(agent ? ['# reopen the project; only for a gateway you verified:', `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=${agent} madre start`] : [])],
+});
+
 export const CONDITIONS = [
   {
     id: 'claude-api-key-shadows-plan',
@@ -78,12 +83,11 @@ export const CONDITIONS = [
     severity: 'blocking',
     title: 'The agent is pointed at a custom endpoint',
     match: /MADRE blocked @(?:codex|claude) before sending the briefing|Subscribe to (?:the )?Telegram|@conduitapi/i,
-    diagnosis: 'The installed CLI inherited a base-URL override from this computer, so its request was going to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. MADRE now names that route and stops before sending the briefing.',
-    remedy: 'Do not subscribe or enter credentials. Remove the base-URL override and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.',
-    fixes: {
-      darwin: ['env | grep -E \'^(ANTHROPIC|OPENAI)_BASE_URL=\'', '# remove that export from ~/.zshrc, ~/.zprofile or ~/.zshenv; then:', 'unset ANTHROPIC_BASE_URL OPENAI_BASE_URL', '# reopen the project; only for a gateway you verified:', 'PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=claude madre start'],
-      linux: ['env | grep -E \'^(ANTHROPIC|OPENAI)_BASE_URL=\'', '# remove that export from ~/.bashrc, ~/.profile or ~/.bash_profile; then:', 'unset ANTHROPIC_BASE_URL OPENAI_BASE_URL', '# reopen the project; only for a gateway you verified:', 'PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=claude madre start'],
-    },
+    diagnosis: 'The agent has a custom route in this computer\'s environment or, for Codex, in its user configuration. Its request could go to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. When MADRE detects the route before a turn, it stops before preparing the briefing.',
+    remedy: 'Do not subscribe or enter credentials. Remove the custom route from the environment or Codex configuration and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.',
+    fixes: customEndpointFixes(),
+    perAgent: { codex: customEndpointFixes('codex'), claude: customEndpointFixes('claude') },
+    perAgentReplacesFixes: true,
   },
   {
     id: 'codex-reading-stdin',
@@ -1148,7 +1152,7 @@ export const WINDOWS_FIRST = ['# On Windows, MADRE runs inside WSL2, Linux insid
 export function fixesFor(condition, platform, agent = null) {
   const base = columnFor(condition.fixes, platform) ?? [];
   const perAgent = condition.perAgent?.[agent] ? columnFor(condition.perAgent[agent], platform) : null;
-  const lines = perAgent ? [...perAgent, ...(base.length && !base[0].startsWith('#') ? base : [])] : base;
+  const lines = perAgent ? [...perAgent, ...(condition.perAgentReplacesFixes || !base.length || base[0].startsWith('#') ? [] : base)] : base;
   const ownWindows = condition.fixes?.win32 || condition.perAgent?.[agent]?.win32;
   return platform === 'win32' && !ownWindows && lines.length ? [...WINDOWS_FIRST, ...lines] : lines;
 }
