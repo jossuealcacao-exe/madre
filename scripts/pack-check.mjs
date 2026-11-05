@@ -31,6 +31,8 @@ try {
   // The pictures of the «what's new» board ship with the page that shows them.
   check(files.some((file) => file.startsWith('public/assets/news/')), 'tarball contains the pictures of what is new');
   check(!files.some((file) => file.startsWith('test/') || file.startsWith('scripts/')), 'tarball excludes test/ and scripts/');
+  // The author panel and its model (src/madre-logs.mjs, src/rumbo.mjs, RX-C1) do not ship in the package.
+  check(!files.includes('src/madre-logs.mjs') && !files.includes('src/rumbo.mjs'), 'tarball excludes the author panel and model');
 
   const consumer = join(workspace, 'consumer');
   await run('mkdir', ['-p', consumer]);

@@ -137,12 +137,10 @@ import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, 
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
 import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
-import { keepHistory, readGithub, readHistory, readNpm, rumboModel } from './rumbo.mjs';
 import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
-import { keepSync, readLogs, syncDiagnostics } from './madre-logs.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -633,6 +631,7 @@ export async function createPulseServer({
     // as agents add and close errors. Only in the copy run from source, and only Home serves it.
     if (kind === 'madrelogs') {
       if (!FROM_SOURCE || !salasRoom) return null;
+      const { keepSync, readLogs, syncDiagnostics } = await import('./madre-logs.mjs');
       // The diagnostics filed on their own (src/madre-logs.mjs, syncDiagnostics): every ten minutes
       // while the widget is read, with the author's token, never waited for by the reading.
       if (Date.now() - logsSyncedAt > 600000) {
@@ -714,6 +713,7 @@ export async function createPulseServer({
       // day) — and a source that fails keeps its last good reading, said as old.
       const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
       if (!token) return null;
+      const { keepHistory, readGithub, readHistory, readNpm, rumboModel } = await import('./rumbo.mjs');
       const source = async (name, ttl, read) => {
         const kept = rumboSources.get(name);
         if (kept && Date.now() - (kept.tried ?? kept.at) < ttl) return kept;

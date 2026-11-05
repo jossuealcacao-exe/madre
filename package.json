@@ -40,6 +40,8 @@
   "files": [
     "bin",
     "src",
+    "!src/madre-logs.mjs",
+    "!src/rumbo.mjs",
     "public",
     "!public/assets/manual/*.pdf",
     "README.md",
