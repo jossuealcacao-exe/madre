@@ -4709,7 +4709,7 @@ export async function createPulseServer({
           return sendJson(response, 403, { error: t('A key is only accepted from this computer, never over the network.') });
         }
         const agent = agents.find((item) => item.id === id);
-        if (!agent?.detected) return sendJson(response, 412, { error: t('{label} is not installed on this computer.', { label: agent?.label ?? id }) });
+        if (!agent?.detected && id !== 'gemini') return sendJson(response, 412, { error: t('{label} is not installed on this computer.', { label: agent?.label ?? id }) });
         if (!TAKES_KEY.has(id)) return sendJson(response, 400, { error: t('{agent} does not take a key here: it signs in with a click.', { agent: agent.label }) });
         const payload = await body(request).catch(() => ({}));
         const result = await applyKey({

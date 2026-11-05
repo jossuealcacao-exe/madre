@@ -5160,7 +5160,7 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
         const choosing = choosingAccount.has(agent.id);
         const doors = !state.ok ? (methods.length ? methods : [{ id: null, label: null, note: agent.login?.note }])
           : methods.length > 1 && choosing ? methods
-            : [{ id: methods.length === 1 ? methods[0].id : null, label: null, note: methods.length === 1 ? methods[0].note : agent.login?.note, choose: methods.length > 1 }];
+            : [{ id: methods.length === 1 ? methods[0].id : null, label: methods.length === 1 ? methods[0].label : null, note: methods.length === 1 ? methods[0].note : agent.login?.note, choose: methods.length > 1 }];
         return doors.map((door) => {
           const name = door.label ? t(door.label) : state.ok ? t('Sign in again') : t('Sign in');
           const key = button(`sm-btn ${(state.ok && !choosing) || agent.key?.first ? '' : 'primary'} small`, name, async (event) => {
@@ -5206,7 +5206,7 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
       const ask = askBlock(agent);
       if (ask) body.append(ask);
       // A key, pasted here; OpenCode's are its providers', in the block below.
-      if (agent.detected && agent.key && agent.id !== 'opencode' && !keyFirst) body.append(keyForm(agent));
+      if ((agent.detected || agent.id === 'gemini') && agent.key && agent.id !== 'opencode' && !keyFirst) body.append(keyForm(agent));
       // The same install or sign-in typed in a terminal, folded for whoever prefers it. Signed in,
       // OpenCode's providers are added in the block below; its terminal is for a first sign-in.
       const way = !agent.detected ? agent.install && [agent.install.display, ...(agent.install.alternatives ?? []).map((line) => `# ${t(line)}`)]

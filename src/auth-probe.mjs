@@ -367,6 +367,7 @@ export function geminiSignIn({ env = process.env, verifyMs = 30000 } = {}) {
 
 export async function probeAgentAuth(agent) {
   if (agent.id === 'madre') return agent.ready ? { state: 'signed-in', detail: `local · ${agent.version ?? 'Ollama'}` } : { state: 'signed-out', detail: 'Ollama is not running or has no chat model' };
+  if (agent.id === 'gemini') return probeGemini();
   if (!agent.detected || !agent.path) return { state: 'not-installed', detail: 'not found on this computer' };
   const answered = (result, read) => (result.timedOut ? UNANSWERED : read(result));
   switch (agent.id) {
