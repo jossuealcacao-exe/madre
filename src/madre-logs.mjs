@@ -161,9 +161,13 @@ export async function readLogs({ dir = logsFolder(), run = quiet, now = Date.now
   // Active in the last minutes, with no row in EN-CURSO.md and no error in its name.
   const registered = new Set([...working.map((one) => one.agent), ...errors.filter((one) => one.estado === 'en-curso').map((one) => one.agent)].filter(Boolean));
   const active = (await activity()) ?? {};
-  const since = new Date(now - ACTIVE_MS).toISOString();
+  // A finish counts against the agent's last activity, not against now: what it wrote up to ten
+  // minutes after taking its row out is the tail of that work (Antigravity closed RX-C1 at 04:24 and
+  // its session wrote at 04:25; at 04:34 it was shown as unregistered again).
+  const since = new Date(now - 2 * ACTIVE_MS).toISOString();
   const finished = readFinished(await run('git', ['-C', dir, 'log', `--since=${since}`, '--format=@@@ %cI', '-p', '--', 'EN-CURSO.md']));
-  const unregistered = Object.entries(active).filter(([agent, at]) => at && !registered.has(agent)).map(([agent, at]) => ({ agent, at: new Date(at).toISOString(), ...(finished[agent] ? { finished: new Date(finished[agent]).toISOString() } : {}) }));
+  const doneWith = (agent, at) => finished[agent] && Date.parse(finished[agent]) >= at - ACTIVE_MS;
+  const unregistered = Object.entries(active).filter(([agent, at]) => at && !registered.has(agent)).map(([agent, at]) => ({ agent, at: new Date(at).toISOString(), ...(doneWith(agent, at) ? { finished: new Date(finished[agent]).toISOString() } : {}) }));
   return {
     available: true,
     total: errors.length,

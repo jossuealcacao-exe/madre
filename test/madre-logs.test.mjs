@@ -178,6 +178,13 @@ test('madre-logs · an agent that took its row out in these last minutes shows a
     assert.equal(byAgent.claude.finished, '2026-11-05T04:31:27.000Z');
     assert.equal(byAgent.antigravity.finished, '2026-11-05T04:24:29.000Z');
     assert.equal(byAgent.codex.finished, undefined, 'codex only changed its row: it is still unregistered work');
+    // Measured against its last activity, not against now: closed at 04:24, wrote at 04:25, read at
+    // 04:34 — still the tail of that work. Writing again 25 minutes after it closed is new work.
+    const later = Date.parse('2026-11-05T04:34:55Z');
+    const tail = await readLogs({ dir, now: later, run: async (command, args) => (args.includes('log') && args.includes('-p') ? log : ''), activity: async () => ({ antigravity: Date.parse('2026-11-05T04:25:39Z') }) });
+    assert.equal(tail.unregistered[0].finished, '2026-11-05T04:24:29.000Z', 'the tail of a finished work showed as unregistered');
+    const fresh = await readLogs({ dir, now: later + 600000, run: async (command, args) => (args.includes('log') && args.includes('-p') ? log : ''), activity: async () => ({ antigravity: Date.parse('2026-11-05T04:49:30Z') }) });
+    assert.equal(fresh.unregistered[0].finished, undefined, 'new work long after the finish was taken for the finish');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
