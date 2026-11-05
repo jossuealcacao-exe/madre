@@ -133,6 +133,7 @@ export class Room {
   #examProgress = null;
   #examStop = false;
   #archivist;              // room/archivist: who distils, when, and the bench
+  #sessions = {};          // what the server last learned of each agent's session (sessions.updated)
   #vectors;                // room/vectors: embeddings filled in the background
   #escalation;             // room/escalation: plan steps waiting for the human
   #ghost = new GhostLedger();
@@ -258,6 +259,8 @@ export class Room {
         emit: (type, payload) => this.#emit(type, payload),
         recordUsage: (agent, usage) => this.#recordUsage(agent, usage),
         stopped: () => this.#shuttingDown,
+        // Who MADRE already knows cannot answer: no session, or not installed (L-9).
+        noSession: () => new Set(Object.entries(this.#sessions).filter(([, one]) => ['signed-out', 'not-installed'].includes(one?.state)).map(([id]) => id)),
         failureMessage,
       },
     });
@@ -357,6 +360,8 @@ export class Room {
   // agents have a session, once the probe that runs at start comes back (QA 1.1.0, NUE-11).
   announce(type, payload) {
     if (!['sessions.updated'].includes(type)) throw new Error(`Not a live announcement: ${type}`);
+    // The archivist reads it too: it does not hand a summary to an agent with no session (L-9).
+    if (type === 'sessions.updated' && payload?.sessions && typeof payload.sessions === 'object') this.#sessions = { ...payload.sessions };
     return this.#say(type, payload);
   }
 

@@ -139,6 +139,7 @@ import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
+import { readLogs } from './madre-logs.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -623,6 +624,9 @@ export async function createPulseServer({
     return { bytes: freemem(), source: 'freemem' };
   }
   async function homeWidget(kind) {
+    // The author's error log (src/madre-logs.mjs): read from this disk every time, so Home shows it
+    // as agents add and close errors. Only in the copy run from source, and only Home serves it.
+    if (kind === 'madrelogs') return FROM_SOURCE && salasRoom ? readLogs() : null;
     const kept = widgetReadings.get(kind);
     // madre.run's count moves once a day: the author's reading is kept ten minutes, the Mac's thirty seconds.
     if (kept && Date.now() - kept.at < (kind === 'usage' || kind === 'errors' ? 600000 : 30000)) return kept.reading;

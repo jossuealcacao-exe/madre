@@ -1534,6 +1534,9 @@ const WIDGETS = {
   // MADRE's course (2026-11-01, src/rumbo.mjs): the variables that decide where the project goes,
   // from madre.run's funnel, GitHub and npm. Only in the author's copy run from source.
   'w-rumbo': { kind: 'rumbo', owner: true, name: () => t('MADRE\'s course'), about: () => t('The variables that decide where MADRE goes: from a visit to a habit, what the numbers decide, and GitHub and npm. Only you see this.'), size: 12, sizes: [12] },
+  // The author's error log (2026-11-05, src/madre-logs.mjs): ~/madre-logs as agents add and close
+  // errors, read from this Mac's disk every few seconds. Only in the author's copy run from source.
+  'w-madrelogs': { kind: 'madrelogs', owner: true, every: 5000, name: () => 'madre-logs', about: () => t('MADRE\'s errors as they are added and fixed: what is still to fix by class and type, what waits to be verified, and the last changes. Read from this Mac; only you see this.'), size: 8, rows: 5 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -1566,6 +1569,7 @@ const TILE_ICONS = {
   'w-installs': trazo('download'),
   'w-environments': trazo('globe'),
   'w-rumbo': trazo('trending'),
+  'w-madrelogs': trazo('list'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -2503,6 +2507,44 @@ const WIDGET_PAINT = {
   // What fails in every copy, the widest first (2026-10-28). Each with what it is (its MU code when
   // Diagnostics knows it), how many copies and times, which versions and systems, MADRE's own lines
   // it went through, and the author's word on it.
+  // madre-logs (2026-11-05): what is to fix, by class and type, the open ones by level, and what
+  // the agents saved last. Each one says its state; one in progress says who has it.
+  madrelogs(body, reading) {
+    const { counts } = reading;
+    const lead = el('div', 'sm-usage-lead');
+    lead.append(el('b', 'sm-w-big', String(counts.toFix)), el('span', null, t('to fix')), el('small', 'sm-usage-trend', t('{verify} to verify · {verified} verified · {total} in all', { verify: counts.toVerify, verified: counts.verified, total: reading.total })));
+    body.append(lead);
+    const lines = el('div', 'sm-usage-lines');
+    for (const [label, list] of [[t('Class'), reading.byClase], [t('Type'), reading.byTipo]]) {
+      const row = el('div', 'sm-w-line');
+      row.append(el('b', null, label), el('small', null, list.length ? list.map((one) => `${one.name} ${one.n}`).join(' · ') : '—'));
+      lines.append(row);
+    }
+    body.append(lines);
+    const STATE = { 'en-curso': t('in progress'), abierto: t('open'), investigando: t('investigating'), decision: t('your decision'), arreglado: t('fixed'), publicado: t('published'), verificado: t('verified') };
+    const list = el('div', 'sm-logs');
+    for (const one of reading.toFix.slice(0, 12)) {
+      const row = el('div', `sm-logs-row is-${one.estado}${one.nivel === 'P0' || one.nivel === 'P1' ? ' is-urgent' : ''}`);
+      const top = el('div', 'sm-w-line');
+      top.append(el('code', 'sm-logs-id', one.id), el('b', null, one.title), el('span', 'sm-w-tag', one.estado === 'en-curso' && one.responsable ? `${STATE[one.estado]} · ${one.responsable}` : STATE[one.estado] ?? one.estado));
+      row.append(top, el('small', 'sm-logs-facts', [one.clase, one.tipo, one.nivel, one.origen].filter(Boolean).join(' · ')));
+      list.append(row);
+    }
+    if (reading.toFix.length > 12) list.append(el('small', 'sm-hint', t('… and {n} more', { n: reading.toFix.length - 12 })));
+    body.append(list);
+    if (reading.log.length) {
+      const moves = el('div', 'sm-logs-moves');
+      moves.append(el('small', 'sm-logs-head', t('Last changes')));
+      for (const one of reading.log.slice(0, 5)) {
+        const row = el('div', 'sm-w-line');
+        row.append(el('b', null, one.said), el('small', null, ago(one.at)));
+        row.title = `${one.hash} · ${one.said}`;
+        moves.append(row);
+      }
+      body.append(moves);
+    }
+    body.append(el('small', 'sm-w-foot', t('From ~/madre-logs · INDICE.md has the whole table')));
+  },
   errors(body, reading, { again } = {}) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
     const open = reading.errors.filter((one) => one.status !== 'ignored' && one.status !== 'fixed');
@@ -2649,7 +2691,7 @@ function makeWidget(id) {
     // The first time it shows, what it is (homeTour is set up below this, so it is read late).
     if (!node.dataset.guided) { node.dataset.guided = '1'; setTimeout(() => { try { guideWidget(node, spec.kind); } catch { /* the tour is not up yet */ } }, 1500); }
   };
-  node.start = () => { if (timer) return; void read(); timer = setInterval(() => void read(), 20000); };
+  node.start = () => { if (timer) return; void read(); timer = setInterval(() => void read(), spec.every ?? 20000); };
   node.stop = () => { clearInterval(timer); timer = 0; };
   // Said again in the language Home settled on: a widget is made once, before the first answer
   // tells Home which language MADRE speaks (a new MADRE starts in Spanish and may adopt English),

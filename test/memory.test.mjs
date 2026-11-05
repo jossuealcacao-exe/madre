@@ -1690,3 +1690,43 @@ test('the local archivist gets fifteen minutes, and one that cannot finish sits 
     Date.now = realNow;
   }
 });
+
+// L-9 (Carlos's server, 2026-11-05): Codex installed but signed out was named «takes the next run»
+// at 00:08 (Ollama failed) and at 00:35 (Gemini failed), and each try spent an attempt of the batch.
+test('the archivist never hands a summary to an agent MADRE knows has no session (L-9)', async () => {
+  const { Archivist } = await import('../src/room/archivist.mjs');
+  const asked = [];
+  const memory = {
+    undistilled: () => ({ entries: [{ sequence: 1, role: 'user', sender: 'you', target: 'claude', text: 'Curaciones cada 48 horas.' }], fromSequence: 1, throughSequence: 1, sequences: [1], remaining: 0 }),
+    undistilledCount: () => 1,
+    briefing: () => ({ standing: [], discarded: [] }),
+    addMemories: (notes) => notes.length,
+    markDistilled: () => {},
+    memoryCount: () => 0,
+  };
+  const failing = (id) => async () => { asked.push(id); throw Object.assign(new Error(`${id} timed out`), { code: 'ETIMEDOUT' }); };
+  let noSession = new Set(['codex']);
+  const archivist = new Archivist({ memory, settings: { enabled: true, every: 10, idleMs: 60000, maxChars: 6000, agent: null, model: null, allowed: null }, deps: {
+    agents: () => [
+      { id: 'codex', detected: true, ready: true, adapter: 'codex', path: '/bin/codex' },
+      { id: 'gemini', detected: true, ready: true, adapter: 'gemini', path: '/bin/gemini' },
+    ],
+    invokers: () => ({ ollama: failing('ollama'), codex: failing('codex'), gemini: failing('gemini') }),
+    busyAgents: () => new Set(), turnsInFlight: () => 0, timeoutFor: () => 120000, localTimeoutMs: () => 900000,
+    projectName: () => 'skinhealth', projectRoot: () => '/tmp', emit: async () => {}, recordUsage: async () => {}, stopped: () => false,
+    noSession: () => noSession, failureMessage: (error) => error.message,
+  } });
+  const first = await archivist.runNow();
+  assert.equal(first.agent, 'ollama');
+  assert.equal(first.next, 'gemini', 'the card named an agent with no session');
+  const second = await archivist.runNow();
+  assert.equal(second.agent, 'gemini');
+  assert.equal(second.next, null, 'with nobody able to summarize, the card says it will retry');
+  assert.ok(!asked.includes('codex'), 'Codex with no session was asked to summarize');
+  // Signed in again, it is a candidate again.
+  noSession = new Set();
+  assert.equal((await archivist.runNow()).agent, 'codex');
+  const room = await readFileP(new URL('../src/room.mjs', import.meta.url), 'utf8');
+  assert.match(room, /if \(type === 'sessions\.updated' && payload\?\.sessions[^\n]*\) this\.#sessions = \{ \.\.\.payload\.sessions \};/);
+  assert.match(room, /noSession: \(\) => new Set\(Object\.entries\(this\.#sessions\)\.filter\(\(\[, one\]\) => \['signed-out', 'not-installed'\]\.includes\(one\?\.state\)\)/);
+});

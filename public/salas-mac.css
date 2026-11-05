@@ -2283,3 +2283,16 @@ dialog.home-news .wn-card-line { display: block; -webkit-line-clamp: unset; over
 /* «En marcha» on Home's bar (2026-10-30): its number in the key's own badge; the line beats while
    something runs (styles.css, .activity-button). */
 .sm-barkey.activity-button.working { color: var(--s-acc, var(--phosphor)); }
+
+/* madre-logs (the author's widget, 2026-11-05): the errors still to fix, each with its id, state and
+   classification, and the folder's last changes. P0 and P1 wear the alarm colour on their id. */
+.sm-logs { display: grid; gap: 8px; }
+.sm-logs-row { display: grid; gap: 2px; min-width: 0; }
+.sm-logs-id { flex: none; font-size: 11.5px; color: var(--text-2); }
+.sm-logs-row.is-urgent .sm-logs-id { color: var(--danger, #e5484d); font-weight: 600; }
+.sm-logs-row.is-en-curso .sm-w-tag { color: var(--s-acc, var(--phosphor)); background: color-mix(in srgb, var(--s-acc, var(--phosphor)) 16%, transparent); }
+.sm-logs-row.is-decision .sm-w-tag { color: var(--text-1, inherit); }
+.sm-logs-facts { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-2); }
+.sm-logs-moves { display: grid; gap: 4px; }
+.sm-logs-head { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.sm-logs-moves .sm-w-line b { font-size: 12.5px; font-weight: 500; }

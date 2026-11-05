@@ -53,7 +53,7 @@ export class Archivist {
   #failures = new Map();   // fromSequence -> failed attempts on that batch
   #bench = new Map();      // agent -> until (ms)
 
-  // deps: agents(), invokers(), busyAgents(), turnsInFlight(), timeoutFor(id), localTimeoutMs(), projectName(), emit(type, payload), recordUsage(agent, usage), stopped(), failureMessage(error)
+  // deps: agents(), invokers(), busyAgents(), turnsInFlight(), timeoutFor(id), localTimeoutMs(), projectName(), emit(type, payload), recordUsage(agent, usage), stopped(), noSession(), failureMessage(error)
   constructor({ memory, settings, deps }) {
     this.#memory = memory;
     this.#settings = settings;
@@ -93,8 +93,12 @@ export class Archivist {
 
   #candidates() {
     const invokers = this.#deps.invokers();
-    // @madre answers questions; the archive is written by the Ollama archivist itself.
-    const agents = this.#deps.agents().filter((agent) => agent.adapter !== 'madre-local');
+    // @madre answers questions; the archive is written by the Ollama archivist itself. An agent
+    // MADRE knows has no session is not a candidate (L-9, Carlos's server, 2026-11-05): Codex
+    // installed but signed out was named «takes the next run» twice, and each try spent one of
+    // the batch's attempts on a summary it could not write.
+    const noSession = this.#deps.noSession?.() ?? new Set();
+    const agents = this.#deps.agents().filter((agent) => agent.adapter !== 'madre-local' && !noSession.has(agent.id));
     const everyone = invokers.ollama ? [OLLAMA_ARCHIVIST, ...agents] : agents;
     return this.#settings.allowed ? everyone.filter((agent) => this.#settings.allowed.includes(agent.id)) : everyone;
   }
