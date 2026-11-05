@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 
 // Read-only file access for the room UI, and human attachments.
@@ -235,6 +235,29 @@ export async function createEmptyFile(root, relative) {
   try { await writeFile(target, '', { encoding: 'utf8', flag: 'wx' }); }
   catch (error) { return error.code === 'EEXIST' ? { status: 409, error: 'A file with that name is already there.' } : { status: 400, error: error.message }; }
   return { status: 201, path: parts.join('/') };
+}
+
+// An attachment of the conversation, saved into the project where the person says (L-2, Carlos's
+// server, 2026-11-04): a patient's photo into pacientes/…/fotos/, a guide into conocimiento/. Until
+// now a PDF or a photo stayed in MADRE's store; copying it in took a `cp`, which is #4. The person
+// chooses the place, so no mode is asked. The same fence as a new file (createEmptyFile), never
+// into MADRE's own folders, a repository's or a .env, and an existing file is never replaced.
+export async function keepAttachment({ attachmentsRoot, projectRoot, fileName, to }) {
+  const from = await resolveInside(attachmentsRoot, String(fileName ?? ''));
+  if (!from || !(await stat(from).catch(() => null))?.isFile()) return { status: 404, error: 'That attachment is no longer here.' };
+  const clean = String(to ?? '').trim().replace(/^[/\\]+/, '');
+  const parts = clean.split(/[/\\]+/).filter(Boolean);
+  if (parts.some((part) => /^\.(pulse|madre|git)$/i.test(part)) || /(^|\/)\.env(\.|$)/i.test(clean)) {
+    return { status: 403, error: 'That place is MADRE\'s own or a secret\'s: choose another folder.' };
+  }
+  // Fenced and checked the way a new, empty file is; then the attachment is copied over it.
+  const made = await createEmptyFile(projectRoot, clean);
+  if (made.status !== 201) return made;
+  const canonicalRoot = await realpath(projectRoot);
+  const target = join(canonicalRoot, ...made.path.split('/'));
+  try { await copyFile(from, target); } catch (error) { return { status: 400, error: error.message }; }
+  const info = await stat(target);
+  return { status: 201, path: made.path, bytes: info.size };
 }
 
 const safeName = (name) => String(name ?? 'file').replace(/[^\w.\- ]+/g, '_').replace(/^\.+/, '').slice(0, 120) || 'file';

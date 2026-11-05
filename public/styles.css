@@ -12597,3 +12597,11 @@ dialog.terms-gate.leaving { animation: terms-out calc(260ms * var(--motion-scale
 /* MADRE's opening over the gate (loader.js, playOpening): the card waits under the stage. */
 dialog.terms-gate.intro .terms-card { opacity: 0; }
 @media (max-width: 520px) { .terms-actions { flex-direction: column-reverse; } .terms-btn { width: 100%; } .terms-title { font-size: 23px; } }
+
+/* L-2 · «Save in the project…» in the viewer of an attachment: the folder and the name, under the
+   viewer's head, the way Archivos asks for a new file's name. */
+.viewer-keep-box { display: grid; gap: 6px; padding: 10px 16px 12px; border-bottom: 1px solid var(--line-2, color-mix(in srgb, var(--text) 12%, transparent)); }
+.viewer-keep-box .ask-label { font-size: 12.5px; color: var(--text); }
+.viewer-keep-box .ask-hint { font-size: 10.5px; line-height: 1.45; color: var(--text-2); }
+.viewer-keep-box input { width: 100%; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line-2, color-mix(in srgb, var(--text) 18%, transparent)); background: var(--panel); color: var(--text); font: inherit; font-family: var(--mono); font-size: 12px; }
+.viewer-keep-box .ask-actions { display: flex; justify-content: flex-end; gap: 8px; }

@@ -3232,6 +3232,13 @@ export const ES = {
 
   // El editor.
   'SAVE': 'Guardar',
+  'Save in the project…': 'Guardar en el proyecto…',
+  'Save in the project': 'Guardar en el proyecto',
+  'Folder and name inside the project': 'Carpeta y nombre dentro del proyecto',
+  'Folder and name inside the project, for example conocimiento/guia.pdf. A file that is already there is never replaced.': 'Carpeta y nombre dentro del proyecto, por ejemplo conocimiento/guia.pdf. Un archivo que ya existe nunca se reemplaza.',
+  'Saved in the project: {path}': 'Guardado en el proyecto: {path}',
+  'That attachment is no longer here.': 'Ese adjunto ya no está aquí.',
+  "That place is MADRE's own or a secret's: choose another folder.": 'Ese lugar es de MADRE o de un secreto: elige otra carpeta.',
   'FIND': 'Buscar',
   'REPLACE': 'Reemplazar',
   'GO TO LINE': 'Ir a línea',

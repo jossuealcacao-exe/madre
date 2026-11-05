@@ -3241,6 +3241,7 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
   viewer.open.href = src;
   viewer.body.replaceChildren(el('div', null, t('loading…')));
   viewerUI.path = root === 'project' ? path : null;
+  keepAttachmentUI?.show(root === 'attachments' && path && !url ? { fileName: path, name: label ?? path } : null);
   setSelection(null, null);
   viewerMode.kind = null;
   viewerMode.editable = false;
@@ -3279,6 +3280,63 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
     viewer.body.replaceChildren(el('div', 'err', error.message));
   }
 }
+// An attachment of the conversation, saved into the project where the person says (L-2, Carlos's
+// server): a patient's photo into pacientes/…/fotos/, a guide into conocimiento/. The button sits in
+// the viewer, beside «Open raw», only while what is open is an attachment; the folder used last is
+// offered again. A file already there is never replaced (src/files.mjs, keepAttachment).
+const KEEP_FOLDER = 'madre.keepFolder';
+const keepAttachmentUI = (() => {
+  const head = viewer.dialog?.querySelector('.viewer-head');
+  if (!head || !viewer.open) return null;
+  const button = el('button', 'viewer-review viewer-keep', t('Save in the project…'));
+  button.type = 'button';
+  button.hidden = true;
+  // Beside «Open raw», wherever the head keeps it: another part of the page moves it into a group,
+  // and inserting into the head itself threw and stopped the whole page.
+  viewer.open.parentNode.insertBefore(button, viewer.open);
+  const box = el('form', 'viewer-keep-box');
+  box.hidden = true;
+  head.after(box);
+  let current = null;
+  let input = null;
+  const close = () => { box.hidden = true; box.replaceChildren(); input = null; };
+  const lastFolder = () => { try { return localStorage.getItem(KEEP_FOLDER) ?? ''; } catch { return ''; } };
+  button.addEventListener('click', () => {
+    if (!current) return;
+    if (!box.hidden) { close(); return; }
+    input = el('input');
+    input.type = 'text';
+    input.spellcheck = false;
+    input.autocomplete = 'off';
+    input.value = `${lastFolder()}${current.name}`;
+    input.setAttribute('aria-label', t('Folder and name inside the project'));
+    const save = el('button', 'go', t('SAVE'));
+    save.type = 'submit';
+    const cancel = el('button', null, t('CANCEL'));
+    cancel.type = 'button';
+    cancel.addEventListener('click', close);
+    const actions = el('div', 'ask-actions');
+    actions.append(cancel, save);
+    box.replaceChildren(el('div', 'ask-label', t('Save in the project')), el('div', 'ask-hint', t('Folder and name inside the project, for example conocimiento/guia.pdf. A file that is already there is never replaced.')), input, actions);
+    box.hidden = false;
+    input.focus();
+    const dot = input.value.lastIndexOf('.');
+    input.setSelectionRange(lastFolder().length, dot > lastFolder().length ? dot : input.value.length);
+  });
+  box.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const to = input?.value.trim();
+    if (!to || !current) return;
+    const response = await fetch('/api/attachments/keep', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fileName: current.fileName, to }) }).catch(() => null);
+    const result = await response?.json().catch(() => ({})) ?? {};
+    if (!response?.ok) { toast(`${t('Diagnostics › ')}${result.error ?? t('That could not be done.')}`); return; }
+    try { localStorage.setItem(KEEP_FOLDER, result.path.includes('/') ? result.path.slice(0, result.path.lastIndexOf('/') + 1) : ''); } catch { /* only the suggestion is lost */ }
+    toast(t('Saved in the project: {path}', { path: result.path }));
+    close();
+    finderRefresh(result.path);
+  });
+  return { show(attachment) { current = attachment; button.hidden = !attachment; close(); } };
+})();
 viewer.close.addEventListener('click', async () => {
   let docked = false;
   try { docked = codeOn(); } catch { /* not yet */ }

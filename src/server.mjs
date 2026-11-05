@@ -110,7 +110,7 @@ import { migrateOpenCodeHealth, noteOpenCodeTurn, openCodeHealth, suggestOpenCod
 import { normalizeMode, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
-import { listDirectory, searchFiles, readServable, storeAttachment, resolveInside, createEmptyFile, writeEdited, MAX_ATTACHMENT_BYTES, MAX_EDIT_BYTES } from './files.mjs';
+import { listDirectory, searchFiles, readServable, storeAttachment, keepAttachment, resolveInside, createEmptyFile, writeEdited, MAX_ATTACHMENT_BYTES, MAX_EDIT_BYTES } from './files.mjs';
 import { planFileOp, freeCopyPath, needsDesignationOnDisk, CREATIONS } from './file-ops.mjs';
 import { ServerSentinel } from './server-sentinel.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
@@ -3722,6 +3722,23 @@ export async function createPulseServer({
         if (here.error) return sendJson(response, 404, here);
         const record = await here.room.registerAttachment(await storeAttachment(attachmentsRoot, { name, bytes }));
         return sendJson(response, 201, { attachment: { id: record.id, name: record.name, fileName: record.fileName, size: record.size, contentType: record.contentType, url: `/api/files?root=attachments&path=${encodeURIComponent(record.fileName)}` } });
+      }
+      // An attachment of the conversation, saved into the project where the person says (L-2,
+      // src/files.mjs keepAttachment): a PDF into conocimiento/, a patient's photo into its folder.
+      // The same steps as the attachment it comes from — the conversation it belongs to, MADRE's own
+      // store — and the same guard as a new file from Archivos. Recorded in that conversation.
+      if (request.method === 'POST' && url.pathname === '/api/attachments/keep') {
+        const payload = await body(request).catch(() => ({}));
+        const here = await scopeOf(url, response);
+        if (here.error) return sendJson(response, 404, here);
+        const to = String(payload.to ?? '').trim().replace(/^\/+/, '');
+        if (to && await needsDesignationOnDisk(canonicalProjectRoot, to) && !designationOk(payload.designation)) {
+          return sendJson(response, 403, { error: t('This file is one the project guards. Type the project name to save it.'), guarded: true });
+        }
+        const kept = await keepAttachment({ attachmentsRoot, projectRoot: canonicalProjectRoot, fileName: String(payload.fileName ?? ''), to });
+        if (kept.status !== 201) return sendJson(response, kept.status, { error: t(kept.error) });
+        await here.room.record('project.file.created', { path: kept.path, from: 'attachment', bytes: kept.bytes });
+        return sendJson(response, 201, { ok: true, path: kept.path, bytes: kept.bytes });
       }
       // The key for #3 and #4, checked here (src/override.mjs): what was typed, once or twice, and a
       // pass back for that agent and mode. Never from a phone: #3 and #4 are opened on the Mac.
