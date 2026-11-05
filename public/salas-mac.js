@@ -5341,7 +5341,7 @@ function openHomeWelcome({ at = null, then = null } = {}) {
 // in that room. Nothing scrolls inside the window: the screen behind it does.
 const SET_SECTIONS = [
   ['You', 'How Home looks and what its bar holds', ['look', 'bar']],
-  ['The agents', 'Who works on this Mac', ['agents', 'bishop', 'local']],
+  ['The agents', 'Who works on this Mac', ['agents', 'bishop', 'memory', 'local']],
   ['System', 'The projects of this Mac, the version and the manual', ['projects', 'release', 'manual']],
 ];
 // The room's own icons where the room has the category (app.js, SETTINGS_CATS); the bar, BISHOP
@@ -5351,12 +5351,13 @@ const SET_CATS = {
   bar: { name: 'Top bar', icon: trazoDrawing('arrange') },
   agents: { name: 'Agents', icon: trazoDrawing('agents') },
   bishop: { name: 'Coordinator', icon: trazoDrawing('coordinator') },
+  memory: { name: 'Memory', icon: trazoDrawing('chip') },
   local: { name: 'Local AI', icon: trazoDrawing('spark') },
   projects: { name: 'Projects', icon: trazoDrawing('folder') },
   release: { name: 'Version', icon: trazoDrawing('refresh') },
   manual: { name: 'User manual', icon: trazoDrawing('book') },
 };
-const SET_ORDER = ['look', 'bar', 'agents', 'bishop', 'local', 'projects', 'release'];
+const SET_ORDER = ['look', 'bar', 'agents', 'bishop', 'memory', 'local', 'projects', 'release'];
 // The words the search knows, each pointing to the category that holds it (app.js, SETTINGS_INDEX).
 const SET_INDEX = [
   ['look', 'Preview'], ['look', 'Theme'], ['look', 'Accent'], ['look', 'Wallpaper'], ['look', 'Intensity'], ['look', 'Blur'], ['look', 'Project cards'], ['look', 'Text'], ['look', 'Project order'], ['look', 'Language'],
@@ -5439,6 +5440,8 @@ function setStatus(id) {
     return { line: t('{n} of {total} signed in', { n: here.length - off.length, total: here.length }), warn: off.length ? t('{agents} without a session', { agents: off.map((agent) => agent.label ?? agent.id).join(', ') }) : null };
   }
   if (id === 'bishop') { const room = bishopRoom(); return { line: room ? stateOf(room).words : t('Reading…') }; }
+  // Home's own, never the projects' (L-10): /api/settings is asked of Home's room.
+  if (id === 'memory') { const stats = agentsSeen?.settings?.memory?.stats; return { line: stats ? memoriesCount(stats.memories ?? 0) : t('Reading…') }; }
   if (id === 'local') {
     if (!localSeen) return { line: localFailed ? t('Home did not answer.') : t('Reading…') };
     const on = localSeen.projects.filter((one) => one.on).length;
@@ -5723,6 +5726,28 @@ function fillBishop(host) {
   const block = sxBlock(host, t('Coordinator'), t('Its agent and its mode are chosen in its own project.'));
   sxRow(block, t('Talk to the Coordinator'), room ? stateOf(room).words : null, sxButton(t('Open'), () => { settingsSheet?.close(); openBishop(); }, { tone: 'primary' }));
   sxRow(block, t('Open the Coordinator in a new tab'), null, sxButton(t('Open'), () => openBishop({ newTab: true })));
+}
+// MEMORY (L-10, 2026-11-05): what Home itself remembers — the Coordinator and what is said here —
+// and nothing of the projects. The Memory tile on Home adds up the open projects, and that was read
+// as Home's; each project keeps its own in its own Settings. Asked of Home's room, the routes a
+// project's Settings › What it remembers asks of its own; the rest of the settings stay there.
+async function fillMemory(host) {
+  const block = sxBlock(host, t('Home\'s memory'), t('What Home remembers: the Coordinator and what is said here. Each project keeps its own memory, in its own Settings.'));
+  sxRow(block, t('Reading…'), null);
+  const ask = (path) => fetch(path, { cache: 'no-store' }).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null);
+  const [dash, settings] = await Promise.all([ask('/api/memory/dashboard').then((one) => one?.dashboard ?? null), ask('/api/settings').then((one) => one?.settings?.memory ?? null)]);
+  if (!block.isConnected) return;
+  block.rows.replaceChildren();
+  if (!dash && !settings) sxRow(block, t('Home did not answer.'), null);
+  else {
+    const totals = dash?.totals ?? settings?.stats ?? {};
+    sxRow(block, t('Memories'), totals.pending ? t('{n} exchanges still to sort', { n: totals.pending }) : null, el('b', null, memoriesCount(totals.memories ?? 0)));
+    const kinds = KINDS.filter((kind) => dash?.kinds?.[kind]).map((kind) => `${kindWord(kind)} · ${dash.kinds[kind]}`);
+    if (kinds.length) sxRow(block, t('By kind'), kinds.join(' · '));
+    if (settings) sxRow(block, t('Who takes notes'), settings.enabled === false ? t('Off') : settings.archivist === 'ollama' ? t('Local AI') : settings.archivist && settings.archivist !== 'auto' ? `@${settings.archivist}` : t('Automatic · the cheapest one'));
+  }
+  const more = sxBlock(host, t('The rest'), t('Who may take notes, how often and how it searches are set in the Coordinator, in its Settings › What it remembers.'));
+  sxRow(more, t('Talk to the Coordinator'), null, sxButton(t('Open'), () => { settingsSheet?.close(); openBishop(); }, { tone: 'primary' }));
 }
 // LOCAL AI (src/local-ai.mjs): whether every project uses Ollama, the ones picked here, or each
 // one as it decides in its own Settings. The switch of each project is the same one its Settings
@@ -6090,7 +6115,7 @@ async function updateHome(info, key, said) {
   }
   drop(t('Home did not come back on its own. Start MADRE again from your terminal.'));
 }
-const SET_FILL = { look: fillLook, bar: fillBar, agents: fillAgents, bishop: fillBishop, local: fillLocal, projects: fillProjects, release: fillRelease };
+const SET_FILL = { look: fillLook, bar: fillBar, agents: fillAgents, bishop: fillBishop, memory: (host) => void fillMemory(host), local: fillLocal, projects: fillProjects, release: fillRelease };
 
 let settingsSheet = null;
 function openSettings(section = null) {

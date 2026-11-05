@@ -73,3 +73,36 @@ test('home widgets: «MADRE usage» exists only with the author\'s token, and re
     for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
   }
 });
+
+// L-10 (Carlos's copy, 2026-11-05): Home's Settings had no Memory, and the Memory tile on Home adds
+// up the projects. Settings › Memory says what Home itself remembers, asked of Home's own room.
+test('home settings: Memory is Home\'s own, never the projects\' added up (L-10)', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(home, /\['The agents', 'Who works on this Mac', \['agents', 'bishop', 'memory', 'local'\]\]/);
+  assert.match(home, /const SET_ORDER = \[[^\]]*'memory'/);
+  assert.match(home, /memory: \(host\) => void fillMemory\(host\)/);
+  const fill = home.slice(home.indexOf('async function fillMemory'), home.indexOf('// LOCAL AI (src/local-ai.mjs)'));
+  // The routes of the room that serves the page — Home's — and nothing that walks the projects.
+  assert.match(fill, /ask\('\/api\/memory\/dashboard'\)/);
+  assert.match(fill, /ask\('\/api\/settings'\)/);
+  assert.doesNotMatch(fill, /data\.rooms|glance|census/, 'the projects\' memory reached Home\'s Settings');
+  // Home's room answers those with its own memory: a fresh Home has none.
+  const root = await mkdtemp(join(tmpdir(), 'pulse-home-memory-'));
+  const { mkdir } = await import('node:fs/promises');
+  const { salasProjectRoot } = await import('../src/salas.mjs');
+  await mkdir(salasProjectRoot(root), { recursive: true });
+  const { server } = await createPulseServer({ projectRoot: salasProjectRoot(root), stateRoot: root, agents: [], testMode: true });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const dash = (await fetch(`${base}/api/memory/dashboard`).then((answer) => answer.json())).dashboard;
+    assert.equal(dash.totals.memories, 0);
+    assert.equal((await fetch(`${base}/api/state`).then((answer) => answer.json())).salas, true, 'not Home\'s room');
+    const settings = await fetch(`${base}/api/settings`).then((answer) => answer.json());
+    assert.equal(settings.settings.memory.stats.memories, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

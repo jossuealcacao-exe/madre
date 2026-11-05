@@ -3996,6 +3996,11 @@ export const ES = {
   'Close it': 'Cerrarlo',
   'You are here': 'Estás aquí',
   'Back to the project': 'Volver al proyecto',
+  'Home\'s memory': 'La memoria de Inicio',
+  'What Home remembers: the Coordinator and what is said here. Each project keeps its own memory, in its own Settings.': 'Lo que recuerda Inicio: el Coordinador y lo que se habla aquí. Cada proyecto guarda su propia memoria, en sus propios Ajustes.',
+  '{n} exchanges still to sort': '{n} intercambios por ordenar',
+  'The rest': 'Lo demás',
+  'Who may take notes, how often and how it searches are set in the Coordinator, in its Settings › What it remembers.': 'Quién puede tomar notas, cada cuánto y cómo busca se ajusta en el Coordinador, en sus Ajustes › Lo que recuerda.',
   'Talk to the Coordinator': 'Hablar con el Coordinador',
   // BISHOP's orders (docs/MACROVERSO.md, fase 4b): the card, the channel's refusals, the answers.
   'The Coordinator proposes a plan · {plan}': 'El Coordinador propone un plan · {plan}',
