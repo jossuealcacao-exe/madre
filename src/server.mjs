@@ -2351,14 +2351,21 @@ export async function createPulseServer({
       clearTimeout(flushTimer);
       await flush();
       const after = await extension.detect(canonicalProjectRoot);
+      const ok = result.code === 0 && after.installed;
+      // Why it failed, for the diagnostics (D-10: two copies said only «install failed · ahp»): the
+      // installer's own code when it prints one (AHP+ writes `"error": "GIT_REQUIRED"`), else the
+      // kind of trouble its last lines show, else a command that ended well and installed nothing.
+      // Words and codes only: the lines themselves carry paths and stay in the conversation.
+      const said = lines.map((line) => line.match(/^\s*"error":\s*"([A-Z][A-Z0-9_]{2,40})"/)?.[1]).filter(Boolean).at(-1);
       await room.record('extension.install.finished', {
         id,
         name: extension.name,
         code: result.code,
         error: result.error ?? null,
-        ok: result.code === 0 && after.installed,
+        ok,
         status: after,
         tail: lines.slice(-12),
+        trouble: ok ? null : said ?? (result.code === 0 ? 'not-installed' : installTrouble(`${result.error ?? ''}\n${lines.slice(-20).join('\n')}`)),
       });
       installing = null;
     })();

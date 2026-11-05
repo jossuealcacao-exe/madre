@@ -1314,6 +1314,48 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   }
 });
 
+// D-10: two copies in WSL said only «install failed · ahp». The finished event carries why, in codes
+// and words, never the lines (they carry paths): the installer's own code, the trouble its lines
+// show, or a command that ended well and installed nothing.
+test('a module install that fails says why, without its paths (D-10)', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pulse-d10-')));
+  const project = join(root, 'project');
+  await mkdir(project, { recursive: true });
+  await execFileAsync('git', ['init', '-q'], { cwd: project });
+  const fake = (script) => ({ command: process.execPath, args: ['-e', script], display: 'node fake-ahp-setup', platforms: [] });
+  const scripts = [
+    `process.stderr.write(JSON.stringify({ ok: false, error: 'GIT_REQUIRED', message: 'No Git repository found from ${project}. AHP+ Core requires Git.' }, null, 2) + '\\n'); process.exit(2);`,
+    `console.error('npm error code ECONNRESET'); console.error('npm error network request to https://registry.npmjs.org failed'); process.exit(1);`,
+    `console.log('done, nothing written');`,
+  ];
+  let next = 0;
+  const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: join(root, 'state'), agents: [], broadcastIntervalMs: 50, installers: { ahp: () => fake(scripts[next]) } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const troubles = [];
+    for (; next < scripts.length; next += 1) {
+      const accepted = await fetch(`${base}/api/extensions/ahp/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+      assert.equal(accepted.status, 202);
+      let finished = null;
+      for (let tries = 0; !finished && tries < 200; tries += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        finished = (await store.readAll()).filter((event) => event.type === 'extension.install.finished')[next];
+      }
+      assert.equal(finished.payload.ok, false);
+      troubles.push(finished.payload.trouble);
+    }
+    assert.deepEqual(troubles, ['GIT_REQUIRED', 'network', 'not-installed']);
+    assert.ok(!troubles.join(' ').includes(project), 'a path went to the diagnostics');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+  // The diagnostics read it after the module's name: «install failed · ahp · GIT_REQUIRED».
+  const source = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(source, /message: \[said\.detail \?\? 'install failed', said\.id, said\.trouble\]/);
+});
+
 test('room.record only accepts namespaced, non-reserved event types', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-record-'));
   try {
