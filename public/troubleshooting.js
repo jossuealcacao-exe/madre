@@ -152,7 +152,9 @@ export const CONDITIONS = [
     agent: 'gemini',
     severity: 'transient',
     title: 'Gemini model under high demand (503)',
-    match: /status 503|high demand|UNAVAILABLE/i,
+    // MADRE's own sentence too, in the room's language (1.1.2 diagnostics: 14 copies filed «Google
+    // reportó el modelo como no disponible (HTTP 503)…» as unknown).
+    match: /status 503|high demand|UNAVAILABLE|\(HTTP 503\)/i,
     diagnosis: 'Google is shedding load on the selected model (HTTP 503). The CLI would retry with backoff for minutes; MADRE stops it after 15 s of that and retries once on gemini-3-flash-preview. The turn failed only if that spare model failed too; the message is still the one about the model you chose.',
     remedy: 'Ask again in a minute, pick an explicit model from the Write box\'s model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the spare model; left empty, there is none.',
     fixes: same(['# wait, then resend — or continue with @codex / @claude / @opencode', 'PULSE_GEMINI_FALLBACK_MODEL= madre start']),
@@ -191,7 +193,8 @@ export const CONDITIONS = [
     agent: 'opencode',
     severity: 'blocking',
     title: 'OpenCode\'s free models have run out for now',
-    match: /Free usage limit reached|free use of OpenCode ran out/i,
+    // And MADRE's sentence in Spanish (1.1.2 diagnostics: 5 copies filed it as unknown).
+    match: /Free usage limit reached|free use of OpenCode ran out|uso gratis de OpenCode/i,
     diagnosis: 'OpenCode\'s own free models (opencode/…) answer without an account, but only up to a limit; when it is reached OpenCode retries in silence and never answers. MADRE now stops the turn as soon as OpenCode says so, instead of waiting for the clock. Nothing in the project is wrong.',
     remedy: 'Connect a provider of yours to OpenCode in Settings › Agents › OpenCode (your ChatGPT account, GitHub Copilot or an API key), ask another agent, or ask @madre, which runs on this computer. The free use comes back after a while.',
     fixes: same(['# the providers OpenCode can use:', 'opencode auth login', '# subscription for more free use: https://opencode.ai/go']),
@@ -219,6 +222,21 @@ export const CONDITIONS = [
     diagnosis: 'Your ChatGPT account has used up the Codex usage its plan gives for this period, and Codex refuses every turn until it renews. Codex says when that is at the end of its message. It is OpenAI\'s limit, not MADRE\'s: nothing in the project is wrong.',
     remedy: 'Wait until the date Codex gives, change your ChatGPT plan, or ask another agent in the meantime.',
     fixes: same(['# plan and usage: https://chatgpt.com/codex/settings/usage']),
+  },
+  {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03 to 11-06, two copies): Codex signed in with a
+    // ChatGPT account asks, before each turn, which workspace of that account to send it to, and
+    // «workspace routing discovery failed» reached the author as an unknown failure. Its 401 is a
+    // session gone, which the signed-out card already reads.
+    id: 'codex-workspace-routing',
+    code: 'MU-083',
+    agent: 'codex',
+    severity: 'transient',
+    title: 'Codex could not reach its ChatGPT workspace',
+    match: /workspace routing discovery (?:failed|timed out)/i,
+    diagnosis: 'Signed in with a ChatGPT account, Codex first asks OpenAI which workspace of that account the turn goes to, and that question did not get an answer: OpenAI did not answer in time, or this computer\'s connection did not get through. Nothing in the project is wrong.',
+    remedy: 'Try again in a moment. If it keeps happening, sign Codex in again in Settings › Agents › Codex, and check the connection of this computer.',
+    fixes: same(['# sign in again:', 'codex logout', 'codex login']),
   },
   {
     // Seen in the diagnostics of 1.1.2 (2026-11-03): a model the ChatGPT plan does not include
@@ -303,7 +321,9 @@ export const CONDITIONS = [
     title: 'Agent installed but signed out',
     // «set an Auth method»: Gemini with no account chosen exits with code 41 (1.1.0 diagnostics).
     // «Update your environment»: Gemini chosen to use an API key with none set, code 41 too (1.1.2, D-7).
-    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again/i,
+    // Gemini's refusal in MADRE's words, in both languages (1.1.2 diagnostics: 4 copies filed «Google
+    // rechazó las credenciales de Gemini» as unknown, and no card matched the English either).
+    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again|rejected the Gemini credentials|rechazó las credenciales de Gemini/i,
     diagnosis: 'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.',
     remedy: 'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.',
     fixes: same(['npx @jossuealcala/madre setup', '# or directly:', 'codex login', 'claude auth login', 'opencode auth login', 'gemini   # then /auth']),

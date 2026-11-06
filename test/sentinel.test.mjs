@@ -231,3 +231,28 @@ test('the sentinel · @madre without Ollama is known: the card says how to start
   // Ollama running without a chat model is not this card: starting Ollama would not help.
   assert.ok(!diagnose('@madre left the project: Ollama has no chat model running', 'madre').some((condition) => condition.code === 'MU-067'));
 });
+
+// 1.1.2 diagnostics read on 2026-11-05: MADRE's own sentences, written in the room's language, and
+// one line of Codex's reached the author as unknown failures, and the person saw no card: Google's
+// 503 (14 copies), OpenCode's free use (5), Gemini's credentials (4), Codex's workspace routing (2).
+test('the sentinel · what MADRE says in Spanish, and Codex\'s workspace routing, are known by their code', async () => {
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const told = [];
+  const sentinel = new ErrorSentinel({ pkg: { name: '@jossuealcala/madre', version: '1.1.2' }, agents: [], told: (one) => told.push(one) });
+  const failed = (target, error) => ({ type: 'message.failed', timestamp: new Date().toISOString(), payload: { target, error } });
+  for (const [target, error, code] of [
+    ['gemini', 'Google reportó el modelo como no disponible (HTTP 503) y la app de Gemini siguió reintentando. Vuelve a intentar en un momento o elige otro modelo.', 'MU-006'],
+    ['gemini', 'Google informó que el modelo no está disponible (HTTP 503).', 'MU-006'],
+    ['opencode', 'Se terminó por ahora el uso gratis de OpenCode: sus modelos gratis tienen un límite y OpenCode dejó de contestar.', 'MU-073'],
+    ['gemini', 'Google rechazó las credenciales de Gemini. Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.', 'MU-008'],
+    ['gemini', 'Google rejected the Gemini credentials.', 'MU-008'],
+    ['codex', 'workspace routing discovery failed', 'MU-083'],
+    ['codex', 'workspace routing discovery timed out', 'MU-083'],
+  ]) {
+    assert.equal(await sentinel.observe(failed(target, error)), null, `${code} was filed as unknown`);
+    assert.equal(told.at(-1).code, code, error);
+    assert.ok(diagnose(error, target).some((condition) => condition.code === code), `the person sees no ${code} card`);
+  }
+  // A session gone is still the signed-out card, not the workspace one.
+  assert.equal(diagnose('workspace routing discovery unauthorized (401)', 'codex').find((one) => one.severity === 'blocking')?.code, 'MU-008');
+});

@@ -5807,6 +5807,10 @@ export const ES = {
   'Wait for the usage to renew, change the Cursor plan, or ask another agent in the meantime.': 'Espera a que se renueve el uso, cambia el plan de Cursor o pregúntale a otro agente mientras tanto.',
   'MADRE changed version while it was open. Close it and open it again.': 'MADRE cambió de versión mientras estaba abierta. Ciérrala y vuelve a abrirla.',
   'Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.': 'Para instalarla hace falta zstd, y este Linux no lo tiene. En una terminal: sudo apt install -y zstd, y vuelve a intentar.',
+  'Codex could not reach its ChatGPT workspace': 'Codex no pudo llegar a su espacio de trabajo de ChatGPT',
+  'Signed in with a ChatGPT account, Codex first asks OpenAI which workspace of that account the turn goes to, and that question did not get an answer: OpenAI did not answer in time, or this computer\'s connection did not get through. Nothing in the project is wrong.': 'Con una cuenta de ChatGPT, Codex primero le pregunta a OpenAI a qué espacio de trabajo de esa cuenta va el turno, y esa pregunta no tuvo respuesta: OpenAI no contestó a tiempo o la conexión de esta computadora no pasó. Nada del proyecto está mal.',
+  'Try again in a moment. If it keeps happening, sign Codex in again in Settings › Agents › Codex, and check the connection of this computer.': 'Vuelve a intentarlo en un momento. Si sigue pasando, vuelve a iniciar sesión en Codex en Ajustes › Agentes › Codex y revisa la conexión de esta computadora.',
+  '# sign in again:': '# vuelve a iniciar sesión:',
   'Codex has reached its usage limit': 'Codex llegó a su límite de uso',
   // MU-075 (2026-11-03): un modelo que la cuenta de ChatGPT no incluye.
   'Codex does not offer that model on this account': 'Codex no ofrece ese modelo en esta cuenta',
