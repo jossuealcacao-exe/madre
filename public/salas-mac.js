@@ -2134,7 +2134,7 @@ const WIDGET_PAINT = {
     const SYSTEMS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows', wsl: 'WSL', other: t('other') };
     const CHANNELS = { npx: 'npx', global: t('installed (npm -g)'), project: t('inside a project'), source: t('from source') };
     const LANGS = { es: t('Spanish'), en: t('English') };
-    const AGENT_NAMES = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini', opencode: 'OpenCode', cursor: 'Cursor' };
+    const AGENT_NAMES = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini', opencode: 'OpenCode', cursor: 'Cursor', grok: 'Grok' };
     const said = (list, words = {}) => (list ?? []).filter((one) => one.name !== '?').slice(0, 5).map((one) => `${words[one.name] ?? one.name} ${share(one.n)}`).join(' · ') || '—';
     const lines = el('div', 'sm-usage-lines sm-env-lines');
     for (const [label, text] of [
@@ -4835,7 +4835,7 @@ void loadMarket({ toast: (words, action) => toast(words, action ? 'news' : 'done
 // `compact` is the welcome's first step: there, a connected agent is done, and a button to change
 // the account it signs in with is a question nobody asked on their first minute.
 // Who makes each agent, said under its name as the project's AJUSTES says it.
-const VENDOR_WORDS = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: 'OpenCode', cursor: 'Cursor' };
+const VENDOR_WORDS = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: 'OpenCode', cursor: 'Cursor', grok: 'xAI' };
 
 // OpenCode's providers in Home, the same block as the project's AJUSTES › Agents › OpenCode: a line
 // per provider with a key or an account and its switch for the chat, one row to add another, and

@@ -131,7 +131,7 @@ Since 1.1.0, from **#1 to #3**, Claude, OpenCode and Codex may split their work 
 | **Claude** | The `Agent` tool: the subagent inherits the same tools and rules (`--tools`, `--allowedTools`, `dontAsk`) | No `Agent` |
 | **OpenCode** | Only `explore` and `general`, each with the turn's permissions and unable to call another (OpenCode's own write and run commands) | `task` denied |
 | **Codex** | Its subagents stay inside the same sandbox | A one-thread limit: `features.multi_agent_v2.max_concurrent_threads_per_session=1` |
-| **Gemini** · **Cursor** | No | No |
+| **Gemini** · **Cursor** · **Grok** | No | No |
 
 Tried with the real AIs (Claude 2.1.267, OpenCode 1.18.4, Codex 0.161): in #1 the subagent reads and does not write; in #3 it writes in the project, `.pulse/` refuses it and there are no commands; in #4 Codex answers «agent thread limit reached».
 
@@ -407,6 +407,8 @@ MADRE's folder is only taken away whole when it is MADRE's beyond doubt: an abso
 | `PULSE_DELEGATION` · `PULSE_MAX_PLAN_STEPS` | `1` · `4` | Plans |
 | `PULSE_ESCALATION_MS` | `180000` | Permission request timer |
 | `PULSE_OPENCODE_MODEL` | from the config | `proveedor/modelo` for OpenCode |
+| `PULSE_GROK_MODEL` | Grok's own | Grok's model when none is chosen (`grok models` lists them) |
+| `PULSE_GROK_SANDBOX` | `read-only` | `off` drops `--sandbox` where Grok's isolation cannot start; `--tools` still keeps it to reading |
 | `PULSE_CLAUDE_USAGE` · `PULSE_OFFICIAL_QUOTA` | `0` · `1` | Claude's official quota (reads the keychain); `0` turns off all provider reads |
 | `PULSE_GEMINI_IDLE_MS` · `PULSE_GEMINI_RETRIES` · `PULSE_GEMINI_FALLBACK_MODEL` | `90000` · `1` · `gemini-3-flash-preview` (empty: no spare) | Gemini under load |
 

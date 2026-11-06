@@ -45,6 +45,10 @@ const installAgent = {
     darwin: ['curl https://cursor.com/install -fsS | bash'],
     linux: ['curl https://cursor.com/install -fsS | bash']
   },
+  grok: {
+    darwin: ['npm install -g @xai-official/grok'],
+    linux: ['npm install -g @xai-official/grok']
+  },
 };
 
 const loginAgent = {
@@ -53,6 +57,7 @@ const loginAgent = {
   gemini: { darwin: ['gemini', '# inside gemini: /auth  → "Use Gemini API key" or Google login'], linux: ['gemini', '# inside gemini: /auth']},
   opencode: { darwin: ['opencode auth login', 'opencode auth list'], linux: ['opencode auth login', 'opencode auth list']},
   cursor: { darwin: ['cursor-agent login', 'cursor-agent status'], linux: ['cursor-agent login', 'cursor-agent status']},
+  grok: { darwin: ['grok login', 'grok models'], linux: ['grok login --device-auth', 'grok models']},
 };
 
 const same = (commands) => ({ darwin: commands, linux: commands });
@@ -211,6 +216,20 @@ export const CONDITIONS = [
     fixes: same(['# plan and usage: https://cursor.com/dashboard', 'cursor-agent status']),
   },
   {
+    // Seen with a Grok Plus account on 2026-11-06: every turn refused with «Access to the chat
+    // endpoint is denied», in the CLI's own screen too. The sign-in had been made before the plan
+    // was active; signing in again fixed it.
+    id: 'grok-account-refused',
+    code: 'MU-084',
+    agent: 'grok',
+    severity: 'blocking',
+    title: 'xAI refuses this Grok account',
+    match: /chat endpoint is denied|xAI refused this Grok account|xAI rechazó esta cuenta de Grok/i,
+    diagnosis: 'Grok is signed in, but xAI answers every turn with a 403. It happens when the sign-in was made before the plan was active. It is xAI\'s answer, not MADRE\'s: nothing in the project is wrong.',
+    remedy: 'Sign in to Grok again: grok logout, then grok login. If it keeps happening, check at grok.com that your plan is active.',
+    fixes: same(['grok logout', 'grok login', 'grok models   # «You are logged in with grok.com.»']),
+  },
+  {
     // Seen in the diagnostics of 1.1.0 (2026-10-31): Codex on a free ChatGPT account ran out and
     // the room called it an unknown failure.
     id: 'codex-usage-limit',
@@ -323,7 +342,7 @@ export const CONDITIONS = [
     // «Update your environment»: Gemini chosen to use an API key with none set, code 41 too (1.1.2, D-7).
     // Gemini's refusal in MADRE's words, in both languages (1.1.2 diagnostics: 4 copies filed «Google
     // rechazó las credenciales de Gemini» as unknown, and no card matched the English either).
-    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again|rejected the Gemini credentials|rechazó las credenciales de Gemini/i,
+    match: /not logged in|Grok is not signed in|Grok no tiene sesión|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again|rejected the Gemini credentials|rechazó las credenciales de Gemini/i,
     diagnosis: 'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.',
     remedy: 'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.',
     fixes: same(['npx @jossuealcala/madre setup', '# or directly:', 'codex login', 'claude auth login', 'opencode auth login', 'gemini   # then /auth']),
@@ -1051,7 +1070,7 @@ export const allConditions = () => CONDITIONS.map(said);
 
 // Lowercase and without accents: «limite» finds «límite», and a person types what they type.
 const fold = (text) => String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const AGENT_WORDS = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'madre', 'ollama']);
+const AGENT_WORDS = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'grok', 'madre', 'ollama']);
 const named = (words) => words.find((word) => AGENT_WORDS.has(word.replace(/^@/, '')))?.replace(/^@/, '') ?? null;
 const wordsOf = (query) => fold(query).split(/[^a-z0-9#.@_-]+/).filter(Boolean);
 
@@ -1077,7 +1096,7 @@ const SYMPTOMS = [
       /\b(?:sign(?:ed)?|log(?:ged)?)[ -]?(?:in|out)\b|\blog[ -]?in\b|\bauthenticat|\bcredential|\bpassword|\bre-?auth/,
       /\b(?:inici\w*|cerr\w*|abr\w*|pide\w*)(?: la| una| mi| de)? sesion|\bsesion (?:cerrada|expirada|vencida)|\bsin sesion|\bautentic|\bcredencial|\bcontrasena|\bme pide (?:entrar|la cuenta|mi cuenta)/,
     ],
-    cards: ['not-signed-in', 'gemini-ineligible-tier', 'opencode-default-provider', 'custom-agent-endpoint'],
+    cards: ['not-signed-in', 'grok-account-refused', 'gemini-ineligible-tier', 'opencode-default-provider', 'custom-agent-endpoint'],
   },
   {
     id: 'no-credit',
@@ -1111,7 +1130,7 @@ const SYMPTOMS = [
       /\b(?:doesn'?t|does not|isn'?t|is not|not|won'?t|stopped) work\w*|\bbroken\b|\bfail(?:s|ed|ing)?\b/,
       /\bno (?:funciona|jala|sirve|anda|arranca|abre)\b|\bfall(?:a|o|ando)\b|\bdej\w* de funcionar|\besta roto\b/,
     ],
-    cards: ['not-signed-in', 'not-installed', 'timeout', 'provider-credit-exhausted', 'gemini-rate-limited', 'gemini-ineligible-tier', 'cursor-usage-limit', 'opencode-default-provider', 'madre-agent', 'ollama', 'adapter-pending'],
+    cards: ['not-signed-in', 'not-installed', 'timeout', 'provider-credit-exhausted', 'gemini-rate-limited', 'gemini-ineligible-tier', 'cursor-usage-limit', 'grok-account-refused', 'opencode-default-provider', 'madre-agent', 'ollama', 'adapter-pending'],
   },
 ];
 

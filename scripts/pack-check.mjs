@@ -44,8 +44,8 @@ try {
   check(/madre start/.test(help), 'installed CLI prints help');
   const { stdout: doctor } = await run(cli, ['doctor', '--json', '--project', projectRoot]).catch((error) => error);
   const report = JSON.parse(doctor);
-  // Codex, Claude, Gemini, OpenCode and, since 1.0.3, Cursor.
-  check(Array.isArray(report.agents) && report.agents.length === 5, 'doctor reports five agents');
+  // Codex, Claude, Gemini, OpenCode, Cursor (since 1.0.3) and Grok (2026-11-06).
+  check(Array.isArray(report.agents) && report.agents.length === 6, 'doctor reports six agents');
 
   const stateRoot = join(workspace, 'state');
   const port = 40000 + Math.floor(Math.random() * 20000);

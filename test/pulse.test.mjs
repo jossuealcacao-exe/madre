@@ -2033,10 +2033,12 @@ test('capabilities: verified matrix, routing helper', () => {
   assert.equal(capabilitySummary('codex').imageGen, true);
   assert.equal(capabilitySummary('claude').imageGen, false);
   assert.equal(capabilitySummary('gemini').imageGen, false);
-  // Every CLI reads and writes under a lease; all but Cursor take an image (Cursor's is named in the
-  // briefing). Cursor writes from 2026-10-21, held by the room's own guard (adapters/cursor.mjs).
-  assert.ok(Object.values(CAPABILITIES).every((caps) => caps.read && caps.write));
-  assert.ok(Object.entries(CAPABILITIES).filter(([id]) => id !== 'cursor').every(([, caps]) => caps.imageIn));
+  // Every CLI reads and writes under a lease but Grok, which reads only (2026-11-06); all but Cursor
+  // and Grok take an image (theirs is named in the briefing). Cursor writes from 2026-10-21, held by
+  // the room's own guard (adapters/cursor.mjs).
+  assert.ok(Object.entries(CAPABILITIES).filter(([id]) => id !== 'grok').every(([, caps]) => caps.read && caps.write));
+  assert.ok(CAPABILITIES.grok.read && !CAPABILITIES.grok.write);
+  assert.ok(Object.entries(CAPABILITIES).filter(([id]) => id !== 'cursor' && id !== 'grok').every(([, caps]) => caps.imageIn));
   assert.equal(capabilitySummary('unknown').write, false);
   assert.match(capabilitySummary('codex').detail.imageIn.how, /-i <file>/);
 });

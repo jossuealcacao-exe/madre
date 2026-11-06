@@ -398,7 +398,7 @@ export class OutboundLog {
 export function outboundView({ log = null, state = {}, agents = [] } = {}) {
   const counts = log?.counts() ?? {};
   // Said in the room's language (2026-10-12): the list read in English inside a Spanish room.
-  const vendors = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: t('the provider OpenCode is signed in to'), cursor: 'Cursor' };
+  const vendors = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: t('the provider OpenCode is signed in to'), cursor: 'Cursor', grok: 'xAI' };
   const crew = agents.filter((agent) => agent.detected && !agent.local).map((agent) => `@${agent.id} → ${agent.route?.destination ?? vendors[agent.id] ?? t('its own provider')}`);
   const destinations = DESTINATIONS.map((one) => ({
     id: one.id,

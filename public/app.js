@@ -3775,8 +3775,8 @@ let modelMenuFor = null;
 async function ensureModels(id) {
   if (state.models[id]) return state.models[id];
   try {
-    // OpenCode, Cursor and Gemini are asked for their own lists only when their chooser opens: each asks its CLI or its maker.
-    const data = await fetch(`/api/models${['opencode', 'cursor', 'gemini'].includes(id) ? `?${id}=1` : ''}`).then((response) => response.json());
+    // OpenCode, Cursor, Gemini and Grok are asked for their own lists only when their chooser opens: each asks its CLI or its maker.
+    const data = await fetch(`/api/models${['opencode', 'cursor', 'gemini', 'grok'].includes(id) ? `?${id}=1` : ''}`).then((response) => response.json());
     state.models = { ...state.models, ...(data.models ?? {}) };
     takeEfforts(data.models);
   } catch { /* offline: fall back to whatever we know */ }
@@ -5680,6 +5680,12 @@ const WORKING_VOICE = {
     late: [t('Working through it…'), t('Double-checking…'), t('Piecing it together…')],
     long: [t('Writing the response…'), t('Tidying the answer…'), t('Nearly done…')],
   },
+  grok: {
+    early: [t('Reading the repo…'), t('Searching the project…'), t('Grabbing context…')],
+    middle: [t('Thinking…'), t('Digging through the code…'), t('Following the references…'), t('Looking closer…')],
+    late: [t('Working through it…'), t('Double-checking…'), t('Piecing it together…')],
+    long: [t('Writing the response…'), t('Tidying the answer…'), t('Nearly done…')],
+  },
   opencode: {
     early: [t('Reading the repo…'), t('Listing files…'), t('Grabbing context…')],
     middle: [t('Thinking…'), t('Digging through the code…'), t('Following the call chain…'), t('Looking closer…')],
@@ -6113,6 +6119,8 @@ function attachModeAsk(payload, { sequence = null } = {}) {
   if (!wanted || wanted <= state.mode) return null;
   const agent = payload.sender;
   if (!state.agents.get(agent)?.ready) return null;
+  // An agent that reads at every mode (Grok, Gemini through its API) cannot be given more: no card.
+  if (wanted >= 2 && !canWrite(agent)) return null;
   const label = MODES[wanted]?.label ?? '';
   const card = el('div', 'mode-ask');
   tint(card, agent);

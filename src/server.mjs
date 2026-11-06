@@ -100,9 +100,12 @@ import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
 import { cursorOnlyAuto } from './adapters/cursor.mjs';
+import { parseGrokModels } from './adapters/grok.mjs';
 // Cursor's own list of models (`cursor-agent --list-models`), kept a few minutes: reading it asks
 // Cursor's servers.
 const cursorModels = { at: 0, ids: [] };
+// Grok's (`grok models`, 2026-11-06), kept as long: it asks xAI for the account's list.
+const grokModels = { at: 0, list: null };
 // And Gemini's, from Google with the person's key.
 const geminiModels = { at: 0, ids: [] };
 import { observable } from './modules/intents-observe.mjs';
@@ -222,7 +225,7 @@ export async function openUrl(url) {
 
 // PULSE_AGENT_TIMEOUT_MS applies to every agent; PULSE_<AGENT>_TIMEOUT_MS
 // (e.g. PULSE_CLAUDE_TIMEOUT_MS) overrides it for one.
-export function agentTimeoutsFromEnv(env = process.env, agentIds = ['codex', 'claude', 'gemini', 'opencode', 'cursor']) {
+export function agentTimeoutsFromEnv(env = process.env, agentIds = ['codex', 'claude', 'gemini', 'opencode', 'cursor', 'grok']) {
   const timeouts = {};
   const shared = Number(env.PULSE_AGENT_TIMEOUT_MS);
   if (Number.isFinite(shared) && shared > 0) timeouts.default = shared;
@@ -4811,7 +4814,14 @@ export async function createPulseServer({
           if (ids.length) Object.assign(cursorModels, { at: Date.now(), ids });
           return ids;
         };
-        return sendJson(response, 200, { models: await discoverModels({ agents, config: await readConfig(root), listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [], listCursor: url.searchParams.get('cursor') === '1' ? listCursor : async () => [], cursorOnlyAuto, listGemini: url.searchParams.get('gemini') === '1' ? listGemini : async () => [] }) });
+        const listGrok = async (grok) => {
+          if (grokModels.at && Date.now() - grokModels.at < 10 * 60 * 1000) return grokModels.list;
+          const { stdout } = await execFileAsync(grok.path, ['models'], { timeout: 20000, env: { ...process.env, GROK_DISABLE_AUTOUPDATER: '1' } });
+          const list = parseGrokModels(stdout);
+          if (list.models.length) Object.assign(grokModels, { at: Date.now(), list });
+          return list;
+        };
+        return sendJson(response, 200, { models: await discoverModels({ agents, config: await readConfig(root), listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [], listCursor: url.searchParams.get('cursor') === '1' ? listCursor : async () => [], cursorOnlyAuto, listGemini: url.searchParams.get('gemini') === '1' ? listGemini : async () => [], listGrok: url.searchParams.get('grok') === '1' ? listGrok : async () => ({ models: [], default: null }) }) });
       }
       // OpenCode's providers for AJUSTES: who has a key or an account, what each offers, which are
       // left out of the chooser. Never a key: only that one is there and of what kind.

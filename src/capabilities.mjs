@@ -44,6 +44,15 @@ export const CAPABILITIES = {
     imageGen: false,
     web: false,
   },
+  // Grok reads only (adapters/grok.mjs, 2026-11-06): writing waits for its own real test at every
+  // mode, so the room never gives it a lease. Attachments are named in the briefing.
+  grok: {
+    read: true,
+    imageIn: false,
+    write: false,
+    imageGen: false,
+    web: false,
+  },
   opencode: {
     read: true,
     imageIn: { how: '-f <file>', note: 'Files attach to the message.' },

@@ -62,6 +62,17 @@ export const BRANDS = {
     ink: '#111111',
     mark: () => glyph('<path fill="currentColor" d="M16 3.2 27.4 9.6 16 16 4.6 9.6z"/><path fill="currentColor" opacity=".42" d="M4.6 9.6 16 16v12.8L4.6 22.4z"/><path fill="currentColor" fill-rule="evenodd" opacity=".7" d="M27.4 9.6v12.8L16 28.8V16zM16 16l11.4-6.4-6.2 12-1.9-3.9z"/>'),
   },
+  // Grok (2026-11-06): xAI's brand rules forbid altering its logo, so this is NOT a take on it — a
+  // neutral drawing of MADRE's own, a hexagon around a dot, until the author decides (it may become
+  // the official mark, unaltered, if xAI allows it).
+  grok: {
+    label: 'Grok',
+    vendor: 'xAI',
+    color: '#E6E1D3',
+    colorLight: '#4A4536',
+    ink: '#111111',
+    mark: () => glyph('<path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" d="M16 4.2 26.2 10.1v11.8L16 27.8 5.8 21.9V10.1z"/><circle cx="16" cy="16" r="3.4" fill="currentColor"/>'),
+  },
 };
 
 BRANDS.madre = {

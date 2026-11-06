@@ -4,7 +4,7 @@
 // knows is handed in, nothing is looked up. Order matters: who you are, what
 // you may do, what the room remembers, what was said, what is asked.
 
-import { MODES, abilityLine } from '../capabilities.mjs';
+import { API_ONLY, CAPABILITIES, MODES, abilityLine, capabilityOf } from '../capabilities.mjs';
 import { DELEGATION_HELP } from '../directives.mjs';
 import { formatConversationContext } from '../conversation-context.mjs';
 import { formatRecall, formatMemories } from '../memory.mjs';
@@ -91,6 +91,11 @@ export function promptParts({
 }) {
   const mayDelegate = allowDelegation && delegation && depth === 0 && others.length > 0;
   const shellReader = READS_WITH_SHELL.has(agent.id);
+  // An agent that reads at every mode (Grok, 2026-11-06; Gemini through its API) was taught to ask
+  // for #3 or #4, and did: «I need #4 for 5 min», for a mode no button could give it.
+  // Only the agents MADRE runs a CLI or an API for: @madre is answered inside MADRE and has its own words.
+  const reachable = capabilityOf(agent.id);
+  const readsOnly = Boolean(CAPABILITIES[agent.id] || reachable === API_ONLY) && !reachable.write;
   const attached = attachments.length
     ? `The human attached ${attachments.length} file(s); read them if relevant, they are part of this request:\n${attachments.map((file) => `- ${file.path} (${file.contentType}, ${file.size} bytes)`).join('\n')}`
     : null;
@@ -112,7 +117,7 @@ export function promptParts({
         : null },
     // #3 and #4 used to fall into the last branch and read «Read-only» right above the lease that
     // gave them the project: with #4 open, Codex answered that it would only inspect (2026-10-14).
-    { id: 'mode', text: `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : mode === 3 ? (shellReader ? ` You may read, create and modify the project's files as described below. ${SHELL_READING}` : ' You may read, create and modify the project\'s files as described below; you cannot run commands yourself.') : mode === 4 ? ' You may modify the project and run commands as described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}${mode >= 1 && mode <= 3 && requester === 'you' ? ` If going on needs a higher mode, ask for it in one line with the mode and how long you need it, like "I need ${mode === 3 ? '#4 for 5 min' : '#3 for 15 min'}: <why>" (#3 holds 5, 15 or 30 min; #4 holds 5): the human gets a button for it.` : ''}` },
+    { id: 'mode', text: `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : mode === 3 ? (shellReader ? ` You may read, create and modify the project's files as described below. ${SHELL_READING}` : ' You may read, create and modify the project\'s files as described below; you cannot run commands yourself.') : mode === 4 ? ' You may modify the project and run commands as described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}${readsOnly && mode >= 1 ? ' In this room you read at every mode: no mode lets you create or modify files or run commands, so do not ask for one. When the work needs that, say what has to be done and that another agent can do it.' : ''}${!readsOnly && mode >= 1 && mode <= 3 && requester === 'you' ? ` If going on needs a higher mode, ask for it in one line with the mode and how long you need it, like "I need ${mode === 3 ? '#4 for 5 min' : '#3 for 15 min'}: <why>" (#3 holds 5, 15 or 30 min; #4 holds 5): the human gets a button for it.` : ''}` },
     { id: 'inspect', text: lease ? (lease.airlock ? 'Inspect the project as needed; the airlock is open for you this turn, as described below.' : lease.control ? 'Inspect the project as needed; you hold it for this turn, as described below.' : lease.create ? 'Inspect the project as needed; you may add new files to it as described below, never change existing ones.' : 'Inspect the project as needed; the only writable place is the creation lease directory below.') : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}` },
     { id: 'ash', text: ash ? 'Ash: answer in compact prose. Say it once, drop the preamble and the summary of what you are about to say, and keep names, negation, numbers, paths, safety details and any ```pulse block exactly as they are. Brevity is in how you write, never in what you leave out.' : null },
     { id: 'mother', text:

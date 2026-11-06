@@ -7,6 +7,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { geminiApiKeyPresent } from './runtime-detection.mjs';
+import { parseGrokStatus } from './adapters/grok.mjs';
 
 const execFileAsync = promisify(execFile);
 const stripAnsi = (text) => String(text ?? '').replace(/\[[0-9;]*[A-Za-z]/g, '');
@@ -226,6 +227,20 @@ export const AGENT_SETUP = {
     account: 'Signs in with your Cursor account and uses its plan. A free plan answers only with Auto, and only while it has use left.',
     paid: true,
   },
+  // Grok Build, xAI's own CLI (2026-11-06). Without a terminal, `grok login` already gives a code to
+  // confirm on xAI's page (accounts.x.ai/oauth2/device), and `--device-auth` asks for exactly that:
+  // the room shows the code, and it works the same when MADRE runs on another computer.
+  grok: {
+    install: ['npm install -g @xai-official/grok', 'or: curl -fsSL https://x.ai/cli/install.sh | bash'],
+    login: ['login', '--device-auth'],
+    loginNote: 'Gives you a code to confirm on xAI\'s page with your Grok account.',
+    browser: true,
+    room: { deviceCode: true },
+    terminal: 'grok login',
+    vendor: 'xAI',
+    account: 'Signs in with your Grok account (SuperGrok or an X subscription) and uses its plan. In MADRE it reads and answers; it does not write yet.',
+    paid: true,
+  },
 };
 
 // Installing a CLI from the room itself. npm is the common denominator: every one of these
@@ -236,6 +251,8 @@ export const AGENT_PACKAGE = {
   claude: '@anthropic-ai/claude-code',
   gemini: '@google/gemini-cli',
   opencode: 'opencode-ai',
+  // Its install script fetches nothing: the binary comes as an npm dependency for each platform.
+  grok: '@xai-official/grok',
 };
 // One honest line per agent about the account it needs, for the bridge and for Settings › Agents.
 // Which agents take a pasted key instead of a browser flow.
@@ -375,6 +392,8 @@ export async function probeAgentAuth(agent) {
   if (agent.id === 'gemini' && !agent.path) return await geminiApiKeyPresent() ? { state: 'signed-in', detail: 'via API key · Google AI Studio API' } : { state: 'not-installed', detail: 'not found on this computer' };
   if (agent.id === 'gemini') return probeGemini();
   if (!agent.detected || !agent.path) return { state: 'not-installed', detail: 'not found on this computer' };
+  // Another program with the agent's name (runtime-detection.mjs, `foreign`): nothing is asked of it.
+  if (agent.foreign) return { state: 'not-installed', detail: `another program is installed as ${agent.id}` };
   const answered = (result, read) => (result.timedOut ? UNANSWERED : read(result));
   switch (agent.id) {
     case 'codex': return answered(await run(agent.path, ['login', 'status']), parseCodexLoginStatus);
@@ -392,6 +411,8 @@ export async function probeAgentAuth(agent) {
       return openCodeOwnModels(own) ?? listed;
     }
     case 'cursor': return answered(await run(agent.path, ['status']), parseCursorStatus);
+    // Grok has no status command: `grok models` says whether there is a session (and exits 0 both ways).
+    case 'grok': return answered(await run(agent.path, ['models']), ({ stdout = '', stderr = '' }) => parseGrokStatus(stripAnsi(`${stdout}\n${stderr}`)));
     case 'gemini': return probeGemini();
     default: return { state: 'unknown', detail: 'no probe for this agent' };
   }

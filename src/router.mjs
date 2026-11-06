@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
-const supported = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor']);
+const supported = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'grok']);
 
 export function parseMessage(text, fallbackTarget = null) {
   const value = String(text ?? '').trim();

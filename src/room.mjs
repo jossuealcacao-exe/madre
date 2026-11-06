@@ -9,6 +9,7 @@ import { invokeGemini, buildGeminiArgs } from './adapters/gemini.mjs';
 import { invokeGeminiRest } from './adapters/gemini-rest.mjs';
 import { invokeOpenCode, buildOpenCodeArgs } from './adapters/opencode.mjs';
 import { invokeCursor, buildCursorArgs } from './adapters/cursor.mjs';
+import { invokeGrok, buildGrokArgs } from './adapters/grok.mjs';
 import { parseMessage } from './router.mjs';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
@@ -51,7 +52,7 @@ import { parseRunRequest, withoutRunRequest, whyText, expandHome, attachCommandS
 import { runSettlement, returnedBlock } from './room/returns.mjs';
 import { copilotSafe, copilotBrief, COPILOT_MAX_ROUNDS } from './room/copilot.mjs';
 import { imageStudioFor } from './image-studio.mjs';
-import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
+import { CAPABILITIES, capabilityOf, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
 
 const VIA_KINDS = new Set(['iphone', 'ipad', 'android', 'android-tablet', 'other']);
@@ -71,6 +72,8 @@ export const defaultInvokers = {
   'gemini-readonly': invokeGemini,
   'opencode-readonly': invokeOpenCode,
   'cursor-readonly': invokeCursor,
+  // Grok reads only (adapters/grok.mjs): it takes the message, the model and the effort, nothing else.
+  'grok-readonly': ({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, onProgress }) => invokeGrok({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, onProgress }),
   // Gemini with a key and no CLI (runtime-detection.mjs): only what an API call can take. The
   // project, attachments, a lease and tool servers are the CLI's; capabilities.mjs keeps it at #1.
   'gemini-rest': ({ prompt, model, signal, timeoutMs, onProgress, json }) => invokeGeminiRest({ prompt, model, signal, timeoutMs, onProgress, json }),
@@ -855,6 +858,7 @@ export class Room {
     if (agentId === 'codex') return (await readCodexEfforts({ home: this.#codexHome }).catch(() => null))?.model ?? null;
     if (agentId === 'opencode') return process.env.PULSE_OPENCODE_MODEL || null;
     if (agentId === 'cursor') return process.env.PULSE_CURSOR_MODEL || null;
+    if (agentId === 'grok') return process.env.PULSE_GROK_MODEL || null;
     return null;
   }
 
@@ -1740,7 +1744,8 @@ export class Room {
         : agent.id === 'gemini' ? buildGeminiArgs({ ...shared, policyPath: t('<written for this turn, deleted after it>'), attachmentsDir: null })
           : agent.id === 'opencode' ? buildOpenCodeArgs(shared)
             : agent.id === 'cursor' ? buildCursorArgs(shared)
-              : null;
+              : agent.id === 'grok' ? buildGrokArgs({ ...shared, promptFile: t('<the briefing, in a file written for this turn and deleted after it>') })
+                : null;
     if (!args) return { agent: agent.id, label: agent.label, local: false, says: t('MADRE has no adapter for @{agent}.', { agent: agent.id }), mcpServers: [], env: [], isolation: [] };
     const isolation = {
       codex: [t('--ephemeral: the run keeps no session of its own, so nothing said here reaches another project.')],
@@ -1748,10 +1753,12 @@ export class Room {
       gemini: [t('GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.'), t('GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.')],
       opencode: [t('The run is given the model you chose and nothing else of your session.')],
       cursor: [t('#0 and #1: --mode ask, Cursor\'s read-only mode, whatever its own settings say; no edits and no commands. #2 and #3: its agent mode with --force, writing allowed and every command denied. #4: commands allowed too. The places nobody writes stay denied at every mode, and MADRE locks and puts them back itself.'), t('CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it, with only what the mode you chose allows. The sign-in stays in the system keychain.')],
+      grok: [t('It reads and answers, and nothing else: only the tools that read are given (--tools read_file,list_dir,grep), a terminal and edits are denied, and macOS or Linux keeps it from writing (--sandbox read-only).'), t('The folder is not trusted for the turn, and hooks, skills and servers from Claude and Cursor are not loaded. Grok keeps the conversation in its own history.')],
     }[agent.id] ?? [];
     const env = {
       gemini: [{ name: 'GEMINI_CLI_HOME', note: t('the temporary home for this turn') }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: t('so the launcher stays killable') }],
       cursor: [{ name: 'CURSOR_CONFIG_DIR', note: t('the configuration for this turn, from the mode you chose') }, { name: 'NO_OPEN_BROWSER', note: t('a turn never opens a page') }],
+      grok: [{ name: 'GROK_CLAUDE_*_ENABLED, GROK_CURSOR_*_ENABLED', note: t('false: nothing of Claude\'s or Cursor\'s is loaded') }, { name: 'GROK_MEMORY', note: t('0: Grok\'s own memory stays off; the project\'s is MADRE\'s') }, { name: 'GROK_DISABLE_AUTOUPDATER', note: t('1: a turn never updates the CLI') }],
     }[agent.id] ?? [];
     return {
       agent: agent.id, label: agent.label, local: false,
@@ -1885,7 +1892,8 @@ export class Room {
     turnScopes.imageGen = Boolean(lease?.scopes?.imageGen);
     // The step asks for files but nobody granted a lease: say so now, with a
     // way out, instead of letting the agent's refusal be the only signal.
-    if (!lease && !sharedLease && !escalation && looksLikeCreation(text)) {
+    // Only for an agent that could have created it: one that reads at every mode has no «Create» to turn on.
+    if (!lease && !sharedLease && !escalation && capabilityOf(agent.id).write && looksLikeCreation(text)) {
       await this.#emit('lease.missing', {
         messageId,
         agent: agent.id,

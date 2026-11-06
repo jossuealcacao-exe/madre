@@ -76,7 +76,7 @@ test('subagents · what each agent is told in a turn that writes', () => {
     assert.equal(subagentsAllowed(agentId, MODES[4]), false);
     assert.match(leaseInstructions({ agentId, ...MODES[4] }), /in AIRLOCK \(#4\) only you work/);
   }
-  for (const agentId of ['gemini', 'cursor']) {
+  for (const agentId of ['gemini', 'cursor', 'grok']) {
     assert.equal(subagentsAllowed(agentId, MODES[3]), false);
     assert.match(leaseInstructions({ agentId, ...MODES[3] }), /Do this work yourself/);
   }

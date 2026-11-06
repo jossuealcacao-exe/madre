@@ -131,7 +131,7 @@ Desde 1.1.0, de **#1 a #3**, Claude, OpenCode y Codex pueden repartir su trabajo
 | **Claude** | Herramienta `Agent`: el subagente hereda las mismas herramientas y reglas (`--tools`, `--allowedTools`, `dontAsk`) | Sin `Agent` |
 | **OpenCode** | Solo `explore` y `general`, cada uno con los permisos del turno y sin poder llamar a otro (los de fábrica de OpenCode escriben y corren comandos) | `task` negado |
 | **Codex** | Sus subagentes quedan dentro de la misma caja de arena | Límite de un hilo: `features.multi_agent_v2.max_concurrent_threads_per_session=1` |
-| **Gemini** · **Cursor** | No | No |
+| **Gemini** · **Cursor** · **Grok** | No | No |
 
 Probado con las IAs reales (Claude 2.1.267, OpenCode 1.18.4, Codex 0.161): en #1 el subagente lee y no escribe; en #3 escribe en el proyecto, `.pulse/` lo rechaza y no hay comandos; en #4 Codex responde «agent thread limit reached».
 
@@ -408,6 +408,8 @@ La carpeta de MADRE se borra entera solo si es suya sin duda: ruta absoluta, nun
 | `PULSE_DELEGATION` · `PULSE_MAX_PLAN_STEPS` | `1` · `4` | Planes |
 | `PULSE_ESCALATION_MS` | `180000` | Cronómetro de la solicitud de permiso |
 | `PULSE_OPENCODE_MODEL` | del config | `proveedor/modelo` para OpenCode |
+| `PULSE_GROK_MODEL` | el de Grok | Modelo de Grok cuando no se elige uno (`grok models` los lista) |
+| `PULSE_GROK_SANDBOX` | `read-only` | `off` quita `--sandbox` donde el aislamiento de Grok no arranca; `--tools` sigue limitándolo a leer |
 | `PULSE_CLAUDE_USAGE` · `PULSE_OFFICIAL_QUOTA` | `0` · `1` | Cuota oficial de Claude (lee el llavero); `0` apaga todas las lecturas de proveedor |
 | `PULSE_GEMINI_IDLE_MS` · `PULSE_GEMINI_RETRIES` · `PULSE_GEMINI_FALLBACK_MODEL` | `90000` · `1` · `gemini-3-flash-preview` (vacío: sin respaldo) | Gemini bajo carga |
 

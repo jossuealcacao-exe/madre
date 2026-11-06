@@ -52,6 +52,17 @@ const definitions = [
     versionArgs: ['--version'],
     adapter: 'cursor-readonly',
   },
+  {
+    // Grok Build, xAI's own CLI (2026-11-06): npm puts it beside node, its own installer in
+    // ~/.grok/bin. Another program is called `grok` too (the community's grok-dev, which writes to
+    // ~/.grok as well), so only the one that says «grok <version> (<build>)» is spoken to.
+    id: 'grok',
+    label: 'Grok',
+    candidates: [...new Set(['grok', '/opt/homebrew/bin/grok', join(homedir(), '.grok', 'bin', 'grok'), join(accountHome(), '.grok', 'bin', 'grok')])],
+    versionArgs: ['--version'],
+    versionPattern: /^grok\s+\d+\.\d+\.\d+\s+\(/,
+    adapter: 'grok-readonly',
+  },
 ];
 
 const OFFICIAL_DESTINATIONS = {
@@ -195,6 +206,9 @@ export async function detectAgents({ env = process.env, keyPresent = geminiApiKe
     let version = path ? await readVersion(path, definition.versionArgs) : null;
     let adapter = definition.adapter ?? null;
     let viaApi = false;
+    // A program with the right name that is not the right program is found, never spoken to.
+    const foreign = Boolean(path && definition.versionPattern && version && !definition.versionPattern.test(version));
+    if (foreign) ready = false;
 
     if (definition.id === 'gemini' && (!detected || env.PULSE_GEMINI_ADAPTER === 'rest') && await keyPresent(env)) {
       detected = true;
@@ -214,6 +228,7 @@ export async function detectAgents({ env = process.env, keyPresent = geminiApiKe
       path,
       version,
       ...(viaApi ? { viaApi: true } : {}),
+      ...(foreign ? { foreign: true } : {}),
       route: agentRouteFromEnvironment(definition.id, env),
     };
   }));

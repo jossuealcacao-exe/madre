@@ -42,6 +42,13 @@ export const KNOWN_MODELS = {
     defaults: ['auto'],
     note: '«auto» lets Cursor choose. The others are the ones your Cursor account lists; a free plan answers only with Auto.',
   },
+  // Read from the account itself (`grok models`, 2026-11-06): xAI renames and retires models every
+  // few months, so none is written here. Until the list is read, Grok uses its own default.
+  grok: {
+    defaults: [],
+    note: 'The models your Grok account lists. Without one chosen, Grok uses its own default.',
+    unread: 'Grok lists your plan\'s models once it is signed in. Until then, it uses its own default.',
+  },
 };
 
 // How hard the model thinks before it answers, for the CLIs that take it per run. Claude Code
@@ -226,7 +233,7 @@ export function parseCursorModels(text) {
   return ids.includes('auto') ? ['auto', ...ids.filter((id) => id !== 'auto')] : ids;
 }
 
-export async function discoverModels({ agents = [], config = {}, home = homedir(), listOpenCode = async () => [], listCursor = async () => [], cursorOnlyAuto = () => false, listGemini = async () => [] } = {}) {
+export async function discoverModels({ agents = [], config = {}, home = homedir(), listOpenCode = async () => [], listCursor = async () => [], cursorOnlyAuto = () => false, listGemini = async () => [], listGrok = async () => ({ models: [], default: null }) } = {}) {
   const result = {};
   for (const agent of agents) {
     const known = KNOWN_MODELS[agent.id] ?? { defaults: [], note: '' };
@@ -277,6 +284,11 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
     if (agent.id === 'cursor' && agent.detected) {
       // A free plan refuses every named model (adapters/cursor.mjs): then Auto is all there is.
       discovered = cursorOnlyAuto() ? ['auto'] : await listCursor(agent).catch(() => []);
+    }
+    if (agent.id === 'grok' && agent.detected && !agent.foreign) {
+      const listed = await listGrok(agent).catch(() => ({ models: [], default: null }));
+      discovered = listed.models ?? [];
+      cliDefault = process.env.PULSE_GROK_MODEL || listed.default || null;
     }
     const custom = Array.isArray(config.models?.[agent.id]) ? config.models[agent.id] : [];
     // OpenCode speaks to many providers: what `opencode models` lists is already only the ones
