@@ -6087,6 +6087,13 @@ dialog.settings-window.rail .settings-body { display: grid; grid-template-column
 .sx-row > .sx-words b { font-size: 13.5px; font-weight: 500; color: var(--text); }
 .sx-hint { font-size: 12px; line-height: 1.45; color: var(--text-2); }
 .sx-row .sx-control { flex: none; display: flex; align-items: center; justify-content: flex-end; max-width: 62%; }
+/* When the words and the control do not fit side by side (a phone, a narrow or docked window), the
+   control goes under the words, on the right, instead of spilling over them: «Tema» put Auto · Claro ·
+   Oscuro on top of its own description at 375 px (2026-11-06, responsive review). Where they fit,
+   nothing moves. */
+.sx-row:not(.stack) { flex-wrap: wrap; row-gap: 10px; }
+.sx-row:not(.stack) > .sx-words { flex: 1 1 200px; }
+.sx-row:not(.stack) .sx-control { flex: 0 1 auto; max-width: 100%; margin-left: auto; }
 .sx-row.stack { flex-direction: column; align-items: stretch; gap: 10px; }
 .sx-row.stack .sx-control { max-width: none; justify-content: stretch; }
 .sx-row.stack .sx-control > * { flex: 1; min-width: 0; }
@@ -6728,6 +6735,10 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 }
 @container modswin (max-width: 440px) {
   .mods-head .custom-title { display: none; }
+  /* The Market keeps its basket and gives its word to the search, which was left 62 px wide on a
+     phone («Busca ‹», 2026-11-06, responsive review). */
+  .mods-head .mods-market { width: 30px; padding: 0; gap: 0; justify-content: center; }
+  .mods-head .mods-market > span { display: none; }
 }
 @container mods (max-width: 900px) { .mods-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @container mods (max-width: 640px) { .mods-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -10754,6 +10765,11 @@ html.chat-shell .shell > .bar > .mother-button { position: relative; }
 /* Stop all: only while something runs, as a stop key is in those apps. */
 html.chat-shell .shell > .bar > #stop-all:not(.armed) { display: none !important; }
 html.chat-shell .shell > .bar > #stop-all.armed { height: 30px; border-radius: 8px; font-size: 12.5px; }
+/* In a bar too narrow for words its keys are icons, and so is the brake: the size above gave its words
+   back inside a 34 px key, and «Detener todo» ran over the agents beside it (2026-11-06, the author). */
+@container bar (max-width: 980px) {
+  html.chat-shell .shell > .bar > #stop-all.armed { width: 34px; height: 34px; padding: 0; gap: 0; font-size: 0; border-radius: 11px; }
+}
 html.chat-shell .shell > .bar > .steps-pill { height: 28px; border-radius: 999px; }
 html.chat-shell .shell > .bar .agents .avatar { width: 22px !important; height: 22px !important; }
 html.chat-shell .shell > .bar .agents .avatar svg { width: 13px; height: 13px; }
@@ -10863,6 +10879,29 @@ html.chat-shell .thread-inner > .system, html.chat-shell .thread-inner .row .sys
   background: var(--cs-side) !important; box-shadow: none !important; border: 1px solid var(--cs-line) !important;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-radius: 14px;
 }
+/* A notice open on its own, in the same shape it has inside its group of dots (2026-11-06, the author:
+   «mal ajustadas»). The card above was drawn around a line meant to have none: the words centred and
+   on its edge, all of them in the notice's colour, and STOP ALL as spaced capitals in mid-line. Now:
+   on the left, a dot of its tone, the heading, words that read, and the brake as a small button. */
+html.chat-shell #messages#messages .thread-inner > .system:not(.claim, .mother-alert, .folded, .folding) {
+  --sys-dot: var(--text-3); --sys-head-on: var(--text);
+  position: relative; width: min(92%, 560px); padding: 9px 14px 10px 30px; text-align: left; line-height: 1.55; color: var(--text-2);
+}
+html.chat-shell #messages#messages .thread-inner > .system:not(.claim, .mother-alert, .folded, .folding)::before {
+  content: ''; position: absolute; left: 14px; top: 16px; width: 7px; height: 7px; border-radius: 50%; background: var(--sys-dot);
+}
+html.chat-shell #messages#messages .thread-inner > .system:is(.alert, .crit, .halted, .control, .failed, .fail:not(.recovered)):not(.claim, .mother-alert, .folded, .folding) { --sys-dot: var(--terror, #d33); --sys-head-on: var(--terror, #d33); }
+html.chat-shell #messages#messages .thread-inner > .system:is(.warn, .lease, .privacy):not(.claim, .mother-alert, .folded, .folding) { --sys-dot: var(--warn, #e2a022); }
+html.chat-shell #messages#messages .thread-inner > .system:is(.login, .module, .reverted, .granted, .recovered):not(.failed, .claim, .mother-alert, .folded, .folding) { --sys-dot: var(--ok, var(--phosphor, #2f9e44)); }
+html.chat-shell #messages#messages .thread-inner > .system:not(.claim, .mother-alert, .folded, .folding) > b:first-child:not(.inline) { display: block; margin: 0 0 2px; color: var(--sys-head-on); font-weight: 600; }
+html.chat-shell #messages#messages .thread-inner > .system.lease.missing:not(.folded) { justify-content: flex-start; }
+html.chat-shell #messages#messages .thread-inner > .system.alert:not(.folded) .cmd {
+  display: block; width: fit-content; margin: 8px 0 0; padding: 4px 12px; border: 1px solid color-mix(in srgb, var(--terror, #d33) 55%, transparent); border-radius: 999px;
+  background: transparent; color: var(--terror, #d33); font: 600 12px/1.4 var(--sans); letter-spacing: 0; text-transform: lowercase; cursor: pointer;
+}
+html.chat-shell #messages#messages .thread-inner > .system.alert:not(.folded) .cmd::first-letter { text-transform: uppercase; }
+html.chat-shell #messages#messages .thread-inner > .system.alert:not(.folded) .cmd:hover:not(:disabled) { background: color-mix(in srgb, var(--terror, #d33) 14%, transparent); }
+html.chat-shell #messages#messages .thread-inner > .system.alert:not(.folded) .cmd:disabled { opacity: .45; cursor: default; }
 /* The agents speak on the canvas, as Claude does; your own words in a soft bubble at the right. */
 html.chat-shell .row.assistant .bubble { background: none !important; box-shadow: none !important; padding: 2px 0 0; border-radius: 0; color: var(--text); }
 html.chat-shell .row.user .bubble { background: var(--cs-bubble) !important; color: var(--text) !important; box-shadow: none !important; border-radius: 18px; padding: 10px 16px; }
@@ -11439,6 +11478,22 @@ html.chat-shell .browser-dock > .dock-grip { z-index: 5; }
 /* The composer's pills hug what they hold: the grey under the pointer is the size of the words or
    the icon, the same breath at both sides. */
 html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) { padding: 0 7px 0 9px; gap: 4px; }
+/* A chip that has to shrink cuts its own words and keeps its arrow: «por defecto» ran into the chip
+   beside it at 375 px (2026-11-06, responsive review). */
+html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) { overflow: hidden; }
+html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) > :is(.word, .nick, .label) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) > :is(.chev, svg) { flex: none; }
+/* A finger, not a pointer (a phone, a tablet): what it presses is at least 36–40 px, as the platforms
+   ask (Apple 44 pt, Material 48 dp; WCAG 2.5.8 sets 24 px as the floor). The composer's chips were
+   26 px tall and a message's actions 26×24 (2026-11-06, responsive review). The mouse keeps the
+   dense sizes. */
+@media (pointer: coarse) {
+  html.chat-shell #composer #pick-options :is(.mode-chip, .model-chip, .effort-chip, .copilot-chip) { min-height: 36px; }
+  html.chat-shell #composer #pick-options .copilot-chip { width: 36px; min-width: 36px; }
+  html.chat-shell #composer .crew-orb { width: 36px; height: 36px; }
+  html.chat-shell #composer :is(#attach, .attach) { min-width: 36px; min-height: 36px; }
+  .bubble-actions .act { min-width: 36px; min-height: 36px; }
+}
 html.chat-shell .composer #pick-options .copilot-chip { width: 28px; min-width: 28px; padding: 0; justify-content: center; }
 html.chat-shell .composer #ash-toggle { padding: 0 9px; }
 
@@ -11526,6 +11581,9 @@ html.chat-shell #modules .mods-head .sx-btn:not(.primary):is(*, :hover, :active,
 /* ---- The thread's cards, flat (2026-10-27) ---- */
 /* A delegated answer: the room's card, a hairline, no dashes. */
 html.chat-shell #messages#messages .row.delegated .bubble { border: 0 !important; background: var(--cs-side) !important; box-shadow: 0 0 0 1px var(--cs-line) !important; }
+/* A step's card has its edge, so its words keep off it: they sat on the line, the time too, since an
+   agent's answer here has no card and no padding (2026-11-06, the author). */
+html.chat-shell #messages#messages .row.delegated .bubble { padding: 10px 14px 9px; border-radius: 14px; }
 /* The notices read open: a lighter lift. */
 html.chat-shell #messages .sys-dots.open { box-shadow: 0 0 0 1px var(--cs-line), 0 4px 14px -10px rgb(0 0 0 / .16) !important; }
 /* A failure, before it folds into its red dot and when read again: left-aligned, its name in red

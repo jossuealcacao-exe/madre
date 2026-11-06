@@ -17854,6 +17854,8 @@ function openRoomMarket(focus = null) {
     market.innerHTML = trazo('market-key'); // trusted: our own SVG string
     market.append(el('span', null, t('Market')));
     market.title = t('Every module MADRE can add to this project');
+    // Its name when a narrow window shows only the basket.
+    market.setAttribute('aria-label', t('Market'));
     market.addEventListener('click', () => openRoomMarket());
     add.before(market);
   }

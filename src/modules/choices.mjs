@@ -7,10 +7,10 @@
 // as a paragraph listing possibilities, which the human then had to answer in prose. This gives
 // it a shape: a fenced block the room turns into buttons.
 //
-// It has a switch because it is not free. The instruction that teaches an agent the block is
-// written into every prompt while this is on, and MADRE measures it like every other block: it
-// shows up as `choices` in the economy's breakdown, at about 135 tokens a turn. A capability
-// whose cost cannot be seen is a capability nobody can decide against.
+// Always on, as image generation is (2026-11-06, the author): a decision handed back as buttons is
+// part of how MADRE talks, not an extra. Its instruction still rides in every prompt and MADRE
+// still measures it like every other block: `choices` in the economy's breakdown, about 135
+// tokens a turn.
 //
 // Nothing it produces runs. Pressing an option writes it into the composer; sending it is still
 // the human's, as is ignoring the question entirely.
@@ -24,13 +24,15 @@ export default defineModule({
   name: 'Options',
   vendor: 'MADRE',
   version: '1.0.0',
-  summary: 'Lets an agent hand a decision back to you as buttons instead of a paragraph, when the answer turns on three or more real options. Costs about 135 tokens of instruction per turn while it is on, counted in Spending like every other block.',
-  creates: ['nothing in the project', 'a switch in ~/.pulse/config.json'],
-  async status(ctx) {
+  summary: 'Lets an agent hand a decision back to you as buttons instead of a paragraph, when the answer turns on three or more real options. Always on: about 135 tokens of instruction per turn, counted in Spending like every other block.',
+  creates: ['nothing in the project'],
+  card: 'fixed',
+  async status() {
     return {
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? t('on · agents may ask you to choose') : t('off · agents answer in prose') },
-      install: { display: ctx.settings.enabled ? 'stop offering choices' : 'let agents offer choices', platforms: [] },
+      status: { installed: true, detail: t('on · agents may ask you to choose') },
+      install: { display: 'always on', platforms: [] },
+      fixed: true,
     };
   },
-  async onToggle(ctx, enabled) { ctx.room.setChoices(enabled); return null; },
+  async toggle() { return { status: 405, body: { error: 'Options has no switch: it is always on.' } }; },
 });

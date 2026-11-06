@@ -276,10 +276,19 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
     const title = what.startsWith('agent:') ? t('Installing {name}', { name: brandOf(what.slice(6)).label })
       : what === 'ollama' ? (item.model ? t('Downloading {name}', { name: item.model }) : t('Installing {name}', { name: 'Ollama' }))
         : t('Installing the module {name}', { name: what });
+    // Opened, it says what the installer said last and how far it got; a model downloading can be
+    // stopped from here, as in the welcome. It opened onto nothing before (2026-11-06, the author).
+    const percent = (() => { const all = [...String(item.line ?? '').matchAll(/(\d{1,3}(?:\.\d+)?)\s?%/g)]; return all.length ? Math.min(100, Number(all.at(-1)[1])) : null; })();
     return row({
       id: uid, face: sysAvatar('download', { busy: true }), title,
       sub: `${project.home ? t('Home') : whereOf(project)} · ${t('It ends on its own; you can keep working.')}`,
       time: item.startedAt ? () => clock(since(item.startedAt)()) : '',
+      progress: percent === null ? null : () => percent / 100,
+      more: (inside) => {
+        inside.append(el('p', 'ap-meta', t('It ends on its own; you can keep working.')));
+        if (item.line) inside.append(el('pre', 'ap-out', item.line));
+        if (item.stoppable) inside.append(actions([t('Stop the download'), 'stop', () => stop(project, item)]));
+      },
     });
   }
 

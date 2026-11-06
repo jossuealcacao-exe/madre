@@ -1744,7 +1744,15 @@ export async function createPulseServer({
     unsubscribe = room.subscribe(() => { void broadcastPending(); });
     unsubscribeModules = wireModules(room, chatId);
     unsubscribeAsks = trackAsks(room, historicalEvents);
-    unsubscribeSentinel = room.subscribe((event) => { void sentinel.observe(event).catch(() => null); countForDiagnostics(event); });
+    unsubscribeSentinel = room.subscribe((event) => {
+      void sentinel.observe(event).catch(() => null);
+      countForDiagnostics(event);
+      if (event?.type === 'extension.install.started') installLine = null;
+      else if (event?.type === 'extension.install.output') {
+        const said = (event.payload?.lines ?? []).map((line) => String(line).replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim()).filter((line) => line && !/^[\s{}\[\](),:;"'`]*$/.test(line)).at(-1);
+        if (said) installLine = said.slice(0, 160);
+      }
+    });
     unsubscribeEyecat = room.subscribe((event) => { void eyecat.observe(event).catch(() => null); });
     unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
     unsubscribeLive = room.subscribeLive((event) => { for (const client of clients.keys()) writeEvent(client, event); });
@@ -1808,7 +1816,7 @@ export async function createPulseServer({
       if (!one) continue;
       for (const item of one.activity()) now.push({ ...item, chat: id, chatTitle: titleOf(id) });
     }
-    if (installing) now.push({ kind: 'install', what: installing, model: pulling?.model ?? null, startedAt: installingSince || null });
+    if (installing) now.push({ kind: 'install', what: installing, model: pulling?.model ?? null, startedAt: installingSince || null, line: installLine, stoppable: Boolean(pulling) });
     const done = await recentInProject(roomDir, { also: [chatId, ...parked.keys()] }).catch(() => []);
     return { room: thisRoomId, name: salasRoom ? null : basename(canonicalProjectRoot), home: salasRoom, version: PACKAGE.version ?? null, now, done };
   }
@@ -2012,8 +2020,9 @@ export async function createPulseServer({
   function applyModuleSwitches(target, config) {
     setImageModule(settingsIn(config.modules?.imageStudio ?? {}, scopeRoom));
     target.setAsh(moduleOnHere(config, 'ash'));
-    target.setChoices(moduleOnHere(config, 'choices'));
-    target.setRuns(moduleOnHere(config, 'runs'));
+    // Options and Commands have no switch (2026-11-06): always on, whatever an old config says.
+    target.setChoices(true);
+    target.setRuns(true);
   }
 
   // Opening another conversation. The project keeps its memory, its crew, its modules, its
@@ -2081,6 +2090,9 @@ export async function createPulseServer({
   // When the install running now began, for «En marcha» (2026-10-30).
   let installingSince = 0;
   let pulling = null;          // the model download running now, and how to stop it
+  // What the install running now said last («pulling … 45%»), for «En marcha»: its row opened and
+  // showed nothing (2026-11-06, the author). Ends with the install.
+  let installLine = null;
   let lastPull = null;         // what the last model download reported: { model, ok, detail, trouble }
 
   // Intenciones' reading of every conversation, kept per ledger file until that file changes.
@@ -4922,6 +4934,11 @@ export async function createPulseServer({
           const id = String(payload.id ?? '');
           const cut = id.lastIndexOf(':');
           stopped = cut > 0 && where.stopRun({ responseMessageId: id.slice(0, cut), index: Number(id.slice(cut + 1)) });
+        } else if (payload.kind === 'install' && pulling) {
+          // A model downloading: the same stop as the welcome's and Local AI's. Other installs run to
+          // the end; the row offers no stop for them.
+          pulling.stopper.abort();
+          stopped = true;
         }
         return sendJson(response, stopped ? 200 : 404, stopped ? { stopped: true } : { error: t('That is not running any more.') });
       }

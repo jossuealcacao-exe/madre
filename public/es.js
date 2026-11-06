@@ -84,9 +84,8 @@ export const ES = {
   'the difference fits inside how much this agent varies anyway (±{on} and ±{off}) · no conclusion yet':
     'la diferencia cabe dentro de lo que este agente varía de todos modos (±{on} y ±{off}) · todavía no se puede sacar una conclusión',
   'on · agents may ask you to choose': 'encendido · los agentes pueden pedirte que elijas',
-  'off · agents answer in prose': 'apagado · los agentes contestan en prosa',
-  'Lets an agent hand a decision back to you as buttons instead of a paragraph, when the answer turns on three or more real options. Costs about 135 tokens of instruction per turn while it is on, counted in Spending like every other block.':
-    'Deja que un agente te dé una decisión como botones en vez de un párrafo, cuando hay tres o más opciones reales. Mientras está encendido cuesta unos 135 tokens por respuesta, y se cuentan en Consumo.',
+  'Lets an agent hand a decision back to you as buttons instead of a paragraph, when the answer turns on three or more real options. Always on: about 135 tokens of instruction per turn, counted in Spending like every other block.':
+    'Deja que un agente te dé una decisión como botones en vez de un párrafo, cuando hay tres o más opciones reales. Siempre encendido: cuesta unos 135 tokens por respuesta, y se cuentan en Consumo.',
   'Pressing one sends it to @{agent} · #3 and #4 ask you to confirm first': 'Al presionar una se le manda a @{agent} · #3 y #4 te piden confirmar antes',
   '◉ decided here · {n}': '◉ decidido aquí · {n}',
   'ANSWERS BILLED': 'Respuestas con costo',
@@ -3048,9 +3047,8 @@ export const ES = {
 
   // Un comando que un agente te pide correr.
   'on · agents may ask you to run commands': 'encendido · los agentes pueden pedirte que corras comandos',
-  'off · agents describe the command in prose': 'apagado · los agentes describen el comando en prosa',
-  'Lets an agent ask you to run a command it cannot run in its mode (tests, a build, a linter). Each command is a button: nothing runs until you press it, it runs from the project root with no shell, a restore point is taken first, and when it has run the output goes back to the agent that asked, which goes on. Costs about 300 tokens of instruction per turn below FULL ACCESS while it is on.':
-    'Deja que un agente te pida correr un comando que su nivel de permiso no le deja correr (pruebas, un build, un linter). Cada comando es un botón y nada corre hasta que lo presionas. Corre desde la carpeta principal del proyecto, sin terminal; antes se guarda un punto de restauración y, al terminar, el resultado vuelve al agente que lo pidió para que siga. Mientras está encendido, cuesta unos 300 tokens por respuesta en los niveles por debajo de #4 ACCESO TOTAL.',
+  'Lets an agent ask you to run a command it cannot run in its mode (tests, a build, a linter). Each command is a button: nothing runs until you press it, it runs from the project root with no shell, a restore point is taken first, and when it has run the output goes back to the agent that asked, which goes on. Always on: about 300 tokens of instruction per turn below FULL ACCESS.':
+    'Deja que un agente te pida correr un comando que su nivel de permiso no le deja correr (pruebas, un build, un linter). Cada comando es un botón y nada corre hasta que lo presionas. Corre desde la carpeta principal del proyecto, sin terminal; antes se guarda un punto de restauración y, al terminar, el resultado vuelve al agente que lo pidió para que siga. Siempre encendido: cuesta unos 300 tokens por respuesta en los niveles por debajo de #4 ACCESO TOTAL.',
   'Name the request and the line to run.': 'Di qué petición y qué línea correr.',
   'Command requests are off. Enable them in MODULES.': 'Las peticiones de comandos están apagadas. Enciéndelas en «Módulos».',
   'A command is already running; wait for it to finish or press STOP ALL.': 'Ya corre un comando; espera a que termine o usa «Detener todo».',
@@ -6677,6 +6675,7 @@ export const ES = {
   '{who} is not signed in, so the question went to {to}.': '{who} no tiene sesión, así que la pregunta fue a {to}.',
   // «En marcha» (2026-10-30): lo que MADRE está haciendo, en todos tus proyectos abiertos.
   'Running now': 'En marcha',
+  'Stop the download': 'Detener la descarga',
   'Running now · {n}': 'En marcha · {n}',
   'Running now · nothing at the moment': 'En marcha · nada por ahora',
   'Asking every open project…': 'Preguntando a tus proyectos abiertos…',

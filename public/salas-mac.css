@@ -132,6 +132,11 @@ body.salas-mac {
 .sm-topbar.is-tighter .sm-barkey > span { display: none; }
 .sm-topbar.is-tighter .sm-barkey { padding: 0 8px; }
 .sm-topbar.is-tightest .sm-tb-agents { display: none; }
+/* The tour's pill steps out of a bar that cannot hold it, as it does from a project's bar (styles.css,
+   560 px); the tour goes on from Settings › Projects. At 375 px it pushed Market and Modules under the
+   right group and off the screen, and the page scrolled sideways (2026-11-06, responsive review). */
+.sm-topbar.is-tighter .tour-pill-slot { display: none !important; }
+@media (max-width: 560px) { .sm-topbar .tour-pill-slot { display: none !important; } }
 /* The bar's keys are the room's bar keys (styles.css, .mother-button, .tree-button, .stop-all). */
 .sm-barkey, .sm-stop { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-family: var(--read); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; white-space: nowrap; cursor: pointer; }
 .sm-barkey svg, .sm-stop svg { width: var(--ico-sm); height: var(--ico-sm); }
@@ -1268,6 +1273,15 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 }
 @media (max-width: 760px) {
   #sm-top > [class*="c-"] { grid-column: 1 / -1; }
+}
+/* One tile a row, on a phone: each as tall as what it holds, not as the rows it spans on a desk.
+   «Te espera» kept 208 px for two lines, the Coordinator a hundred empty ones (2026-11-06,
+   responsive review). The map draws itself to its tile's height, so it keeps one of its own. */
+@media (max-width: 560px) {
+  #sm-top.sm-bento { grid-auto-rows: auto; }
+  #sm-top > .sm-tile { grid-row: auto !important; }
+  #sm-top > .sm-tile.sm-fixed > :is(.sm-w-body, .sm-decisions, .sm-attention, .sm-memory-body) { flex: none; overflow: visible; }
+  #sm-top > .sm-links-tile .sm-map { flex: none; min-height: 260px !important; }
 }
 /* In a tile taller than what it holds, the content sits at the top, as written; it never stretches. */
 #sm-top > .sm-tile.sm-fixed > :is(.sm-w-body, .sm-decisions, .sm-attention, .sm-memory-body) { align-content: start; }
