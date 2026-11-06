@@ -12,6 +12,7 @@ import { drawHardware, hardwareLine } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural, tellViews } from './neural.js';
 import { resay } from './resay.js';
+import { mountNotices } from './notices.js';
 import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
@@ -22350,6 +22351,21 @@ function drawRelease(section, info) {
   }, { disabled: Boolean(info.envWins), label: t('Look for new versions') });
   sxRow(block, t('Look for new versions'), t('Once a day MADRE checks whether there\'s a new version. Only the app\'s name is sent.') + (info.envWins ? ` ${t('Set by PULSE_UPDATE_CHECK.')}` : ''), check);
   if (info.enabled) sxRow(block, t('Last check'), when ?? t('Not yet.'), sxButton(t('Check now'), () => void loadVersion({ force: true })));
+  // The author's notices (Q-11): info and important ones can be turned off; security ones always show.
+  if (!state.device) {
+    const notices = sxSwitch(true, async (on, box) => {
+      box.disabled = true;
+      const answer = await fetch('/api/notices/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: on }) }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+      if (!answer) box.checked = !on;
+      box.disabled = false;
+      askNoticesAgain();
+    }, { disabled: true, label: t('Notices from MADRE') });
+    sxRow(block, t('Notices from MADRE'), t('What MADRE\'s author tells every copy: a new version, a fix, a service stop. Nothing about you is sent to receive them. Security notices always show.'), notices);
+    void fetch('/api/notices', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((answer) => {
+      const box = notices.querySelector('input');
+      if (answer && box) { box.checked = answer.enabled !== false; box.disabled = false; }
+    }).catch(() => null);
+  }
   // Supporting MADRE (2026-10-30): a donation on GitHub Sponsors, in the person's browser, as Home's
   // Settings › Version has it under this copy's identifier (salas-mac.js, drawDonate). Not from a phone.
   if (!state.device) {
@@ -24282,6 +24298,16 @@ boot();
 // — an agent at work, a plan running, words half written in the box.
 // Asked by the page, never by the half on the right of a split view, which is this same page (WEB-12).
 if (!SPLIT_CHAT) startReviewAsk({ busy: () => Boolean(state.device || state.running.size || state.plansRunning.size || els.input?.value?.trim()) });
+// The author's notices (Q-11): in a project only the important and security ones, as a strip above
+// the conversation; the rest wait in Home. Not in the right half of a split view: the left one has it.
+let askNoticesAgain = () => {};
+if (!SPLIT_CHAT && !state.device && typeof els.thread?.before === 'function') {
+  const strip = document.createElement('div');
+  strip.className = 'chat-notices';
+  strip.hidden = true;
+  els.thread?.before(strip);
+  askNoticesAgain = mountNotices(strip, { levels: ['important', 'security'] });
+}
 // The tour of 1.0 reads where the person is as the room opens, so First steps knows whether to
 // wait; on a phone, the phone's card is said the first time.
 if (!SPLIT_CHAT) roomTour();

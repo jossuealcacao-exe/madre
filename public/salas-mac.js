@@ -10,6 +10,7 @@
 import { browserLanguage, sessionDetail, setLanguage, t } from './i18n.js';
 import { brandOf, monogram } from './brands.js';
 import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
+import { mountNotices } from './notices.js';
 import { startTour } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
@@ -1537,6 +1538,9 @@ const WIDGETS = {
   // The author's error log (2026-11-05, src/madre-logs.mjs): ~/madre-logs as agents add and close
   // errors, read from this Mac's disk every few seconds. Only in the author's copy run from source.
   'w-madrelogs': { kind: 'madrelogs', owner: true, every: 5000, name: () => 'madre-logs', about: () => t('MADRE\'s errors as they are added and fixed: what is still to fix by class and type, what waits to be verified, and the last changes. Read from this Mac; only you see this.'), size: 8, rows: 8 },
+  // The author's notices (Q-11, src/notices.mjs): written here, signed on this computer, read by every
+  // copy. Only in the author's copy run from source, with the token and the notices' key.
+  'w-notices': { kind: 'notices', owner: true, every: 60000, name: () => t('Notices to every copy'), about: () => t('Write a notice that every copy of MADRE shows, with or without diagnostics: signed on this computer, read from madre.run. Only you see this.'), size: 8, rows: 0 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -1570,6 +1574,7 @@ const TILE_ICONS = {
   'w-environments': trazo('globe'),
   'w-rumbo': trazo('trending'),
   'w-madrelogs': trazo('list'),
+  'w-notices': trazo('broadcast'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -1980,6 +1985,10 @@ function meter(value, tone = null) {
 const toneFor = (share) => (share >= 0.85 ? 'hot' : share >= 0.6 ? 'warm' : null);
 const OS_WORDS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows', other: () => t('other') };
 const osWord = (name) => { const word = OS_WORDS[name] ?? name; return typeof word === 'function' ? word() : word; };
+// What is being written in the notices' widget, kept across its re-readings (it reads every minute).
+const freshNoticeDraft = () => ({ level: 'info', titleEs: '', titleEn: '', bodyEs: '', bodyEn: '', link: '', min: '', max: '', os: [], days: 7 });
+const noticeDraft = freshNoticeDraft();
+const noticeFlash = { text: '' };
 const WIDGET_PAINT = {
   // The agenda: what is late and what is today first, then tomorrow, this week and later; a line per
   // reminder with its project and its keys; and a box for a new one, in the person's own words.
@@ -2174,6 +2183,92 @@ const WIDGET_PAINT = {
   // habit with its leak marked, what the numbers decide, every variable with how sure it is, the
   // weeks, and the project's record on GitHub and npm. Read again every 20 s; each source keeps its
   // own clock on the server.
+  // The author's notices (Q-11): write one for every copy, see how it will read, send it, and take
+  // back one that is out. Only in the author's copy run from source (src/server.mjs, ownerCanNotify).
+  notices(body, reading, { again } = {}) {
+    const d = noticeDraft;
+    const LEVEL_NAMES = { info: () => t('Information'), important: () => t('Important'), security: () => t('Security') };
+    const form = el('form', 'sm-notice-form');
+    const field = (label, node) => { const row = el('label', 'sm-notice-field'); if (!node.matches('div')) node.setAttribute('aria-label', label); row.append(el('small', null, label), node); return row; };
+    const input = (key, max, placeholder = '') => { const node = el('input'); node.type = 'text'; node.maxLength = max; node.value = d[key] ?? ''; node.placeholder = placeholder; node.addEventListener('input', () => { d[key] = node.value; preview(); }); return node; };
+    const area = (key, max) => { const node = el('textarea'); node.maxLength = max; node.rows = 3; node.value = d[key] ?? ''; node.addEventListener('input', () => { d[key] = node.value; preview(); }); return node; };
+    const level = el('select');
+    for (const one of ['info', 'important', 'security']) { const option = el('option', null, LEVEL_NAMES[one]()); option.value = one; option.selected = d.level === one; level.append(option); }
+    level.addEventListener('change', () => { d.level = level.value; preview(); });
+    const days = el('select');
+    for (const n of [1, 3, 7, 14, 30]) { const option = el('option', null, n === 1 ? t('1 day') : t('{n} days', { n })); option.value = String(n); option.selected = d.days === n; days.append(option); }
+    days.addEventListener('change', () => { d.days = Number(days.value); });
+    const systems = el('div', 'sm-notice-systems');
+    for (const [id, name] of [['darwin', 'macOS'], ['linux', 'Linux'], ['win32', 'Windows'], ['wsl', 'WSL']]) {
+      const box = el('input'); box.type = 'checkbox'; box.checked = d.os.includes(id);
+      box.addEventListener('change', () => { d.os = box.checked ? [...new Set([...d.os, id])] : d.os.filter((one) => one !== id); });
+      const label = el('label'); label.append(box, ` ${name}`); systems.append(label);
+    }
+    form.append(
+      field(t('Level'), level),
+      field(t('Title · Spanish'), input('titleEs', 80)), field(t('Title · English'), input('titleEn', 80)),
+      field(t('Text · Spanish'), area('bodyEs', 400)), field(t('Text · English'), area('bodyEn', 400)),
+      field(t('Link (madre.run only, optional)'), input('link', 200, 'https://madre.run/…')),
+      field(t('From version (optional)'), input('min', 12, '1.1.3')), field(t('Up to version (optional)'), input('max', 12)),
+      field(t('Systems (none: all)'), systems), field(t('Shows for'), days),
+    );
+    // How it will read, in both languages, in the same card every copy draws (public/notices.js).
+    const look = el('div', 'sm-notice-preview');
+    function preview() {
+      look.replaceChildren();
+      for (const [lang, title, words] of [['es', d.titleEs, d.bodyEs], ['en', d.titleEn, d.bodyEn]]) {
+        const card = el('section', `madre-notice is-${d.level}`);
+        const box = el('div', 'madre-notice-words');
+        box.append(el('small', 'madre-notice-kind', `${lang.toUpperCase()} · ${LEVEL_NAMES[d.level]()}`), el('b', 'madre-notice-title', title || '—'), el('p', 'madre-notice-body', words || '—'));
+        card.append(box);
+        look.append(card);
+      }
+    }
+    preview();
+    // Said once, after the widget reads again with what was just sent.
+    const said = el('small', 'sm-notice-said', noticeFlash.text);
+    noticeFlash.text = '';
+    let armed = false;
+    const send = button('sm-btn primary small', t('Send to every copy'), async (event) => {
+      event.preventDefault();
+      if (!armed) { armed = true; send.textContent = t('Sure? It reaches every copy · Send'); setTimeout(() => { armed = false; send.textContent = t('Send to every copy'); }, 5000); return; }
+      send.disabled = true;
+      const now = new Date();
+      const stamp = now.toISOString().slice(0, 10).replaceAll('-', '');
+      const slug = String(d.titleEs || d.titleEn).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'aviso';
+      const notice = {
+        id: `${stamp}-${slug}`.slice(0, 40).replace(/-+$/, ''), level: d.level,
+        title: { es: d.titleEs.trim(), en: d.titleEn.trim() }, body: { es: d.bodyEs.trim(), en: d.bodyEn.trim() },
+        link: d.link.trim() || null, to: { min: d.min.trim() || null, max: d.max.trim() || null, os: d.os },
+        from: now.toISOString(), until: new Date(now.getTime() + d.days * 86_400_000).toISOString(),
+      };
+      const answer = await fetch('/api/owner/notices', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notice }) }).then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+      if (answer.ok) { Object.assign(noticeDraft, freshNoticeDraft()); noticeFlash.text = t('Sent: every copy shows it within 15 minutes.'); again?.(); }
+      else { said.textContent = answer.body.error ?? t('It was not sent.'); send.disabled = false; }
+    });
+    form.append(look, send, said);
+    // What is out now, with its way back.
+    const out = el('div', 'sm-notice-list');
+    const list = reading.notices ?? [];
+    if (!reading.read) out.append(el('p', 'sm-hint', t('madre.run could not be read just now.')));
+    else if (!list.length) out.append(el('p', 'sm-hint', t('No notice is out.')));
+    for (const one of list) {
+      const row = el('div', `sm-notice-row is-${one.level}`);
+      const when = one.when === 'later' ? t('from {date}', { date: new Date(one.from).toLocaleString() }) : one.when === 'over' ? t('ended') : t('until {date}', { date: new Date(one.until).toLocaleString() });
+      row.append(el('b', null, one.title?.[language] ?? one.title?.es ?? one.id), el('small', null, `${LEVEL_NAMES[one.level]()} · ${when}`));
+      let sure = false;
+      const back = button('sm-btn small', t('Take back'), async () => {
+        if (!sure) { sure = true; back.textContent = t('Sure? Take back'); setTimeout(() => { sure = false; back.textContent = t('Take back'); }, 5000); return; }
+        back.disabled = true;
+        const ok = await fetch('/api/owner/notices/retire', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: one.id }) }).then((response) => response.ok).catch(() => false);
+        if (ok) again?.(); else { back.disabled = false; back.textContent = t('Take back'); }
+      });
+      row.append(back);
+      out.append(row);
+    }
+    if (reading.unverified) out.append(el('p', 'sm-hint', t('{n} served by madre.run do not carry your signature: no copy shows them.', { n: reading.unverified })));
+    body.append(out, form);
+  },
   rumbo(body, reading) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
     const n = (value) => (value === null || value === undefined ? '—' : Number(value).toLocaleString());
@@ -6043,6 +6138,25 @@ async function drawService(host) {
   };
   paint(state);
 }
+// The author's notices (Q-11): info and important ones can be turned off; security ones always show.
+function noticesRow(block) {
+  const wrap = el('label', 'settings-switch');
+  const box = el('input');
+  box.type = 'checkbox';
+  box.checked = true;
+  box.disabled = true;
+  box.setAttribute('aria-label', t('Notices from MADRE'));
+  wrap.append(box, el('i'));
+  sxRow(block, t('Notices from MADRE'), t('What MADRE\'s author tells every copy: a new version, a fix, a service stop. Nothing about you is sent to receive them. Security notices always show.'), wrap);
+  void fetch('/api/notices', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((answer) => { if (answer) { box.checked = answer.enabled !== false; box.disabled = false; } }).catch(() => null);
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    const answer = await fetch('/api/notices/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: box.checked }) }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+    if (!answer) box.checked = !box.checked;
+    box.disabled = false;
+    askNoticesAgain();
+  });
+}
 function fillRelease(host) {
   const info = versionSeen;
   // Up to date there is nothing to restart with (QA 1.1.0, ACT-14).
@@ -6064,6 +6178,7 @@ function fillRelease(host) {
     const row = sxRow(block, t('This copy\'s identifier'), t('Random and unique: this copy made it for itself. It lets the author tell one copy\'s errors from another\'s and find the fix for yours, without knowing who you are: no name, no projects.'), copy);
     row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.copyId));
   }
+  noticesRow(block);
   drawDonate(host);
   if (info?.available) {
     const notes = el('a', 'sx-btn', t('What it brings'));
@@ -6750,3 +6865,8 @@ setInterval(() => { if (!document.hidden) void loadReminders(); }, 60 * 1000);
 // Asking for a star or a review (review-ask.js), when Home is quiet: nothing waking or closing,
 // the bar not being arranged.
 startReviewAsk({ busy: () => busy.size > 0 || pins.editing || Boolean(pins.drag) || Boolean(pins.dropping) });
+// The author's notices (Q-11): every one for this copy, above the board, until «Got it».
+const noticesHost = el('div', 'sm-notices');
+noticesHost.hidden = true;
+document.querySelector('.sm-hero')?.append(noticesHost);
+const askNoticesAgain = mountNotices(noticesHost);
