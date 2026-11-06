@@ -9476,6 +9476,10 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 :root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-what .who { padding: 0; border-radius: 0; background: none !important; font-weight: 600; }
 :root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-time { font: 400 13px var(--read); letter-spacing: 0; color: var(--text-2); }
 :root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-why { order: 9; flex: 1 1 100%; font: 400 12.5px/1.45 var(--read); color: var(--text-3); }
+/* Q-16: the offer of Copilot, last in the card and never hidden with the explanation above it. */
+:root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-copilot { order: 10; color: var(--text-2); }
+:root[data-lab11="B"] #messages .mode-ask:not(.settled) .mode-copilot { display: block; }
+#messages .mode-ask .mode-copilot .mode-alt { margin-left: 4px; }
 :root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-windows { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 :root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-window { flex: none; font: 500 12px var(--read); letter-spacing: 0; padding: 4px 9px; white-space: nowrap; }
 :root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-actions { margin: 0; gap: 6px; }
@@ -11408,10 +11412,14 @@ html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chi
 html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) > .word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* When their words do not fit whole, each says the least that still tells it apart: the mode its
    number, the model its nickname (opus, sol), the effort its bars (public/app.js, composerFit). */
-.model-chip > .nick { display: none; }
-html.chat-shell .composer #pick-options .model-chip > .nick { display: none; }
+:is(.model-chip, .mode-chip) > .nick { display: none; }
+html.chat-shell .composer #pick-options :is(.model-chip, .mode-chip) > .nick { display: none; }
 html.chat-shell .composer.tight #pick-options :is(.effort-chip, .mode-chip, .model-chip) > .word { display: none; }
 html.chat-shell .composer.tight #pick-options .model-chip > .nick { display: inline; white-space: nowrap; }
+/* The mode keeps a short word beside its number (Q-17): «#1 Conversar», not «#1» alone. Whole:
+   the model's name gives way first, down to its arrow (it is the one least often changed). */
+html.chat-shell .composer.tight #pick-options .mode-chip { flex-shrink: 0; }
+html.chat-shell .composer.tight #pick-options .mode-chip > .nick { display: inline; white-space: nowrap; overflow: visible; text-overflow: clip; }
 /* Preview and Side by side, in the same words as Read and Edit: the one on in the accent. */
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is(*, :hover, :focus-visible) { height: 28px; padding: 0 10px; gap: 6px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; font: 500 12.5px var(--read) !important; letter-spacing: 0; color: var(--text-3); }
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }

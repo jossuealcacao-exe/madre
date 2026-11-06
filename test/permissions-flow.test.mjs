@@ -60,3 +60,24 @@ test('EDIT and UNDO are each said once, with today\'s name (Q-15)', async () => 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// Q-16: Copilot, which spares asking at every step, was a small icon nobody found.
+test('the second #3 an agent asks for offers Copilot, live and only where it can help (Q-16)', async () => {
+  assert.match(app, /if \(wanted === 3 && !replaying\) \{\n    const times = \(threeAsks\.get\(agent\) \?\? 0\) \+ 1;/);
+  assert.match(app, /if \(times >= 2 && !copilotOn\(\) && canWrite\(agent\)\)/);
+  assert.match(app, /toggleCopilotMenu\(document\.querySelector\('\.copilot-chip'\) \?\? see, \{ keep: true \}\)/);
+  const { ES } = await import('../public/es.js');
+  assert.equal(ES['SEE COPILOT'], 'VER COPILOTO');
+});
+
+// Q-17: on a phone the mode said «#1» and nothing else.
+test('in a narrow box the mode keeps a short word beside its number (Q-17)', async () => {
+  assert.match(app, /const MODE_NICKS = \{ 0: \(\) => t\('Incognito'\), 1: \(\) => t\('Chat'\), 2: \(\) => t\('Create'\), 3: \(\) => t\('Edit'\), 4: \(\) => t\('Full access'\) \};/);
+  assert.match(app, /el\('span', 'nick', MODE_NICKS\[shown\]\?\.\(\) \?\? ''\)/);
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /html\.chat-shell \.composer\.tight #pick-options \.mode-chip > \.nick \{ display: inline; white-space: nowrap; overflow: visible; text-overflow: clip; \}/);
+  assert.match(css, /html\.chat-shell \.composer\.tight #pick-options \.mode-chip \{ flex-shrink: 0; \}/);
+  assert.match(css, /:is\(\.model-chip, \.mode-chip\) > \.nick \{ display: none; \}/);
+  const { ES } = await import('../public/es.js');
+  assert.equal(ES.Chat, 'Conversar');
+});

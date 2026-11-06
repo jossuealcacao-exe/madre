@@ -4364,11 +4364,14 @@ export async function createPulseServer({
         if (request.method === 'GET' && url.pathname === '/api/tour') {
           const state = await readTour(root);
           if (viaPhone || !fromHere) return sendJson(response, 200, { version: TOUR_VERSION, state, owed: false, returning: false, chapters: CHAPTERS, hints: HINTS, level: NEWS_LEVEL });
-          // Where this person comes from: the tour of 1.0 (path «since»), 0.7.2 (their words in a room's
-          // record, path «back»), or nowhere — a first install.
-          const from = state.path === 'since' || (!state.path && state.before === '1.0') ? '1.0' : (state.path ? state.path === 'back' : await cameBefore(root)) ? '0.7.2' : null;
           // `upgraded`: this copy was in use before 1.1.0 (src/terms.mjs): it meets the news, never the welcome of someone new.
-          return sendJson(response, 200, { version: TOUR_VERSION, state, owed: !state.bonjourAt, returning: Boolean(from), from, upgraded: await cameFromBefore(root), chapters: CHAPTERS, hints: HINTS, level: NEWS_LEVEL });
+          const upgraded = await cameFromBefore(root);
+          // Where this person comes from: the tour of 1.0 (path «since»), 0.7.2 (their words in a room's
+          // record, path «back»), or nowhere — a first install. Words in a room are 0.7.2's only on a
+          // copy from before 1.1.0 (Q-18, 2026-11-06): someone new who opened a project with `madre
+          // start`, wrote, and reloaded before the bonjour was told «MADRE changed a lot since 0.7.2».
+          const from = state.path === 'since' || (!state.path && state.before === '1.0') ? '1.0' : (state.path ? state.path === 'back' : upgraded && await cameBefore(root)) ? '0.7.2' : null;
+          return sendJson(response, 200, { version: TOUR_VERSION, state, owed: !state.bonjourAt, returning: Boolean(from), from, upgraded, chapters: CHAPTERS, hints: HINTS, level: NEWS_LEVEL });
         }
         if (viaPhone || !fromHere || (request.method === 'POST' && request.headers.origin !== `http://${host}`)) return sendJson(response, 403, { error: t('This is done on the Mac.') });
         if (request.method === 'POST' && url.pathname === '/api/tour') {

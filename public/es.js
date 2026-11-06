@@ -6852,4 +6852,10 @@ export const ES = {
   'That EDIT turn is still running: press STOP ALL first.': 'Ese turno de «Editar» sigue corriendo: pulsa primero «Detener todo».',
   'Project restored to the restore point taken before `{command}`: {restored} file(s) restored, {removed} removed.': 'Proyecto restaurado al punto de restauración de antes de `{command}`: {restored} archivo(s) restaurado(s), {removed} quitado(s).',
   'Project restored to the restore point taken before @{agent}\'s EDIT turn: {restored} file(s) restored, {removed} removed.': 'Proyecto restaurado al punto de restauración de antes del turno de «Editar» de @{agent}: {restored} archivo(s) restaurado(s), {removed} quitado(s).',
+  'Incognito': 'Incógnito',
+  'Chat': 'Conversar',
+  'Edit': 'Editar',
+  'Full access': 'Acceso total',
+  '@{agent} asked for #3 again. With Copilot it edits without asking at every step, for as long as you choose.': '@{agent} volvió a pedir #3. Con Copiloto edita sin preguntarte a cada paso, por el tiempo que elijas.',
+  'SEE COPILOT': 'VER COPILOTO',
 };

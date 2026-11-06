@@ -172,6 +172,25 @@ test('tour · the routes: the pages of this Mac only, never a phone', async () =
     await mkdir(old, { recursive: true });
     const oldId = projectRoomId(await realpath(old));
     await room(state, oldId, { 'events.jsonl': SAID });
+    // Q-18 (2026-11-06): words in a room come from 0.7.2 only on a copy in use before 1.1.0. Someone
+    // new who opened a project with `madre start` and wrote there is still new.
+    {
+      const fresh = await scratch('madre-tour-routes-new-');
+      await room(fresh, oldId, { 'events.jsonl': SAID });
+      const { server: newcomer } = await createPulseServer({ projectRoot: project, stateRoot: fresh, agents: roster, invokers: {} });
+      try {
+        const at = await new Promise((resolve) => newcomer.listen(0, '127.0.0.1', () => resolve(newcomer.address().port)));
+        const said = await (await fetch(`http://127.0.0.1:${at}/api/tour`)).json();
+        assert.equal(said.owed, true);
+        assert.equal(said.returning, false, 'someone new who wrote in a project was told MADRE changed since 0.7.2');
+        assert.equal(said.from, null);
+      } finally {
+        await new Promise((resolve) => { newcomer.closeAllConnections?.(); newcomer.close(() => resolve()); });
+        await rm(fresh, { recursive: true, force: true });
+      }
+    }
+    // A copy in use before 1.1.0 (src/install-metrics.mjs, lifecycle.json `before`).
+    await writeFile(join(state, 'lifecycle.json'), `${JSON.stringify({ first: '2026-09-01T00:00:00.000Z', version: '0.7.2', at: '2026-09-01T00:00:00.000Z', before: true })}\n`);
     ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: roster, invokers: {} }));
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
@@ -180,7 +199,8 @@ test('tour · the routes: the pages of this Mac only, never a phone', async () =
 
     const told = await (await get('/api/tour')).json();
     assert.equal(told.owed, true);
-    assert.equal(told.returning, true, 'a room with a conversation is someone who came before');
+    assert.equal(told.returning, true, 'a copy from before 1.1.0 with a conversation is someone who came before');
+    assert.equal(told.upgraded, true);
     assert.equal((await (await get('/api/tour', { 'x-madre-device': 'phone-1' })).json()).owed, false, 'a phone was offered the bonjour');
     assert.equal((await post('/api/tour', { bonjour: true }, {})).status, 403, 'changed by a process with no page');
     assert.equal((await post('/api/tour', { bonjour: true }, { origin: 'http://127.0.0.1:1' })).status, 403, 'changed from another page');

@@ -3666,7 +3666,9 @@ function renderPicker() {
     const shown = state.typedPending ?? state.mode;
     const modeChip = el('button', `mode-chip m${shown}${state.typedPending ? ' pending' : ''}`);
     modeChip.type = 'button';
-    modeChip.append(el('b', null, `#${shown}`), el('span', 'word', sentence(MODES[shown].label)), chevron());
+    // And a short word for a box too narrow for the whole one (Q-17, 2026-11-06): «#1» alone told
+    // someone new nothing on a phone.
+    modeChip.append(el('b', null, `#${shown}`), el('span', 'word', sentence(MODES[shown].label)), el('span', 'nick', MODE_NICKS[shown]?.() ?? ''), chevron());
     modeChip.title = state.typedPending
       ? t('#{n} {label} is written in the message: you will be asked to confirm it when you send it.', { n: shown, label: sentence(MODES[shown].label) })
       : t('Permission mode for this message · {hint}', { hint: MODES[state.mode].hint });
@@ -4281,6 +4283,7 @@ function defaultModeFor(id) { return copilotOn() && canWrite(id) ? 3 : state.cap
 // «#3 open» chip) is where it goes: it fell back to #1 after every message, so the agent read it,
 // answered «I need #3» and asked again, and each change cost a second turn. Within the agent's
 // ceiling, and only with the pass the project gave; the chip's × closes it and the mode goes back.
+const MODE_NICKS = { 0: () => t('Incognito'), 1: () => t('Chat'), 2: () => t('Create'), 3: () => t('Edit'), 4: () => t('Full access') };
 function nextModeFor(id) {
   for (const mode of [4, 3]) if (overrideGraceLeft(mode, id) && overridePass(mode, id) && mode <= ceilingFor(id)) return mode;
   return defaultModeFor(id);
@@ -6098,6 +6101,10 @@ function renderDistilled(event) {
 // to the human, for an instruction of their own; NOT NOW folds the card. Both used to read as the
 // same press («GRANT AND CONTINUE» against «WRITE IT MYSELF») until one was pressed.
 const modeAsks = [];   // { agent, wanted, card } still waiting for an answer in this page
+// How many times each agent asked for #3 in this page, live (Q-16, 2026-11-06): from the second one,
+// the card offers Copilot, which is what spares the asking. It was a small icon nobody found (30
+// copies turned it on, against 298 #3 messages).
+const threeAsks = new Map();
 function attachModeAsk(payload, { sequence = null } = {}) {
   if (!payload || payload.role !== 'assistant' || payload.sender === 'you') return null;
   const ran = state.userMessages.get(payload.messageId)?.mode ?? payload.mode ?? 1;
@@ -6149,6 +6156,19 @@ function attachModeAsk(payload, { sequence = null } = {}) {
   later.type = 'button';
   actions.append(go, myself, later);
   card.append(what, why, ...(time ? [time] : []), actions);
+  if (wanted === 3 && !replaying) {
+    const times = (threeAsks.get(agent) ?? 0) + 1;
+    threeAsks.set(agent, times);
+    if (times >= 2 && !copilotOn() && canWrite(agent)) {
+      const tip = el('div', 'mode-why mode-copilot', t('@{agent} asked for #3 again. With Copilot it edits without asking at every step, for as long as you choose.', { agent }));
+      const see = el('button', 'mode-alt', t('SEE COPILOT'));
+      see.type = 'button';
+      // Opened where it lives, by the box; the click stops here, or the page would close it at once.
+      see.addEventListener('click', (event) => { event.stopPropagation(); toggleCopilotMenu(document.querySelector('.copilot-chip') ?? see, { keep: true }); });
+      tip.append(' ', see);
+      card.append(tip);
+    }
+  }
   const quoted = { sender: agent, sequence, text: plainQuote(payload.text) };
   const ask = { agent, wanted, card };
   modeAsks.push(ask);
