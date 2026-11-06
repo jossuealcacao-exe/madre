@@ -6,6 +6,7 @@ import { t } from './i18n.mjs';
 import { invokeClaude, buildClaudeArgs } from './adapters/claude.mjs';
 import { keptSubagents } from './adapters/subagents.mjs';
 import { invokeGemini, buildGeminiArgs } from './adapters/gemini.mjs';
+import { invokeGeminiRest } from './adapters/gemini-rest.mjs';
 import { invokeOpenCode, buildOpenCodeArgs } from './adapters/opencode.mjs';
 import { invokeCursor, buildCursorArgs } from './adapters/cursor.mjs';
 import { parseMessage } from './router.mjs';
@@ -64,12 +65,15 @@ export function failureMessage(error, maxLength = 500) {
   return line.length > maxLength ? `${line.slice(0, maxLength - 1)}…` : line;
 }
 
-const defaultInvokers = {
+export const defaultInvokers = {
   'codex-readonly': invokeCodex,
   'claude-readonly': invokeClaude,
   'gemini-readonly': invokeGemini,
   'opencode-readonly': invokeOpenCode,
   'cursor-readonly': invokeCursor,
+  // Gemini with a key and no CLI (runtime-detection.mjs): only what an API call can take. The
+  // project, attachments, a lease and tool servers are the CLI's; capabilities.mjs keeps it at #1.
+  'gemini-rest': ({ prompt, model, signal, timeoutMs, onProgress, json }) => invokeGeminiRest({ prompt, model, signal, timeoutMs, onProgress, json }),
 };
 
 // What a turn costs against MADRE's local budget. Cache reads are close to
@@ -1718,6 +1722,13 @@ export class Room {
         mcpServers: [], env: [], isolation: [],
       };
     }
+    if (agent.adapter === 'gemini-rest') {
+      return {
+        agent: agent.id, label: agent.label, local: false,
+        says: t('No process is started for @gemini: the Gemini CLI is not installed, so MADRE sends the briefing to Google\'s Gemini API with your key and shows the answer. It cannot read the project, see attachments or write; install the Gemini CLI for that.'),
+        mcpServers: [], env: [], isolation: [],
+      };
+    }
     const scopes = this.scopesFor(agent.id);
     const ceiling = Math.min(mode, scopes.maxMode ?? 0);
     const mcpServers = this.#toolsForTurn ? await this.#toolsForTurn({ agent: agent.id, mode: ceiling, lease: null, scratchDir: null }).catch(() => []) : [];
@@ -2110,7 +2121,7 @@ export class Room {
       this.#liveTurns.delete(responseMessageId);
       // Which model the turn ran on, when the room knows it (the one asked for, or the agent's
       // default): what answered is what MADRE can offer again when another model fails.
-      const ranOn = await this.#pricedModel(agent.id, model).catch(() => null);
+      const ranOn = result.model ?? await this.#pricedModel(agent.id, model).catch(() => null);
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId, ...(ranOn ? { ranOn } : {}) });
       return { responseMessageId, directives };
     } catch (error) {

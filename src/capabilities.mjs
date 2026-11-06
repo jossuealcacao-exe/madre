@@ -53,6 +53,23 @@ export const CAPABILITIES = {
   },
 };
 
+// An agent MADRE reaches through its provider's API instead of its CLI (Gemini with only a key,
+// src/adapters/gemini-rest.mjs): a request with the briefing and an answer back. It does not read
+// the project, see attachments, write, draw or search, so it answers at #1 at most.
+export const API_ONLY = {
+  read: false,
+  imageIn: false,
+  write: false,
+  imageGen: false,
+  web: false,
+  note: 'Answers through the provider\'s API: it does not read the project or attachments, and writes nothing. Install the CLI for the rest.',
+};
+const viaApi = new Set();
+export function setAgentsViaApi(agents = []) {
+  viaApi.clear();
+  for (const agent of agents) if (agent?.viaApi) viaApi.add(agent.id);
+}
+
 // MADRE modules can add abilities a CLI lacks. Image Studio (MADRE's own MCP
 // image server on the Gemini API) gives Gemini CLI, Claude Code and OpenCode
 // image generation; Codex keeps its native one.
@@ -63,6 +80,7 @@ export function setImageModule(state) {
 export const imageModuleState = () => ({ ...imageModule });
 
 export const capabilityOf = (agentId) => {
+  if (viaApi.has(agentId)) return API_ONLY;
   const base = CAPABILITIES[agentId] ?? { read: true, imageIn: false, write: false, imageGen: false, web: false };
   if (!base.imageGen && imageModule.enabled && ['gemini', 'claude', 'opencode'].includes(agentId)) {
     return { ...base, imageGen: { how: 'MADRE Image Studio (MCP tool generate_image, Gemini API)', note: `Attached only inside a creation lease with the image scope on${imageModule.model ? ` · model ${imageModule.model}` : ''}.`, module: 'image-studio' } };

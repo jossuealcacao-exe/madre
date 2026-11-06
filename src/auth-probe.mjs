@@ -6,6 +6,7 @@ import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { geminiApiKeyPresent } from './runtime-detection.mjs';
 
 const execFileAsync = promisify(execFile);
 const stripAnsi = (text) => String(text ?? '').replace(/\[[0-9;]*[A-Za-z]/g, '');
@@ -69,8 +70,7 @@ export function geminiAuthState({ settings, hasOauth, hasApiKey }) {
   if (type === 'gemini-api-key') return hasApiKey ? { state: 'signed-in', detail: 'via API key' } : { state: 'signed-out', detail: 'API key selected but not found' };
   if (type === 'oauth-personal' || type === 'oauth-enterprise') return hasOauth ? { state: 'signed-in', detail: 'via Google account' } : { state: 'signed-out', detail: 'Google login selected but no token' };
   if (type === 'vertex-ai') return { state: 'signed-in', detail: 'via Vertex AI' };
-  if (hasApiKey) return { state: 'signed-in', detail: 'via API key' };
-  if (hasOauth) return { state: 'unknown', detail: 'credentials present, auth type not selected' };
+  if (hasApiKey || hasOauth) return { state: 'unknown', detail: 'credentials present, auth type not selected' };
   return { state: 'signed-out', detail: 'never signed in' };
 }
 
@@ -291,6 +291,8 @@ export function installPlanFor(agent, { prefix = null } = {}) {
 // the providers in its `methods`, and its keys are pasted. Every plan also carries `terminal`:
 // the same sign-in typed by hand, for whoever prefers it.
 export function loginPlanFor(agent, { method = null } = {}) {
+  // Gemini answering through its API has no CLI to sign in with: its key is its sign-in.
+  if (agent?.viaApi) return null;
   const setup = AGENT_SETUP[agent.id];
   if (!setup) return null;
   const headless = Boolean(setup.browser) && setup.login.length > 0;
@@ -367,6 +369,10 @@ export function geminiSignIn({ env = process.env, verifyMs = 30000 } = {}) {
 
 export async function probeAgentAuth(agent) {
   if (agent.id === 'madre') return agent.ready ? { state: 'signed-in', detail: `local · ${agent.version ?? 'Ollama'}` } : { state: 'signed-out', detail: 'Ollama is not running or has no chat model' };
+  // Gemini without its CLI answers through Google's API with a Gemini key (adapters/gemini-rest.mjs):
+  // the key is its whole sign-in, checked against Google when it was pasted (credentials.mjs). The
+  // CLI's own files (a Google sign-in left behind, a Vertex setting) say nothing without the CLI.
+  if (agent.id === 'gemini' && !agent.path) return await geminiApiKeyPresent() ? { state: 'signed-in', detail: 'via API key · Google AI Studio API' } : { state: 'not-installed', detail: 'not found on this computer' };
   if (agent.id === 'gemini') return probeGemini();
   if (!agent.detected || !agent.path) return { state: 'not-installed', detail: 'not found on this computer' };
   const answered = (result, read) => (result.timedOut ? UNANSWERED : read(result));

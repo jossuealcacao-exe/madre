@@ -108,7 +108,7 @@ const geminiModels = { at: 0, ids: [] };
 import { observable } from './modules/intents-observe.mjs';
 import { summarizeHistory } from './history.mjs';
 import { migrateOpenCodeHealth, noteOpenCodeTurn, openCodeHealth, suggestOpenCodeModel } from './opencode-health.mjs';
-import { normalizeMode, setImageModule } from './capabilities.mjs';
+import { normalizeMode, setAgentsViaApi, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { listDirectory, searchFiles, readServable, storeAttachment, keepAttachment, attachmentPlaceRefused, ATTACHMENT_REFUSED, resolveInside, createEmptyFile, writeEdited, MAX_ATTACHMENT_BYTES, MAX_EDIT_BYTES } from './files.mjs';
@@ -321,6 +321,7 @@ export async function createPulseServer({
     ? { ...agent, route: await codexRoute() }
     : agent;
   const agents = await Promise.all((providedAgents ?? await detector()).map(refreshCodexRoute));
+  setAgentsViaApi(agents);
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
   // Whether this is the room of Salas (docs/MACROVERSO.md, fase 3d): the room whose project is
@@ -1416,11 +1417,14 @@ export async function createPulseServer({
       const index = agents.findIndex((item) => item.id === next.id);
       if (index === -1) { agents.push(next); changed = true; continue; }
       const before = agents[index];
-      if (before.detected !== next.detected || before.ready !== next.ready || before.version !== next.version || before.path !== next.path || JSON.stringify(before.route ?? null) !== JSON.stringify(next.route ?? null)) {
-        agents[index] = { ...before, ...next };
+      if (before.detected !== next.detected || before.ready !== next.ready || before.version !== next.version || before.path !== next.path || before.adapter !== next.adapter || JSON.stringify(before.route ?? null) !== JSON.stringify(next.route ?? null)) {
+        // `viaApi` goes when the CLI arrives: a spread would keep the old one.
+        agents[index] = { ...before, ...next, viaApi: next.viaApi };
+        if (!next.viaApi) delete agents[index].viaApi;
         changed = true;
       }
     }
+    setAgentsViaApi(agents);
     await refreshSessions();
     if (changed && announce) {
       await room.record('agents.updated', {
@@ -1437,7 +1441,8 @@ export async function createPulseServer({
   async function installAgent(id) {
     const agent = agents.find((item) => item.id === id);
     if (!agent) return { status: 404, body: { error: t('Unknown agent: {id}.', { id }) } };
-    if (agent.detected) return { status: 409, body: { error: t('{label} is already installed.', { label: agent.label }) } };
+    // Gemini answering through its API with only a key is not its CLI: that one can still be installed.
+    if (agent.detected && !agent.viaApi) return { status: 409, body: { error: t('{label} is already installed.', { label: agent.label }) } };
     const plan = installPlanFor(agent, { prefix: toolsPrefix() });
     if (!plan) return { status: 404, body: { error: t('MADRE does not know how to install {id}.', { id }) } };
     if (!plan.command) return { status: 409, body: { error: t('{label} installs with its own installer: copy the command into a terminal, then check again.', { label: agent.label }) } };
@@ -4742,7 +4747,8 @@ export async function createPulseServer({
           probe: () => probeAgentAuth(agent),
         });
         if (!result.ok) return sendJson(response, 422, { error: result.error });
-        await refreshSessions();
+        // A Gemini key with no CLI is how Gemini arrives (through its API): look again, not only at sessions.
+        if (id === 'gemini' && !agent?.path) await redetectAgents(); else await refreshSessions();
         // What the room remembers: that a key was set, and for which provider. Never the key.
         await room.record('connection.key.set', { agent: id, label: agent.label, provider: payload.provider ?? null, detail: result.detail ?? null });
         return sendJson(response, 200, { ok: true, session: sessions[id] ?? null });

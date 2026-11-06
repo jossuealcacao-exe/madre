@@ -6,7 +6,7 @@ import { homedir, tmpdir, userInfo } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { resolveGeminiKey } from './mcp/image-server.mjs';
+import { keyFromGeminiEnvFile } from './mcp/image-server.mjs';
 
 const accountHome = () => { try { return userInfo().homedir || homedir(); } catch { return homedir(); } };
 
@@ -177,22 +177,32 @@ async function readVersion(path, args) {
 export const toolsPrefix = (env = process.env) => join(env.PULSE_HOME ?? join(homedir(), '.pulse'), 'tools');
 export const toolsBin = (env = process.env) => (process.platform === 'win32' ? toolsPrefix(env) : join(toolsPrefix(env), 'bin'));
 
-export async function detectAgents({ env = process.env, keyResolver = resolveGeminiKey, finder = findExecutable } = {}) {
+// Gemini without its CLI (a575180, reviewed 2026-11-06): a Gemini API key the CLI's own places hold
+// (GEMINI_API_KEY, or ~/.gemini/.env, where MADRE writes a pasted key) is enough to answer through
+// Google's API. Only those: GOOGLE_API_KEY is any Google key (Maps, say), and the keychain is asked
+// only when a turn needs the key, never on every look, where it could raise the system's prompt.
+// PULSE_GEMINI_ADAPTER=rest takes the API even with the CLI there.
+export async function geminiApiKeyPresent(env = process.env, fromFile = keyFromGeminiEnvFile) {
+  return Boolean(env.GEMINI_API_KEY) || Boolean(await fromFile(env).catch(() => null));
+}
+
+export async function detectAgents({ env = process.env, keyPresent = geminiApiKeyPresent, finder = findExecutable } = {}) {
   const searchPath = [env.PATH ?? '', toolsBin(env)].filter(Boolean).join(delimiter);
   return Promise.all(definitions.map(async (definition) => {
-    const path = await finder(definition.candidates, searchPath, env);
+    let path = await finder(definition.candidates, searchPath, env);
     let detected = Boolean(path);
     let ready = detected && Boolean(definition.adapter);
     let version = path ? await readVersion(path, definition.versionArgs) : null;
     let adapter = definition.adapter ?? null;
+    let viaApi = false;
 
-    if (definition.id === 'gemini' && !detected) {
-      const hasKey = Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY) || await keyResolver(env).catch(() => null);
-      if (hasKey) {
-        detected = true;
-        ready = true;
-        version = 'Google AI Studio REST';
-      }
+    if (definition.id === 'gemini' && (!detected || env.PULSE_GEMINI_ADAPTER === 'rest') && await keyPresent(env)) {
+      detected = true;
+      ready = true;
+      adapter = 'gemini-rest';
+      viaApi = true;
+      path = null;
+      version = 'Google AI Studio API';
     }
 
     return {
@@ -203,6 +213,7 @@ export async function detectAgents({ env = process.env, keyResolver = resolveGem
       adapter,
       path,
       version,
+      ...(viaApi ? { viaApi: true } : {}),
       route: agentRouteFromEnvironment(definition.id, env),
     };
   }));

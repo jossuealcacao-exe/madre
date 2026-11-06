@@ -19637,8 +19637,9 @@ function connectionCard(agent) {
     if (result?.sessions) renderSettings();
     recheck.disabled = false;
   });
-  if (!agent.detected && agent.install?.command) {
-    const install = sxButton(t('Install'), async () => {
+  // Gemini answering through its API (a key, no CLI) can still get its CLI, for the rest it does.
+  if ((!agent.detected || agent.viaApi) && agent.install?.command) {
+    const install = sxButton(agent.viaApi ? t('Install the Gemini CLI') : t('Install'), async () => {
       install.disabled = true;
       state.loginLogs.set(agent.id, []);
       const response = await fetch(`/api/agents/${agent.id}/install`, { method: 'POST' });
@@ -19666,14 +19667,15 @@ function connectionCard(agent) {
   acts.append(recheck);
   const slot = el('div', 'sx-slot');
   // OpenCode's keys are its providers', added in the block under its settings, one row for all.
-  if (agent.detected && agent.key && agent.id !== 'opencode') slot.append(keyForm(agent, { onDone: () => { void loadSettings(); renderOnboarding(); } }));
+  // Gemini takes its key with or without its CLI: the key alone is how it answers through its API.
+  if ((agent.detected || agent.id === 'gemini') && agent.key && agent.id !== 'opencode') slot.append(keyForm(agent, { onDone: () => { void loadSettings(); renderOnboarding(); } }));
   // Gemini's key is its way in (agent.key.first): the field before the Google door.
   if (agent.key?.first && slot.firstChild) { const first = el('div', 'sx-slot'); first.append(slot.firstChild); body.append(first); }
   body.append(acts);
   if (agent.detected && agent.login?.headless) slot.append(loginAskSlot(agent.id));
   // The same, typed in a terminal, folded for whoever prefers it. Signed in, OpenCode's providers
   // are added in its block below; its terminal is for a first sign-in.
-  const way = !agent.detected ? installTerminalWay(agent) : agent.id === 'opencode' && session?.state === 'signed-in' ? null : signInTerminalWay(agent);
+  const way = !agent.detected || agent.viaApi ? installTerminalWay(agent) : agent.id === 'opencode' && session?.state === 'signed-in' ? null : signInTerminalWay(agent);
   if (way) slot.append(way);
   const log = state.loginLogs.get(agent.id) ?? [];
   if (log.length || busy) {

@@ -66,6 +66,15 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // Gemini without its CLI (adapters/gemini-rest.mjs): MADRE's own process carries the turn, so it
+    // is declared here and not left to `crew`. The key travels in a header, never in the address.
+    id: 'gemini-answer', host: 'generativelanguage.googleapis.com', match: (url) => /:streamGenerateContent$/.test(url.pathname), to: 'Google · Gemini, through its API',
+    what: 'The briefing — the document above, your question, the memories it summoned and the transcript it carries — with your Gemini API key, to be answered by the model you chose.',
+    when: 'every turn you send to @gemini while Gemini answers through its API (a Gemini key and no Gemini CLI)',
+    where: 'you choose it every time you send a turn to @gemini; installing the Gemini CLI hands its turns back to the CLI',
+    inside: true,
+  },
+  {
     id: 'image', host: 'generativelanguage.googleapis.com', match: (url) => /generateContent/.test(url.pathname), to: 'Google · Gemini image model',
     what: 'The prompt an agent wrote for an image.',
     when: 'an agent uses the image tool during a permission to create',

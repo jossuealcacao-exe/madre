@@ -5124,6 +5124,8 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
       if (agent.detected && agent.version) facts.append(el('code', 'sm-agent-line', `${agent.version}${agent.path ? ` · ${agent.path}` : ''}`));
       const said = agent.detected ? sessionDetail(answer.sessions?.[agent.id]) : null;
       if (said) facts.append(el('small', 'sm-agent-line', said));
+      // Through its API it only answers: said where its connection is, with the way to the rest.
+      if (agent.viaApi) facts.append(el('small', 'sm-agent-note', t('Answers through Google\'s API with your key: it does not read your projects or write in them. Install the Gemini CLI for that.')));
       // In the welcome, Gemini's account is already said above its card (welcome.js, explainAgent):
       // said twice in two ways, it read as two different requirements (QA 1.1.0, NUE-04).
       if (agent.account && !(compact && agent.id === 'gemini' && !state.ok)) facts.append(el('small', 'sm-agent-note', agent.account));
@@ -5179,16 +5181,18 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
         });
       };
       // Gemini's key is its way in (agent.key.first): the field before the Google door.
-      const keyFirst = Boolean(agent.detected && agent.key?.first);
+      const keyFirst = Boolean((agent.detected || agent.id === 'gemini') && agent.key?.first);
       if (keyFirst) body.append(keyForm(agent));
       const acts = el('div', 'sm-agent-acts');
       if (!state.busyNow) {
-        if (!agent.detected && installing.has(agent.id)) {
+        // Gemini answering through its API can still get its CLI, for what the API cannot do.
+        const canInstall = !agent.detected || agent.viaApi;
+        if (canInstall && installing.has(agent.id)) {
           const wait = button('sm-btn primary small is-busy', t('Installing…'), () => {});
           wait.disabled = true;
           wait.setAttribute('aria-busy', 'true');
           acts.append(wait);
-        } else if (!agent.detected && agent.install?.command) acts.append(button('sm-btn primary small', wrongAt(agent.id, 'install') ? t('Try again') : t('Install'), async (event) => {
+        } else if (canInstall && agent.install?.command) acts.append(button(`sm-btn ${agent.viaApi ? '' : 'primary'} small`, wrongAt(agent.id, 'install') ? t('Try again') : agent.viaApi ? t('Install the Gemini CLI') : t('Install'), async (event) => {
           event.currentTarget.disabled = true;
           event.currentTarget.textContent = t('Installing…');
           trouble.delete(agent.id);
@@ -5211,7 +5215,7 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
       if ((agent.detected || agent.id === 'gemini') && agent.key && agent.id !== 'opencode' && !keyFirst) body.append(keyForm(agent));
       // The same install or sign-in typed in a terminal, folded for whoever prefers it. Signed in,
       // OpenCode's providers are added in the block below; its terminal is for a first sign-in.
-      const way = !agent.detected ? agent.install && [agent.install.display, ...(agent.install.alternatives ?? []).map((line) => `# ${t(line)}`)]
+      const way = !agent.detected || agent.viaApi ? agent.install && [agent.install.display, ...(agent.install.alternatives ?? []).map((line) => `# ${t(line)}`)]
         : agent.login?.terminal && !(agent.id === 'opencode' && state.ok) ? [agent.login.terminal.command, ...(agent.login.terminal.note ? [`# ${t(agent.login.terminal.note)}`] : [])] : null;
       if (way && !state.busyNow) body.append(terminalWay(way, agent.id));
       if (agent.id === 'opencode' && agent.detected) body.append(openCodeProviders.node());

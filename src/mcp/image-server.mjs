@@ -34,7 +34,7 @@ const FAKE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADU
 // the CLI's own sign-in put it there. Leaving the file out meant MADRE saved a key in a place it
 // then refused to look, and on Linux, where there is no keychain, that was the only place it
 // could have been: Image Studio could never find a key there at all.
-async function keyFromGeminiEnvFile(env) {
+export async function keyFromGeminiEnvFile(env) {
   const home = env.GEMINI_CLI_HOME ?? homedir();
   let text;
   try { text = await readFile(join(home, '.gemini', '.env'), 'utf8'); } catch { return null; }

@@ -121,6 +121,10 @@ export function keyPlanFor(id) {
       writesTo: '~/.gemini/.env',
       note: 'The key is written where the Gemini CLI looks for it, readable only by you. MADRE keeps no copy.',
       providers: null,
+      // The way in, ahead of the Google account: Google refuses free personal accounts on this
+      // CLI (IneligibleTierError, 2026-10-17), and a key from AI Studio is what works for anyone.
+      // Taken out in 12b400b and put back (review of 2026-11-06): nothing else stood in its place.
+      first: true,
     };
   }
   if (id === 'opencode') {
@@ -145,7 +149,11 @@ async function restore(path, previous) {
 }
 
 // ---- Gemini: a line in ~/.gemini/.env, plus the auth type its settings must select.
-async function applyGeminiKey(key, { home, probe }) {
+async function applyGeminiKey(key, { home, probe, verify = geminiTakesKey }) {
+  // Asked of Google first (review of 2026-11-06): without the CLI nothing else checks the key, and
+  // any text pasted here read as «connected» until the first turn failed.
+  const taken = await verify(key);
+  if (taken.ok === false) return { ok: false, error: t('Google did not accept this Gemini key (HTTP {status}): check you copied all of it, or make a new one at aistudio.google.com/app/apikey. Nothing was changed.', { status: taken.status }) };
   const dir = join(home, '.gemini');
   const envFile = join(dir, '.env');
   const settingsFile = join(dir, 'settings.json');
@@ -185,6 +193,18 @@ export async function anthropicTakesKey(key, { fetchImpl = globalThis.fetch, bas
     const answer = await fetchImpl(`${base}/v1/models`, { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(timeoutMs) });
     if (answer.ok) return { ok: true };
     return { ok: answer.status === 401 || answer.status === 403 ? false : null, status: answer.status };
+  } catch {
+    return { ok: null, status: null };
+  }
+}
+
+// Whether Google takes a Gemini key: listing one model spends nothing. A bad key is a 400 there
+// (API_KEY_INVALID). `ok: null` when Google said nothing about it (offline, its own trouble).
+export async function geminiTakesKey(key, { fetchImpl = globalThis.fetch, base = process.env.PULSE_GEMINI_API_URL ?? 'https://generativelanguage.googleapis.com', timeoutMs = 8000 } = {}) {
+  try {
+    const answer = await fetchImpl(`${base.replace(/\/$/, '')}/v1beta/models?pageSize=1`, { headers: { 'x-goog-api-key': key }, signal: AbortSignal.timeout(timeoutMs) });
+    if (answer.ok) return { ok: true };
+    return { ok: [400, 401, 403].includes(answer.status) ? false : null, status: answer.status };
   } catch {
     return { ok: null, status: null };
   }
@@ -286,12 +306,12 @@ const runOpenCode = async (executable, args) => {
 };
 
 // Writes the key for one agent and answers whether that agent is signed in now.
-export async function applyKey({ agent, key, provider = null, home = homedir(), probe, executable = null, run = null, verify = anthropicTakesKey }) {
+export async function applyKey({ agent, key, provider = null, home = homedir(), probe, executable = null, run = null, verify = anthropicTakesKey, verifyGemini = geminiTakesKey }) {
   const checked = normalizeKey(key);
   if (!checked.ok) return checked;
   if (agent === 'codex') return applyCodexKey(checked.key, { home, probe, executable: executable ?? 'codex', run: run ?? runWithInput });
   if (agent === 'claude') return applyClaudeKey(checked.key, { home, probe, verify });
-  if (agent === 'gemini') return applyGeminiKey(checked.key, { home, probe });
+  if (agent === 'gemini') return applyGeminiKey(checked.key, { home, probe, verify: verifyGemini });
   if (agent === 'opencode') return applyOpenCodeKey(checked.key, { home, provider, executable: executable ?? 'opencode', run: run ?? runOpenCode });
   return { ok: false, error: t('{agent} does not take a key here: it signs in with a click.', { agent }) };
 }
