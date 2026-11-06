@@ -9,7 +9,9 @@
 // A name nobody could look up (D-3): Go's resolver, which Ollama uses, says it this way. It is not
 // a download that took too long, though it ends in «i/o timeout».
 const DNS = /\blookup \S+ on \S+:53\b|no such host|server misbehaving|Temporary failure in name resolution/i;
-const NETWORK = /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH|getaddrinfo|socket hang up|network (is )?unreachable|unable to get local issuer|self[- ]signed certificate|request to https?:\/\/\S+ failed/i;
+// Go's words too, which Ollama prints (D-20): a connection that reached the server and did not
+// finish is the network, not a download that took too long, though it ends in «timeout».
+const NETWORK = /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH|getaddrinfo|socket hang up|network (is )?unreachable|unable to get local issuer|self[- ]signed certificate|request to https?:\/\/\S+ failed|TLS handshake timeout|connection reset by peer|no route to host|connect: connection refused/i;
 const PERMISSION = /EACCES|EPERM|permission denied|operation not permitted|access is denied/i;
 const DISK = /ENOSPC|no space left/i;
 const NO_NPM = /spawn npm(\.cmd)? ENOENT|npm(\.cmd)?: (command )?not found|'npm' is not recognized|command not found: npm/i;

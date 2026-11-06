@@ -877,7 +877,9 @@ export const CONDITIONS = [
     code: 'MU-064',
     severity: 'transient',
     title: 'An install could not download',
-    match: /ENOTFOUND|EAI_AGAIN|getaddrinfo|ECONNRESET|network (?:is )?unreachable|unable to get local issuer certificate|self[- ]signed certificate in certificate chain|request to https?:\/\/registry\.npmjs\.org\S* failed/i,
+    // And Ollama's, in Go's words (D-20, a copy in WSL): the connection to the models' server did
+    // not finish, which read as a download that took too long.
+    match: /ENOTFOUND|EAI_AGAIN|getaddrinfo|ECONNRESET|network (?:is )?unreachable|unable to get local issuer certificate|self[- ]signed certificate in certificate chain|request to https?:\/\/registry\.npmjs\.org\S* failed|TLS handshake timeout|connection reset by peer|no route to host/i,
     diagnosis: 'Installing an agent or a model downloads it from the internet: agents from npm, models from Ollama. The download did not get through: there is no connection, the server\'s name could not be found, or something on this network (a VPN, a proxy, a company firewall) stopped it. Nothing was left half installed.',
     remedy: 'Check that this computer has internet and try again. On a company network or a VPN, try from another one, or ask whoever runs it to allow registry.npmjs.org and ollama.com.',
     fixes: same(['npm ping', 'curl -I https://registry.npmjs.org', '# behind a proxy, npm has to be told:', 'npm config set proxy http://proxy:port']),

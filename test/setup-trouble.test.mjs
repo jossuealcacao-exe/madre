@@ -52,3 +52,25 @@ test('setup trouble · a name nobody could look up is DNS, not a download that t
   assert.match(home, /\n    dns: \(\) => t\('This computer could not find the address it downloads from \(DNS\)/);
   assert.match(home, /install: \{[^}]*dns: 'name-lookup'/);
 });
+
+// D-20 (a copy of 1.1.2 in WSL, 2026-11-06): «net/http: TLS handshake timeout» from Ollama read as a
+// download that took too long («It took too long and was stopped. Try again.»), when the connection to
+// the models' server never finished: a VPN, a proxy, a firewall or a very slow network.
+test('setup trouble · a connection Ollama could not finish is the network, not a slow download (D-20)', async () => {
+  const seen = [
+    'pull model manifest: Get "https://registry.ollama.ai/v2/library/qwen2.5/manifests/1.5b": net/http: TLS handshake timeout',
+    'pull model manifest: Get "https://registry.ollama.ai/v2/library/qwen2.5/manifests/3b": read tcp 172.20.1.2:51234->104.21.75.227:443: read: connection reset by peer',
+    'pull model manifest: Get "https://registry.ollama.ai/v2/library/qwen2.5/manifests/3b": dial tcp 104.21.75.227:443: connect: no route to host',
+  ];
+  for (const said of seen) assert.equal(installTrouble(said), 'network', said);
+  // A download that really ran out of time is still that.
+  assert.equal(installTrouble('the install timed out after 600000 ms'), 'timeout');
+  // Diagnostics opens the card that names a VPN, a proxy or a firewall before the one about a cut download.
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const codes = diagnose(seen[0]).map((card) => card.code);
+  assert.ok(codes.indexOf('MU-064') >= 0 && codes.indexOf('MU-064') < codes.indexOf('MU-068'), codes.join(', '));
+  // The welcome opens that card for a model download that failed on the network.
+  const { readFile } = await import('node:fs/promises');
+  const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  assert.equal(welcome.match(/pull\.trouble === 'network' \? 'install-offline'/g)?.length, 2);
+});

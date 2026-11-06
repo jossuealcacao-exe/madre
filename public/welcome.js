@@ -525,7 +525,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     }
     if (pull?.cancelled) parts.push(note('', t('You cancelled the download. What already arrived stays in Ollama: download it again and it picks up from there.')));
     if (pull?.error) {
-      parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : pull.trouble === 'dns' ? 'name-lookup' : 'model-download')));
+      parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : pull.trouble === 'dns' ? 'name-lookup' : pull.trouble === 'network' ? 'install-offline' : 'model-download')));
     }
     if (!roomFor(model.sizeGb ?? 0)) parts.push(note('warn', t('There are {free} GB free and this model needs {size} GB plus some room. Free up space or choose a smaller model.', { free: number(s.env.disk.freeGb), size: number(model.sizeGb ?? 0) }), fix('disk-full')));
     const row = el('div', 'wl-row');
@@ -714,7 +714,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
         line.append(el('small', 'wl-tiny', t('{pct} % · {mb} MB', { pct: Math.round(pull.pct ?? 0), mb: EMBED_MB })), el('span', 'wl-grow'), cancelKey(EMBED_MODEL, pull));
         parts.push(bar(pull.pct ?? 0), line);
       } else if (pull?.cancelled) parts.push(note('', t('You cancelled the download. What already arrived stays in Ollama: download it again and it picks up from there.')), button('wl-btn primary small', t('Continue the download'), () => void startPull(EMBED_MODEL)));
-      else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : pull.trouble === 'dns' ? 'name-lookup' : 'model-download')), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
+      else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : pull.trouble === 'dns' ? 'name-lookup' : pull.trouble === 'network' ? 'install-offline' : 'model-download')), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
       else parts.push(button('wl-btn primary small', t('Download the memory model · {mb} MB', { mb: EMBED_MB }), () => void startPull(EMBED_MODEL)));
     }
     if (s.memoryChoice === 'gemini' && !s.geminiKey) parts.push(button('wl-btn small', t('Go to step 3'), () => go('agents')));
