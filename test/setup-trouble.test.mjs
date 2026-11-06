@@ -74,3 +74,27 @@ test('setup trouble · a connection Ollama could not finish is the network, not 
   const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
   assert.equal(welcome.match(/pull\.trouble === 'network' \? 'install-offline'/g)?.length, 2);
 });
+
+// D-21 (a copy of 1.1.2 in WSL, 2026-11-06): Undici's «TypeError: terminated» when Ollama drops the
+// HTTP connection mid-download read as «terminated · ollama · unknown» and «The download stopped: terminated».
+test('setup trouble · Ollama closing mid-download is ollama-closed, not unknown (D-21)', async () => {
+  const seen = [
+    'terminated',
+    'TypeError: terminated',
+    'Ollama closed the connection while downloading qwen2.5:1.5b. Check that Ollama is still running and try again; what already arrived stays.',
+    'SocketError: other side closed',
+  ];
+  for (const said of seen) assert.equal(installTrouble(said), 'ollama-closed', said);
+  // Diagnostics opens the model-download card (MU-068).
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const codes = diagnose('terminated').map((card) => card.code);
+  assert.ok(codes.includes('MU-068'), codes.join(', '));
+  // Welcome and Home say so in their words.
+  const { readFile } = await import('node:fs/promises');
+  const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(welcome, /'ollama-closed': \(\) => t\('Ollama closed the connection/);
+  assert.match(welcome, /TROUBLE_CARD = \{[^}]*'ollama-closed': 'model-download'/);
+  assert.match(home, /'ollama-closed': \(\) => t\('Ollama closed the connection/);
+  assert.match(home, /'ollama-closed': 'model-download'/);
+});

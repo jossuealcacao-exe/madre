@@ -4953,6 +4953,7 @@ const TROUBLE_WORDS = {
     'npm-missing': () => t('Installing it needs Node and npm, and this computer does not have them. Install Node from nodejs.org, then try again.'),
     'zstd-missing': () => t('Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.'),
     dns: () => t('This computer could not find the address it downloads from (DNS). In WSL, close it from Windows and open it again; with a VPN on, try without it.'),
+    'ollama-closed': () => t('Ollama closed the connection while downloading the model. Check that Ollama is still running and try again; what already arrived stays.'),
     timeout: () => t('It took too long and was stopped. Try again.'),
     unknown: () => t('It did not install.'),
   },
@@ -4966,7 +4967,7 @@ const TROUBLE_WORDS = {
 };
 // The card of Diagnostics for each of those (public/troubleshooting.js), opened beside the failure.
 const TROUBLE_CARDS = {
-  install: { network: 'install-offline', dns: 'name-lookup', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing' },
+  install: { network: 'install-offline', dns: 'name-lookup', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing', 'ollama-closed': 'model-download' },
   login: { network: 'install-offline', timeout: 'sign-in-unfinished', cancelled: 'sign-in-unfinished', unknown: 'sign-in-unfinished' },
 };
 const troubleCard = (agent, kind, cause) => (kind === 'login' && cause === 'refused-account' ? (agent === 'gemini' ? 'gemini-ineligible-tier' : 'not-signed-in') : TROUBLE_CARDS[kind]?.[cause] ?? null);
@@ -5990,6 +5991,12 @@ function watchPull(model) {
   const look = async () => {
     await loadLocal({ probe: true });
     if ((localOllama?.ollama?.models ?? []).some((one) => one.name.replace(/:latest$/, '') === model)) { pulling.delete(model); toast(t('{model} is ready. Choose it in Settings › Local AI.', { model })); return; }
+    if (localOllama?.lastPull?.model === model && !localOllama.lastPull.ok && !localOllama.pulling) {
+      pulling.delete(model);
+      toast(localOllama.lastPull.detail ?? t('The download stopped.'));
+      settingsSheet?.sync({ detail: true, only: 'local' });
+      return;
+    }
     if (Date.now() - started > 60 * 60 * 1000) { pulling.delete(model); return; }
     setTimeout(look, 8000);
   };

@@ -72,6 +72,27 @@ test('ollama: the embedder prefixes nomic tasks and returns Float32 vectors; gen
   const progress = [];
   await pullModel({ host: 'http://o', model: 'qwen2.5:3b', fetchImpl: fakeOllama(calls), onLine: (line) => progress.push(line) });
   assert.deepEqual(progress, ['pulling manifest', 'pulling abc · 50%', 'pulling abc · 100%', 'success']);
+
+  // D-21: When Ollama closes the connection mid-download (undici throws TypeError: terminated)
+  const cutFetch = async () => ({
+    ok: true,
+    status: 200,
+    body: {
+      getReader: () => ({
+        read: async () => {
+          throw Object.assign(new TypeError('terminated'), { cause: Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' }) });
+        },
+      }),
+    },
+  });
+  await assert.rejects(
+    () => pullModel({ host: 'http://o', model: 'qwen2.5:1.5b', fetchImpl: cutFetch }),
+    (error) => {
+      assert.equal(error.trouble, 'ollama-closed');
+      assert.match(error.message, /Ollama closed the connection while downloading qwen2\.5:1\.5b/);
+      return true;
+    },
+  );
 });
 
 test('ollama: createEmbedder prefers a running Ollama, honours PULSE_EMBED_PROVIDER, falls back to Gemini', () => {

@@ -2081,6 +2081,7 @@ export async function createPulseServer({
   // When the install running now began, for «En marcha» (2026-10-30).
   let installingSince = 0;
   let pulling = null;          // the model download running now, and how to stop it
+  let lastPull = null;         // what the last model download reported: { model, ok, detail, trouble }
 
   // Intenciones' reading of every conversation, kept per ledger file until that file changes.
   const observedLedgers = new Map();
@@ -2188,6 +2189,8 @@ export async function createPulseServer({
         }),
         ollama: {
           state: () => ollama,
+          pulling: () => (pulling ? { model: pulling.model } : null),
+          lastPull: () => lastPull,
           // One answer from the local model, for a module that reads something with it (SDK 2):
           // the model MADRE chose unless one is named. Nothing leaves this computer.
           generate: ({ model = null, system = null, prompt, json = false, timeoutMs = 60000, temperature = 0 } = {}) => {
@@ -2283,13 +2286,20 @@ export async function createPulseServer({
                 await pullModel({ host: ollama.host, model, fetchImpl: reportFetch, signal: stopper.signal, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
                 await flush();
                 const status = await wireOllama();
+                lastPull = { model, ok: true, detail: `pulled ${model}` };
                 await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, model, ollama: status });
               } catch (error) {
                 await flush();
                 // Stopped on purpose: said as that, not as a failure.
-                if (stopper.signal.aborted) await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: 'cancelled', model, cancelled: true });
-                // Why it stopped, in one word the page says in plain words (src/setup-trouble.mjs).
-                else await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message, model, trouble: installTrouble(error.message) });
+                if (stopper.signal.aborted) {
+                  lastPull = { model, ok: false, cancelled: true };
+                  await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: 'cancelled', model, cancelled: true });
+                } else {
+                  const trouble = error.trouble ?? installTrouble(error.message);
+                  lastPull = { model, ok: false, detail: error.message, trouble };
+                  // Why it stopped, in one word the page says in plain words (src/setup-trouble.mjs).
+                  await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message, model, trouble });
+                }
               } finally { installing = null; pulling = null; }
             })();
             return { ok: true };

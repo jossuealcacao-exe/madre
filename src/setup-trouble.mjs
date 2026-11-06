@@ -12,6 +12,9 @@ const DNS = /\blookup \S+ on \S+:53\b|no such host|server misbehaving|Temporary 
 // Go's words too, which Ollama prints (D-20): a connection that reached the server and did not
 // finish is the network, not a download that took too long, though it ends in «timeout».
 const NETWORK = /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH|getaddrinfo|socket hang up|network (is )?unreachable|unable to get local issuer|self[- ]signed certificate|request to https?:\/\/\S+ failed|TLS handshake timeout|connection reset by peer|no route to host|connect: connection refused/i;
+// Ollama dropped or closed the connection mid-download (D-21, undici's TypeError: terminated / UND_ERR_SOCKET):
+// said in plain words as Ollama closing, not a download that took too long.
+const OLLAMA_CLOSED = /closed the connection|\bterminated\b|other side closed|UND_ERR_SOCKET/i;
 const PERMISSION = /EACCES|EPERM|permission denied|operation not permitted|access is denied/i;
 const DISK = /ENOSPC|no space left/i;
 const NO_NPM = /spawn npm(\.cmd)? ENOENT|npm(\.cmd)?: (command )?not found|'npm' is not recognized|command not found: npm/i;
@@ -25,6 +28,7 @@ export function installTrouble(text = '') {
   if (NO_ZSTD.test(said)) return 'zstd-missing';
   if (DISK.test(said)) return 'disk';
   if (DNS.test(said)) return 'dns';
+  if (OLLAMA_CLOSED.test(said)) return 'ollama-closed';
   if (NETWORK.test(said)) return 'network';
   if (PERMISSION.test(said)) return 'permission';
   if (TIMEOUT.test(said)) return 'timeout';

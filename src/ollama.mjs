@@ -163,21 +163,30 @@ export async function pullModel({ host = ollamaHost(), model, fetchImpl = global
   const decoder = new TextDecoder();
   let buffer = '';
   let lastStatus = '';
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let index;
-    while ((index = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, index).trim();
-      buffer = buffer.slice(index + 1);
-      if (!line) continue;
-      let event;
-      try { event = JSON.parse(line); } catch { continue; }
-      if (event.error) throw new Error(event.error);
-      const status = event.total ? `${event.status} · ${Math.round((event.completed ?? 0) / event.total * 100)}%` : event.status;
-      if (status && status !== lastStatus) { lastStatus = status; onLine(status); }
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let index;
+      while ((index = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, index).trim();
+        buffer = buffer.slice(index + 1);
+        if (!line) continue;
+        let event;
+        try { event = JSON.parse(line); } catch { continue; }
+        if (event.error) throw new Error(event.error);
+        const status = event.total ? `${event.status} · ${Math.round((event.completed ?? 0) / event.total * 100)}%` : event.status;
+        if (status && status !== lastStatus) { lastStatus = status; onLine(status); }
+      }
     }
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    // Ollama dropped or closed the connection mid-download (D-21, undici's TypeError: terminated / UND_ERR_SOCKET).
+    if (error?.message === 'terminated' || error?.cause?.code === 'UND_ERR_SOCKET' || /terminated|other side closed/i.test(error?.message ?? '')) {
+      throw Object.assign(new Error(t('Ollama closed the connection while downloading {model}. Check that Ollama is still running and try again; what already arrived stays.', { model })), { code: 'ECONNRESET', trouble: 'ollama-closed', cause: error });
+    }
+    throw error;
   }
   return { model };
 }
