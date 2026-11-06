@@ -941,7 +941,7 @@ export const CONDITIONS = [
     code: 'MU-068',
     severity: 'transient',
     title: 'A model download stopped',
-    match: /Ollama pull HTTP|pull model manifest|max retries exceeded|\bterminated\b|closed the connection|other side closed/i,
+    match: /Ollama pull HTTP|pull model manifest|max retries exceeded|^(?:TypeError: )?terminated$|Ollama closed the connection|Ollama cerró la conexión|other side closed/im,
     diagnosis: 'Models are big (from half a GB to dozens) and come down in pieces. A cut connection or a full disk stops the download; what already arrived stays, and trying again picks up where it stopped.',
     remedy: 'Try again from the same place. If it stops at the same point, check the free space (the model needs its size plus some room) or choose a smaller model.',
     fixes: same(['ollama pull qwen2.5:3b   # the model you chose; it resumes where it stopped', 'ollama list', 'df -h ~']),

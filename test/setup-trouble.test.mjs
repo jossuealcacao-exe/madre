@@ -98,3 +98,21 @@ test('setup trouble · Ollama closing mid-download is ollama-closed, not unknown
   assert.match(home, /'ollama-closed': \(\) => t\('Ollama closed the connection/);
   assert.match(home, /'ollama-closed': 'model-download'/);
 });
+
+// D-21, after the fix: «terminated» anywhere in an installer's output read as Ollama closing, so
+// installing an agent could say «Ollama closed the connection while downloading the model»; and
+// Home said a failed download with Go's error as it came. Only Ollama's words, or undici's line
+// alone, are Ollama closing; Home says why in its own words.
+test('setup trouble · «terminated» elsewhere is not Ollama closing, and Home says a failed download in its words (D-21)', async () => {
+  for (const said of ['npm error signal SIGTERM\nnpm error command sh -c node install.js\nProcess terminated', 'gpg: signal 15 caught ... terminated', 'Server closed the connection unexpectedly']) {
+    assert.notEqual(installTrouble(said), 'ollama-closed', said);
+  }
+  assert.equal(installTrouble('Ollama cerró la conexión mientras descargaba qwen2.5:1.5b.'), 'ollama-closed', 'the room in Spanish');
+  const { diagnose } = await import('../public/troubleshooting.js');
+  assert.ok(!diagnose('npm error signal SIGTERM\nProcess terminated').some((card) => card.code === 'MU-068'), 'an npm install got the model-download card');
+  const { readFile } = await import('node:fs/promises');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const watch = home.slice(home.indexOf('function watchPull'), home.indexOf('function fillProjects'));
+  assert.match(watch, /toast\(TROUBLE_WORDS\.install\[said\.trouble\]\?\.\(\) \?\? /);
+  assert.match(watch, /if \(said\.cancelled\) return;/);
+});

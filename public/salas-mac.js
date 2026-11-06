@@ -5993,7 +5993,11 @@ function watchPull(model) {
     if ((localOllama?.ollama?.models ?? []).some((one) => one.name.replace(/:latest$/, '') === model)) { pulling.delete(model); toast(t('{model} is ready. Choose it in Settings › Local AI.', { model })); return; }
     if (localOllama?.lastPull?.model === model && !localOllama.lastPull.ok && !localOllama.pulling) {
       pulling.delete(model);
-      toast(localOllama.lastPull.detail || t('The download stopped: {error}', { error: model }));
+      // Said in Home's words for why (the same ones as an install), not Go's error as it came: a
+      // download cut by DNS or the network read as «pull model manifest: … i/o timeout».
+      const said = localOllama.lastPull;
+      if (said.cancelled) return;
+      toast(TROUBLE_WORDS.install[said.trouble]?.() ?? (said.detail || t('The download stopped: {error}', { error: model })));
       settingsSheet?.sync({ detail: true, only: 'local' });
       return;
     }
