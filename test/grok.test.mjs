@@ -176,3 +176,14 @@ test('grok · it is never taught to ask for a mode it cannot be given, and the r
   const room = readFileSync(join(import.meta.dirname, '..', 'src', 'room.mjs'), 'utf8');
   assert.match(room, /capabilityOf\(agent\.id\)\.write && looksLikeCreation\(text\)/);
 });
+
+test('grok · Settings › Agents says it reads at every mode, with no ceiling to change and no «Create» to unlock', async () => {
+  const page = readFileSync(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  // Only when the capability is known to be missing: an agent whose capabilities did not load yet is not called read-only.
+  assert.match(page, /const readsOnly = Boolean\(agentScopes\.write\) && !agentScopes\.write\.capable;/);
+  assert.match(page, /readsOnly\s*\? sxRow\(modes, t\('Max mode'\), t\('#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write\.'\)\)/);
+  assert.match(page, /if \(readsOnly\) sxRow\(modes, t\('Starting mode'\), t\('Always #1: every message to it is answered by reading\.'\)\);/);
+  const { ES } = await import('../public/es.js');
+  assert.ok(ES['#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.']);
+  assert.ok(ES['Always #1: every message to it is answered by reading.']);
+});

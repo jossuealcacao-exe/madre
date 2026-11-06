@@ -6918,4 +6918,6 @@ export const ES = {
   'xAI refuses this Grok account': 'xAI rechaza esta cuenta de Grok',
   'Grok is signed in, but xAI answers every turn with a 403. It happens when the sign-in was made before the plan was active. It is xAI\'s answer, not MADRE\'s: nothing in the project is wrong.': 'Grok tiene sesión, pero xAI contesta cada turno con un 403. Pasa cuando se inició sesión antes de que el plan estuviera activo. Es la respuesta de xAI, no de MADRE: no hay nada mal en el proyecto.',
   'Sign in to Grok again: grok logout, then grok login. If it keeps happening, check at grok.com that your plan is active.': 'Vuelve a iniciar sesión en Grok: grok logout y luego grok login. Si sigue pasando, revisa en grok.com que tu plan esté activo.',
+  '#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.': '#1 SOLO CONVERSAR · en MADRE este agente lee y contesta; ningún modo le permite escribir.',
+  'Always #1: every message to it is answered by reading.': 'Siempre #1: cada mensaje que le mandas lo contesta leyendo.',
 };

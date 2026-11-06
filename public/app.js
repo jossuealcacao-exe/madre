@@ -19652,11 +19652,17 @@ function connectionCard(agent) {
   }
   // The ceiling lives with every other agent's in PERMISSIONS: here it is said, and one key goes there.
   const currentCap = agentScopes.maxMode ?? 1;
-  const capRow = sxRow(modes, t('Max mode'), `#${currentCap} ${MODES[currentCap].label}`, sxButton(t('Change it'), () => openSettingsOn('permissions', { part: 'permissions' })));
+  // An agent that reads at every mode (Grok, Gemini through its API): no ceiling to change and no
+  // «Create» to unlock — both rows say so instead of offering a key that can do nothing (2026-11-06).
+  const readsOnly = Boolean(agentScopes.write) && !agentScopes.write.capable;
+  const capRow = readsOnly
+    ? sxRow(modes, t('Max mode'), t('#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.'))
+    : sxRow(modes, t('Max mode'), `#${currentCap} ${MODES[currentCap].label}`, sxButton(t('Change it'), () => openSettingsOn('permissions', { part: 'permissions' })));
   capRow.querySelector('.sx-hint').title = MODES[currentCap].hint;
   // The start: where a message to this agent begins. #2 means every turn may create files without arming CREATE.
   const currentStart = agentScopes.defaultMode ?? 1;
-  sxRow(modes, t('Starting mode'), currentStart === 2 ? t('Every turn may create files, plan steps too.') : t('Read-only until you unlock CREATE.'), sxSeg([1, 2].map((n) => ({
+  if (readsOnly) sxRow(modes, t('Starting mode'), t('Always #1: every message to it is answered by reading.'));
+  else sxRow(modes, t('Starting mode'), currentStart === 2 ? t('Every turn may create files, plan steps too.') : t('Read-only until you unlock CREATE.'), sxSeg([1, 2].map((n) => ({
     value: n, text: `#${n}`, className: `o${n}`, disabled: n > currentCap,
     title: n === 2 ? t('Every message to this agent starts in #2 CREATE: it may add new files, but existing files stay untouched. Plan steps sent to it too.') : t('Messages start in #1 CHAT ONLY; turn on #2 CREATE when you want files.'),
   })), currentStart, async (n, seg) => {
