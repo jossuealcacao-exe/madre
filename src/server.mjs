@@ -2018,9 +2018,9 @@ export async function createPulseServer({
   // The switches a room holds itself, as this project says them (module-scope.mjs). Read again
   // before every message, so a switch moved in Home reaches a project that is already open.
   function applyModuleSwitches(target, config) {
-    setImageModule(settingsIn(config.modules?.imageStudio ?? {}, scopeRoom));
+    // Images, Options and Commands have no switch (2026-11-06): always on, whatever an old config says.
+    setImageModule({ ...settingsIn(config.modules?.imageStudio ?? {}, scopeRoom), enabled: true });
     target.setAsh(moduleOnHere(config, 'ash'));
-    // Options and Commands have no switch (2026-11-06): always on, whatever an old config says.
     target.setChoices(true);
     target.setRuns(true);
   }

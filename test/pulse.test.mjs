@@ -1784,7 +1784,8 @@ test('connections: settings are read, saved to config, applied live; sign-in str
     }) });
     assert.equal(saved.status, 200);
     assert.equal(saved.body.settings.capabilities.codex.scopes.imageGen.enabled, false, 'scope switched off');
-    assert.equal(saved.body.settings.capabilities.gemini.scopes.imageGen.enabled, false, 'cannot enable an ability the CLI lacks');
+    // Images is always on (2026-11-06): it gives Gemini the image tool its CLI lacks, so the scope holds.
+    assert.equal(saved.body.settings.capabilities.gemini.scopes.imageGen.enabled, true, 'Images did not give Gemini the image tool');
     assert.deepEqual({ ...saved.body.settings, timeouts: undefined, capabilities: undefined, memory: undefined, privacy: undefined, updates: undefined, override: undefined }, {
       timeouts: undefined, capabilities: undefined, memory: undefined, privacy: undefined, updates: undefined, override: undefined, defaultTimeout: 240000, delegation: false, maxPlanSteps: 2, softTokenBudget: 750000, opencodeModel: 'openai/gpt-5.6-sol', geminiIdleMs: 60000, geminiRetries: 2,
     });
@@ -2027,6 +2028,8 @@ test('files: only paths inside the root are served, symlinks out are refused, ty
 });
 
 test('capabilities: verified matrix, routing helper', () => {
+  // The CLIs' own matrix, without Images (always on in a server since 2026-11-06, and global here).
+  setImageModule({ enabled: false });
   assert.equal(capabilitySummary('codex').imageGen, true);
   assert.equal(capabilitySummary('claude').imageGen, false);
   assert.equal(capabilitySummary('gemini').imageGen, false);
@@ -2226,6 +2229,8 @@ test('creation lease: granted per human message, inherited by the plan, artifact
 });
 
 test('scopes: what the human enabled, per agent; CREATE is refused with a reason when the agent cannot create', async () => {
+  // What each CLI can do by itself: Images, which a server keeps on, is left out here.
+  setImageModule({ enabled: false });
   const codex = resolveScopes('codex');
   assert.deepEqual(codex.write, { capable: true, enabled: true, wired: true, always: false });
   assert.deepEqual(codex.imageGen, { capable: true, enabled: true, wired: true });
@@ -2604,37 +2609,36 @@ test('Ash reaches every step of a cross-agent plan, and the steps are still writ
 });
 
 
-test('Image Studio module: toggled from the modules API, gated on a Gemini key, persisted in config', async () => {
+test('Image Studio module: always on, as Options and Commands are; its model persisted in config, and a missing key said (2026-11-06)', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-studio-api-'));
   const agents = [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '1' }];
   let key = null;
-  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {}, imageKey: async () => key });
+  // A config from before, with Images turned off: it is on all the same.
+  await mkdir(root, { recursive: true });
+  await writeFile(join(root, 'config.json'), JSON.stringify({ modules: { imageStudio: { enabled: false } } }));
+  const { server } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {}, imageKey: async () => key });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   const api = (path, options) => fetch(`http://127.0.0.1:${port}${path}`, options).then(async (response) => ({ status: response.status, body: await response.json() }));
   try {
     let listed = await api('/api/extensions');
-    const studio = listed.body.extensions.find((item) => item.id === 'image-studio');
-    assert.equal(studio.kind, 'builtin');
-    assert.equal(studio.status.installed, false);
-    assert.equal(studio.preflight.ok, false, 'no key, cannot enable');
-    assert.equal((await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' })).status, 412);
+    let studio = listed.body.extensions.find((item) => item.id === 'image-studio');
+    assert.equal(studio.fixed, true, 'Images still has a switch');
+    assert.equal(studio.status.installed, true);
+    // Without a key it says so: an image asked for would fail.
+    assert.match(studio.status.detail, /no Gemini key found/);
+    assert.equal(studio.preflight.ok, false);
+    assert.equal((await api('/api/state')).body.capabilities.gemini.imageGen, true, 'the agents are not offered the image tool');
+    assert.equal((await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' })).status, 405);
+    // The model is still chosen, and kept for every project.
     key = 'AQ.test';
-    const on = await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, model: 'gemini-3-pro-image' }) });
-    assert.equal(on.status, 200);
-    assert.equal(on.body.enabled, true);
-    assert.equal(on.body.capabilities.gemini.imageGen, true);
+    const set = await api('/api/extensions/image-studio/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: 'model', value: 'gemini-3-pro-image' }) });
+    assert.equal(set.status, 200, JSON.stringify(set.body));
     const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
-    // A project's switch is that project's (2026-10-18, src/module-scope.mjs): its own word, and the model.
-    assert.deepEqual(Object.values(config.modules.imageStudio.rooms), [true]);
     assert.equal(config.modules.imageStudio.model, 'gemini-3-pro-image');
-    assert.equal(config.modules.imageStudio.enabled, undefined, 'the switch for every project is Home\'s');
     listed = await api('/api/extensions');
-    assert.match(listed.body.extensions.find((item) => item.id === 'image-studio').status.detail, /on · gemini-3-pro-image/);
-    assert.ok((await store.readAll()).some((event) => event.type === 'extension.toggled' && event.payload.enabled === true));
-    const off = await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
-    assert.equal(off.body.enabled, false);
-    assert.equal(off.body.capabilities.gemini.imageGen, false);
+    studio = listed.body.extensions.find((item) => item.id === 'image-studio');
+    assert.match(studio.status.detail, /on · gemini-3-pro-image$/);
   } finally {
     setImageModule({ enabled: false });
     await new Promise((resolve) => server.close(resolve));

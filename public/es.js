@@ -702,6 +702,7 @@ export const ES = {
   'nothing in the project · images land in the lease folder':
     'nada en el proyecto · las imágenes se guardan en la carpeta del permiso para crear',
   'an entry in ~/.pulse/config.json': 'una entrada en ~/.pulse/config.json',
+  'the model in ~/.pulse/config.json': 'el modelo en ~/.pulse/config.json',
   'an MCP server per turn, started and stopped by the project':
     'un servidor de herramientas conectadas (MCP) en cada respuesta, que el proyecto enciende y apaga',
   // Bajo NECESITA es un requisito, no una acción: «necesita: se engancha» no concuerda.
