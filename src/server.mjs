@@ -132,6 +132,7 @@ import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
+import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
 import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
 // Not moved project by project: the Coordinator is Home's, Git has no switch, and Local AI keeps
 // its own list of projects (local-ai.mjs).
@@ -646,6 +647,23 @@ export async function createPulseServer({
     widgetReadings.set('errors', { at: Date.now(), reading });
     return reading;
   }
+  // THE AUTHOR'S NOTICES (Q-11, src/notices.mjs). Every copy asks madre.run for them on its own,
+  // with or without the diagnostics, and shows the ones signed with the author's key that are for it.
+  const NOTICES_KEY_FILE = process.env.MADRE_NOTICES_KEY_DIR ? join(process.env.MADRE_NOTICES_KEY_DIR, 'ed25519.pem') : join(homedir(), '.madre', 'avisos', 'ed25519.pem');
+  const noticesEnabled = async () => ((await readConfig(root).catch(() => ({})))?.notices?.enabled !== false);
+  async function noticesForPage() {
+    void refreshNotices({ stateRoot: root }).catch(() => null);
+    const place = await environmentOnce().catch(() => null);
+    const enabled = await noticesEnabled();
+    return { enabled, notices: await currentNotices({ stateRoot: root, version: PACKAGE.version, wsl: Boolean(place?.wsl), enabled }).catch(() => []) };
+  }
+  void refreshNotices({ stateRoot: root }).catch(() => null);
+  // Only the author writes them: the copy run from source, with the author's token and the private key.
+  async function ownerCanNotify() {
+    if (!FROM_SOURCE) return false;
+    const token = await readSecret(root, OWNER_VAULT, 'usage').catch(() => null);
+    return Boolean(token) && existsSync(NOTICES_KEY_FILE);
+  }
   async function homeWidget(kind) {
     // The author's error log (src/madre-logs.mjs): read from this disk every time, so Home shows it
     // as agents add and close errors. Only in the copy run from source, and only Home serves it.
@@ -747,6 +765,21 @@ export async function createPulseServer({
       reading = funnel.value || github.value || npm.value
         ? { available: true, ...rumboModel({ madre: funnel.value, github: github.value, npm: npm.value, history }), sources: { madre: { ...said(funnel), status: rumboStatus }, github: said(github), npm: said(npm) } }
         : { available: false, status: rumboStatus };
+    } else if (kind === 'notices') {
+      // The author's notices (Q-11, src/notices.mjs): what madre.run serves now, checked as every copy
+      // checks it. Only in the copy run from source that holds the author's token and the notices' key.
+      if (!(await ownerCanNotify())) return null;
+      const answer = await globalThis.fetch(noticesUrl(), { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+      const data = answer?.ok ? await answer.json().catch(() => null) : null;
+      const feed = data ? readFeed(data) : null;
+      const now = Date.now();
+      reading = {
+        available: true,
+        read: Boolean(feed),
+        notices: (feed?.entries ?? []).map((entry) => readNotice(entry.notice)).filter(Boolean)
+          .map((one) => ({ ...one, when: now < Date.parse(one.from) ? 'later' : now >= Date.parse(one.until) ? 'over' : 'now' })),
+        unverified: Math.max(0, (data?.notices?.length ?? 0) - (feed?.entries?.length ?? 0)),
+      };
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
@@ -2490,7 +2523,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -4453,6 +4486,44 @@ export async function createPulseServer({
           for (const client of clients.keys()) { try { client.end(); } catch { /* gone */ } }
         }, 300);
         return undefined;
+      }
+      // The author's notices (Q-11): the ones for this copy, «got it», and whether info and important
+      // ones show (security ones always do).
+      if (request.method === 'GET' && url.pathname === '/api/notices') {
+        return sendJson(response, 200, await noticesForPage());
+      }
+      if (request.method === 'POST' && url.pathname === '/api/notices/seen') {
+        const payload = await body(request).catch(() => ({}));
+        if (!(await noticeSeen(root, payload.id))) return sendJson(response, 422, { error: t('No such notice.') });
+        // Counted only where the anonymous diagnostics are on (src/telemetry.mjs decides): how many
+        // copies saw a notice, never which.
+        diagnostics.count(`notice.${payload.id}`);
+        return sendJson(response, 200, { ok: true });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/notices/settings') {
+        const payload = await body(request).catch(() => ({}));
+        if (typeof payload.enabled === 'boolean') await updateConfig(root, { notices: { enabled: payload.enabled } });
+        return sendJson(response, 200, await noticesForPage());
+      }
+      // Writing one, or taking it back: only from this computer, only in the author's copy.
+      if (request.method === 'POST' && (url.pathname === '/api/owner/notices' || url.pathname === '/api/owner/notices/retire')) {
+        const address = request.socket.remoteAddress ?? '';
+        if (viaPhone || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address) || !(await ownerCanNotify())) return sendJson(response, 404, { error: t('Not found.') });
+        const payload = await body(request).catch(() => ({}));
+        const token = await readSecret(root, OWNER_VAULT, 'usage');
+        const key = await readFile(NOTICES_KEY_FILE, 'utf8');
+        let sent;
+        try {
+          sent = url.pathname.endsWith('/retire') ? { retire: signRetire(String(payload.id ?? ''), key) } : signNotice(payload.notice, key);
+        } catch (error) {
+          return sendJson(response, 422, { error: t(error.message) });
+        }
+        const answer = await globalThis.fetch(noticesUrl(), { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(sent), signal: AbortSignal.timeout(10000) }).catch(() => null);
+        const said = answer ? await answer.json().catch(() => ({})) : {};
+        if (!answer?.ok) return sendJson(response, 502, { error: said.error ? t('madre.run said: {error}', { error: said.error }) : t('madre.run did not answer.') });
+        widgetReadings.delete('notices');
+        void refreshNotices({ stateRoot: root, force: true }).catch(() => null);
+        return sendJson(response, 200, { ok: true, id: sent.notice?.id ?? sent.retire?.id });
       }
       if (request.method === 'POST' && url.pathname === '/api/updates/settings') {
         const patch = await body(request).catch(() => ({}));

@@ -106,6 +106,16 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // The author's notices (Q-11, src/notices.mjs): asked of madre.run with nothing about the person.
+    // Whatever the diagnostics say. In the author's own copy, the same address takes the notices the
+    // author writes, already signed on this computer.
+    id: 'notices', host: 'madre.run', match: (url) => url.pathname === '/api/avisos', to: 'madre.run · notices from MADRE\'s author',
+    what: 'Nothing about you: it asks for the notices MADRE\'s author wrote for every copy, not even with this copy\'s version. Each one is checked against the author\'s signature before it shows.',
+    when: 'when MADRE opens, and at most every 15 minutes while it is open',
+    where: 'Settings › Version › Notices from MADRE turns off the information and important ones; security notices always show · PULSE_NOTICES=0 for development',
+    inside: true,
+  },
+  {
     // Anonymous diagnostics (src/telemetry.mjs, 2026-10-28): on unless turned off.
     id: 'diagnostics', host: 'madre.run', match: (url) => url.pathname === '/api/telemetry', to: 'madre.run · anonymous diagnostics',
     what: 'Errors with private details removed (no paths, names, keys or emails) and counts of turns, modes and features, with this copy\'s random identifier, version and system. Never what you write, your projects or your files.',

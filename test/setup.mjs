@@ -18,6 +18,8 @@ process.env.PULSE_REPORT_URL ??= 'http://127.0.0.1:9/v1/reports';
 process.env.PULSE_ANTHROPIC_URL ??= 'http://127.0.0.1:9';
 // Nor Google, for a Gemini key or an answer through its API (src/credentials.mjs, adapters/gemini-rest.mjs).
 process.env.PULSE_GEMINI_API_URL ??= 'http://127.0.0.1:9';
+// Nor asks madre.run for the author's notices (src/notices.mjs).
+process.env.PULSE_NOTICES_URL ??= 'http://127.0.0.1:9/api/avisos';
 // Nor does the suite's own load make the memory's background work wait (src/room/busy.mjs, L-11):
 // a full test run keeps every core busy on purpose. test/memory.test.mjs checks the wait itself.
 process.env.PULSE_BUSY_SHARE ??= '1000';
