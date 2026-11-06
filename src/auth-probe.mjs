@@ -238,7 +238,7 @@ export const AGENT_SETUP = {
     room: { deviceCode: true },
     terminal: 'grok login',
     vendor: 'xAI',
-    account: 'Signs in with your Grok account (SuperGrok or an X subscription) and uses its plan. In MADRE it reads and answers; it does not write yet.',
+    account: 'Signs in with your Grok account (SuperGrok or an X subscription) and uses its plan.',
     paid: true,
   },
 };

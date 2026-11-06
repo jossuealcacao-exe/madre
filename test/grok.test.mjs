@@ -98,11 +98,14 @@ test('grok · `grok models` says whether there is a session and lists the accoun
   assert.equal(parseGrokStatus('', {}).state, 'unknown');
 });
 
-test('grok · it reads at #1 at most, signs in with a code, installs from npm, and is written to by name', async () => {
+test('grok · it writes up to #4 when allowed, signs in with a code, installs from npm, and is written to by name', async () => {
   const can = capabilityOf('grok');
   assert.equal(can.read, true);
-  assert.equal(can.write, false);
-  assert.equal(resolveScopes('grok', { maxMode: 4 }).maxMode, 1, 'no lease ever reaches it');
+  assert.ok(can.write, 'Grok writes from 2026-11-06');
+  assert.equal(can.imageIn, false);
+  assert.equal(can.web, false);
+  assert.equal(resolveScopes('grok', { maxMode: 4 }).maxMode, 4);
+  assert.equal(resolveScopes('grok', {}).maxMode, 2, 'the usual ceiling, as every agent that writes');
   const agent = { id: 'grok', path: '/bin/grok', detected: true };
   const login = loginPlanFor(agent);
   assert.deepEqual(login.args, ['login', '--device-auth']);
@@ -162,13 +165,19 @@ process.stdout.write(${JSON.stringify(fixture('answer'))});
   await assert.rejects(readFile(record.file), 'the message is removed after the turn');
 });
 
-test('grok · it is never taught to ask for a mode it cannot be given, and the room offers it none (2026-11-06)', async () => {
+test('an agent that reads only is never taught to ask for a mode it cannot be given, and the room offers it none (2026-11-06)', async () => {
   const { promptParts } = await import('../src/room/prompt.mjs');
   const base = { text: 'crea z.txt', requester: 'you', depth: 0, allowDelegation: false, context: { messages: [] }, mode: 1 };
+  const { setAgentsViaApi } = await import('../src/capabilities.mjs');
   const said = (id) => promptParts({ ...base, agent: { id } }).find((part) => part.id === 'mode').text;
-  // From MADRE on 2026-11-06 it answered «I need #4 for 5 min» and the room offered to grant it.
-  assert.doesNotMatch(said('grok'), /I need #/);
-  assert.match(said('grok'), /you read at every mode/);
+  // From MADRE on 2026-11-06 Grok, then reading only, answered «I need #4 for 5 min» and the room
+  // offered to grant it. Grok writes now; Gemini through its API is the agent that reads only.
+  setAgentsViaApi([{ id: 'gemini', viaApi: true }]);
+  try {
+    assert.doesNotMatch(said('gemini'), /I need #/);
+    assert.match(said('gemini'), /you read at every mode/);
+  } finally { setAgentsViaApi([]); }
+  assert.match(said('grok'), /I need #3 for 15 min/, 'Grok writes now, and may ask for more');
   assert.match(said('codex'), /I need #3 for 15 min/, 'an agent that writes still learns how to ask');
   assert.doesNotMatch(said('codex'), /you read at every mode/);
   const page = readFileSync(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
@@ -186,4 +195,42 @@ test('grok · Settings › Agents says it reads at every mode, with no ceiling t
   const { ES } = await import('../public/es.js');
   assert.ok(ES['#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.']);
   assert.ok(ES['Always #1: every message to it is answered by reading.']);
+});
+
+test('grok · each mode is given what it may do: #2 and #3 write and run nothing, #4 runs commands, and no mode writes where nobody writes (2026-11-06)', async () => {
+  const { grokPermissionsFor, WRITE_TOOLS, SHELL_TOOL } = await import('../src/adapters/grok.mjs');
+  const { ENV_SECRETS } = await import('../src/checkpoint.mjs');
+  const deniedIn = (args) => args.flatMap((arg, index) => (arg === '--deny' ? [args[index + 1]] : []));
+  const allowedIn = (args) => args.flatMap((arg, index) => (arg === '--allow' ? [args[index + 1]] : []));
+  const never = ['.git/**', '.madre/**', '.grok/**', ...ENV_SECRETS.flatMap((name) => [name, `**/${name}`]), '.claude/settings.local.json'].flatMap((glob) => [`Write(${glob})`, `Edit(${glob})`]);
+  const args = (lease) => buildGrokArgs({ projectRoot: '/p', promptFile: '/f', lease, environment: {} });
+  // #2 CREATE, with its draft folder under .pulse: writes anywhere but where nobody writes, no terminal.
+  const create = args({ create: true, relativeDir: '.', scratchDir: '.pulse/out/t1' });
+  assert.equal(value(create, '--tools'), [...READ_TOOLS, ...WRITE_TOOLS].join(','));
+  assert.equal(value(create, '--permission-mode'), 'dontAsk', 'what is not allowed is refused, never left waiting for an approval');
+  assert.deepEqual(allowedIn(create), ['Write(**)', 'Edit(**)']);
+  assert.deepEqual(deniedIn(create), ['Bash', ...never], '.pulse is the room\'s while the turn drafts there');
+  assert.equal(value(create, '--sandbox'), 'workspace');
+  assert.ok(!create.includes('--always-approve'));
+  // #3 CONTROL, no draft folder: .pulse denied too.
+  const control = args({ control: true, relativeDir: '.' });
+  assert.ok(deniedIn(control).includes('Write(.pulse/**)') && deniedIn(control).includes('Edit(.pulse/**)'));
+  assert.ok(!value(control, '--tools').split(',').includes(SHELL_TOOL));
+  // #4 AIRLOCK: the terminal, every call approved by itself, the places nobody writes still denied, no sandbox.
+  const airlock = args({ control: true, airlock: true, relativeDir: '.' });
+  assert.ok(value(airlock, '--tools').split(',').includes(SHELL_TOOL));
+  assert.ok(airlock.includes('--always-approve'));
+  assert.ok(!airlock.includes('--permission-mode'));
+  assert.ok(!deniedIn(airlock).includes('Bash'));
+  for (const one of never) assert.ok(deniedIn(airlock).includes(one), `${one} is open at #4`);
+  assert.ok(!airlock.includes('--sandbox'));
+  // A lease to one folder of its own (/module): only that folder.
+  assert.deepEqual(allowedIn(args({ relativeDir: '.pulse/out/m1', scratchDir: '.pulse/out/m1' })), ['Write(.pulse/out/m1/**)', 'Edit(.pulse/out/m1/**)']);
+  // One rule per flag at every mode, and never trust nor subagents.
+  for (const one of [create, control, airlock]) {
+    assert.ok(deniedIn(one).every((rule) => !/\s/.test(rule)));
+    assert.ok(!one.includes('--trust') && one.includes('--no-subagents'));
+  }
+  // Reading is what it was.
+  assert.deepEqual(grokPermissionsFor(null).tools, READ_TOOLS);
 });

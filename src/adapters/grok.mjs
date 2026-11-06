@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
-// Grok Build (`grok`, xAI's own CLI, npm @xai-official/grok), added 2026-11-06. It reads only.
+// Grok Build (`grok`, xAI's own CLI, npm @xai-official/grok), added 2026-11-06. It read only at
+// first; the same day it was opened to every mode, after its own tests (below, «Writing»).
 //
 // Tried against the real CLI (1.0.77, a Grok Plus account) on 2026-11-06, before a line was written
 // here (docs/private/INVESTIGACION-GROK.md §8b):
@@ -23,9 +24,19 @@
 //
 // The folder is not trusted for the turn (no `--trust`): a headless read needs no trust, and trust
 // is kept by Grok for good and would bring the project's Claude rules and .grok/ along with it.
+//
+// Writing (2026-11-06, the real CLI in a test repository). #2 and #3: the reading tools plus its edit
+// and write tools, `--permission-mode dontAsk`, writing allowed everywhere and every place nobody
+// writes denied one rule at a time. It created a file, changed another, was refused .env and
+// .git/hooks and went on, and had no terminal to run `touch` with. #4: the terminal too, with
+// `--always-approve` (a command that waited for an approval would cancel the turn): it ran `touch`
+// and `git status`, was refused .env and went on. The room is the wall behind Grok's own: it locks
+// .env, .git and its folders read-only for the turn and puts back whatever reaches them, and at #2
+// everything that existed (room/control.mjs) — a terminal can write where a rule cannot see.
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ENV_SECRETS } from '../checkpoint.mjs';
 import { t } from '../i18n.mjs';
 import { runReadonlyProcess } from './process.mjs';
 import { jsonLines } from './subagents.mjs';
@@ -41,22 +52,52 @@ export const MCP_META_TOOLS = ['search_tool', 'use_tool'];
 // hooks never fire inside a Grok turn. Grok reads `false`, not `0` (tried with `grok inspect`).
 const COMPAT_OFF = Object.fromEntries(['CLAUDE', 'CURSOR'].flatMap((vendor) => ['AGENTS', 'HOOKS', 'MCPS', 'RULES', 'SKILLS'].map((surface) => [`GROK_${vendor}_${surface}_ENABLED`, 'false'])));
 
-export function grokSandbox(environment = process.env) {
+// What a writing turn adds: its edit tool (search_replace) and its write tool; #4, the terminal.
+export const WRITE_TOOLS = ['search_replace', 'write'];
+export const SHELL_TOOL = 'run_terminal_cmd';
+// The places no turn writes, whatever its mode (as Cursor's and OpenCode's). `.pulse` is left to the
+// room when the turn has a draft folder there, because a denial wins over an allowance and would
+// shut that folder too; the room locks every other `.pulse` path itself. `.grok/` is the project's
+// own Grok configuration (hooks, MCP servers, permission rules): a turn that wrote it would arm the
+// next one.
+const NEVER_WRITTEN = ['.git/**', '.madre/**', '.grok/**', ...ENV_SECRETS.flatMap((name) => [name, `**/${name}`]), '.claude/settings.local.json'];
+
+// The sandbox for a turn: read-only to read, the project (and Grok's own folder, and the temporary
+// ones) to write. #4 runs none: its commands install, push and deploy with what is outside the project.
+export function grokSandbox(environment = process.env, lease = null) {
   const chosen = String(environment.PULSE_GROK_SANDBOX ?? '').trim().toLowerCase();
-  return chosen === 'off' || chosen === '0' || chosen === 'false' ? null : 'read-only';
+  if (chosen === 'off' || chosen === '0' || chosen === 'false') return null;
+  if (lease?.airlock) return null;
+  return lease ? 'workspace' : 'read-only';
 }
 
-export function buildGrokArgs({ projectRoot, promptFile, model = process.env.PULSE_GROK_MODEL || null, effort = null, environment = process.env }) {
-  const sandbox = grokSandbox(environment);
+// What the turn may do, from the lease the room gave it: none, read; #2 and #3, write; #4, also run.
+export function grokPermissionsFor(lease = null) {
+  if (!lease) return { tools: READ_TOOLS, mode: null, allow: [], deny: READ_DENY };
+  const everywhere = Boolean(lease.create || lease.control || lease.airlock);
+  const dir = String(lease.relativeDir ?? '.').replace(/^\.\/+/, '').replace(/\/+$/, '');
+  const roots = everywhere || !dir || dir === '.' ? ['**'] : [`${dir}/**`];
+  const never = [...NEVER_WRITTEN, ...(lease.scratchDir ? [] : ['.pulse/**'])].flatMap((glob) => [`Write(${glob})`, `Edit(${glob})`]);
+  if (lease.airlock) return { tools: [...READ_TOOLS, ...WRITE_TOOLS, SHELL_TOOL], mode: 'always-approve', allow: [], deny: never };
+  return { tools: [...READ_TOOLS, ...WRITE_TOOLS], mode: 'dontAsk', allow: roots.flatMap((root) => [`Write(${root})`, `Edit(${root})`]), deny: ['Bash', ...never] };
+}
+
+export function buildGrokArgs({ projectRoot, promptFile, model = process.env.PULSE_GROK_MODEL || null, effort = null, lease = null, environment = process.env }) {
+  const sandbox = grokSandbox(environment, lease);
+  const allowed = grokPermissionsFor(lease);
   return [
     // From a file, word for word: a message that starts with «/» or «-» is not a command or a flag.
     '--prompt-file', promptFile,
     '--verbatim',
     '--output-format', 'streaming-messages-json',
     '--cwd', projectRoot,
-    '--tools', READ_TOOLS.join(','),
+    '--tools', allowed.tools.join(','),
     '--disallowed-tools', MCP_META_TOOLS.join(','),
-    ...READ_DENY.flatMap((rule) => ['--deny', rule]),
+    // #4 approves every call of its own (a command waiting for an approval would cancel the turn);
+    // #2 and #3 approve only what is allowed below and refuse the rest without asking.
+    ...(allowed.mode === 'always-approve' ? ['--always-approve'] : allowed.mode ? ['--permission-mode', allowed.mode] : []),
+    ...allowed.allow.flatMap((rule) => ['--allow', rule]),
+    ...allowed.deny.flatMap((rule) => ['--deny', rule]),
     ...(sandbox ? ['--sandbox', sandbox] : []),
     '--no-subagents',
     '--disable-web-search',
@@ -165,7 +206,7 @@ export function parseGrokStatus(output, env = process.env) {
   return { state: 'unknown', detail: said.trim().split('\n')[0]?.slice(0, 120) || 'no answer from grok models' };
 }
 
-export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, onProgress = null }) {
+export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, lease = null, onProgress = null }) {
   // The message goes in a file only this person can read, made for the turn and removed after it.
   const dir = await mkdtemp(join(tmpdir(), 'madre-grok-'));
   try {
@@ -175,7 +216,7 @@ export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 
     return await runReadonlyProcess({
       onProgress: onProgress ? (out) => onProgress(grokProgress(out)) : null,
       executable,
-      args: buildGrokArgs({ projectRoot, promptFile, ...(model ? { model } : {}), effort }),
+      args: buildGrokArgs({ projectRoot, promptFile, ...(model ? { model } : {}), effort, lease }),
       cwd: projectRoot,
       env: grokEnvironment(process.env),
       timeoutMs,

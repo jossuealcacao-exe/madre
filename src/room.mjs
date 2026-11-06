@@ -72,8 +72,8 @@ export const defaultInvokers = {
   'gemini-readonly': invokeGemini,
   'opencode-readonly': invokeOpenCode,
   'cursor-readonly': invokeCursor,
-  // Grok reads only (adapters/grok.mjs): it takes the message, the model and the effort, nothing else.
-  'grok-readonly': ({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, onProgress }) => invokeGrok({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, onProgress }),
+  // Grok (adapters/grok.mjs): the message, the model, the effort and the turn's lease, nothing else.
+  'grok-readonly': ({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, lease, onProgress }) => invokeGrok({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, lease, onProgress }),
   // Gemini with a key and no CLI (runtime-detection.mjs): only what an API call can take. The
   // project, attachments, a lease and tool servers are the CLI's; capabilities.mjs keeps it at #1.
   'gemini-rest': ({ prompt, model, signal, timeoutMs, onProgress, json }) => invokeGeminiRest({ prompt, model, signal, timeoutMs, onProgress, json }),
@@ -1753,7 +1753,7 @@ export class Room {
       gemini: [t('GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.'), t('GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.')],
       opencode: [t('The run is given the model you chose and nothing else of your session.')],
       cursor: [t('#0 and #1: --mode ask, Cursor\'s read-only mode, whatever its own settings say; no edits and no commands. #2 and #3: its agent mode with --force, writing allowed and every command denied. #4: commands allowed too. The places nobody writes stay denied at every mode, and MADRE locks and puts them back itself.'), t('CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it, with only what the mode you chose allows. The sign-in stays in the system keychain.')],
-      grok: [t('It reads and answers, and nothing else: only the tools that read are given (--tools read_file,list_dir,grep), a terminal and edits are denied, and macOS or Linux keeps it from writing (--sandbox read-only).'), t('The folder is not trusted for the turn, and hooks, skills and servers from Claude and Cursor are not loaded. Grok keeps the conversation in its own history.')],
+      grok: [t('#0 and #1: only the tools that read (--tools read_file,list_dir,grep) and --sandbox read-only. #2 and #3: its edit and write tools under --permission-mode dontAsk, writing allowed and the terminal denied, inside --sandbox workspace. #4: the terminal too, with --always-approve. At every mode the places nobody writes are denied one rule at a time.'), t('The folder is not trusted for the turn, and hooks, skills and servers from Claude and Cursor are not loaded. Grok keeps the conversation in its own history.')],
     }[agent.id] ?? [];
     const env = {
       gemini: [{ name: 'GEMINI_CLI_HOME', note: t('the temporary home for this turn') }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: t('so the launcher stays killable') }],

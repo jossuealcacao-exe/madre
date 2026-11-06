@@ -44,12 +44,12 @@ export const CAPABILITIES = {
     imageGen: false,
     web: false,
   },
-  // Grok reads only (adapters/grok.mjs, 2026-11-06): writing waits for its own real test at every
-  // mode, so the room never gives it a lease. Attachments are named in the briefing.
+  // Grok (adapters/grok.mjs, 2026-11-06): reads, and from the same day writes at #2 and #3 and runs
+  // commands at #4, each mode tried against the real CLI first. Attachments are named in the briefing.
   grok: {
     read: true,
     imageIn: false,
-    write: false,
+    write: { how: '--tools …,search_replace,write under --permission-mode dontAsk (#4: the terminal too, --always-approve)', note: 'Writes where the turn allows; commands only at #4. Every place nobody writes is denied one rule at a time, and MADRE locks and puts back .env, .git and its own folders, and at #2 what existed.' },
     imageGen: false,
     web: false,
   },
