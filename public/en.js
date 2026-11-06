@@ -107,7 +107,7 @@ export const EN = {
   "DECLINED": "Declined",
   "FROM THE MAC": "From the Mac",
   "EXAM": "Exam",
-  "Diagnostics › @{agent} holds EDIT mode. Restore point taken; UNDO will be one click.": "Diagnostics › @{agent} holds «Edit». Restore point taken; «Undo» will be one click.",
+  "@{agent} holds EDIT mode. Restore point taken; UNDO will be one click.": "@{agent} holds «Edit». Restore point taken; «Undo» will be one click.",
   "UNDO · GO BACK TO THE RESTORE POINT": "Undo · go back to the restore point",
   "Put the project back exactly as it was before this EDIT turn.": "Put the project back exactly as it was before this answer in «Edit».",
   "RESTORED": "Restored",

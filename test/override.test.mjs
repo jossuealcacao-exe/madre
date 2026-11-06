@@ -59,7 +59,7 @@ test('override: the room stores it, says it on boot and in AJUSTES without the f
   assert.ok(!/override: \{ phrase: words/.test(app), 'the phrase is sent in clear');
   // A grace is per mode and agent, never covers a raise of the ceiling, and STOPALL closes it.
   assert.match(app, /const left = raise \|\| forceKey \? 0 : overrideGraceLeft\(mode, id\);/, 'a plan approval can require a fresh key even within an earlier grace window');
-  assert.match(app, /if \(overrideGrace\.size\) closeOverrideGrace\(\);/);
+  assert.match(app, /if \(overrideGrace\.size\) closeOverrideGrace\(null, null, \{ back: true \}\);/);
   // PERMISSIONS is a category of its own, and the agent's sheet sends there for the ceiling.
   assert.match(app, /const SETTINGS_ORDER = \['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release', 'manual'\];/);
   assert.match(app, /sxButton\(t\('Change it'\), \(\) => openSettingsOn\('permissions', \{ part: 'permissions' \}\)\)/);

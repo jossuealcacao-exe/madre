@@ -1046,7 +1046,8 @@ export class Room {
       const said = settlement.done
         ? n === 1 ? t('The command you asked for ran. Go on with what you proposed.') : t('The {n} commands you asked for ran. Go on with what you proposed.', { n })
         : t('{n} of the {total} commands you asked for ran. Go on with what you proposed.', { n, total });
-      const text = `↩ @${agentId}${reply?.sequence ? ` #${reply.sequence}` : ''}: “${quoted.length > 120 ? `${quoted.slice(0, 119)}…` : quoted}”\n${said}`;
+      // No message number: beside the modes #0–#4 it read as one (Q-14).
+      const text = `↩ @${agentId}: “${quoted.length > 120 ? `${quoted.slice(0, 119)}…` : quoted}”\n${said}`;
       const returned = returnedBlock({ settlement, asking: asked?.text ?? null, said: reply?.payload?.text ?? null, replySequence: reply?.sequence ?? null });
       await this.#accept({
         text, target: agentId, mode,

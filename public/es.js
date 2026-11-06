@@ -1481,8 +1481,8 @@ export const ES = {
   ' · {n} writes into forbidden zones reverted': ' · se deshicieron {n} cambios en zonas prohibidas',
   ' · need to change existing files? ask again in #3 EDIT': ' · ¿necesitas cambiar archivos que ya existen? pídelo otra vez en «#3 Editar»',
   ' holds the project · restore point ': ' tiene el proyecto · punto de restauración ',
-  'Diagnostics › @{agent} holds EDIT mode. Restore point taken; UNDO will be one click.':
-    'Diagnóstico › @{agent} tiene el modo «Editar». Se guardó un punto de restauración: podrás deshacer con un clic.',
+  '@{agent} holds EDIT mode. Restore point taken; UNDO will be one click.':
+    '@{agent} tiene el modo «Editar». Se guardó un punto de restauración: podrás deshacer con un clic.',
   ' changed {n} files': ' cambió {n} archivos',
   ' changed 1 file': ' cambió 1 archivo',
   ' changed nothing': ' no cambió nada',
@@ -6848,4 +6848,8 @@ export const ES = {
   'you choose it every time you send a turn to @gemini; installing the Gemini CLI hands its turns back to the CLI': 'lo eliges cada vez que le mandas un turno a @gemini; al instalar el CLI de Gemini, sus turnos vuelven al CLI',
   'Answers through the provider\'s API: it does not read the project or attachments, and writes nothing. Install the CLI for the rest.': 'Contesta por la API del proveedor: no lee el proyecto ni los adjuntos, y no escribe nada. Para lo demás, instala el CLI.',
   'Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.': 'El servidor de modelos de Ollama no contestó (un error de su lado). No es tu conexión: vuelve a intentarlo en unos minutos; lo que ya llegó se queda.',
+  'That restore point is not known to this project.': 'Este proyecto no conoce ese punto de restauración.',
+  'That EDIT turn is still running: press STOP ALL first.': 'Ese turno de «Editar» sigue corriendo: pulsa primero «Detener todo».',
+  'Project restored to the restore point taken before `{command}`: {restored} file(s) restored, {removed} removed.': 'Proyecto restaurado al punto de restauración de antes de `{command}`: {restored} archivo(s) restaurado(s), {removed} quitado(s).',
+  'Project restored to the restore point taken before @{agent}\'s EDIT turn: {restored} file(s) restored, {removed} removed.': 'Proyecto restaurado al punto de restauración de antes del turno de «Editar» de @{agent}: {restored} archivo(s) restaurado(s), {removed} quitado(s).',
 };

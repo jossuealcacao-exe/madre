@@ -3639,7 +3639,7 @@ function renderPicker() {
       closeModeMenu();
       els.target.value = agent.id;
       state.typedTarget = null;
-      setMode(defaultModeFor(agent.id));
+      setMode(nextModeFor(agent.id));
       focusComposer();
     };
     pick.title = els.target.value === agent.id ? t('{label} · click again to choose its model', { label: agent.label }) : agent.label;
@@ -3682,7 +3682,7 @@ function renderPicker() {
       grace.dataset.agent = current.id;
       grace.title = t('{label} does not ask you to confirm again for @{agent} until this runs out. Click to end it now.', { label: `«${sentence(MODES[mode].label)}»`, agent: current.id });
       grace.append(el('b', null, `#${mode}`), el('span', null, t('open')), el('span', 'left', graceWords(left)), el('i', null, '×'));
-      grace.addEventListener('click', (event) => { event.stopPropagation(); closeOverrideGrace(mode, current.id); toast(t('Diagnostics › {label} locked again for @{agent}: the next message asks you to confirm again.', { label: `«${sentence(MODES[mode].label)}»`, agent: current.id }), { tone: 'done' }); });
+      grace.addEventListener('click', (event) => { event.stopPropagation(); closeOverrideGrace(mode, current.id, { back: true }); toast(t('Diagnostics › {label} locked again for @{agent}: the next message asks you to confirm again.', { label: `«${sentence(MODES[mode].label)}»`, agent: current.id }), { tone: 'done' }); });
       text.append(grace);
       break;
     }
@@ -4268,7 +4268,7 @@ function applyCopilot(said = {}) {
     }, 30000);
   }
   // The mode follows: #3 while it lasts, the agent's own default after.
-  if (was !== copilotOn() && els.target?.value) { state.modeArmedFor = null; setMode(defaultModeFor(els.target.value)); }
+  if (was !== copilotOn() && els.target?.value) { state.modeArmedFor = null; setMode(nextModeFor(els.target.value)); }
   else renderPicker();
   if (!copilotMenu.hidden) toggleCopilotMenu(copilotMenu.anchor, { keep: true });
 }
@@ -4277,6 +4277,14 @@ async function loadCopilot() {
 }
 function ceilingFor(id) { return state.capabilities[id]?.scopes?.maxMode ?? 1; }
 function defaultModeFor(id) { return copilotOn() && canWrite(id) ? 3 : state.capabilities[id]?.scopes?.defaultMode ?? 1; }
+// Where the next message to an agent starts (Q-13, 2026-11-06). A permission still open for it (the
+// «#3 open» chip) is where it goes: it fell back to #1 after every message, so the agent read it,
+// answered «I need #3» and asked again, and each change cost a second turn. Within the agent's
+// ceiling, and only with the pass the project gave; the chip's × closes it and the mode goes back.
+function nextModeFor(id) {
+  for (const mode of [4, 3]) if (overrideGraceLeft(mode, id) && overridePass(mode, id) && mode <= ceilingFor(id)) return mode;
+  return defaultModeFor(id);
+}
 
 // The robot beside mode · model · effort: what the copilot does, its switch and how long.
 const copilotMenu = el('div', 'model-menu copilot-menu');
@@ -4452,7 +4460,7 @@ function resetModeAfterSend() {
   if (state.typedTarget && state.agents.has(state.typedTarget.from)) els.target.value = state.typedTarget.from;
   state.typedTarget = null;
   state.typedPending = null;
-  setMode(defaultModeFor(els.target.value));
+  setMode(nextModeFor(els.target.value));
 }
 
 // What is typed shows before it is sent. A leading @agent moves the picker to it, with its model and
@@ -4557,11 +4565,14 @@ function overrideGraceLeft(mode, agent) {
   overrideGrace.delete(`${mode}:${agent}`);
   return 0;
 }
-function closeOverrideGrace(mode = null, agent = null) {
+function closeOverrideGrace(mode = null, agent = null, { back = false } = {}) {
   for (const key of [...overrideGrace.keys()]) {
     const [m, a] = key.split(':');
     if ((mode === null || Number(m) === mode) && (agent === null || a === agent)) { overrideGrace.delete(key); overridePasses.delete(key); }
   }
+  // Closed by hand, or by STOP ALL: a message waiting at that mode goes back to where it starts. Not
+  // when a send closes it to ask for the key again: that message goes at its mode once the key is in.
+  if (back && els.target?.value && state.mode >= 3 && !overrideGraceLeft(state.mode, els.target.value)) setMode(nextModeFor(els.target.value));
   renderPicker();
 }
 // The chip counts down only while a grace is open; with none, nothing ticks.
@@ -4571,6 +4582,8 @@ function tickGrace() {
   graceTick = setInterval(() => {
     const before = overrideGrace.size;
     for (const key of [...overrideGrace.keys()]) { const [m, a] = key.split(':'); overrideGraceLeft(Number(m), a); }
+    // Run out: the next message no longer starts at that mode, and the box says so (Q-13).
+    if (overrideGrace.size !== before && els.target?.value && state.mode >= 3 && !overrideGraceLeft(state.mode, els.target.value) && !state.typedPending) setMode(nextModeFor(els.target.value));
     if (overrideGrace.size !== before) renderPicker();
     else for (const chip of document.querySelectorAll('.grace-chip')) chip.querySelector('.left').textContent = graceWords(overrideGraceLeft(Number(chip.dataset.mode), chip.dataset.agent));
     if (!overrideGrace.size) { clearInterval(graceTick); graceTick = null; }
@@ -5567,9 +5580,11 @@ function plainQuote(text) {
   return said.length > REPLY_CLIP ? `${said.slice(0, REPLY_CLIP - 1)}…` : said;
 }
 
+// No message number (Q-14, 2026-11-06): «↩ @codex #4: …» read as #4 FULL ACCESS beside the modes
+// #0–#4. The quoted words say which answer it is.
 function quoteHead(reply) {
   if (!reply) return '';
-  return `↩ @${reply.sender}${reply.sequence ? ` #${reply.sequence}` : ''}: “${reply.text}”\n`;
+  return `↩ @${reply.sender}: “${reply.text}”\n`;
 }
 
 function renderReplyQuote() {
@@ -6589,8 +6604,8 @@ function renderControlStarted(event) {
   const node = el('div', 'system control');
   tint(node, agent);
   node.append(el('b', null, sentence(t('EDIT'))), el('b', 'who', `@${agent}`), t(' holds the project · restore point '), el('code', null, (commit ?? '').slice(0, 7)));
-  node.title = message;
-  if (!replaying) toast(t('Diagnostics › @{agent} holds EDIT mode. Restore point taken; UNDO will be one click.', { agent }));
+  // Said once, in the conversation (Q-15): a toast beside it repeated the same thing.
+  node.title = t('@{agent} holds EDIT mode. Restore point taken; UNDO will be one click.', { agent });
   state.lastSender = null;
   return node;
 }
@@ -6659,7 +6674,7 @@ function renderControlReverted(event) {
   node.title = message;
   const card = document.getElementById(`control-${checkpointId}`);
   card?.querySelector('.undo')?.replaceWith(el('span', 'outcome', t('RESTORED')));
-  if (!replaying) toast(`${t('Diagnostics › ')}${message}`);
+  // Said once, in the conversation (Q-15): the toast repeated it, in English, as «CONTROL».
   state.lastSender = null;
   return node;
 }
@@ -7579,7 +7594,7 @@ async function stopAll() {
   const button = document.querySelector('#stop-all');
   if (button) button.disabled = true;
   // STOPALL revokes it: every key still holding from a grace is closed with the turns.
-  if (overrideGrace.size) closeOverrideGrace();
+  if (overrideGrace.size) closeOverrideGrace(null, null, { back: true });
   try {
     const response = await fetch('/api/stop-all', { method: 'POST' });
     if (!response.ok) { toast(t('STOPALL failed to reach the project.')); return; }
@@ -20234,7 +20249,7 @@ function drawPermissions(host, data) {
     const options = mode === 3 ? [0, 5, 15, 30, 60, 240, 480] : [0, 5, 15, 30, 60];
     sxRow(grace, `#${mode} ${sentence(MODES[mode].label)}`, mode === 4 ? t('Up to an hour: what leaves the computer does not come back.') : t('Raising an agent\'s max mode always asks, remembered permission or not.'), sxSelect(options.map((minutes) => [String(minutes), minutes ? minutesWords(minutes) : t('Off')]), String(config.grace[mode] ?? 0), (value) => {
       const minutes = Number(value);
-      if (!minutes) closeOverrideGrace(mode);
+      if (!minutes) closeOverrideGrace(mode, null, { back: true });
       return saveOverride({ grace: { [mode]: minutes } }, minutes ? t('#{n} {label} stays unlocked for {time} after you confirm it.', { n: mode, label: sentence(MODES[mode].label), time: minutesWords(minutes) }) : t('#{n} {label} asks you to confirm every message.', { n: mode, label: sentence(MODES[mode].label) }));
     }, t('Remember permission for #{n}', { n: mode })));
   }

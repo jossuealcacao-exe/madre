@@ -6,6 +6,7 @@
 
 import { createCheckpoint, diffCheckpoint, ignoredWrittenSince, restoreCheckpoint, settleControls, sortIgnoredWrites } from '../checkpoint.mjs';
 import { guardForbidden } from './guard.mjs';
+import { t } from '../i18n.mjs';
 
 export class ControlDesk {
   #projectRoot;
@@ -188,10 +189,13 @@ export class ControlDesk {
 
   async undo(checkpointId) {
     const checkpoint = this.#checkpoints.get(checkpointId);
-    if (!checkpoint) return { ok: false, status: 404, error: 'That checkpoint is not known to this room.' };
-    if (this.#holder?.checkpoint.id === checkpointId) return { ok: false, status: 409, error: 'That CONTROL turn is still running; STOPALL first.' };
+    if (!checkpoint) return { ok: false, status: 404, error: t('That restore point is not known to this project.') };
+    if (this.#holder?.checkpoint.id === checkpointId) return { ok: false, status: 409, error: t('That EDIT turn is still running: press STOP ALL first.') };
     const result = await restoreCheckpoint(this.#projectRoot, checkpoint);
-    const before = checkpoint.command ? `\`${checkpoint.command}\`` : `@${checkpoint.agent}'s CONTROL turn`;
-    return { ok: true, checkpoint, ...result, message: `Project restored to the checkpoint taken before ${before}: ${result.restored.length} file(s) restored, ${result.removed.length} removed.` };
+    // In the project's language and with the mode's name of today (Q-15): it said «CONTROL», in English.
+    const message = checkpoint.command
+      ? t('Project restored to the restore point taken before `{command}`: {restored} file(s) restored, {removed} removed.', { command: checkpoint.command, restored: result.restored.length, removed: result.removed.length })
+      : t('Project restored to the restore point taken before @{agent}\'s EDIT turn: {restored} file(s) restored, {removed} removed.', { agent: checkpoint.agent, restored: result.restored.length, removed: result.removed.length });
+    return { ok: true, checkpoint, ...result, message };
   }
 }

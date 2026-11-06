@@ -69,7 +69,7 @@ test('returns: a #3 turn that asked for commands hears them back at #3, with the
     await room.runRequested({ responseMessageId, index: 1 });
     const handed = await waitFor(store, (all) => all.find((event) => event.type === 'message.created' && event.payload.returns === responseMessageId));
     assert.equal(handed.payload.mode, 3);
-    assert.match(handed.payload.text, /^↩ @codex #\d+: “Ver que el cambio pasa”\n/);
+    assert.match(handed.payload.text, /^↩ @codex: “Ver que el cambio pasa”\n/);
     await waitFor(store, (all) => all.filter((event) => event.type === 'agent.completed').length >= 2);
     events = await store.readAll();
     assert.equal(events.filter((event) => event.type === 'control.started').length, 2, 'the hand-back did not hold the project at #3');
