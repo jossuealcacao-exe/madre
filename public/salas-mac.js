@@ -4954,6 +4954,8 @@ const TROUBLE_WORDS = {
     'zstd-missing': () => t('Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.'),
     dns: () => t('This computer could not find the address it downloads from (DNS). In WSL, close it from Windows and open it again; with a VPN on, try without it.'),
     'ollama-closed': () => t('Ollama closed the connection while downloading the model. Check that Ollama is still running and try again; what already arrived stays.'),
+    // D-29: the registry's own error, not the person's connection, and not MADRE stopping it.
+    registry: () => t('Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.'),
     timeout: () => t('It took too long and was stopped. Try again.'),
     unknown: () => t('It did not install.'),
   },
@@ -4967,7 +4969,7 @@ const TROUBLE_WORDS = {
 };
 // The card of Diagnostics for each of those (public/troubleshooting.js), opened beside the failure.
 const TROUBLE_CARDS = {
-  install: { network: 'install-offline', dns: 'name-lookup', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing', 'ollama-closed': 'model-download' },
+  install: { network: 'install-offline', dns: 'name-lookup', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing', 'ollama-closed': 'model-download', registry: 'model-download' },
   login: { network: 'install-offline', timeout: 'sign-in-unfinished', cancelled: 'sign-in-unfinished', unknown: 'sign-in-unfinished' },
 };
 const troubleCard = (agent, kind, cause) => (kind === 'login' && cause === 'refused-account' ? (agent === 'gemini' ? 'gemini-ineligible-tier' : 'not-signed-in') : TROUBLE_CARDS[kind]?.[cause] ?? null);

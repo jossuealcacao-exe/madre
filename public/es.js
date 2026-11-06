@@ -6847,4 +6847,5 @@ export const ES = {
   'every turn you send to @gemini while Gemini answers through its API (a Gemini key and no Gemini CLI)': 'cada turno que le mandas a @gemini mientras Gemini contesta por su API (una llave de Gemini y sin el CLI de Gemini)',
   'you choose it every time you send a turn to @gemini; installing the Gemini CLI hands its turns back to the CLI': 'lo eliges cada vez que le mandas un turno a @gemini; al instalar el CLI de Gemini, sus turnos vuelven al CLI',
   'Answers through the provider\'s API: it does not read the project or attachments, and writes nothing. Install the CLI for the rest.': 'Contesta por la API del proveedor: no lee el proyecto ni los adjuntos, y no escribe nada. Para lo demás, instala el CLI.',
+  'Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.': 'El servidor de modelos de Ollama no contestó (un error de su lado). No es tu conexión: vuelve a intentarlo en unos minutos; lo que ya llegó se queda.',
 };

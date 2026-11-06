@@ -68,11 +68,12 @@ const TROUBLE = {
   permission: () => t('This computer did not let MADRE install it. Copy the line below into a terminal, once.'),
   dns: () => t('This computer could not find the address it downloads from (DNS). In WSL, close it from Windows and open it again; with a VPN on, try without it.'),
   'ollama-closed': () => t('Ollama closed the connection while downloading the model. Check that Ollama is still running and try again; what already arrived stays.'),
+  registry: () => t('Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.'),
   timeout: () => t('It took too long and was stopped. Try again.'),
 };
 
 // The card of Diagnostics that explains each of those, with its steps for this system (remedy.js).
-const TROUBLE_CARD = { network: 'install-offline', dns: 'name-lookup', disk: 'disk-full', permission: 'install-needs-admin', timeout: 'install-offline', 'npm-missing': 'node-missing', 'ollama-closed': 'model-download' };
+const TROUBLE_CARD = { network: 'install-offline', dns: 'name-lookup', disk: 'disk-full', permission: 'install-needs-admin', timeout: 'install-offline', 'npm-missing': 'node-missing', 'ollama-closed': 'model-download', registry: 'model-download' };
 
 // Ollama prints each piece it downloads as «pulling <digest> · 45%» (src/ollama.mjs, pullModel). The
 // first piece is the model itself, by far the heaviest: its share is the download's.

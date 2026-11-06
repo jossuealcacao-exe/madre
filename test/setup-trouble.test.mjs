@@ -116,3 +116,24 @@ test('setup trouble · «terminated» elsewhere is not Ollama closing, and Home 
   assert.match(watch, /toast\(TROUBLE_WORDS\.install\[said\.trouble\]\?\.\(\) \?\? /);
   assert.match(watch, /if \(said\.cancelled\) return;/);
 });
+
+// D-29 (a copy of 1.1.2 in WSL, 2026-11-06): Ollama's registry answered 503 because the server behind
+// it timed out. The text ends in «connection timeout», so it read as a download that took too long
+// and that MADRE stopped. It is the registry's error, said as such.
+test('setup trouble · a 5xx from Ollama\'s model registry is the registry\'s, not a timeout (D-29)', async () => {
+  const seen = 'pull model manifest: 503: upstream connect error or disconnect/reset before headers. reset reason: connection timeout';
+  assert.equal(installTrouble(seen), 'registry');
+  assert.equal(installTrouble('pull model manifest: 502: Bad Gateway'), 'registry');
+  // A lookup or a handshake that timed out is still the person's network, as D-3 and D-20 said.
+  assert.equal(installTrouble('pull model manifest: Get "https://registry.ollama.ai/v2/library/qwen2.5/manifests/1.5b": net/http: TLS handshake timeout'), 'network');
+  assert.equal(installTrouble('the install timed out after 600000 ms'), 'timeout');
+  const { readFile } = await import('node:fs/promises');
+  const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  for (const page of [welcome, home]) {
+    assert.match(page, /registry: \(\) => t\('Ollama\\'s model server did not answer/);
+    assert.match(page, /registry: 'model-download'/);
+  }
+  const { ES } = await import('../public/es.js');
+  assert.ok(ES['Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.']);
+});

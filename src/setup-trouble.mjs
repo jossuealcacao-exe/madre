@@ -18,6 +18,11 @@ const NETWORK = /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREA
 // «Process terminated») is not Ollama closing, and installing an agent read as Ollama's download.
 // The download itself marks its failure `ollama-closed` (src/ollama.mjs, pullModel).
 const OLLAMA_CLOSED = /Ollama closed the connection|Ollama cerró la conexión|^(?:TypeError: )?terminated$|other side closed|UND_ERR_SOCKET/im;
+// Ollama's model registry answered, with an error of its own (D-29, a copy of 1.1.2 in WSL,
+// 2026-11-06): «pull model manifest: 503: upstream connect error or disconnect/reset before headers.
+// reset reason: connection timeout». The person's connection reached it; the server behind it did
+// not answer. It ends in «timeout», and read as a download that took too long and that MADRE stopped.
+const REGISTRY = /pull model manifest: 5\d\d\b|upstream connect error or disconnect\/reset before headers/i;
 const PERMISSION = /EACCES|EPERM|permission denied|operation not permitted|access is denied/i;
 const DISK = /ENOSPC|no space left/i;
 const NO_NPM = /spawn npm(\.cmd)? ENOENT|npm(\.cmd)?: (command )?not found|'npm' is not recognized|command not found: npm/i;
@@ -30,6 +35,7 @@ export function installTrouble(text = '') {
   if (NO_NPM.test(said)) return 'npm-missing';
   if (NO_ZSTD.test(said)) return 'zstd-missing';
   if (DISK.test(said)) return 'disk';
+  if (REGISTRY.test(said)) return 'registry';
   if (DNS.test(said)) return 'dns';
   if (OLLAMA_CLOSED.test(said)) return 'ollama-closed';
   if (NETWORK.test(said)) return 'network';
