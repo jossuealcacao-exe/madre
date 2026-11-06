@@ -78,3 +78,93 @@ test('a turn that writes where git does not look reports it, and UNDO removes wh
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// Review of 2026-11-06: UNDO deleted files that were already there. Past 500 ignored files a patient
+// record the agent edited was taken for new; a file with a future date from an unpacked archive was
+// deleted untouched; a tracked file of a repository nested in an ignored folder was restored and then
+// deleted. UNDO now removes only what a whole photograph says is new, still as the turn left it.
+test('UNDO never deletes a file that was there before the turn, in folders git ignores (L-5b)', async () => {
+  const { listIgnored, sortIgnoredWrites } = await import('../src/checkpoint.mjs');
+  const exists = (path) => access(path).then(() => true, () => false);
+  const made = [];
+  const project = async (gitignore) => {
+    const root = await mkdtemp(join(tmpdir(), 'madre-ignored-'));
+    made.push(root);
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    await writeFile(join(root, '.gitignore'), gitignore);
+    await writeFile(join(root, 'README.md'), 'x\n');
+    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '.'], { cwd: root });
+    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 's'], { cwd: root });
+    return root;
+  };
+  const turn = async (root, act) => {
+    const desk = new ControlDesk({ projectRoot: root });
+    const { run } = await desk.begin({ agent: { id: 'claude' }, messageId: `m-${Math.random().toString(36).slice(2, 10)}`, enabledScopes: {}, mode: 3 });
+    await act();
+    const changes = await desk.settle(run);
+    await desk.release(run);
+    return { desk, changes };
+  };
+  try {
+    // A photograph cut short at its bounds takes nothing for new.
+    {
+      const root = await project('data/\npacientes/\n');
+      await mkdir(join(root, 'data'));
+      for (let i = 0; i < 12; i += 1) await writeFile(join(root, 'data', `f${String(i).padStart(2, '0')}.csv`), 'x');
+      await mkdir(join(root, 'pacientes', 'juan'), { recursive: true });
+      await writeFile(join(root, 'pacientes', 'juan', 'ficha.md'), 'historia\n');
+      const cut = await listIgnored(root, { limit: 10 });
+      assert.equal(cut.complete, false);
+      assert.equal(cut.files.has('pacientes/juan/ficha.md'), false, 'the record falls past the bound');
+      await writeFile(join(root, 'pacientes', 'juan', 'ficha.md'), 'historia\n+ nota del agente\n');
+      const sorted = await sortIgnoredWrites(root, { ignoredExisting: cut.files, ignoredComplete: cut.complete, createdAt: new Date(Date.now() - 1000).toISOString() }, ['pacientes/juan/ficha.md']);
+      assert.deepEqual(sorted.created, []);
+      assert.deepEqual(sorted.unknown, ['pacientes/juan/ficha.md']);
+      const whole = await listIgnored(root);
+      assert.equal(whole.complete, true);
+      assert.equal(whole.files.has('pacientes/juan/ficha.md'), true);
+    }
+    // An untouched file dated in the future is not reported, and stays.
+    {
+      const root = await project('pacientes/\n');
+      await mkdir(join(root, 'pacientes'));
+      await writeFile(join(root, 'pacientes', 'importado.md'), 'de un zip\n');
+      const future = new Date(Date.now() + 86_400_000);
+      await utimes(join(root, 'pacientes', 'importado.md'), future, future);
+      const { desk, changes } = await turn(root, async () => {});
+      assert.equal(changes.outsideRestore, undefined);
+      assert.equal((await desk.undo(changes.checkpointId)).ok, true);
+      assert.equal(await exists(join(root, 'pacientes', 'importado.md')), true);
+    }
+    // A repository nested in an ignored folder is its own restore point: restored, never deleted.
+    {
+      const root = await project('sites/\n');
+      const site = join(root, 'sites', 'web');
+      await mkdir(join(site, 'src'), { recursive: true });
+      await writeFile(join(site, 'src', 'app.js'), 'v1\n');
+      execFileSync('git', ['init', '-q'], { cwd: site });
+      execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '.'], { cwd: site });
+      execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 's'], { cwd: site });
+      const old = new Date(Date.now() - 3600_000);
+      await utimes(join(site, 'src', 'app.js'), old, old);
+      const { desk, changes } = await turn(root, () => writeFile(join(site, 'src', 'app.js'), 'v2\n'));
+      assert.equal(changes.outsideCreated, undefined);
+      const undone = await desk.undo(changes.checkpointId);
+      assert.deepEqual(undone.removed, []);
+      assert.equal(await readFile(join(site, 'src', 'app.js'), 'utf8'), 'v1\n');
+    }
+    // A file the turn created and the person wrote again before UNDO is theirs now: it stays.
+    {
+      const root = await project('pacientes/\n');
+      await mkdir(join(root, 'pacientes'));
+      const { desk, changes } = await turn(root, () => writeFile(join(root, 'pacientes', 'nueva.md'), 'del agente\n'));
+      assert.deepEqual(changes.outsideCreated, ['pacientes/nueva.md']);
+      await writeFile(join(root, 'pacientes', 'nueva.md'), 'del agente\n+ lo que escribió la doctora\n');
+      const undone = await desk.undo(changes.checkpointId);
+      assert.deepEqual(undone.removed, []);
+      assert.equal(await exists(join(root, 'pacientes', 'nueva.md')), true);
+    }
+  } finally {
+    for (const root of made) await rm(root, { recursive: true, force: true });
+  }
+});

@@ -6624,8 +6624,11 @@ function renderControlChanged(event) {
   // Written where git does not look (L-5, L-5b): newly created files in light ignored folders
   // will be removed on UNDO; preexisting ones that were modified cannot be brought back.
   if (outsideCreated.length) node.append(el('div', 'forbidden', t('In folders git ignores (created; UNDO removes them): {where}', { where: outsideCreated.slice(0, 8).join(', ') + (outsideCreated.length > 8 ? ', …' : '') })));
-  if (outsideModified.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: outsideModified.slice(0, 8).join(', ') + (outsideModified.length > 8 ? ', …' : '') })));
-  else if (!outsideCreated.length && outsideRestore.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: outsideRestore.slice(0, 8).join(', ') + (outsideRestore.length > 8 ? ', …' : '') })));
+  // Everything else written there stays on UNDO: changed files that were there before, and ones that
+  // could not be told new from old because those folders hold too many files (L-5b).
+  const left = outsideRestore.filter((path) => !outsideCreated.includes(path));
+  const leftShown = left.length ? left : outsideModified;
+  if (leftShown.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: leftShown.slice(0, 8).join(', ') + (leftShown.length > 8 ? ', …' : '') })));
   if (files.length || unreadable || outsideCreated.length) {
     const undo = el('button', 'undo', t('UNDO · GO BACK TO THE RESTORE POINT'));
     undo.type = 'button';

@@ -243,25 +243,39 @@ async function checkpointOne(root, { id, label, exclude = [] }) {
 // Ignored folders skipped when walking user data (L-5, L-5b).
 const HEAVY = new Set(['node_modules', '.git', '.venv', 'venv', '__pycache__', 'dist', 'build', '.next', '.nuxt', 'target', '.cache', '.turbo', 'coverage', '.gradle', 'Pods', 'vendor']);
 
-// What exists in light ignored folders (Carlos's `pacientes/`) before a turn begins (L-5b).
-export async function listIgnored(root, { via = undefined, limit = 500, budget = 5000 } = {}) {
+// What exists in light ignored folders (Carlos's `pacientes/`) before a turn begins (L-5b), each file
+// with what identifies it (inode, size, modification time). `complete` is false when the walk stopped
+// at its bounds: then a file missing from the list may still have been there, and nothing may be taken
+// for new (review of 2026-11-06: past 500 files a patient record the agent edited was deleted by UNDO).
+// Nested repositories are left out: their own restore point holds them.
+export async function listIgnored(root, { via = undefined, exclude = [], limit = 5000, budget = 20000 } = {}) {
   const listed = await git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'], { via }).catch(() => '');
-  const files = [];
+  const files = new Map();
   const folders = [];
+  const nested = exclude.map((dir) => dir.replace(/\/$/, ''));
   let visits = 0;
+  let complete = true;
   const walk = async (path) => {
-    if (files.length >= limit || visits >= budget) return;
+    if (files.size >= limit || visits >= budget) { complete = false; return; }
     visits += 1;
     const bare = path.replace(/\/$/, '');
-    if (HEAVY.has(bare.split('/').pop()) || isForbidden(bare)) return;
+    if (HEAVY.has(bare.split('/').pop()) || isForbidden(bare) || nested.some((dir) => bare === dir || bare.startsWith(`${dir}/`))) return;
     const info = await lstat(join(root, bare)).catch(() => null);
     if (info?.isDirectory()) {
       folders.push(bare);
       for (const entry of (await readdir(join(root, bare)).catch(() => [])).sort()) await walk(`${bare}/${entry}`);
-    } else if (info?.isFile()) files.push(bare);
+    } else if (info?.isFile()) files.set(bare, fileMark(info));
   };
   for (const path of listed.split('\0').filter(Boolean)) await walk(path);
-  return { files, folders };
+  return { files, folders, complete };
+}
+
+// What tells one file from another, and a file from itself after a write.
+function fileMark(info) {
+  return { ino: info.ino, size: info.size, mtimeMs: info.mtimeMs };
+}
+function sameMark(a, b) {
+  return Boolean(a && b) && a.ino === b.ino && a.size === b.size && a.mtimeMs === b.mtimeMs;
 }
 
 export async function createCheckpoint(root, { id, label = 'MADRE checkpoint' } = {}) {
@@ -273,10 +287,9 @@ export async function createCheckpoint(root, { id, label = 'MADRE checkpoint' } 
   }
   const controls = [await photographControls(root, outer.via, outer.via ? 'MADRE · ' : '.git/')];
   for (const part of nested) controls.push(await photographControls(join(root, part.dir), part.via, `${part.dir}/.git/`));
-  const ignoredBefore = await listIgnored(root, { via: outer.via });
-  const ignoredExisting = new Set(ignoredBefore.files);
-  const ignoredFolders = new Set(ignoredBefore.folders);
-  return { id, ...outer, nested, exclude: dirs, controls: controls.filter(Boolean), ignoredExisting, ignoredFolders, createdAt: new Date().toISOString() };
+  const createdAt = new Date().toISOString();
+  const ignoredBefore = await listIgnored(root, { via: outer.via, exclude: dirs });
+  return { id, ...outer, nested, exclude: dirs, controls: controls.filter(Boolean), ignoredExisting: ignoredBefore.files, ignoredComplete: ignoredBefore.complete, createdAt };
 }
 
 // After a turn that could write, before git runs again: the repositories' own settings, hooks and
@@ -322,15 +335,16 @@ async function diffOne(root, before, prefix = '', exclude = []) {
 // own list of what it ignores, without walking what is ignored for its size (dependencies, builds,
 // caches), MADRE's own folders or the .env files the guard already puts back; bounded, because it
 // is a note on the card and not a record.
-export async function ignoredWrittenSince(root, checkpoint, since, { limit = 20, budget = 5000 } = {}) {
+export async function ignoredWrittenSince(root, checkpoint, since, { limit = 500, budget = 20000 } = {}) {
   const listed = await git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'], { via: checkpoint?.via }).catch(() => '');
+  const nested = (checkpoint?.exclude ?? []).map((dir) => dir.replace(/\/$/, ''));
   const found = [];
   let visits = 0;
   const walk = async (path) => {
     if (found.length >= limit || visits >= budget) return;
     visits += 1;
     const bare = path.replace(/\/$/, '');
-    if (HEAVY.has(bare.split('/').pop()) || isForbidden(bare)) return;
+    if (HEAVY.has(bare.split('/').pop()) || isForbidden(bare) || nested.some((dir) => bare === dir || bare.startsWith(`${dir}/`))) return;
     const info = await lstat(join(root, bare)).catch(() => null);
     if (info?.isDirectory()) {
       for (const entry of (await readdir(join(root, bare)).catch(() => [])).sort()) await walk(`${bare}/${entry}`);
@@ -338,6 +352,40 @@ export async function ignoredWrittenSince(root, checkpoint, since, { limit = 20,
   };
   for (const path of listed.split('\0').filter(Boolean)) await walk(path);
   return found;
+}
+
+// What a turn wrote where git does not look, sorted by what UNDO may do with it (L-5b). `created`:
+// not in the photograph taken before the turn, and that photograph was whole; those, with how each
+// looked when the turn ended, are what UNDO may remove. `modified`: there before and changed.
+// `unknown`: written, but the photograph stopped at its bounds, so it cannot be told new from old,
+// and UNDO leaves it. A file that was there before and is exactly as it was (a future modification
+// time from an unpacked archive) is not reported at all.
+export async function sortIgnoredWrites(root, checkpoint, paths) {
+  const existing = checkpoint?.ignoredExisting instanceof Map ? checkpoint.ignoredExisting : new Map();
+  const whole = checkpoint?.ignoredComplete === true;
+  const since = Date.parse(checkpoint?.createdAt ?? '');
+  const created = [];
+  const modified = [];
+  const unknown = [];
+  const marks = new Map();
+  for (const path of paths) {
+    const info = await lstat(join(root, path)).catch(() => null);
+    if (!info?.isFile()) continue;
+    const before = existing.get(path);
+    if (before) {
+      if (!sameMark(before, fileMark(info))) modified.push(path);
+      continue;
+    }
+    // Where the system says when a file was born, one born before the turn is not new, whatever
+    // the list says. Where it does not (birthtime 0), the whole photograph is the only word.
+    const born = info.birthtimeMs;
+    const bornBefore = born > 0 && Number.isFinite(since) && born < since;
+    if (whole && !bornBefore) {
+      created.push(path);
+      marks.set(path, fileMark(info));
+    } else unknown.push(path);
+  }
+  return { created, modified, unknown, marks };
 }
 
 // What changed since the checkpoint, in the project and in every nested repository, paths
@@ -404,13 +452,17 @@ export async function restoreCheckpoint(root, checkpoint, { paths = null } = {})
       restored.push(file.path);
     }
   }
-  // When restoring the full checkpoint on UNDO (paths === null), also remove newly created
-  // files in light ignored folders (e.g. Carlos's pacientes/) that the turn added (L-5b).
+  // When restoring the full checkpoint on UNDO (paths === null), also remove the files the turn
+  // created in light ignored folders (e.g. Carlos's pacientes/) (L-5b), but only each one still as
+  // the turn left it: one written again since (by the person, by another turn) is theirs now and stays.
   if (!paths && Array.isArray(checkpoint?.ignoredCreated)) {
+    const marks = checkpoint.ignoredCreatedMarks instanceof Map ? checkpoint.ignoredCreatedMarks : new Map();
     for (const path of checkpoint.ignoredCreated) {
       const absolute = resolve(root, path);
       if (!absolute.startsWith(canonicalRoot + sep)) continue;
       if (isForbidden(path)) continue;
+      const info = await lstat(absolute).catch(() => null);
+      if (!info?.isFile() || !sameMark(marks.get(path), fileMark(info))) continue;
       const done = await unlink(absolute).then(() => true, () => false);
       if (done) removed.push(path);
     }

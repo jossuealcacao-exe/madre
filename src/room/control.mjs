@@ -4,7 +4,7 @@
 // is taken before, the diff is read after, writes into forbidden zones are
 // restored on the spot, and the checkpoint stays for UNDO. One holder at a time.
 
-import { createCheckpoint, diffCheckpoint, ignoredWrittenSince, restoreCheckpoint, settleControls } from '../checkpoint.mjs';
+import { createCheckpoint, diffCheckpoint, ignoredWrittenSince, restoreCheckpoint, settleControls, sortIgnoredWrites } from '../checkpoint.mjs';
 import { guardForbidden } from './guard.mjs';
 
 export class ControlDesk {
@@ -116,11 +116,12 @@ export class ControlDesk {
     const unseen = (await run.guard?.restoreChanged?.() ?? []).filter((path) => !toRevert.has(path));
     const kept = diff.files.filter((file) => !toRevert.has(file.path));
     // Written where git does not look: outside the restore point (L-5, L-5b).
-    const outside = (await ignoredWrittenSince(this.#projectRoot, run.checkpoint, Date.parse(run.since)).catch(() => [])).filter((path) => !unseen.includes(path) && !mine(path));
-    const outsideExisting = run.checkpoint.ignoredExisting ?? new Set();
-    const outsideCreated = outside.filter((path) => !outsideExisting.has(path));
-    const outsideModified = outside.filter((path) => outsideExisting.has(path));
+    const written = (await ignoredWrittenSince(this.#projectRoot, run.checkpoint, Date.parse(run.since)).catch(() => [])).filter((path) => !unseen.includes(path) && !mine(path));
+    const sorted = await sortIgnoredWrites(this.#projectRoot, run.checkpoint, written);
+    const { created: outsideCreated, modified: outsideModified, unknown: outsideUnknown } = sorted;
+    const outside = [...outsideCreated, ...outsideModified, ...outsideUnknown].sort();
     run.checkpoint.ignoredCreated = outsideCreated;
+    run.checkpoint.ignoredCreatedMarks = sorted.marks;
     const changes = {
       checkpointId: run.checkpoint.id,
       agent: run.agent,
@@ -143,6 +144,7 @@ export class ControlDesk {
       deleted.size ? `${deleted.size} deleted file(s) were put back: the copilot does not delete.` : null,
       outsideCreated.length ? `${outsideCreated.length} file(s) created in folders git ignores (${outsideCreated.slice(0, 3).join(', ')}${outsideCreated.length > 3 ? ', …' : ''}); UNDO will remove them.` : null,
       outsideModified.length ? `${outsideModified.length} preexisting file(s) in folders git ignores were modified (${outsideModified.slice(0, 3).join(', ')}${outsideModified.length > 3 ? ', …' : ''}); the restore point does not hold them, so UNDO does not bring them back.` : null,
+      outsideUnknown.length ? `${outsideUnknown.length} file(s) written in folders git ignores (${outsideUnknown.slice(0, 3).join(', ')}${outsideUnknown.length > 3 ? ', …' : ''}); those folders hold too many files to tell new from old, so UNDO leaves them.` : null,
     ].filter(Boolean).join(' ');
     changes.message = `${count ? `@${run.agent} ${additive ? 'created' : 'changed'} ${count} file(s) in the project.` : `@${run.agent} ${additive ? 'created' : 'changed'} nothing in the project.`}${notes ? ` ${notes}` : ''}`;
     return changes;
