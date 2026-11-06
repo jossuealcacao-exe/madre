@@ -5993,7 +5993,7 @@ function watchPull(model) {
     if ((localOllama?.ollama?.models ?? []).some((one) => one.name.replace(/:latest$/, '') === model)) { pulling.delete(model); toast(t('{model} is ready. Choose it in Settings › Local AI.', { model })); return; }
     if (localOllama?.lastPull?.model === model && !localOllama.lastPull.ok && !localOllama.pulling) {
       pulling.delete(model);
-      toast(localOllama.lastPull.detail ?? t('The download stopped.'));
+      toast(localOllama.lastPull.detail || t('The download stopped: {error}', { error: model }));
       settingsSheet?.sync({ detail: true, only: 'local' });
       return;
     }

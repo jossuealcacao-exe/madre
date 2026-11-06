@@ -2291,10 +2291,9 @@ export async function createPulseServer({
               } catch (error) {
                 await flush();
                 // Stopped on purpose: said as that, not as a failure.
-                if (stopper.signal.aborted) {
-                  lastPull = { model, ok: false, cancelled: true };
-                  await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: 'cancelled', model, cancelled: true });
-                } else {
+                if (stopper.signal.aborted) lastPull = { model, ok: false, cancelled: true };
+                if (stopper.signal.aborted) await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: 'cancelled', model, cancelled: true });
+                else {
                   const trouble = error.trouble ?? installTrouble(error.message);
                   lastPull = { model, ok: false, detail: error.message, trouble };
                   // Why it stopped, in one word the page says in plain words (src/setup-trouble.mjs).
