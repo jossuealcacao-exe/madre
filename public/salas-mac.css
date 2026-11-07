@@ -2398,3 +2398,29 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 .sm-link-foot .traffic { margin: 0; min-width: 0; }
 .sm-link-list .sm-link > .sm-link-foot .sm-actions { margin: 0; justify-content: flex-end; flex: none; }
 @media (max-width: 520px) { .sm-link-foot { flex-wrap: wrap; } }
+
+/* Connections, folded (7 Nov): one even row each — the two ends on either side of a centred arrow,
+   the same widths in every row, its kind, readings and what crosses under it — that unfolds in
+   place. The list is one column, so many connections are read top to bottom without hunting. */
+.sm-link-list { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; }
+.sm-link-list .sm-link { display: block; padding: 0 !important; gap: 0 !important; overflow: hidden; }
+.sm-link-summary { display: grid; grid-template-columns: minmax(0, 1fr) 28px; grid-template-rows: auto auto; align-items: center; gap: 4px 8px; padding: 12px 16px; list-style: none; cursor: pointer; border-radius: inherit; }
+.sm-link-summary::-webkit-details-marker { display: none; }
+.sm-link-summary:hover { background: color-mix(in srgb, var(--text) 3%, transparent); }
+.sm-link-summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--s-acc) 55%, transparent); }
+.sm-link-summary > .sm-link-pair { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(70px, 120px) minmax(0, 1fr); align-items: center; gap: 12px; padding: 0 !important; border: 0 !important; }
+.sm-link-summary .sm-link-end-box.left { justify-self: end; flex-direction: row-reverse; text-align: right; }
+.sm-link-summary .sm-link-end-box.right { justify-self: start; }
+.sm-link-summary .sm-link-end { width: 30px !important; height: 30px !important; }
+.sm-link-summary .sm-link-end-words b { font-size: 14px !important; font-weight: 600 !important; }
+.sm-link-summary .sm-link-arrow { max-width: none; width: 100%; }
+.sm-link-meta { grid-column: 1; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: 8px; font: 450 12px var(--read); color: var(--text-3); }
+.sm-link-meta b { font-weight: 600; color: var(--s-acc); }
+.sm-link-meta > span:not(.sm-link-dots)::before { content: '·'; margin-right: 8px; color: var(--text-3); }
+.sm-link-dots { display: inline-flex; gap: 3px; }
+.sm-link-dots i { width: 6px; height: 6px; border-radius: 50%; }
+.sm-link-dots i.k-decision { background: var(--mem-decision); } .sm-link-dots i.k-fact { background: var(--mem-fact); } .sm-link-dots i.k-preference { background: var(--mem-preference); } .sm-link-dots i.k-question { background: var(--mem-question); }
+.sm-link-chevron { grid-column: 2; grid-row: 1 / span 2; justify-self: end; width: 8px; height: 8px; border-right: 1.5px solid var(--text-3); border-bottom: 1.5px solid var(--text-3); transform: rotate(45deg) translateY(-2px); transition: transform calc(160ms * var(--motion-scale, 1)) ease; }
+.sm-link[open] > .sm-link-summary .sm-link-chevron { transform: rotate(225deg) translate(-2px, 0); }
+.sm-link[open] > .sm-link-summary { border-bottom: 1px solid var(--cs-line, var(--line)); border-radius: 0; }
+.sm-link-body { display: grid; gap: 14px; padding: 14px 18px 16px; }

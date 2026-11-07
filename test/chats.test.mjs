@@ -1338,7 +1338,8 @@ test('review of 2026-10-28 (2): Home\'s sheets in the new look, Connections unde
   assert.match(homeCss, /html\.home-shell dialog\.sm-sheet:not\(\.sm-settings\) > \.sm-sheet-body \{\n  border-radius: 14px; background-color: var\(--cs-canvas\);/);
   // Connections: three steps, the pair drawn as on the map, switches that say what they do, a plain cancel.
   assert.match(home, /function drawLinkSteps\(\) \{/);
-  assert.match(home, /pair\.append\(LINK_MARK\(reader\), arrow, LINK_MARK\(source\)\);/);
+  // The reader on the left, the source on the right, the arrow between (folded rows since 2026-11-07).
+  assert.match(home, /const left = LINK_MARK\(reader\);\n  const right = LINK_MARK\(source\);[\s\S]{0,120}pair\.append\(left, arrow, right\);/);
   assert.match(home, /option\(enlace\.deliver, t\('It receives delivered notes'\), t\('Notes can be handed to it; they wait for you to accept them before entering its memory\.'\)/);
   assert.match(home, /t\('Cancel the connection'\)/);
   // «Add to Home» is a window like Settings.

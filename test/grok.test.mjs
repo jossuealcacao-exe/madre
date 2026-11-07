@@ -103,7 +103,7 @@ test('grok · it writes up to #4 when allowed, signs in with a code, installs fr
   assert.equal(can.read, true);
   assert.ok(can.write, 'Grok writes from 2026-11-06');
   assert.equal(can.imageIn, false);
-  assert.equal(can.web, false);
+  assert.ok(can.web, 'its own search and page reader, from 2026-11-07');
   assert.equal(resolveScopes('grok', { maxMode: 4 }).maxMode, 4);
   assert.equal(resolveScopes('grok', {}).maxMode, 2, 'the usual ceiling, as every agent that writes');
   const agent = { id: 'grok', path: '/bin/grok', detected: true };
@@ -233,4 +233,18 @@ test('grok · each mode is given what it may do: #2 and #3 write and run nothing
   }
   // Reading is what it was.
   assert.deepEqual(grokPermissionsFor(null).tools, READ_TOOLS);
+});
+
+test('grok · with Web access on, it is given its own search and page reader, and the web stays off otherwise (2026-11-07)', async () => {
+  const { WEB_TOOLS } = await import('../src/adapters/grok.mjs');
+  const off = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', environment: {} });
+  assert.ok(off.includes('--disable-web-search'));
+  assert.ok(!value(off, '--tools').includes('web_search'));
+  const on = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', scopes: { web: true }, environment: {} });
+  assert.ok(!on.includes('--disable-web-search'));
+  assert.deepEqual(value(on, '--tools').split(',').slice(-2), WEB_TOOLS);
+  // Still reading only: no terminal, no edits.
+  assert.ok(!value(on, '--tools').includes('run_terminal_cmd') && !value(on, '--tools').includes('write'));
+  const writing = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', lease: { control: true, relativeDir: '.' }, scopes: { web: true }, environment: {} });
+  assert.ok(value(writing, '--tools').includes('web_fetch') && value(writing, '--tools').includes('write'));
 });

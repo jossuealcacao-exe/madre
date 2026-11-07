@@ -82,6 +82,7 @@ const failed = new Map();      // room id → what went wrong, said on its card
 const conversationsCount = (n) => (n === 1 ? t('1 conversation') : t('{n} conversations', { n }));
 const memoriesCount = (n) => (n === 1 ? t('1 memory') : t('{n} memories', { n }));
 const revoking = new Set();    // link ids whose row asks before revoking
+const linksOpen = new Set();   // link ids unfolded in the list (2026-11-07: folded by default)
 
 // The room's looks, from this browser: the same keys the room's own page keeps (app.js, LOOKS),
 // so a choice made here is the room's too when the room is served at this address.
@@ -972,24 +973,33 @@ const LINK_ARROW = '<svg viewBox="0 0 60 16" aria-hidden="true"><path d="M58 8H6
 const LINK_BOTH = '<svg viewBox="0 0 60 16" aria-hidden="true"><path d="M6 8h48M12 2.5 6 8l6 5.5M48 2.5 54 8l-6 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function linkRow(enlace) {
   const { source, reader } = endsOf(enlace);
-  const node = el('article', `sm-link${revoking.has(enlace.id) ? ' revoking' : ''}`);
+  // Folded by default (2026-11-07): one even row per connection — the pair centred, its kind and its
+  // readings under it — so a person with many finds theirs without scrolling; it unfolds in place.
+  const node = el('details', `sm-link${revoking.has(enlace.id) ? ' revoking' : ''}`);
   node.dataset.link = enlace.id;
-  node.append(el('span', 'sm-link-kind', source === data.salas || reader === data.salas ? t('With the Coordinator') : t('Between projects')));
+  node.open = linksOpen.has(enlace.id) || revoking.has(enlace.id);
+  node.addEventListener('toggle', () => { if (node.open) linksOpen.add(enlace.id); else linksOpen.delete(enlace.id); });
+  const summary = el('summary', 'sm-link-summary');
+  const body = el('div', 'sm-link-body');
   // Who looks up whom, as the map draws it.
   const pair = el('div', 'sm-link-pair');
   const arrow = el('span', 'sm-link-arrow');
   arrow.innerHTML = enlace.direction === 'both' ? LINK_BOTH : LINK_ARROW; // trusted: our own SVG strings
   arrow.append(el('small', null, enlace.direction === 'both' ? t('read each other') : t('looks up')));
-  pair.append(LINK_MARK(reader), arrow, LINK_MARK(source));
+  const left = LINK_MARK(reader);
+  const right = LINK_MARK(source);
+  left.classList.add('left');
+  right.classList.add('right');
+  pair.append(left, arrow, right);
   // The drawing says it; the sentence is kept for whoever hears the page.
   const who = el('span');
   who.append(enlace.direction === 'both' ? sayTinted('{a} and {b} read each other', { a: enlace.rooms.a, b: enlace.rooms.b }) : sayTinted('{reader} reads from {source}', { reader, source }));
   pair.setAttribute('role', 'img');
   pair.setAttribute('aria-label', who.textContent);
-  node.append(pair);
+  summary.append(pair);
   // In order (2026-11-07): who reads whom, then what crosses, then on what terms, then the switches,
   // and at the foot how much it was read and the way out. Each part under its own small heading.
-  const section = (title) => { const part = el('div', 'sm-link-part'); part.append(el('span', 'sm-link-part-title', title)); node.append(part); return part; };
+  const section = (title) => { const part = el('div', 'sm-link-part'); part.append(el('span', 'sm-link-part-title', title)); body.append(part); return part; };
   // What crosses, until when, and whether orders go.
   const tags = el('div', 'sm-link-tags');
   for (const kind of enlace.kinds ?? []) {
@@ -1009,6 +1019,13 @@ function linkRow(enlace) {
   // S-021: the last reading says who read, as the room that asked said it.
   const last = traffic.lastAt ? (traffic.lastAgent ? t('last by @{agent} of {room}, {when}', { agent: traffic.lastAgent, room: roomName(traffic.lastRoom), when: ago(traffic.lastAt) }) : t('last {when}', { when: ago(traffic.lastAt) })) : t('none yet');
   const trafficLine = el('p', 'traffic', [t('{n} reads in 24 h', { n: traffic.reads24h ?? 0 }), last].join(' · '));
+  // Under the pair, folded: what kind of connection it is and how much it was read.
+  const meta = el('span', 'sm-link-meta');
+  meta.append(el('b', null, source === data.salas || reader === data.salas ? t('With the Coordinator') : t('Between projects')), el('span', null, t('{n} reads in 24 h', { n: traffic.reads24h ?? 0 })));
+  const dots = el('span', 'sm-link-dots');
+  for (const kind of enlace.kinds ?? []) dots.append(el('i', `k-${kind}`));
+  meta.append(dots);
+  summary.append(meta, el('span', 'sm-link-chevron'));
   // What else it allows, each a switch that says what it does (Fase 3e, D-S15, D-S16, D-S17).
   const options = el('div', 'sm-link-options');
   const option = (on, title, says, path, payload) => {
@@ -1041,7 +1058,8 @@ function linkRow(enlace) {
   else actions.append(button('sm-btn ghost small', t('Cancel the connection'), () => { revoking.add(enlace.id); draw(); }));
   const foot = el('div', 'sm-link-foot');
   foot.append(trafficLine, actions);
-  node.append(foot);
+  body.append(foot);
+  node.append(summary, body);
   return node;
 }
 // How a connection works, in three steps under the sheet's title, as the project map says its own

@@ -82,16 +82,22 @@ export function grokPermissionsFor(lease = null) {
   return { tools: [...READ_TOOLS, ...WRITE_TOOLS], mode: 'dontAsk', allow: roots.flatMap((root) => [`Write(${root})`, `Edit(${root})`]), deny: ['Bash', ...never] };
 }
 
-export function buildGrokArgs({ projectRoot, promptFile, model = process.env.PULSE_GROK_MODEL || null, effort = null, lease = null, environment = process.env }) {
+// The web (2026-11-07): Grok's own search and page reader, both run by xAI's servers, neither asking
+// for an approval (tried in a reading turn: it searched and opened nodejs.org and example.com). Off
+// until the person turns on Web access for Grok, as for every agent.
+export const WEB_TOOLS = ['web_search', 'web_fetch'];
+
+export function buildGrokArgs({ projectRoot, promptFile, model = process.env.PULSE_GROK_MODEL || null, effort = null, lease = null, scopes = null, environment = process.env }) {
   const sandbox = grokSandbox(environment, lease);
   const allowed = grokPermissionsFor(lease);
+  const web = Boolean(scopes?.web);
   return [
     // From a file, word for word: a message that starts with «/» or «-» is not a command or a flag.
     '--prompt-file', promptFile,
     '--verbatim',
     '--output-format', 'streaming-messages-json',
     '--cwd', projectRoot,
-    '--tools', allowed.tools.join(','),
+    '--tools', [...allowed.tools, ...(web ? WEB_TOOLS : [])].join(','),
     '--disallowed-tools', MCP_META_TOOLS.join(','),
     // #4 approves every call of its own (a command waiting for an approval would cancel the turn);
     // #2 and #3 approve only what is allowed below and refuse the rest without asking.
@@ -100,7 +106,7 @@ export function buildGrokArgs({ projectRoot, promptFile, model = process.env.PUL
     ...allowed.deny.flatMap((rule) => ['--deny', rule]),
     ...(sandbox ? ['--sandbox', sandbox] : []),
     '--no-subagents',
-    '--disable-web-search',
+    ...(web ? [] : ['--disable-web-search']),
     '--no-memory',
     '--no-wait-for-background',
     '--no-auto-update',
@@ -206,7 +212,7 @@ export function parseGrokStatus(output, env = process.env) {
   return { state: 'unknown', detail: said.trim().split('\n')[0]?.slice(0, 120) || 'no answer from grok models' };
 }
 
-export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, lease = null, onProgress = null }) {
+export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, lease = null, scopes = null, onProgress = null }) {
   // The message goes in a file only this person can read, made for the turn and removed after it.
   const dir = await mkdtemp(join(tmpdir(), 'madre-grok-'));
   try {
@@ -216,7 +222,7 @@ export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 
     return await runReadonlyProcess({
       onProgress: onProgress ? (out) => onProgress(grokProgress(out)) : null,
       executable,
-      args: buildGrokArgs({ projectRoot, promptFile, ...(model ? { model } : {}), effort, lease }),
+      args: buildGrokArgs({ projectRoot, promptFile, ...(model ? { model } : {}), effort, lease, scopes }),
       cwd: projectRoot,
       env: grokEnvironment(process.env),
       timeoutMs,

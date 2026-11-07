@@ -51,7 +51,8 @@ export const CAPABILITIES = {
     imageIn: false,
     write: { how: '--tools …,search_replace,write under --permission-mode dontAsk (#4: the terminal too, --always-approve)', note: 'Writes where the turn allows; commands only at #4. Every place nobody writes is denied one rule at a time, and MADRE locks and puts back .env, .git and its own folders, and at #2 what existed.' },
     imageGen: false,
-    web: false,
+    // Its own search and page reader (2026-11-07): off until Web access is turned on for it.
+    web: { how: '--tools …,web_search,web_fetch', note: 'Off until turned on in Settings › Agents › Web access.' },
   },
   opencode: {
     read: true,

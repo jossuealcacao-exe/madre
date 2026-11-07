@@ -626,17 +626,17 @@ function roomForToast(on) {
   requestAnimationFrame?.(follow);
 }
 
-// Nothing in the room speaks on hover: not a button, not a chip, not a cut-off title. Every
-// `title` in the page is taken off the first time the pointer or the focus reaches it, so the
-// browser's grey box never comes either. What it said is kept as the element's name for a screen
-// reader when the element has no words of its own, and as its description when it does — the
-// words stay reachable for whoever navigates without seeing, and stop covering the page for
-// everyone else.
+// The browser's grey box never comes: every `title` in the page is taken off the first time the
+// pointer or the focus reaches it. What it said is kept as the element's name for a screen reader
+// when the element has no words of its own, and as its description when it does. From 2026-11-07
+// it is also what MADRE's own small tip says (public/tips.js, `data-tip`), at the author's request:
+// the room used to say nothing on hover at all.
 function adoptTitle(node) {
   const said = node.getAttribute('title');
   if (said === null) return;
   node.removeAttribute('title');
   if (!said.trim()) return;
+  node.dataset.tip = said;
   if (!node.hasAttribute('aria-label') && !node.textContent.trim()) node.setAttribute('aria-label', said);
   else if (!node.hasAttribute('aria-description')) node.setAttribute('aria-description', said);
 }

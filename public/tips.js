@@ -17,6 +17,7 @@ let tip = null;
 let current = null;
 let timer = null;
 let hiddenAt = 0;
+let pending = null;   // the key a tip is waiting to show for
 
 // A key that already shows its own label (an agent's sphere in the crew's column) says `data-tip-off`.
 const keyOf = (target) => {
@@ -77,6 +78,7 @@ function show(key) {
 export function hideTip() {
   clearTimeout(timer);
   timer = null;
+  pending = null;
   if (current) { restore(current); hiddenAt = performance.now(); }
   current = null;
   if (tip) { tip.classList.remove('shown'); tip.hidden = true; }
@@ -86,7 +88,8 @@ function arm(key) {
   if (key === current) return;
   hideTip();
   const soon = performance.now() - hiddenAt < AGAIN_WITHIN;
-  timer = setTimeout(() => show(key), soon ? 0 : SHOW_AFTER);
+  pending = key;
+  timer = setTimeout(() => { pending = null; show(key); }, soon ? 0 : SHOW_AFTER);
 }
 
 export function installTips(root = globalThis.document) {
@@ -109,6 +112,13 @@ export function installTips(root = globalThis.document) {
   });
   root.addEventListener('focusout', () => hideTip());
   for (const type of ['pointerdown', 'keydown', 'wheel']) root.addEventListener(type, () => hideTip(), { capture: true, passive: true });
-  window.addEventListener('scroll', () => hideTip(), { capture: true, passive: true });
+  // Only a scroll that moves the key hides its tip: the room has rows that scroll on their own (the
+  // suggestions), and every one of their steps used to hide the tip before it ever showed.
+  window.addEventListener('scroll', (event) => {
+    const key = current ?? pending;
+    if (!key) return;
+    const moved = event.target === document || event.target === document.documentElement || event.target?.contains?.(key);
+    if (moved) hideTip();
+  }, { capture: true, passive: true });
   window.addEventListener('blur', () => hideTip());
 }

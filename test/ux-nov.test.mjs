@@ -71,3 +71,20 @@ test('ux 7 nov · one small solid tip for every key that explains itself; the ag
   const { installTips } = await import('../public/tips.js');
   assert.doesNotThrow(() => installTips({ addEventListener: null }));
 });
+
+test('ux 7 nov · the room\'s titles become the tip\'s words, and a row that scrolls on its own no longer hides it', () => {
+  // The room took every title off before the tip could read it (adoptTitle): the words now go to it.
+  assert.match(pub('app.js'), /node\.removeAttribute\('title'\);\n  if \(!said\.trim\(\)\) return;\n  node\.dataset\.tip = said;/);
+  const tips = pub('tips.js');
+  assert.match(tips, /event\.target\?\.contains\?\.\(key\)/, 'any scroll anywhere hides the tip again');
+});
+
+test('ux 7 nov · a connection is one even row, folded, that unfolds in place', () => {
+  const home = pub('salas-mac.js');
+  assert.match(home, /const node = el\('details', `sm-link/);
+  assert.match(home, /node\.open = linksOpen\.has\(enlace\.id\) \|\| revoking\.has\(enlace\.id\)/);
+  assert.match(home, /node\.append\(summary, body\)/);
+  const css = pub('salas-mac.css');
+  assert.match(css, /\.sm-link-summary > \.sm-link-pair \{ grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax\(0, 1fr\) minmax\(70px, 120px\) minmax\(0, 1fr\);/);
+  assert.match(css, /\.sm-link-list \{ grid-template-columns: minmax\(0, 1fr\) !important;/);
+});

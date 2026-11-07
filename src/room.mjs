@@ -73,7 +73,7 @@ export const defaultInvokers = {
   'opencode-readonly': invokeOpenCode,
   'cursor-readonly': invokeCursor,
   // Grok (adapters/grok.mjs): the message, the model, the effort and the turn's lease, nothing else.
-  'grok-readonly': ({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, lease, onProgress }) => invokeGrok({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, lease, onProgress }),
+  'grok-readonly': ({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, lease, scopes, onProgress }) => invokeGrok({ executable, projectRoot, prompt, timeoutMs, signal, model, effort, lease, scopes, onProgress }),
   // Gemini with a key and no CLI (runtime-detection.mjs): only what an API call can take. The
   // project, attachments, a lease and tool servers are the CLI's; capabilities.mjs keeps it at #1.
   'gemini-rest': ({ prompt, model, signal, timeoutMs, onProgress, json }) => invokeGeminiRest({ prompt, model, signal, timeoutMs, onProgress, json }),
