@@ -81,6 +81,8 @@ export async function drawColophonKeys(host) {
 // The legal notices (1.1.0, Business Source License 1.1): the copyright, who may use MADRE for free,
 // that there is no warranty, how to read the license and where the code is — and the author's
 // attribution, which NOTICE asks every copy to keep. Built with the Settings blocks both pages share.
+export const TRADEMARKS = () => t('Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos appear unaltered and only to identify each service; MADRE is not affiliated with them or endorsed by them.');
+
 export function drawLegal(host) {
   if (!host) return null;
   const make = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
@@ -107,6 +109,13 @@ export function drawLegal(host) {
   row(t('Made by {author}', { author: AUTHOR }), t('MADRE shows its author in the corner. Please keep it in every copy.'), AUTHOR_URL, 'jossuealcala.com');
   row(t('The license'), t('{license} · free for individuals and teams of up to 10', { license: LICENSE_NAME }), LEGAL_LINKS.license, t('Read'));
   row(t('The source code'), t('On GitHub, to read and to change.'), LEGAL_LINKS.source, 'GitHub');
+  // Whose the agents' logos are (2026-11-06): five are their owners' official marks, shown unaltered
+  // only to say which service each agent is (public/brands.js).
+  const marks = make('div', 'sx-row');
+  const said = make('div', 'sx-words');
+  said.append(make('b', null, t('Agent logos')), make('span', 'sx-hint', TRADEMARKS()));
+  marks.append(said);
+  rows.append(marks);
   block.append(head, rows);
   host.append(block);
   return block;

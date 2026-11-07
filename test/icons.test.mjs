@@ -68,10 +68,11 @@ test('Trazo MADRE: every copy written into a page is its drawing, and every page
 
 test('Trazo MADRE: the scripts draw their icons from icons.js, not from copies of their own', async () => {
   const files = (await readdir(pub(''))).filter((file) => file.endsWith('.js') && file !== 'icons.js');
-  // Drawings that are not icons: the brand, the loader, MADRE's 8-bit faces, the agents' marks,
+  // Drawings that are not icons: the brand, the loader, MADRE's 8-bit faces, the agents' marks (theirs
+  // or, for five, their owners' official ones in a 30-wide box since 2026-11-06),
   // the Market's art and a module's own drawing being cleaned (market.js), the tour's scenes, the Connections arrows (60 wide), the folder of «Add a
   // project» (32 wide) and the size and height a tile takes (drawn from its numbers).
-  const ART = /<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg">\$\{markup\}|viewBox="(?:-4\.8|-2 -1|0 0 8 8|0 0 32 32|0 0 \$\{|0 0 320 150|0 0 60 16|0 0 32 26)|<svg>\$\{|logoBox|const (?:heightIcon|sizeIcon) = /;
+  const ART = /<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg">\$\{markup\}|viewBox="(?:-4\.8|-3 -3 30 30|-2 -1|0 0 8 8|0 0 32 32|0 0 \$\{|0 0 320 150|0 0 60 16|0 0 32 26)|<svg>\$\{|logoBox|const (?:heightIcon|sizeIcon) = /;
   for (const file of files) {
     const text = await readFile(pub(file), 'utf8');
     for (const line of text.split('\n')) {

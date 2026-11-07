@@ -68,3 +68,20 @@ test('attribution · the license is the BSL 1.1 with its parameters, older versi
   for (const file of files) if (!(await read(file)).slice(0, 400).includes('SPDX-License-Identifier: BUSL-1.1')) bare.push(file);
   assert.deepEqual(bare, [], 'source files without the license line');
 });
+
+// The agents' logos (2026-11-06, the author's decision): five official marks, whole, never redrawn,
+// and the room says whose they are. Cursor keeps MADRE's own drawing.
+test('attribution · five agents show their official mark whole, and Licence and authorship says whose they are', async () => {
+  const { BRANDS } = await import('../public/brands.js');
+  for (const id of ['codex', 'claude', 'gemini', 'opencode', 'grok']) {
+    const mark = BRANDS[id].mark();
+    assert.match(mark, /^<svg viewBox="-3 -3 30 30" fill="currentColor" fill-rule="evenodd"/, `${id} is not shown as its official mark`);
+    assert.ok(!/transform=|stroke=/.test(mark), `${id}'s mark was retouched`);
+  }
+  assert.match(BRANDS.cursor.mark(), /^<svg viewBox="0 0 32 32"/);
+  const { TRADEMARKS } = await import('../public/attribution.js');
+  const said = TRADEMARKS();
+  for (const owner of ['OpenAI', 'Anthropic', 'Google', 'xAI']) assert.match(said, new RegExp(owner));
+  const { ES } = await import('../public/es.js');
+  assert.ok(ES['Agent logos']);
+});

@@ -6920,4 +6920,6 @@ export const ES = {
   'Sign in to Grok again: grok logout, then grok login. If it keeps happening, check at grok.com that your plan is active.': 'Vuelve a iniciar sesión en Grok: grok logout y luego grok login. Si sigue pasando, revisa en grok.com que tu plan esté activo.',
   '#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.': '#1 SOLO CONVERSAR · en MADRE este agente lee y contesta; ningún modo le permite escribir.',
   'Always #1: every message to it is answered by reading.': 'Siempre #1: cada mensaje que le mandas lo contesta leyendo.',
+  'Agent logos': 'Logos de los agentes',
+  'Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos appear unaltered and only to identify each service; MADRE is not affiliated with them or endorsed by them.': 'Codex es marca de OpenAI; Claude, de Anthropic; Gemini, de Google; Grok, de xAI, y OpenCode, de sus autores. Sus logos aparecen sin alterar y solo para identificar cada servicio; MADRE no está afiliada a ellas ni cuenta con su respaldo.',
 };
