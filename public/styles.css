@@ -5299,14 +5299,13 @@ dialog.custom-window::backdrop { display: none; }
   position: absolute; left: calc(100% + 12px); top: 50%; z-index: 1;
   padding: 4px 10px; border-radius: 999px; white-space: nowrap;
   font-family: var(--sans); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text);
-  background-color: color-mix(in srgb, var(--bg) 72%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
-  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), inset 0 .5px 0 rgba(255, 255, 255, .16), 0 8px 20px -10px rgba(0, 0, 0, .5);
+  /* Solid (2026-11-07): the glass let the conversation show through and read as a smudge. */
+  background-color: var(--tip-bg); color: var(--tip-ink);
+  box-shadow: var(--tip-edge);
   opacity: 0; transform: translate(-8px, -50%); pointer-events: none;
   transition: opacity calc(160ms * var(--motion-scale)) var(--ease-out), transform calc(220ms * var(--motion-scale)) var(--ease-out);
 }
 .crew-stack .pick:is(:hover, :focus-visible) .pick-vendor { opacity: 1; transform: translate(0, -50%); }
-:root[data-scheme="light"] .crew-stack .pick-vendor { background-color: color-mix(in srgb, #ffffff 80%, transparent); box-shadow: 0 0 0 .5px rgba(20, 30, 20, .12), inset 0 1px 0 #ffffff, 0 8px 20px -12px rgba(20, 30, 20, .3); }
 
 /* ---------- Suggested questions: centred, as liquid glass ----------
    They are offers, not messages: centred over the box, each on a clear pane of glass with a lit
@@ -6002,6 +6001,18 @@ dialog.settings-window::backdrop { display: none; }
 .settings-quick-row.agent .state { color: var(--text-2); }
 .settings-quick-row.agent .state.off { color: #c99a10; }
 .settings-quick-row.agent .state.on::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--phosphor); vertical-align: 1px; }
+/* The agents as a quick way in (2026-11-07): three to a row, each its mark and its session. */
+.settings-quick.agents-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.settings-quick-tile.agent { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 74px; padding: 10px 6px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; transition: background-color 150ms; }
+.settings-quick-tile.agent:nth-child(n+4) { border-top: .5px solid var(--line); }
+.settings-quick-tile.agent:not(:nth-child(3n+1)) { border-left: .5px solid var(--line); }
+.settings-quick-tile.agent:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
+.settings-quick-tile.agent:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ring-soft, var(--line)); }
+.settings-quick-tile.agent .state { font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+.settings-agent-mark { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--b); color: var(--b-ink); box-shadow: 0 1px 2px rgba(15, 20, 30, .14); }
+.settings-agent-mark svg { width: 62%; height: 62%; }
+.settings-quick-tile.agent .state.off { color: #c99a10; }
+.settings-quick-tile.agent .state.on::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--phosphor); vertical-align: 1px; }
 .settings-switch { position: relative; display: inline-flex; flex: none; cursor: pointer; }
 .settings-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .settings-switch i { width: 32px; height: 19px; border-radius: 999px; background: color-mix(in srgb, var(--text) 16%, transparent); position: relative; transition: background-color var(--motion-fast) var(--ease-out); }
@@ -10563,6 +10574,8 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 /* CONNECTORS (public/mcp-catalog.js, 1.0.5): the best known MCP servers as cards, grouped, each with
    its initials on its own color, what it does in a line, how far MADRE checked it, and one key. */
 .mcp-cat-head { display: grid; gap: 2px; padding: 14px 18px 8px; }
+.mcp-catalog-block > .sx-head .mcp-search { flex: 0 1 240px; }
+.mcp-cat-none { margin: 4px 18px 14px; font-size: 12.5px; color: var(--text-3); }
 .mcp-cat-head b { font-size: 13px; font-weight: 650; color: var(--text); }
 .mcp-cat-head span { font-size: 12.5px; color: var(--text-3); }
 .mcp-catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 10px; padding: 0 18px 8px; }
@@ -10580,7 +10593,6 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 .mcp-card-keys .sx-input { flex: 1 1 160px; min-width: 0; }
 .mcp-card-state { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .mcp-card-state.ok { color: var(--acc, var(--phosphor)); }
-.mcp-cat-other { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 6px 18px 16px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--line-2); font-size: 13px; color: var(--text-2); }
 /* The module's key on its title's row: the card keeps its pill whatever it offers. */
 .command-card.terminal .term-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .command-card.terminal .term-row > .term-head { flex: 1 1 auto; min-width: 0; width: auto; }
@@ -12690,3 +12702,44 @@ dialog.terms-gate.intro .terms-card { opacity: 0; }
 .sm-notices { margin: 0 0 14px; }
 .chat-notices { margin: 8px auto 0; width: min(760px, calc(100% - 32px)); flex: 0 0 auto; }
 @media (max-width: 560px) { .madre-notice { flex-direction: column; gap: 10px; } .madre-notice-done { align-self: flex-start; } }
+
+/* ==========================================================================================
+   SECONDARY KEYS, QUIETER · 7 NOV
+   ========================================================================================== */
+/* A white key next to a green one (Cancel, Back, Change it…) stood on the cards' own shadow and
+   read as a smudge under it. Its own now: a hairline that draws the edge and a short, faint shade;
+   over it, a touch more; pressed, it sinks. Cards keep --raise. */
+:root {
+  --key-soft: 0 0 0 .5px rgba(0, 0, 0, .55), 0 1px 1.5px rgba(0, 0, 0, .3);
+  --key-soft-over: 0 0 0 .5px rgba(0, 0, 0, .6), 0 1px 3px rgba(0, 0, 0, .34);
+}
+:root[data-scheme="light"] {
+  --key-soft: 0 0 0 .5px rgba(22, 30, 22, .12), 0 1px 1.5px rgba(22, 30, 22, .06);
+  --key-soft-over: 0 0 0 .5px rgba(22, 30, 22, .16), 0 1px 3px rgba(22, 30, 22, .09);
+}
+dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger),
+:is(#settings, #modules, #module-guide, .module-window, .settings-window, .sm-settings-body) .sx-btn:not(.primary):not(.danger),
+.settings-back { box-shadow: var(--key-soft) !important; }
+dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger):hover,
+:is(#settings, #modules, #module-guide, .module-window, .settings-window, .sm-settings-body) .sx-btn:not(.primary):not(.danger):hover,
+.settings-back:hover { box-shadow: var(--key-soft-over) !important; }
+dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger):active,
+:is(#settings, #modules, #module-guide, .module-window, .settings-window, .sm-settings-body) .sx-btn:not(.primary):not(.danger):active,
+.settings-back:active { box-shadow: var(--key-down) !important; }
+
+/* ==========================================================================================
+   TIPS · 7 NOV (public/tips.js)
+   ========================================================================================== */
+/* One small solid label for every key that explains itself: near black with white words in the
+   light, near white with dark words in the dark, a hairline edge and a short soft shade. It fades
+   in under the key (over it when there is no room) and never takes the pointer. */
+:root { --tip-bg: #f2f2ef; --tip-ink: #111311; --tip-edge: 0 0 0 .5px rgba(0, 0, 0, .5), 0 4px 12px -4px rgba(0, 0, 0, .5); }
+:root[data-scheme="light"] { --tip-bg: #161816; --tip-ink: #ffffff; --tip-edge: 0 0 0 .5px rgba(0, 0, 0, .08), 0 4px 12px -4px rgba(0, 0, 0, .28); }
+.madre-tip {
+  position: fixed; left: 0; top: 0; z-index: 2147483000; max-width: 260px; padding: 5px 9px; border-radius: 7px;
+  background: var(--tip-bg); color: var(--tip-ink); box-shadow: var(--tip-edge);
+  font: 500 12px/1.35 var(--read, var(--sans)); letter-spacing: 0; text-transform: none; white-space: normal;
+  pointer-events: none; opacity: 0; transition: opacity calc(120ms * var(--motion-scale, 1)) ease-out;
+}
+.madre-tip.shown { opacity: 1; }
+.madre-tip[hidden] { display: none; }

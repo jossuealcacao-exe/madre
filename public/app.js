@@ -3,6 +3,7 @@
 import { archiveQuestion, modeAskedWithTime, MODE_WINDOWS, windowFor } from './routing.js';
 import { calledByName, abduct } from './abduction.js';
 import { brandOf, monogram } from './brands.js';
+import { installTips } from './tips.js';
 import { allConditions, detectPlatform, diagnose, findConditions, fixesFor, PLATFORMS } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
@@ -3646,7 +3647,7 @@ function renderPicker() {
     pick.title = els.target.value === agent.id ? t('{label} · click again to choose its model', { label: agent.label }) : agent.label;
     // Under the pointer, the provider's name comes out of the sphere.
     const vendor = brandOf(agent.id).vendor;
-    if (vendor) pick.append(el('span', 'pick-vendor', t(vendor)));
+    if (vendor) { pick.append(el('span', 'pick-vendor', t(vendor))); pick.dataset.tipOff = ''; }
     pick.addEventListener('click', (event) => { event.stopPropagation(); els.picker.classList.remove('open'); choose(); });
     pick.addEventListener('keydown', (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); els.picker.classList.remove('open'); choose(); } });
     stack.append(pick);
@@ -9129,13 +9130,25 @@ function settingsQuick(id) {
       renderMotherSentinel();
     }));
   }
+  // The agents as a quick way in (2026-11-07), as in Home: each one's mark and its session, three to
+  // a row; a tile opens that agent in the panel (settingsCard wires the click).
   if (id === 'agents' && settingsUI.data) {
-    for (const agent of settingsUI.data.agents.filter((one) => one.detected)) {
+    rows.classList.add('agents-grid');
+    for (const agent of settingsUI.data.agents.filter((one) => one.detected && one.id !== 'madre')) {
       const session = settingsUI.data.sessions?.[agent.id]?.state;
-      const row = el('div', 'settings-quick-row agent');
-      row.append(paint(el('span', 'who'), agent.id), el('span', `state session-lamp ${session === 'signed-in' ? 'on ok' : session === 'signed-out' ? 'off bad' : 'wait'}`, session === 'signed-in' ? t('signed in') : session === 'signed-out' ? t('no session') : t('unknown')));
-      row.firstChild.textContent = agent.label;
-      rows.append(row);
+      const said = session === 'signed-in' ? t('signed in') : session === 'signed-out' ? t('no session') : t('unknown');
+      const tile = el('button', 'settings-quick-tile agent');
+      tile.type = 'button';
+      tile.dataset.agent = agent.label;
+      tile.setAttribute('aria-label', `${agent.label} · ${said}`);
+      // The mark on its own colour, as Home draws it (salas-mac.js, mark): not the conversation's ring.
+      const brand = brandOf(agent.id);
+      const face = el('span', 'settings-agent-mark');
+      face.style.setProperty('--b', brand.solid ?? brand.color);
+      face.style.setProperty('--b-ink', brand.ink);
+      face.innerHTML = brand.mark(); // trusted: our own SVG strings from brands.js
+      tile.append(face, el('span', `state session-lamp ${session === 'signed-in' ? 'on ok' : session === 'signed-out' ? 'off bad' : 'wait'}`, said));
+      rows.append(tile);
     }
   }
   if (id === 'privacy' && settingsUI.data?.settings.privacy) {
@@ -9384,6 +9397,10 @@ function settingsCard(id) {
   if (status.warn) card.append(el('p', 'settings-warn', status.warn));
   const quick = settingsQuick(id);
   if (quick) card.append(quick);
+  // An agent's tile goes straight to that agent, not to the list.
+  for (const tile of quick?.querySelectorAll('.settings-quick-tile.agent') ?? []) {
+    tile.addEventListener('click', (event) => { event.stopPropagation(); openSettingsCategory('agents', tile.dataset.agent); });
+  }
   const go = () => (id === 'manual' ? openManual() : openSettingsCategory(id));
   card.addEventListener('click', go);
   card.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); } });
@@ -14961,21 +14978,50 @@ function drawMcpSettings(host) {
 // MADRE saves it, signs in when it asks, and reads its tools before any agent gets them.
 function drawMcpCatalog(host) {
   const norm = (address) => { try { return new URL(address).toString(); } catch { return address; } };
+  // A search over the catalog (2026-11-07): by name, what it does and who makes it, accents aside.
+  const search = el('label', 'settings-search mcp-search');
+  search.insertAdjacentHTML('afterbegin', trazo('search')); // trusted: our own SVG string
+  const input = el('input');
+  input.type = 'search';
+  input.placeholder = t('Search connectors');
+  input.setAttribute('aria-label', t('Search connectors'));
+  input.spellcheck = false;
+  input.value = mcpUI.catalogQuery ?? '';
+  search.append(input);
   const have = new Map((mcpUI.servers ?? []).filter((one) => one.url).map((one) => [norm(one.url), one]));
-  const block = sxBlock(host, t('Connectors'), t('The best known services, checked against MADRE on {date}. One press connects one to this project; any other MCP server goes in with «Add a tool».', { date: new Date(`${CATALOG_CHECKED}T12:00:00`).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) }), { className: 'mcp-block mcp-catalog-block' });
+  const block = sxBlock(host, t('Connectors'), t('The best known services, checked against MADRE on {date}. One press connects one to this project; any other MCP server goes in with «Add a tool».', { date: new Date(`${CATALOG_CHECKED}T12:00:00`).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) }), { className: 'mcp-block mcp-catalog-block', aside: search });
   for (const group of MCP_GROUPS) {
     const items = MCP_CATALOG.filter((one) => one.group === group.id);
     if (!items.length) continue;
     const head = el('div', 'mcp-cat-head');
     head.append(el('b', null, t(group.title)), el('span', null, t(group.about)));
     const grid = el('div', 'mcp-catalog');
-    for (const item of items) grid.append(mcpConnectorCard(item, have.get(norm(item.url)) ?? null));
+    for (const item of items) {
+      const card = mcpConnectorCard(item, have.get(norm(item.url)) ?? null);
+      card.dataset.find = settingsFold(`${item.label} ${t(item.about)} ${item.maker ?? ''} ${t(group.title)}`);
+      grid.append(card);
+    }
     block.rows.append(head, grid);
   }
-  // A server that is not on the list: by hand, as it always was.
-  const other = el('div', 'mcp-cat-other');
-  other.append(el('span', null, t('Another MCP server, yours or a third party\'s?')), sxButton(t('Add a tool'), () => { mcpUI.adding = { transport: 'http', auth: 'none', env: [] }; drawMcpTarget(); state.settingsTargets.mcp?.querySelector('.mcp-form')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }));
-  block.rows.append(other);
+  const none = el('p', 'mcp-cat-none', t('No connector matches. Any other MCP server goes in with «Add a tool», above.'));
+  none.hidden = true;
+  block.rows.append(none);
+  const filter = () => {
+    const query = settingsFold(input.value.trim());
+    mcpUI.catalogQuery = input.value;
+    let shown = 0;
+    for (const grid of block.rows.querySelectorAll('.mcp-catalog')) {
+      let here = 0;
+      for (const card of grid.children) { const hit = !query || card.dataset.find.includes(query); card.hidden = !hit; if (hit) here += 1; }
+      grid.hidden = !here;
+      grid.previousElementSibling.hidden = !here;
+      shown += here;
+    }
+    none.hidden = shown > 0;
+  };
+  input.addEventListener('input', filter);
+  if (input.value) filter();
+  // Another server goes in with «Add a tool», at the top of Outside tools (MCP): one key, not two (2026-11-07).
 }
 const MCP_CHECKED_WORDS = { tools: () => t('Checked'), signin: () => t('With your account'), token: () => t('With a token') };
 function mcpConnectorCard(item, connected) {
@@ -24299,6 +24345,8 @@ function phoneKeyboard() {
 }
 
 // Every name above exists now: the room is painted (boot, beside the state it reads).
+// One small solid label for every key that explains itself (public/tips.js).
+installTips();
 boot();
 // Asking for a star or a review (review-ask.js): on the Mac, and never while something is going on
 // — an agent at work, a plan running, words half written in the box.

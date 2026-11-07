@@ -6140,7 +6140,6 @@ export const ES = {
   'Already done': 'Hechos',
   'Connectors': 'Conectores',
   'The best known services, checked against MADRE on {date}. One press connects one to this project; any other MCP server goes in with «Add a tool».': 'Los servicios más conocidos, comprobados con MADRE el {date}. Un clic conecta uno a este proyecto; cualquier otro servidor MCP entra con «Agregar herramienta».',
-  'Another MCP server, yours or a third party\'s?': '¿Otro servidor MCP, tuyo o de alguien más?',
   'Checked': 'Comprobado',
   'With your account': 'Con tu cuenta',
   'With a token': 'Con token',
@@ -6922,4 +6921,8 @@ export const ES = {
   'Always #1: every message to it is answered by reading.': 'Siempre #1: cada mensaje que le mandas lo contesta leyendo.',
   'Agent logos': 'Logos de los agentes',
   'Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos appear unaltered and only to identify each service; MADRE is not affiliated with them or endorsed by them.': 'Codex es marca de OpenAI; Claude, de Anthropic; Gemini, de Google; Grok, de xAI, y OpenCode, de sus autores. Sus logos aparecen sin alterar y solo para identificar cada servicio; MADRE no está afiliada a ellas ni cuenta con su respaldo.',
+  'Search connectors': 'Buscar conectores',
+  'No connector matches. Any other MCP server goes in with «Add a tool», above.': 'Ningún conector coincide. Cualquier otro servidor MCP se agrega con «Agregar conector», arriba.',
+  'Terms': 'Condiciones',
+  'What it allows': 'Qué permite',
 };

@@ -798,7 +798,7 @@ dialog.sm-sheet.sm-settings > .sm-sheet-body { margin-block: 0 auto; }
 .sm-settings-body > .settings-board { align-self: stretch; overflow: hidden auto; overscroll-behavior: contain; }
 .sm-settings-body > .settings-results { align-self: stretch; overflow: hidden auto; overscroll-behavior: contain; }
 .sm-settings-body > .settings-scrim { position: absolute; inset: 0; }
-.sm-settings-body > .settings-sheet { position: relative; inset: auto; justify-self: end; align-self: stretch; width: min(580px, 64%); display: flex; flex-direction: column; overflow: hidden; }
+.sm-settings-body > .settings-sheet { position: relative; inset: auto; justify-self: end; align-self: stretch; width: var(--sheet-w, min(580px, 64%)); max-width: calc(100% - 120px); min-width: 360px; display: flex; flex-direction: column; overflow: hidden; }
 .sm-settings-body .settings-scroll { flex: 1; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; }
 @container settings (max-width: 700px) { .sm-settings-body > .settings-sheet { width: 100%; } }
 /* Appearance over the whole window, in two columns when there is room; the wallpapers small enough
@@ -2377,3 +2377,24 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 @media (max-width: 720px) { .sm-notice-form, .sm-notice-preview { grid-template-columns: 1fr; } }
 .sm-notice-form > .sm-notice-field:first-child { grid-column: 1 / -1; max-width: 260px; }
 .sm-hero .sm-notices { width: 100%; align-self: stretch; }
+
+/* Secondary keys, quieter (7 Nov): Home's white keys wear the same faint shade as the project's
+   (styles.css, --key-soft); the green ones keep theirs. */
+.sm-btn:not(.primary):not(.danger):not(.go):not(.quiet):not(.ghost) { box-shadow: var(--key-soft, var(--key-rest)); }
+.sm-btn:not(.primary):not(.danger):not(.go):not(.quiet):not(.ghost):hover { box-shadow: var(--key-soft-over, var(--key-over)); }
+.sm-btn:not(.primary):not(.danger):not(.go):not(.quiet):not(.ghost):active { box-shadow: var(--key-down); }
+
+/* A connection, in order (7 Nov): the pair leads, then what crosses, its terms and its switches,
+   each under a small heading, and at the foot the readings and the way out on one line. */
+.sm-link-list .sm-link { gap: 14px; padding: 18px 20px; }
+.sm-link-list .sm-link > .sm-link-kind { font: 600 11.5px var(--read); letter-spacing: .02em; color: var(--s-acc); margin-bottom: -6px; }
+.sm-link-list .sm-link > .sm-link-pair { padding-bottom: 12px; border-bottom: 1px solid var(--cs-line, var(--line)); }
+.sm-link-list .sm-link .sm-link-end { width: 34px; height: 34px; }
+.sm-link-list .sm-link .sm-link-end-words b { font-size: 15px; font-weight: 650; }
+.sm-link-part { display: grid; gap: 7px; }
+.sm-link-part-title { font: 600 11.5px var(--read); letter-spacing: .02em; color: var(--text-3); }
+.sm-link-tags.terms .sm-link-tag { background: transparent; }
+.sm-link-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 2px; }
+.sm-link-foot .traffic { margin: 0; min-width: 0; }
+.sm-link-list .sm-link > .sm-link-foot .sm-actions { margin: 0; justify-content: flex-end; flex: none; }
+@media (max-width: 520px) { .sm-link-foot { flex-wrap: wrap; } }

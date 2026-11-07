@@ -544,6 +544,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     paintLegend(on);
     layer.querySelector('.neural-invite')?.remove();
     const now = performance.now() / 1000;
+    if (core.sprite) core.dirty = true;
     for (const one of universes) {
       if (!one.sprite?.scene) continue;
       if (one.room.open && !reducedMotion()) one.sprite.engine.setNeural(on, now);
@@ -566,6 +567,15 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   function layout(all) {
     // BISHOP's own room is the centre, not a universe on an orbit.
     core.room = bishop ? all.find((room) => room.id === bishop.id) ?? null : null;
+    // The Coordinator's own memories round its body (2026-11-07), read and painted as a universe's are:
+    // its room is a project like the others. Read again only when what it holds has changed.
+    if (core.room) {
+      const face = `${core.room.open ? 1 : 0}:${JSON.stringify(core.room.glance?.census ?? null)}`;
+      if (core.face !== face || core.dpr !== view.dpr) { core.dirty = true; if (core.face !== face) { core.data = null; core.full = null; core.loading = null; } }
+      core.face = face;
+      core.dpr = view.dpr;
+      core.reach = reachOf(core.room);
+    }
     const list = bishop ? all.filter((room) => room.id !== bishop.id) : all;
     const kept = new Map(universes.map((one) => [one.room.id, one]));
     const open = list.filter((room) => room.open);
@@ -634,7 +644,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       .then((response) => (response.ok ? response.json() : null))
       .catch(() => null)
       .then((answer) => {
-        const now = universes.find((item) => item.room.id === one.room.id);
+        const now = one.centre ? (core.room?.id === one.room.id ? core : null) : universes.find((item) => item.room.id === one.room.id);
         if (!now || now.face !== one.face) return null;
         now[key] = answer ?? { unreachable: true };
         if (now.loading) delete now.loading[key];
@@ -642,7 +652,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
         // A saturated machine can miss one read while the room is still alive. Do not keep
         // that transient failure as the universe's permanent texture.
         if (now[key].unreachable || now[key].outdated) setTimeout(() => {
-          const current = universes.find((item) => item.room.id === one.room.id);
+          const current = one.centre ? (core.room?.id === one.room.id ? core : null) : universes.find((item) => item.room.id === one.room.id);
           if (!current || current.face !== one.face || (!current[key]?.unreachable && !current[key]?.outdated)) return;
           current[key] = null;
           if (full) { if (focus === current && !live) enterLive(current); }
@@ -656,7 +666,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
 
   // One universe is painted a frame, the chosen one first, so a Mac with many rooms never stalls.
   function paintNext() {
-    const next = [focus, ...universes].find((one) => one && one.dirty);
+    const next = [focus, core.room ? core : null, ...universes].find((one) => one && one.dirty);
     if (!next) return false;
     if (!next.data) { if (!next.loading?.data) void load(next); return false; }
     next.sprite = paintUniverse(next, view.dpr, next.shown ?? null, neural);
@@ -671,11 +681,11 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       magmaMap(12);
       if (texturesReady()) {
         textures.ready = true;
-        for (const one of universes) if (one.sprite && !one.sprite.ready) one.dirty = true;
+        for (const one of [core, ...universes]) if (one.sprite && !one.sprite.ready) one.dirty = true;
       }
     }
     paintNext();
-    return !textures.ready || universes.some((one) => one.dirty && (one.data || one.loading?.data));
+    return !textures.ready || [core.room ? core : null, ...universes].some((one) => one && one.dirty && (one.data || one.loading?.data));
   }
 
   // Where a universe is now: on its orbit round the Mac, the far side smaller and fainter.
@@ -978,6 +988,15 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     const p = { x: centre.x, y: centre.y + float * Math.max(0.6, camera.zoom) };
     const r = 30 * clamp(camera.zoom, 0.75, 1.8);
     core.screen = { x: p.x, y: p.y, r: r * (neural ? 1.8 : 1.3) };
+    // Its memories first, round where its body floats: the same sprite a project's universe wears.
+    if (core.sprite && core.reach) {
+      // Wide enough that its memories sit round its body and are not hidden under it.
+      const side = Math.max(core.reach * 2 * camera.zoom, r * 12);
+      core.shown = side;
+      ctx.globalAlpha = awake ? 1 : 0.6;
+      ctx.drawImage(core.sprite.canvas, p.x - side / 2, p.y - side / 2, side, side);
+      ctx.globalAlpha = 1;
+    }
     // Neural mode: the centre of the brain, its bulb, in the Coordinator's violet; no eye, no gas.
     if (neural) {
       const ignite = neuralSince === null ? 1 : clamp((clock - neuralSince) / NEURAL_IGNITION, 0, 1);

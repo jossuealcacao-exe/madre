@@ -9,6 +9,7 @@
 
 import { browserLanguage, sessionDetail, setLanguage, t } from './i18n.js';
 import { brandOf, monogram } from './brands.js';
+import { installTips } from './tips.js';
 import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
 import { mountNotices } from './notices.js';
 import { startTour } from './tour.js';
@@ -161,6 +162,8 @@ function applyLooks() {
 // The person's picture as this browser last knew it, before the first look is painted.
 paintCustomWall(rememberedWall());
 applyLooks();
+// One small solid label for every key that explains itself (public/tips.js).
+installTips();
 function saveLooks({ theme, accent, wallpaper, style, bubbles, text }) {
   // The first value of each look is the room as it always was, kept as no choice at all (app.js, saveLook).
   const keep = (key, value, first) => { if (value === first) localStorage.removeItem(key); else localStorage.setItem(key, value); };
@@ -984,6 +987,9 @@ function linkRow(enlace) {
   pair.setAttribute('role', 'img');
   pair.setAttribute('aria-label', who.textContent);
   node.append(pair);
+  // In order (2026-11-07): who reads whom, then what crosses, then on what terms, then the switches,
+  // and at the foot how much it was read and the way out. Each part under its own small heading.
+  const section = (title) => { const part = el('div', 'sm-link-part'); part.append(el('span', 'sm-link-part-title', title)); node.append(part); return part; };
   // What crosses, until when, and whether orders go.
   const tags = el('div', 'sm-link-tags');
   for (const kind of enlace.kinds ?? []) {
@@ -992,15 +998,17 @@ function linkRow(enlace) {
     tag.append(el('i', `k-${kind}`), word.slice(0, 1).toLocaleUpperCase(language) + word.slice(1));
     tags.append(tag);
   }
-  tags.append(el('span', 'sm-link-tag plain', enlace.expires ? t('until {date}', { date: new Date(enlace.expires).toLocaleDateString(language, { day: 'numeric', month: 'short' }) }) : t('no expiry')));
-  tags.append(el('span', 'sm-link-tag plain', enlace.orders?.allowed ? t('orders up to #{n}', { n: enlace.orders.maxMode }) : t('no orders')));
+  section(t('What crosses')).append(tags);
+  const terms = el('div', 'sm-link-tags terms');
+  terms.append(el('span', 'sm-link-tag plain', enlace.expires ? t('until {date}', { date: new Date(enlace.expires).toLocaleDateString(language, { day: 'numeric', month: 'short' }) }) : t('no expiry')));
+  terms.append(el('span', 'sm-link-tag plain', enlace.orders?.allowed ? t('orders up to #{n}', { n: enlace.orders.maxMode }) : t('no orders')));
   // D-S13: a link BISHOP signed on its own says so, so it is never mistaken for one you signed.
-  if (enlace.signed?.by === 'bishop') tags.append(el('span', 'sm-link-tag plain', t('signed by the Coordinator')));
-  node.append(tags);
+  if (enlace.signed?.by === 'bishop') terms.append(el('span', 'sm-link-tag plain', t('signed by the Coordinator')));
+  section(t('Terms')).append(terms);
   const traffic = enlace.traffic ?? {};
   // S-021: the last reading says who read, as the room that asked said it.
   const last = traffic.lastAt ? (traffic.lastAgent ? t('last by @{agent} of {room}, {when}', { agent: traffic.lastAgent, room: roomName(traffic.lastRoom), when: ago(traffic.lastAt) }) : t('last {when}', { when: ago(traffic.lastAt) })) : t('none yet');
-  node.append(el('p', 'traffic', [t('{n} reads in 24 h', { n: traffic.reads24h ?? 0 }), last].join(' · ')));
+  const trafficLine = el('p', 'traffic', [t('{n} reads in 24 h', { n: traffic.reads24h ?? 0 }), last].join(' · '));
   // What else it allows, each a switch that says what it does (Fase 3e, D-S15, D-S16, D-S17).
   const options = el('div', 'sm-link-options');
   const option = (on, title, says, path, payload) => {
@@ -1027,11 +1035,13 @@ function linkRow(enlace) {
   if (reader === data.salas) option(enlace.train, t('The Coordinator learns from it'), t('What the Coordinator reads here also goes into what it is trained with.'), '/api/salas/enlaces/train', (on) => ({ id: enlace.id, train: on }));
   option(enlace.state, t('It shares its state'), t('Its goal, phase, next step and what is open can be read too, never its files.'), '/api/salas/enlaces/allow', (on) => ({ id: enlace.id, field: 'state', on }));
   option(enlace.deliver, t('It receives delivered notes'), t('Notes can be handed to it; they wait for you to accept them before entering its memory.'), '/api/salas/enlaces/allow', (on) => ({ id: enlace.id, field: 'deliver', on }));
-  node.append(options);
+  section(t('What it allows')).append(options);
   const actions = el('div', 'sm-actions');
   if (revoking.has(enlace.id)) actions.append(el('span', 'sm-ask', t('Nothing crosses from then on.')), button('sm-btn danger small', t('Yes, cancel it'), () => revokeLink(enlace.id)), button('sm-btn ghost small', t('Keep the connection'), () => { revoking.delete(enlace.id); draw(); }));
   else actions.append(button('sm-btn ghost small', t('Cancel the connection'), () => { revoking.add(enlace.id); draw(); }));
-  node.append(actions);
+  const foot = el('div', 'sm-link-foot');
+  foot.append(trafficLine, actions);
+  node.append(foot);
   return node;
 }
 // How a connection works, in three steps under the sheet's title, as the project map says its own
@@ -4513,6 +4523,39 @@ function toast(words, tone = 'done', action = null) {
 const post = (url, payload) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload ?? {}) })
   .then(async (response) => ({ ok: response.ok, status: response.status, body: await response.json().catch(() => ({})) }))
   .catch(() => ({ ok: false, status: 0, body: {} }));
+// Home's Settings sheet is as wide as you pull it, as a project's is (app.js, gripSettingsSheet;
+// 2026-11-07): a grip on its edge, the width kept apart from the projects', twice on it to reset.
+function gripHomeSettings(sheet) {
+  let kept = null;
+  try { kept = Number(localStorage.getItem('pulse.homeSettingsSheet')) || null; } catch { /* no storage */ }
+  if (kept) sheet.style.setProperty('--sheet-w', `${kept}px`);
+  const grip = el('div', 'settings-grip');
+  grip.setAttribute('aria-hidden', 'true');
+  grip.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = sheet.getBoundingClientRect().width;
+    const room = sheet.parentElement?.getBoundingClientRect().width ?? 980;
+    try { grip.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
+    sheet.classList.add('dragging');
+    const move = (moving) => {
+      const width = Math.round(Math.max(360, Math.min(room - 120, startWidth + startX - moving.clientX)));
+      sheet.style.setProperty('--sheet-w', `${width}px`);
+    };
+    const done = () => {
+      grip.removeEventListener('pointermove', move);
+      sheet.classList.remove('dragging');
+      try { localStorage.setItem('pulse.homeSettingsSheet', String(Math.round(sheet.getBoundingClientRect().width))); } catch { /* no storage */ }
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', done, { once: true });
+    grip.addEventListener('pointercancel', done, { once: true });
+  });
+  // Twice on the grip goes back to the width it opens with.
+  grip.addEventListener('dblclick', () => { sheet.style.removeProperty('--sheet-w'); try { localStorage.removeItem('pulse.homeSettingsSheet'); } catch { /* no storage */ } });
+  sheet.prepend(grip);
+}
+
 function mark(id, size = 40) {
   const brand = brandOf(id);
   const node = el('span', 'sm-mark');
@@ -5581,14 +5624,19 @@ function setQuick(id) {
     add(t('Theme'), seg);
   }
   if (id === 'bar' && !homeShellOn()) add(t('Arrange the bar'), sxButton(t('Arrange'), (event) => { event.stopPropagation(); settingsSheet?.close(); pinsEdit(true); }));
+  // The agents as a quick way in (2026-11-07): each one's mark and its session, three to a row; a tile
+  // opens that agent in the panel (the card itself wires the click, openSettings › card).
   if (id === 'agents' && agentsSeen) {
+    rows.classList.add('agents-grid');
     for (const agent of agentsSeen.agents.filter((one) => one.id !== 'madre' && one.detected)) {
       const state = agentState(agent, agentsSeen);
-      const row = el('div', 'settings-quick-row agent');
-      const who = el('span', 'who', agent.label ?? agent.id);
-      who.style.setProperty('--agent', brandOf(agent.id).color);
-      row.append(who, el('span', `state session-lamp ${state.ok ? 'on ok' : state.key === 'bad' ? 'off bad' : 'wait'}`, state.ok ? t('signed in') : state.key === 'bad' ? t('no session') : t('unknown')));
-      rows.append(row);
+      const label = agent.label ?? agent.id;
+      const tile = el('button', 'settings-quick-tile agent');
+      tile.type = 'button';
+      tile.dataset.agent = label;
+      tile.setAttribute('aria-label', `${label} · ${state.ok ? t('signed in') : state.key === 'bad' ? t('no session') : t('unknown')}`);
+      tile.append(mark(agent.id, 26), el('span', `state session-lamp ${state.ok ? 'on ok' : state.key === 'bad' ? 'off bad' : 'wait'}`, state.ok ? t('signed in') : state.key === 'bad' ? t('no session') : t('unknown')));
+      rows.append(tile);
     }
   }
   return rows.children.length ? rows : null;
@@ -6302,6 +6350,10 @@ function openSettings(section = null) {
     if (status.warn) node.append(el('p', 'settings-warn', status.warn));
     const quick = setQuick(id);
     if (quick) node.append(quick);
+    // An agent's tile goes straight to that agent, not to the list.
+    for (const tile of quick?.querySelectorAll('.settings-quick-tile.agent') ?? []) {
+      tile.addEventListener('click', (event) => { event.stopPropagation(); openCategory('agents', tile.dataset.agent); });
+    }
     // The manual is a page of its own, not a panel.
     const go = () => (id === 'manual' ? openManual() : openCategory(id));
     node.addEventListener('click', go);
@@ -6367,6 +6419,7 @@ function openSettings(section = null) {
     scroll.append(detail(state.open));
     sheet.append(scroll);
     if (full) { body.replaceChildren(sheet); return; }
+    gripHomeSettings(sheet);
     const scrim = el('div', 'settings-scrim');
     scrim.addEventListener('click', () => closeCategory());
     body.replaceChildren(board(), scrim, sheet);
