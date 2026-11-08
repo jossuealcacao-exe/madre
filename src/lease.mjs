@@ -103,6 +103,10 @@ export function diffSnapshots(before, after, { relativeDir }) {
 // the ones whose adapter hands a subagent exactly the turn's permissions (src/adapters/claude.mjs,
 // opencode.mjs; Codex's subagents inherit its sandbox). Never in #4.
 export const SUBAGENT_AGENTS = new Set(['claude', 'opencode', 'codex']);
+// Where MADRE puts the images Grok generates (2026-11-08, the author's choice): its image tool saves
+// them in Grok's own folder, outside the project, and with no terminal below #4 it cannot copy them.
+// At #2 the turn's draft folder; at #3 and #4 `imagenes/` at the project's root.
+export const grokImagesDir = (lease = {}) => lease?.scratchDir || 'imagenes';
 export const subagentsAllowed = (agentId, { airlock = false } = {}) => !airlock && SUBAGENT_AGENTS.has(agentId);
 
 export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false, create = false, airlock = false, scratchDir = null }) {
@@ -124,6 +128,7 @@ export function leaseInstructions({ outDir, agentId, scopes = { write: true, ima
         : 'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
     airlock ? 'End with the commands you ran, what left the machine, and the files you changed.' : control ? 'End with a short list of the files you changed and why.' : create ? 'End with a short list of the files you created, with their paths, and why there.' : 'Reading the project stays allowed. Do not modify project files.',
     imageStudio ? `You can generate images with the MCP tool ${imageStudio.tool} (server ${imageStudio.name}): pass a detailed prompt and a file_name; it saves the PNG${scratch ? ` into ${scratch}` : ' into the lease directory'} and returns the path.`
+      : canImage && agentId === 'grok' ? `You can generate images with your image_gen tool. It saves each image in your own folder, outside this project; when your turn ends MADRE copies every image you generated into ${outDir}/${grokImagesDir({ scratchDir })}. Do not try to copy, convert or move it yourself, and do not write a file in its place: say what you generated and that it will be in ${grokImagesDir({ scratchDir })}/.`
       : canImage ? `You can generate images; save them${create ? ' where images live in this project, or in the scratch folder,' : ' into the lease directory'} with a descriptive file name.`
       : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'
         : 'You cannot generate images from this CLI; if asked for one, say so plainly instead of attempting it.',

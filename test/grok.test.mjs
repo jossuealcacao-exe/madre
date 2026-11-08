@@ -95,6 +95,8 @@ test('grok · `grok models` says whether there is a session and lists the accoun
   assert.deepEqual(parseGrokStatus(signedIn, {}), { state: 'signed-in', detail: 'grok.com' });
   assert.equal(parseGrokStatus(signedOut, {}).state, 'signed-out');
   assert.equal(parseGrokStatus(signedOut, { XAI_API_KEY: 'k' }).detail, 'via XAI_API_KEY');
+  // An expired session `grok models` does not renew is still a session while it is saved (2026-11-08).
+  assert.deepEqual(parseGrokStatus(signedOut, {}, { saved: true }), { state: 'signed-in', detail: 'grok.com · session saved' });
   assert.equal(parseGrokStatus('', {}).state, 'unknown');
 });
 
@@ -247,4 +249,40 @@ test('grok · with Web access on, it is given its own search and page reader, an
   assert.ok(!value(on, '--tools').includes('run_terminal_cmd') && !value(on, '--tools').includes('write'));
   const writing = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', lease: { control: true, relativeDir: '.' }, scopes: { web: true }, environment: {} });
   assert.ok(value(writing, '--tools').includes('web_fetch') && value(writing, '--tools').includes('write'));
+});
+
+test('grok · images: its tool in a writing turn with images on, the rule that lets it run, and MADRE copies what it made into the project (2026-11-08)', async () => {
+  const { IMAGE_TOOL, grokImagesIn, copyGrokImages } = await import('../src/adapters/grok.mjs');
+  const { grokImagesDir, leaseInstructions } = await import('../src/lease.mjs');
+  const allowedIn = (args) => args.flatMap((arg, index) => (arg === '--allow' ? [args[index + 1]] : []));
+  // Never while reading, never with images off.
+  const reading = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', scopes: { imageGen: true }, environment: {} });
+  assert.ok(!value(reading, '--tools').includes(IMAGE_TOOL));
+  const off = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', lease: { create: true, relativeDir: '.', scratchDir: '.pulse/out/t1' }, scopes: { imageGen: false }, environment: {} });
+  assert.ok(!value(off, '--tools').includes(IMAGE_TOOL));
+  // On: the tool, and the rule (without it the turn waits for an approval and is cancelled).
+  const on = buildGrokArgs({ projectRoot: '/p', promptFile: '/f', lease: { create: true, relativeDir: '.', scratchDir: '.pulse/out/t1' }, scopes: { imageGen: true }, environment: {} });
+  assert.ok(value(on, '--tools').split(',').includes(IMAGE_TOOL));
+  assert.ok(allowedIn(on).includes(IMAGE_TOOL));
+  // Where they land: the draft folder at #2, imagenes/ at #3 and #4.
+  assert.equal(grokImagesDir({ scratchDir: '.pulse/out/t1' }), '.pulse/out/t1');
+  assert.equal(grokImagesDir({ control: true }), 'imagenes');
+  assert.equal(grokImagesDir({ control: true, airlock: true }), 'imagenes');
+  // And Grok is told so, and told not to copy them itself.
+  const said = leaseInstructions({ outDir: '/p', agentId: 'grok', scopes: { write: true, imageGen: true }, control: true });
+  assert.match(said, /MADRE copies every image you generated into \/p\/imagenes/);
+  assert.match(said, /Do not try to copy, convert or move it yourself/);
+  // What the tool reported (the real CLI's shape, 2026-11-07).
+  const events = [{ type: 'user', message: { content: [{ type: 'tool_result', content: JSON.stringify({ type: 'ImageGen', path: '/g/sessions/x/img.jpg' }) }] } }, { type: 'user', message: { content: [{ type: 'tool_result', content: '{"type":"ReadFile"}' }] } }];
+  assert.deepEqual(grokImagesIn(events), ['/g/sessions/x/img.jpg']);
+  // Copied only from Grok's own folder, only as images, never over a file that is there.
+  const home = await mkdtemp(join(tmpdir(), 'madre-grok-home-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-grok-project-'));
+  await writeFile(join(home, 'gato.jpg'), 'jpg');
+  await writeFile(join(home, 'nota.txt'), 'txt');
+  const outside = join(project, 'fuera.png');
+  await writeFile(outside, 'png');
+  const saved = await copyGrokImages([join(home, 'gato.jpg'), join(home, 'nota.txt'), outside, join(home, 'gato.jpg')], { projectRoot: project, lease: { control: true }, environment: { GROK_HOME: home } });
+  assert.deepEqual(saved, ['imagenes/grok-gato.jpg', 'imagenes/grok-gato-2.jpg']);
+  assert.equal(await readFile(join(project, 'imagenes', 'grok-gato.jpg'), 'utf8'), 'jpg');
 });

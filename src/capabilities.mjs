@@ -50,7 +50,9 @@ export const CAPABILITIES = {
     read: true,
     imageIn: false,
     write: { how: '--tools …,search_replace,write under --permission-mode dontAsk (#4: the terminal too, --always-approve)', note: 'Writes where the turn allows; commands only at #4. Every place nobody writes is denied one rule at a time, and MADRE locks and puts back .env, .git and its own folders, and at #2 what existed.' },
-    imageGen: false,
+    // Its own image tool (2026-11-08): the images land in Grok's folder; MADRE copies them into the turn's
+    // draft folder at #2 and into imagenes/ at #3 and #4 (src/lease.mjs, grokImagesDir).
+    imageGen: { how: 'image_gen, copied by MADRE into the project', note: 'Generated with the Grok account; MADRE copies each image into the draft folder at #2 and into imagenes/ at #3 and #4.' },
     // Its own search and page reader (2026-11-07): off until Web access is turned on for it.
     web: { how: '--tools …,web_search,web_fetch', note: 'Off until turned on in Settings › Agents › Web access.' },
   },

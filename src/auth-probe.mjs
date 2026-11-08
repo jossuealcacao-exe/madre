@@ -412,7 +412,10 @@ export async function probeAgentAuth(agent) {
     }
     case 'cursor': return answered(await run(agent.path, ['status']), parseCursorStatus);
     // Grok has no status command: `grok models` says whether there is a session (and exits 0 both ways).
-    case 'grok': return answered(await run(agent.path, ['models']), ({ stdout = '', stderr = '' }) => parseGrokStatus(stripAnsi(`${stdout}\n${stderr}`)));
+    case 'grok': {
+      const saved = await exists(join(process.env.GROK_HOME || join(homedir(), '.grok'), 'auth.json'));
+      return answered(await run(agent.path, ['models']), ({ stdout = '', stderr = '' }) => parseGrokStatus(stripAnsi(`${stdout}\n${stderr}`), process.env, { saved }));
+    }
     case 'gemini': return probeGemini();
     default: return { state: 'unknown', detail: 'no probe for this agent' };
   }

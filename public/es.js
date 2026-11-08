@@ -6925,4 +6925,5 @@ export const ES = {
   'No connector matches. Any other MCP server goes in with «Add a tool», above.': 'Ningún conector coincide. Cualquier otro servidor MCP se agrega con «Agregar conector», arriba.',
   'Terms': 'Condiciones',
   'What it allows': 'Qué permite',
+  'Images MADRE saved in the project: {list}': 'Imágenes que MADRE guardó en el proyecto: {list}',
 };

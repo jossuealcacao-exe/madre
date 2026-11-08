@@ -33,10 +33,11 @@
 // and `git status`, was refused .env and went on. The room is the wall behind Grok's own: it locks
 // .env, .git and its folders read-only for the turn and puts back whatever reaches them, and at #2
 // everything that existed (room/control.mjs) — a terminal can write where a rule cannot see.
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { chmod, copyFile, mkdir, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
+import { basename, extname, join, sep } from 'node:path';
 import { ENV_SECRETS } from '../checkpoint.mjs';
+import { grokImagesDir } from '../lease.mjs';
 import { t } from '../i18n.mjs';
 import { runReadonlyProcess } from './process.mjs';
 import { jsonLines } from './subagents.mjs';
@@ -86,23 +87,28 @@ export function grokPermissionsFor(lease = null) {
 // for an approval (tried in a reading turn: it searched and opened nodejs.org and example.com). Off
 // until the person turns on Web access for Grok, as for every agent.
 export const WEB_TOOLS = ['web_search', 'web_fetch'];
+// Images (2026-11-08): Grok's own image tool, run by xAI, allowed by name (without the rule it waits for
+// an approval and the turn is cancelled; with it, it generated). Only in a writing turn with images on.
+export const IMAGE_TOOL = 'image_gen';
 
 export function buildGrokArgs({ projectRoot, promptFile, model = process.env.PULSE_GROK_MODEL || null, effort = null, lease = null, scopes = null, environment = process.env }) {
   const sandbox = grokSandbox(environment, lease);
   const allowed = grokPermissionsFor(lease);
   const web = Boolean(scopes?.web);
+  const images = Boolean(lease && scopes?.imageGen);
   return [
     // From a file, word for word: a message that starts with «/» or «-» is not a command or a flag.
     '--prompt-file', promptFile,
     '--verbatim',
     '--output-format', 'streaming-messages-json',
     '--cwd', projectRoot,
-    '--tools', [...allowed.tools, ...(web ? WEB_TOOLS : [])].join(','),
+    '--tools', [...allowed.tools, ...(web ? WEB_TOOLS : []), ...(images ? [IMAGE_TOOL] : [])].join(','),
     '--disallowed-tools', MCP_META_TOOLS.join(','),
     // #4 approves every call of its own (a command waiting for an approval would cancel the turn);
     // #2 and #3 approve only what is allowed below and refuse the rest without asking.
     ...(allowed.mode === 'always-approve' ? ['--always-approve'] : allowed.mode ? ['--permission-mode', allowed.mode] : []),
     ...allowed.allow.flatMap((rule) => ['--allow', rule]),
+    ...(images ? ['--allow', IMAGE_TOOL] : []),
     ...allowed.deny.flatMap((rule) => ['--deny', rule]),
     ...(sandbox ? ['--sandbox', sandbox] : []),
     '--no-subagents',
@@ -137,8 +143,22 @@ export function grokFailure(raw) {
 
 // The closing `result` carries the answer, the tokens of every model call of the run, and the
 // cost; a cost of 0 means unknown, never free (Grok's own manual). An error carries `errors[]`.
+// The images its tool saved, as the tool reported them: `{"type":"ImageGen","path":"…"}` in a result.
+export function grokImagesIn(events) {
+  const paths = [];
+  for (const event of events) {
+    if (event?.type !== 'user') continue;
+    for (const part of event.message?.content ?? []) {
+      if (part?.type !== 'tool_result' || typeof part.content !== 'string') continue;
+      try { const said = JSON.parse(part.content); if (said?.type === 'ImageGen' && typeof said.path === 'string') paths.push(said.path); } catch { /* not an image */ }
+    }
+  }
+  return [...new Set(paths)];
+}
+
 export function parseGrokOutput(output) {
   const events = jsonLines(output);
+  const images = grokImagesIn(events);
   const last = events.filter((event) => event?.type === 'result').at(-1);
   if (!last) {
     // Cut short before its close: what it had written so far is all there is.
@@ -170,7 +190,7 @@ export function parseGrokOutput(output) {
         source: 'grok-json',
       }
     : null;
-  return { text: typeof last.result === 'string' ? last.result.trim() : '', usage };
+  return { text: typeof last.result === 'string' ? last.result.trim() : '', usage, ...(images.length ? { images } : {}) };
 }
 
 // While it runs: what it has written so far.
@@ -202,14 +222,42 @@ export function parseGrokModels(output) {
   return { models, default: named?.[1] ?? fallback };
 }
 
-export function parseGrokStatus(output, env = process.env) {
+export function parseGrokStatus(output, env = process.env, { saved = false } = {}) {
   const said = String(output ?? '');
   if (/you are logged in|signed in as/i.test(said)) return { state: 'signed-in', detail: said.match(/logged in with ([^\s.]+(?:\.[^\s.]+)*)/i)?.[1] ?? 'grok.com' };
   if (/not authenticated|not signed in|not logged in/i.test(said)) {
     // A key is Grok's fallback when there is no session (its manual; not yet tried here).
-    return env.XAI_API_KEY ? { state: 'signed-in', detail: 'via XAI_API_KEY' } : { state: 'signed-out', detail: 'grok login' };
+    if (env.XAI_API_KEY) return { state: 'signed-in', detail: 'via XAI_API_KEY' };
+    // `grok models` does not renew an expired session; a turn does (2026-11-08: a copy started while the
+    // session was due was told «not authenticated», and Grok renewed it minutes later). While its saved
+    // session is there (~/.grok/auth.json, gone after `grok logout`), Grok is not signed out.
+    return saved ? { state: 'signed-in', detail: 'grok.com · session saved' } : { state: 'signed-out', detail: 'grok login' };
   }
   return { state: 'unknown', detail: said.trim().split('\n')[0]?.slice(0, 120) || 'no answer from grok models' };
+}
+
+// The images go into the project only from Grok's own folder, and only as images: a path the tool
+// reported that leads anywhere else is left where it is. A name already taken gets a number.
+const IMAGE_KINDS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+export async function copyGrokImages(paths, { projectRoot, lease, environment = process.env }) {
+  const home = await realpath(environment.GROK_HOME || join(homedir(), '.grok')).catch(() => null);
+  if (!home) return [];
+  const dir = grokImagesDir(lease);
+  const target = join(projectRoot, dir);
+  const saved = [];
+  for (const path of paths) {
+    const real = await realpath(path).catch(() => null);
+    if (!real || !real.startsWith(home + sep) || !IMAGE_KINDS.has(extname(real).toLowerCase())) continue;
+    if (!(await stat(real).catch(() => null))?.isFile()) continue;
+    await mkdir(target, { recursive: true });
+    const ext = extname(real).toLowerCase();
+    const stem = basename(real, extname(real)).replace(/[^\w.-]+/g, '-').slice(0, 60) || 'imagen';
+    let name = `grok-${stem}${ext}`;
+    for (let n = 2; await stat(join(target, name)).catch(() => null); n += 1) name = `grok-${stem}-${n}${ext}`;
+    await copyFile(real, join(target, name));
+    saved.push(`${dir}/${name}`);
+  }
+  return saved;
 }
 
 export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, lease = null, scopes = null, onProgress = null }) {
@@ -219,7 +267,7 @@ export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 
     const promptFile = join(dir, 'prompt.md');
     await writeFile(promptFile, String(prompt ?? ''), { mode: 0o600 });
     await chmod(promptFile, 0o600).catch(() => {});
-    return await runReadonlyProcess({
+    const result = await runReadonlyProcess({
       onProgress: onProgress ? (out) => onProgress(grokProgress(out)) : null,
       executable,
       args: buildGrokArgs({ projectRoot, promptFile, ...(model ? { model } : {}), effort, lease, scopes }),
@@ -230,6 +278,10 @@ export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 
       label: 'Grok',
       parse: parseGrokOutput,
     });
+    if (!lease || !result.images?.length) return result;
+    const saved = await copyGrokImages(result.images, { projectRoot, lease, environment: process.env });
+    if (!saved.length) return result;
+    return { ...result, text: `${result.text}\n\n${t('Images MADRE saved in the project: {list}', { list: saved.join(', ') })}` };
   } finally {
     await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }).catch(() => {});
   }
