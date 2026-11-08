@@ -21876,6 +21876,22 @@ function roomTour() {
 // what it is for. Once per button: after that the button is just a button. From 1.1 every key of
 // the bar that opens something says so too (2026-10-14).
 const FIRST_TOUCH = {
+  // The keys every person presses in their first minutes (1.1, 2026-11-08): what each does, once.
+  activity: {
+    button: '#activity-button',
+    title: t('Running now'),
+    text: t('Everything MADRE is doing right now in your open projects: an AI answering, a command being run, something installing. If something takes too long, you stop it from here.'),
+  },
+  attach: {
+    button: '#attach',
+    title: t('Attach'),
+    text: t('Add an image or a file to your message: a screenshot of what is failing, a PDF, a spreadsheet. You can also drop it on the box or paste it with ⌘ V.'),
+  },
+  options: {
+    button: '#pick-options',
+    title: t('Model and effort'),
+    text: t('Under the box you choose how far the AI may go, which model answers and how hard it thinks. A bigger model and more effort answer better, but take longer.'),
+  },
   // Code (1.0.3) said nothing the first time it opened, and nor did Outside tools (2026-10-21).
   code: {
     button: '#code-button',

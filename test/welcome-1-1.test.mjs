@@ -107,3 +107,17 @@ test('welcome 1.1 · it ends inside a project with the first message written, ne
   assert.match(welcome, /t\('Your Coordinator works with it'\)/);
   assert.match(welcome, /t\('Answered in \{s\} s · on your computer · no internet', \{ s: seconds \}\)/);
 });
+
+test('1.1 · the main keys of Home and of a project say once what they are, and MADRE says «ejecutar» and «Plan actual»', async () => {
+  const { HINTS } = await import('../src/tour.mjs');
+  for (const id of ['home-activity', 'home-market', 'home-modules', 'home-agents', 'touch-activity', 'touch-attach', 'touch-options']) assert.ok(HINTS.includes(id), `${id} would never be kept as seen`);
+  const home = await pub('salas-mac.js');
+  for (const id of ['home-activity', 'home-market', 'home-modules', 'home-agents']) assert.match(home, new RegExp(`homeTour\\.firstOpen\\('${id}', `));
+  const app = await pub('app.js');
+  for (const [id, button] of [['activity', '#activity-button'], ['attach', '#attach'], ['options', '#pick-options']]) assert.match(app, new RegExp(`\\n  ${id}: \\{\\n    button: '${button}',`));
+  const { ES } = await import('../public/es.js');
+  assert.equal(ES['Running now'], 'Plan actual');
+  // «Correr» is said «ejecutar» (an order) or «funcionar» (a program); only the phone's own line, untouched, keeps it.
+  const ran = Object.values(ES).filter((said) => /\b(correr|corre|corren|corriendo|corrió|corra|corres)\b/i.test(said));
+  assert.deepEqual(ran, ['Tus proyectos corren en tu Mac. Este teléfono se conecta a ellos por tu Wi-Fi.']);
+});

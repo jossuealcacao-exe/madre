@@ -218,8 +218,8 @@ export const MANUAL = {
         part: 'work',
         icon: 'running',
         title: 'Lo que está pasando',
-        lead: 'En marcha te muestra todo lo que MADRE está haciendo en tus proyectos abiertos, sin abrir una terminal, y te deja detenerlo.',
-        tryIt: 'Pídele algo largo a un agente y abre En marcha mientras trabaja.',
+        lead: 'Plan actual te muestra todo lo que MADRE está haciendo en tus proyectos abiertos, sin abrir una terminal, y te deja detenerlo.',
+        tryIt: 'Pídele algo largo a un agente y abre Plan actual mientras trabaja.',
         steps: [
           'Busca en la barra de arriba la línea de pulso. Su número dice cuántas cosas corren, y la línea late mientras algo trabaja.',
           'Púlsala. En «Ahora» ves cada agente respondiendo, sus planes, los servidores y lo que se instala. Abajo están lo que terminó hace poco y los recordatorios que vienen.',

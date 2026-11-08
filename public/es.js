@@ -453,7 +453,7 @@ export const ES = {
   'How it starts': 'Cómo arranca',
   'Where it connects': 'A dónde se conecta',
   '≈{n} tokens · {parts} parts': '≈{n} tokens · {parts} partes',
-  'Runs inside MADRE': 'Corre dentro de MADRE',
+  'Runs inside MADRE': 'Funciona dentro de MADRE',
   '{on} of {n} on': '{on} de {n} encendidas',
   'Sessions and use': 'Sesiones y uso',
   '{n} asked': '{n} preguntas',
@@ -574,7 +574,7 @@ export const ES = {
   'Memories to embed, exchanges to distil, and whatever you ask @madre. It goes to a port on this machine and stops there.':
     'Memorias para la búsqueda por significado, intercambios para resumir en notas y lo que le preguntes a @madre. Va a un puerto de esta computadora y ahí se queda.',
   'while Ollama is running':
-    'mientras Ollama esté corriendo',
+    'mientras Ollama esté abierto',
   'the provider OpenCode is signed in to':
     'el proveedor con el que OpenCode tiene sesión',
   'its own provider':
@@ -692,7 +692,7 @@ export const ES = {
     'El servidor de MADRE no encuentra npx. Abre MADRE desde una terminal donde `npx --version` funcione.',
   'The project\'s git root is {top}, not the project itself. AHP+ would install there. Run `git init` inside the project, or remove the stray repository at {top}.':
     'La raíz de git del proyecto es {top}, no el proyecto mismo, y AHP+ se instalaría ahí. Ejecuta `git init` dentro del proyecto, o quita el repositorio que sobra en {top}.',
-  'git on this computer (MADRE runs `git init` in the project when it does not use git yet)': 'git en esta computadora (MADRE corre `git init` en el proyecto si todavía no usa git)',
+  'git on this computer (MADRE runs `git init` in the project when it does not use git yet)': 'git en esta computadora (MADRE ejecuta `git init` en el proyecto si todavía no usa git)',
   '.git/ when the project does not use git yet': '.git/ si el proyecto todavía no usa git',
   'npx on the PATH of the terminal MADRE was started from': 'npx disponible (en el PATH) en la terminal desde donde abriste MADRE',
   'not in this project': 'no está en este proyecto',
@@ -880,14 +880,14 @@ export const ES = {
   'There is no pair waiting for an answer.': 'No hay ninguna comparación esperando tu respuesta.',
 
   'Renders HTML, SVG and Markdown from the project in the file viewer, inside a sealed frame, and opens a browser on the servers answering on this computer.':
-    'Muestra HTML, SVG y Markdown del proyecto en el visor de archivos, dentro de un marco aislado, y abre un navegador con los servidores que están corriendo en esta computadora.',
+    'Muestra HTML, SVG y Markdown del proyecto en el visor de archivos, dentro de un marco aislado, y abre un navegador con los servidores que están funcionando en esta computadora.',
   'scripts run in the frame · nothing leaves, nothing is stored, nothing reaches MADRE':
-    'los scripts corren dentro del marco · no sale nada, no se guarda nada, nada llega a MADRE',
+    'los scripts se ejecutan dentro del marco · no sale nada, no se guarda nada, nada llega a MADRE',
 
   'Searches and sums up the project\'s memory with local AI (Ollama): free, and nothing leaves your computer.': 'Busca y resume la memoria del proyecto con IA local (Ollama): gratis y sin que nada salga de tu computadora.',
   'a block in ~/.pulse/config.json': 'un bloque en ~/.pulse/config.json',
   "models in Ollama's own store when you press PULL": 'modelos en el almacén de Ollama cuando aprietas PULL',
-  'Ollama running (the app, or ollama serve)': 'Ollama corriendo (la app, o ollama serve)',
+  'Ollama running (the app, or ollama serve)': 'Ollama abierto (la app, o ollama serve)',
   'an embedding model and a chat model · MADRE can pull the recommended ones':
     'un modelo de búsqueda por significado y uno de chat · MADRE puede descargar los recomendados',
 
@@ -926,7 +926,7 @@ export const ES = {
   'CANCEL': 'Cancelar',
   'REINSTALL / UPGRADE': 'Reinstalar / actualizar',
   'INSTALL': 'Instalar',
-  'ANOTHER INSTALL IS RUNNING': 'Hay otra instalación corriendo',
+  'ANOTHER INSTALL IS RUNNING': 'Hay otra instalación en curso',
 
   // El estado de cada módulo, en su ficha.
   'on': 'encendido',
@@ -934,7 +934,7 @@ export const ES = {
   'smart search': 'búsqueda por significado',
   'archivist': 'quien resume la memoria',
   '@madre in the project': '@madre en el proyecto',
-  'installed, not running · START it here': 'instalado, no está corriendo · arráncalo aquí',
+  'installed, not running · START it here': 'instalado, no está abierto · ábrelo aquí',
   'not installed · INSTALL it here': 'no está instalado · instálalo aquí',
   'off · {n} models available': 'apagado · {n} modelos disponibles',
   'on · no usable model yet · PULL one': 'encendido · todavía no hay un modelo usable · descarga uno',
@@ -965,7 +965,7 @@ export const ES = {
   'RECALL · % OF CONTEXT': 'RECUERDO AUTOMÁTICO · % DEL CONTEXTO',
   'related memories come along too.': 'también llegan las memorias relacionadas.',
   'only memories that match come along.': 'solo llegan las memorias que coinciden.',
-  'AUTO · Ollama if running, else Gemini': 'AUTO · Ollama si está corriendo, si no Gemini',
+  'AUTO · Ollama if running, else Gemini': 'AUTO · Ollama si está abierto, si no Gemini',
   'local': 'local',
   ' · no model yet': ' · todavía sin modelo',
   'GEMINI · needs your key': 'GEMINI · necesita tu llave de API',
@@ -1059,9 +1059,9 @@ export const ES = {
   '{n} CASES': '{n} CASOS',
   ' · BY {method}': ' · POR {method}',
   ' · BAR {bar}': ' · MÍNIMO {bar}',
-  'RUNNING…': 'CORRIENDO…',
-  'RUN AGAIN': 'Correr otra vez',
-  'RUN': 'Correr',
+  'RUNNING…': 'EJECUTANDO…',
+  'RUN AGAIN': 'Ejecutar otra vez',
+  'RUN': 'Ejecutar',
   '{done} OF {total}': '{done} DE {total}',
   'NOTHING HERE SPENDS A PROVIDER TURN. THE FIRST TWO ARE FREE; THE THIRD TAKES MINUTES AND STOPS WHEN YOU SAY.':
     'Nada de esto gasta tu plan de IA. Las dos primeras pruebas son gratis; la tercera tarda minutos y la puedes detener cuando quieras.',
@@ -1069,7 +1069,7 @@ export const ES = {
   'THE TESTS ARE UNAVAILABLE': 'LAS PRUEBAS NO ESTÁN DISPONIBLES',
   'Diagnostics › the local model is answering real questions from this project. It takes a few minutes and spends nothing.':
     'Diagnóstico › el modelo local está contestando preguntas reales de este proyecto. Tarda unos minutos y no gasta nada.',
-  'The test could not run: {error}': 'La prueba no pudo correr: {error}',
+  'The test could not run: {error}': 'La prueba no se pudo ejecutar: {error}',
 
   // ── NOSTROMO ──────────────────────────────────────────────────────────────
   'YELLOW STAR': 'ESTRELLA AMARILLA',
@@ -1175,14 +1175,14 @@ export const ES = {
   'Nothing contradicts anything and the archive answers what this project asks.':
     'Nada contradice nada y la memoria contesta lo que este proyecto pregunta.',
   'Run the third test: it puts real questions from this project back to the local model and says whether it lands where the agents landed.':
-    'Corre la tercera prueba: le hace al modelo local preguntas reales de este proyecto y compara si llega a la misma respuesta que dieron los agentes.',
+    'Ejecuta la tercera prueba: le hace al modelo local preguntas reales de este proyecto y compara si llega a la misma respuesta que dieron los agentes.',
   'This project is ready to be worked on with the local model.': 'Este proyecto ya se puede trabajar con el modelo local.',
   'Nothing is wrong. {n} memories have had every chance and were never the answer: look at them and decide.':
     'No hay nada mal. {n} memorias nunca han servido como respuesta, aunque tuvieron muchas oportunidades: revísalas y decide qué hacer.',
   'Nothing to fix. Keep using the project; the archive grows where the work is.':
     'Nada que arreglar. Sigue usando el proyecto; la memoria crece donde está el trabajo.',
   'The local model does not land where the agents land yet. Keep the archive growing and run this test again in a week.':
-    'El modelo local todavía no llega a las mismas respuestas que los agentes. Deja que la memoria siga creciendo y corre esta prueba otra vez en una semana.',
+    'El modelo local todavía no llega a las mismas respuestas que los agentes. Deja que la memoria siga creciendo y ejecuta esta prueba otra vez en una semana.',
 
   // Lo que dice cada prueba al terminar.
   'No exchange in this project is long enough to test with yet.': 'Todavía no hay en este proyecto un intercambio lo bastante largo para probar con él.',
@@ -1419,9 +1419,9 @@ export const ES = {
     'Contestó como tus agentes en {matched} de {n} preguntas reales de este proyecto. Todavía no: sigue trabajando con tus agentes aquí y pruébalo otra vez más adelante.',
   'SEND THE NEXT TURN TO @MADRE': 'Enviar el próximo mensaje a @madre',
   'MEASURED {when}': 'Probado {when}',
-  '@madre is MADRE\'s own model, and it runs on another computer of your network. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.': '@madre es el modelo propio de MADRE y corre en otra computadora de tu red. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
+  '@madre is MADRE\'s own model, and it runs on another computer of your network. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.': '@madre es el modelo propio de MADRE y funciona en otra computadora de tu red. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
   '@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.':
-    '@madre es el modelo propio de MADRE y corre en esta Mac. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
+    '@madre es el modelo propio de MADRE y funciona en esta Mac. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
   'It needs a few conversations with your agents in this project first: without them there is nothing to compare.':
     'Primero necesita algunas conversaciones con tus agentes en este proyecto: sin ellas no hay con qué compararlo.',
   'PURGE': 'Borrado de datos privados',
@@ -1506,7 +1506,7 @@ export const ES = {
   'serving on :{port} · your network can reach it too': 'en marcha en :{port} · tu red también lo alcanza',
   'your network can reach it too': 'tu red también lo alcanza',
   'OPEN IN YOUR SERVERS': 'Abrir en tus servidores',
-  'That command is not running.': 'Ese comando no está corriendo.',
+  'That command is not running.': 'Ese comando no se está ejecutando.',
   'what it left could not be read ({reason})': 'no se pudo leer lo que dejó ({reason})',
   'before it stopped it left {n} {files} in the project': 'antes de detenerse dejó {n} {files} en el proyecto',
   '{n} changes to existing files were put back: CREATE only adds.': '{n} cambios a archivos que ya existían se deshicieron: «Crear» solo agrega archivos nuevos.',
@@ -1541,7 +1541,7 @@ export const ES = {
   'STOPALL failed to reach the project.': 'La orden de detener todo no llegó al proyecto.',
   'Diagnostics › all quiet. nothing was running.': 'Diagnóstico › todo tranquilo: no había nada en marcha.',
   'Stop the remaining steps of this plan': 'Detener los pasos que le quedan a este plan',
-  'That plan is no longer running.': 'Ese plan ya no está corriendo.',
+  'That plan is no longer running.': 'Ese plan ya no se está ejecutando.',
   'clear · ': 'liberado · ',
 
   // ── EL RESTO DE LA SALA ───────────────────────────────────────────────────
@@ -1657,7 +1657,7 @@ export const ES = {
   'a card with what my store sold today': 'una ficha con lo que vendió mi tienda hoy',
   // Primer uso: la tarjeta junto a un botón que nunca se había presionado.
   'The browser': 'El navegador',
-  'The pages you are building, inside MADRE: whatever runs on this computer, at phone, tablet or desktop width. For sites on the internet, turn on Preview in Modules.': 'Las páginas que estás haciendo, dentro de MADRE: lo que corre en esta computadora, en ancho de teléfono, tableta o escritorio. Para sitios de internet, enciende Vista previa en Módulos.',
+  'The pages you are building, inside MADRE: whatever runs on this computer, at phone, tablet or desktop width. For sites on the internet, turn on Preview in Modules.': 'Las páginas que estás haciendo, dentro de MADRE: lo que funciona en esta computadora, en ancho de teléfono, tableta o escritorio. Para sitios de internet, enciende Vista previa en Módulos.',
   'The project files': 'Los archivos del proyecto',
   'Your project\'s folders and files. Click one to read it; right-click to copy, move or rename it, or to make a new one.': 'Las carpetas y archivos de tu proyecto. Haz clic en uno para leerlo; con clic derecho lo copias, lo mueves, le cambias el nombre o creas otro.',
   'Conversations, one memory': 'Chats, una sola memoria',
@@ -1744,7 +1744,7 @@ export const ES = {
   'Copy the whole briefing as the agent receives it': 'Copia todo lo que MADRE le envía al agente, tal como lo recibe',
   'Modules': 'Módulos',
   'Install a module somebody wrote. MADRE checks it before it runs.':
-    'Instala un módulo que escribió alguien más. MADRE lo revisa antes de que corra.',
+    'Instala un módulo que escribió alguien más. MADRE lo revisa antes de que se ejecute.',
   'Diagnostics': 'Diagnóstico',
   'Memory map · memory research · needs the project name':
     'Mapa de memoria · explora la memoria del proyecto · pide confirmar con el nombre del proyecto',
@@ -1782,7 +1782,7 @@ export const ES = {
   'Hide the sidebar': 'Ocultar la barra lateral',
   'Show the sidebar': 'Mostrar la barra lateral',
   "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.":
-    'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Corre el comando en una terminal y luego dale REVISAR OTRA VEZ.',
+    'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Ejecuta el comando en una terminal y luego dale REVISAR OTRA VEZ.',
   'Your models stay where they are.': 'Tus modelos se quedan donde están.',
   'Ollama did not answer. Open the Ollama app, then press RECHECK.':
     'Ollama no contestó. Abre la app de Ollama y dale «Revisar otra vez».',
@@ -1798,7 +1798,7 @@ export const ES = {
   'EYECAT is not holding that one.': 'El revisor de memoria ya no tiene pendiente esa contradicción.',
   'No hidden data is set. Write it first.': 'No hay datos ocultos puestos. Escríbelos primero.',
   'This copy runs from source: pull the repository and start it again.':
-    'Esta copia corre desde el código fuente: haz pull del repositorio y arráncala otra vez.',
+    'Esta copia funciona desde el código fuente: haz pull del repositorio y arráncala otra vez.',
   'npm does not hand out {version} yet; a new release can take a few minutes. The project stays open: try again in a moment.':
     'npm todavía no entrega {version}; una versión recién publicada puede tardar unos minutos. El proyecto sigue abierto: vuelve a intentarlo en un momento.',
   'Agents are still working. STOPALL or wait, then update.':
@@ -1815,7 +1815,7 @@ export const ES = {
   'A key is only accepted from this computer, never over the network.':
     'Una llave de API solo se acepta desde esta computadora, nunca por la red.',
   'OpenCode is not installed.': 'OpenCode no está instalado.',
-  'No running plan with that id.': 'No hay ningún plan corriendo con ese id.',
+  'No running plan with that id.': 'No hay ningún plan en ejecución con ese id.',
   'Not a command. Commands start with "/" followed by a name.':
     'Eso no es un comando. Los comandos empiezan con «/» seguido de un nombre.',
   'Give the project-relative path of a <id>.module.mjs file.':
@@ -1864,13 +1864,13 @@ export const ES = {
   'Agent installed but signed out': 'El agente está instalado pero sin sesión',
   'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.':
     'La app del agente está en esta computadora, pero no tiene sesión iniciada con su proveedor. MADRE nunca guarda credenciales; cada agente guarda las suyas.',
-  'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.': 'Este agente todavía no tiene sesión. Conéctalo una vez en Ajustes › Agentes (MADRE corre su inicio de sesión por ti, sin escribir nada en una terminal), o pregúntale lo mismo a un agente que sí esté conectado.',
+  'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.': 'Este agente todavía no tiene sesión. Conéctalo una vez en Ajustes › Agentes (MADRE ejecuta su inicio de sesión por ti, sin escribir nada en una terminal), o pregúntale lo mismo a un agente que sí esté conectado.',
 
   'Agent not found on this computer': 'El agente no está en esta computadora',
   'MADRE looks for `codex`, `claude`, `gemini` and `opencode` on PATH plus a few known locations. Nothing answered.':
     'MADRE busca `codex`, `claude`, `gemini` y `opencode` en el PATH y en unos cuantos lugares conocidos. No encontró ninguno.',
   "Press Install on the agent in Settings → Agents: MADRE shows the exact command, runs it here and looks again when it finishes, no restart. `madre setup` does the same from a terminal.":
-    'Pulsa Instalar en el agente, en Ajustes → Agentes: MADRE te enseña el comando exacto, lo corre aquí y vuelve a buscar cuando termina, sin reiniciar. `madre setup` hace lo mismo desde una terminal.',
+    'Pulsa Instalar en el agente, en Ajustes → Agentes: MADRE te enseña el comando exacto, lo ejecuta aquí y vuelve a buscar cuando termina, sin reiniciar. `madre setup` hace lo mismo desde una terminal.',
 
   'Agent detected, adapter not enabled': 'Se detectó el agente, pero su adaptador no está habilitado',
   'Your MADRE build predates the adapter for this agent, or a newer CLI changed its interface.':
@@ -1885,7 +1885,7 @@ export const ES = {
   'Agent did not respond before the timeout': 'El agente no contestó antes del tiempo límite',
   'The agent was still reading files or reasoning when its time limit expired (by default 180 s for a turn that reads and 600 s for one that writes), or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree. Whatever a writing turn left before it stopped is listed under the failure, with UNDO.': 'El agente seguía leyendo archivos o razonando cuando se acabó su tiempo límite (por defecto 180 s para una respuesta que solo lee y 600 s para una que escribe), o Gemini se quedó callado 90 s (PULSE_GEMINI_IDLE_MS) y se detuvo después de un reintento automático. Las preguntas largas sobre muchos archivos tardan más; MADRE detuvo al agente y todos sus procesos. Lo que dejó una respuesta que escribe antes de detenerse aparece debajo del error, con «Deshacer».',
   "Press Apply below, or type a new number in Settings: Default time limit in Project and turns, or Time limit on the agent in Agents. Each field saves the moment you leave it. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running project never sees a later export.":
-    'Pulsa Aplicar, abajo, o escribe otro número en Ajustes: Tiempo límite por defecto en Proyecto y respuestas, o Tiempo límite en el agente, en Agentes. Cada campo se guarda en cuanto sales de él. Aplica desde la próxima respuesta y queda en ~/.pulse/config.json. Las variables de entorno también sirven, pero solo si las defines antes de arrancar MADRE; un proyecto que ya está corriendo no ve los cambios posteriores.',
+    'Pulsa Aplicar, abajo, o escribe otro número en Ajustes: Tiempo límite por defecto en Proyecto y respuestas, o Tiempo límite en el agente, en Agentes. Cada campo se guarda en cuanto sales de él. Aplica desde la próxima respuesta y queda en ~/.pulse/config.json. Las variables de entorno también sirven, pero solo si las defines antes de arrancar MADRE; un proyecto que ya está abierto no ve los cambios posteriores.',
 
   'Turn interrupted by a MADRE restart': 'Respuesta interrumpida por un reinicio de MADRE',
   'MADRE closed (Ctrl+C, SIGTERM or a crash) while this agent was answering. The log records the turn as failed so the project never shows a ghost "thinking" bubble.':
@@ -1923,11 +1923,11 @@ export const ES = {
   'OpenCode runs a local server per invocation; under several simultaneous turns it can fail before the model is reached. Seen when two plans overlapped.':
     'OpenCode arranca un servidor local cada vez que se usa; con varias respuestas a la vez puede fallar antes de llegar al modelo. Pasó cuando se encimaron dos planes.',
   'Let the project settle (STOPALL if agents are piling up), then ask again. Check `opencode` logs if it repeats alone.':
-    'Deja que el proyecto se calme (STOPALL si se amontonan los agentes) y vuelve a preguntar. Si vuelve a pasar sin nada más corriendo, revisa los logs de `opencode`.',
+    'Deja que el proyecto se calme (STOPALL si se amontonan los agentes) y vuelve a preguntar. Si vuelve a pasar sin nada más en ejecución, revisa los logs de `opencode`.',
 
   'Too many agents working at once': 'Demasiados agentes trabajando a la vez',
   'A plan was running and more turns started on top of it, or a plan has run for several minutes. Diagnostics raises this before it becomes a loop.':
-    'Había un plan corriendo y encima arrancaron más respuestas, o un plan lleva varios minutos. Diagnóstico avisa antes de que se vuelva un ciclo sin fin.',
+    'Había un plan en ejecución y encima arrancaron más respuestas, o un plan lleva varios minutos. Diagnóstico avisa antes de que se vuelva un ciclo sin fin.',
   'Type STOPALL in the Write box, or press STOP ALL in the bar: every plan stops and every in-flight agent process is killed. Then ask one agent at a time.':
     'Escribe STOPALL en la caja de Escribir, o pulsa «Detener todo» en la barra: se detienen todos los planes y todos los agentes que estén trabajando. Después pregunta a un agente a la vez.',
 
@@ -1957,14 +1957,14 @@ export const ES = {
 
   'Commands and mentions in the Write box': 'Comandos y menciones en la caja de Escribir',
   'Type "/" for the project\'s commands: /create turns on permission to create, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git) and /ahp (Continuity) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label. Type "!" to point at a project file ("!src/room.mjs:12-20" for lines): the agent reads it first. In the viewer, click a line number (Shift+click for a range) and ASK offers what to ask about those lines, and whom.':
-    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) corren en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y «Preguntar» te ofrece qué preguntar sobre esas líneas, y a quién.',
+    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) se ejecutan en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y «Preguntar» te ofrece qué preguntar sobre esas líneas, y a quién.',
   'A struck-through command is a module that is not available in this project: open Modules to install it or turn it on (Git needs a git repository; Continuity needs to be installed).':
     'Un comando tachado es un módulo que no está disponible en este proyecto: abre Módulos para instalarlo o encenderlo (Git necesita un repositorio git; Continuidad necesita instalarse).',
 
   'Permission modes: #0 INCOGNITO · #1 CHAT ONLY · #2 CREATE · #3 EDIT · #4 FULL ACCESS':
     'Modos de permiso: «#0 Incógnito» · «#1 Solo conversar» · «#2 Crear» · «#3 Editar» · «#4 Acceso total»',
   'Every message goes out at a mode, chosen in the chip after TO @agent (or typed as #2 in the text). #0 INCOGNITO is off the record: nothing is saved, no other agent remembers it, gone on reload, no plan. #1 CHAT ONLY is the default: read and coordinate. #2 CREATE lets the agent add new files and folders anywhere in the project, where they belong; whatever existed before is put back after the turn and the project says so. #3 EDIT puts one agent in command of the project itself: a git restore point is taken first, every change is listed afterwards, writes into .git, .pulse or .env files are reverted on the spot, and UNDO goes back to the restore point. One holder at a time; it needs Max mode #3 and a git repository. Your mode is the ceiling of any plan the message starts, and #3 is never given to a plan step. Each agent has a Max mode in Settings → Permissions; above it, #2 is answered read-only and #3 is refused. When a #1 plan reaches a step that wants to create something, the project pauses and asks you: GRANT ONCE, GRANT FOR PLAN or DENY, with a 3-minute clock; silence denies. #4 FULL ACCESS is EDIT plus commands: tests, builds, git push, deploys with the CLIs and sessions already on this machine. Files still come back with UNDO; what leaves the machine does not, so the unlock asks for the project name twice. An agent that says it needs a "production mode" or "permission to run commands" is asking for #4.':
-    'Cada mensaje sale con un modo, elegido en el chip que está después de PARA @agente (o escrito como #2 en el texto). «#0 Incógnito» no queda registrado: no se guarda nada, ningún otro agente lo recuerda, se pierde al recargar y no hay plan. «#1 Solo conversar» es el de siempre: leer y coordinar. «#2 Crear» deja que el agente agregue archivos y carpetas nuevos donde corresponda en el proyecto; lo que ya existía se restaura al terminar la respuesta y el proyecto lo avisa. «#3 Editar» le da a un agente el control del proyecto: primero se toma un punto de restauración de git, al final se listan todos los cambios, lo que se escriba en .git, .pulse o archivos .env se revierte en el acto, y «Deshacer» regresa a ese punto de restauración. Solo un agente puede tenerlo a la vez; necesita Permiso máximo #3 y un repositorio git. Tu modo es el límite de cualquier plan que arranque ese mensaje, y el #3 nunca se le da a un paso del plan. Cada agente tiene su Permiso máximo en Ajustes → Permisos; por encima de él, el #2 se contesta en solo lectura y el #3 se rechaza. Cuando un plan en #1 llega a un paso que quiere crear algo, el proyecto se detiene y te pregunta: CONCEDER UNA VEZ, CONCEDER PARA EL PLAN o NEGAR, con 3 minutos para decidir; si no contestas, se niega. «#4 Acceso total» es «Editar» más comandos: pruebas, builds, git push, despliegues con las apps y las sesiones que ya están en esta computadora. Los archivos se pueden recuperar con «Deshacer»; lo que sale de la computadora no, así que desbloquearlo pide confirmar dos veces con el nombre del proyecto. Un agente que dice que necesita «modo producción» o «permiso para correr comandos» está pidiendo el #4.',
+    'Cada mensaje sale con un modo, elegido en el chip que está después de PARA @agente (o escrito como #2 en el texto). «#0 Incógnito» no queda registrado: no se guarda nada, ningún otro agente lo recuerda, se pierde al recargar y no hay plan. «#1 Solo conversar» es el de siempre: leer y coordinar. «#2 Crear» deja que el agente agregue archivos y carpetas nuevos donde corresponda en el proyecto; lo que ya existía se restaura al terminar la respuesta y el proyecto lo avisa. «#3 Editar» le da a un agente el control del proyecto: primero se toma un punto de restauración de git, al final se listan todos los cambios, lo que se escriba en .git, .pulse o archivos .env se revierte en el acto, y «Deshacer» regresa a ese punto de restauración. Solo un agente puede tenerlo a la vez; necesita Permiso máximo #3 y un repositorio git. Tu modo es el límite de cualquier plan que arranque ese mensaje, y el #3 nunca se le da a un paso del plan. Cada agente tiene su Permiso máximo en Ajustes → Permisos; por encima de él, el #2 se contesta en solo lectura y el #3 se rechaza. Cuando un plan en #1 llega a un paso que quiere crear algo, el proyecto se detiene y te pregunta: CONCEDER UNA VEZ, CONCEDER PARA EL PLAN o NEGAR, con 3 minutos para decidir; si no contestas, se niega. «#4 Acceso total» es «Editar» más comandos: pruebas, builds, git push, despliegues con las apps y las sesiones que ya están en esta computadora. Los archivos se pueden recuperar con «Deshacer»; lo que sale de la computadora no, así que desbloquearlo pide confirmar dos veces con el nombre del proyecto. Un agente que dice que necesita «modo producción» o «permiso para ejecutar comandos» está pidiendo el #4.',
   "Pick the mode in the chip, or type #0..#4 in the message. Raise an agent's Max mode in Settings → Permissions, under Who may do what. EDIT asks for the project name (the folder name) in the unlock; FULL ACCESS asks for it twice.":
     'Elige el modo en el chip, o escribe #0..#4 en el mensaje. Sube el Permiso máximo de un agente en Ajustes → Permisos, en Quién puede qué. Para desbloquear «Editar» hay que confirmar con el nombre del proyecto (el nombre de la carpeta); para «Acceso total», dos veces.',
 
@@ -1998,9 +1998,9 @@ export const ES = {
   'Nothing to do; it is automatic. To give it more room raise PULSE_RECALL_SHARE (max 0.6); to switch it off set it to 0. Ask any agent "what did we decide about …" and it will search with memory_search before answering.':
     'No hay nada que hacer; es automático. Para darle más espacio sube PULSE_RECALL_SHARE (máximo 0.6); para apagarlo ponlo en 0. Pregúntale a cualquier agente «¿qué decidimos sobre…?» y va a buscar con memory_search antes de contestar.',
 
-  'Distilled memories: the archivist did not run, or failed': 'Notas resumidas: quien resume la memoria no corrió, o falló',
+  'Distilled memories: the archivist did not run, or failed': 'Notas resumidas: quien resume la memoria no trabajó, o falló',
   'Every PULSE_DISTILL_EVERY undistilled exchanges (10), or after PULSE_DISTILL_IDLE_MS of quiet (10 min), the cheapest available agent (Gemini, then OpenCode, Codex, Claude) reads the newest undistilled batch and keeps up to five notes. It runs only when no turn is in flight and one batch per trigger, so a long backlog drains slowly. A run that fails is retried; after three failures on the same batch it is skipped and the project says so. Common causes: the archivist agent is rate-limited or signed out, or PULSE_DISTILL=0.':
-    'Cada PULSE_DISTILL_EVERY intercambios sin resumir (10), o después de PULSE_DISTILL_IDLE_MS sin actividad (10 min), el agente disponible más barato (Gemini, luego OpenCode, Codex, Claude) lee el grupo más nuevo sin resumir y saca hasta cinco notas. Solo corre cuando ningún agente está respondiendo, y un grupo cada vez, así que si hay muchos pendientes avanza despacio. Si falla, se reintenta; después de tres fallas con el mismo grupo se salta y el proyecto lo avisa. Causas comunes: el agente que resume la memoria llegó al límite de su plan o no tiene sesión, o PULSE_DISTILL=0.',
+    'Cada PULSE_DISTILL_EVERY intercambios sin resumir (10), o después de PULSE_DISTILL_IDLE_MS sin actividad (10 min), el agente disponible más barato (Gemini, luego OpenCode, Codex, Claude) lee el grupo más nuevo sin resumir y saca hasta cinco notas. Solo trabaja cuando ningún agente está respondiendo, y un grupo cada vez, así que si hay muchos pendientes avanza despacio. Si falla, se reintenta; después de tres fallas con el mismo grupo se salta y el proyecto lo avisa. Causas comunes: el agente que resume la memoria llegó al límite de su plan o no tiene sesión, o PULSE_DISTILL=0.',
   'Check the archivist\'s session in Settings → Agents, or pick another in Settings → Memory (Who distils first) or with PULSE_DISTILL_AGENT. Lower PULSE_DISTILL_EVERY to distil sooner; raise PULSE_DISTILL_MAX_CHARS to read more per run. Set PULSE_DISTILL=0 to stop paying for it.':
     'Revisa la sesión del agente que resume la memoria en Ajustes → Agentes, o elige otro en Ajustes → Memoria (Quién resume primero) o con PULSE_DISTILL_AGENT. Baja PULSE_DISTILL_EVERY para resumir antes; sube PULSE_DISTILL_MAX_CHARS para que lea más cada vez. Pon PULSE_DISTILL=0 para dejar de pagar por los resúmenes.',
 
@@ -2031,19 +2031,19 @@ export const ES = {
 
   'Preview: rendering HTML, SVG and Markdown in the viewer': 'Vista previa: ver HTML, SVG y Markdown en el visor',
   'With Preview on (in Modules), the file viewer renders .html and .svg through /preview/project/<path> inside a sealed frame: the page\'s own scripts run, but the frame has no origin, no network, no forms and no way to reach MADRE, and it loads CSS, JS, images and fonts only from the project through MADRE. Relative links work. Markdown renders in place; PREVIEW / SOURCE switches. Off, those files show as text with a note. 412 means Preview is off. Plain /api/files always serves HTML as text.':
-    'Con Vista previa encendida (en Módulos), el visor de archivos muestra los .html y .svg por /preview/project/<ruta> dentro de un marco sellado: los scripts de la página sí corren, pero el marco no tiene origen, ni red, ni formularios, ni manera de llegar a MADRE, y carga CSS, JS, imágenes y tipografías solo desde el proyecto, a través de MADRE. Los enlaces relativos funcionan. El Markdown se muestra ahí mismo; «Vista previa» / «Origen» cambia entre uno y otro. Apagada, esos archivos se ven como texto con una nota. Un 412 significa que Vista previa está apagada. El /api/files normal siempre entrega el HTML como texto.',
+    'Con Vista previa encendida (en Módulos), el visor de archivos muestra los .html y .svg por /preview/project/<ruta> dentro de un marco sellado: los scripts de la página sí se ejecutan, pero el marco no tiene origen, ni red, ni formularios, ni manera de llegar a MADRE, y carga CSS, JS, imágenes y tipografías solo desde el proyecto, a través de MADRE. Los enlaces relativos funcionan. El Markdown se muestra ahí mismo; «Vista previa» / «Origen» cambia entre uno y otro. Apagada, esos archivos se ven como texto con una nota. Un 412 significa que Vista previa está apagada. El /api/files normal siempre entrega el HTML como texto.',
   'Turn Preview on in Modules. If a page looks broken in PREVIEW it is usually because it fetches something from the internet or another server, which the frame forbids by design: open it with OPEN RAW in a normal tab if you trust it.':
     'Enciende Vista previa en Módulos. Si una página se ve rota en «Vista previa», casi siempre es porque pide algo de internet o de otro servidor, cosa que el marco prohíbe a propósito: ábrela con «Abrir sin formato» en una pestaña normal si confías en ella.',
 
   'Ollama: local smart search and a local archivist': 'Ollama: búsqueda por significado y resúmenes de memoria, en esta Mac',
   'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. Local AI, in Settings, shows what Ollama has, downloads the recommended models, and switches each role.':
-    'Cuando Ollama corre en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y hace las notas resumidas con el modelo local primero, antes que con Gemini y los demás. Para recordar no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a los proveedores. IA local, en Ajustes, muestra qué tiene Ollama, te deja descargar los modelos recomendados y encender o apagar cada función.',
+    'Cuando Ollama funciona en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y hace las notas resumidas con el modelo local primero, antes que con Gemini y los demás. Para recordar no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a los proveedores. IA local, en Ajustes, muestra qué tiene Ollama, te deja descargar los modelos recomendados y encender o apagar cada función.',
   'Install Ollama (ollama.com), start it, then open Settings › Local AI and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.':
-    'Instala Ollama (ollama.com), enciéndelo, luego abre Ajustes › IA local y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté corriendo.',
+    'Instala Ollama (ollama.com), enciéndelo, luego abre Ajustes › IA local y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté abierto.',
 
   "@madre: the project's own memory, as an agent": '@madre: la memoria del proyecto, como agente',
   'When Ollama runs with a chat model, a fifth agent joins the project: @madre. It answers from the whole archive (distilled notes and exact quotes, cited as [#n]) and from what the message carries, locally, for free. It never writes, draws, browses or makes plans; when the project never discussed something it says so. Other agents may give it a plan step to check what was decided. It leaves the project when Ollama stops, and Diagnostics says so.':
-    'Cuando Ollama corre con un modelo de chat, se suma un quinto agente al proyecto: @madre. Contesta desde toda la memoria del proyecto (notas resumidas y citas exactas, citadas como [#n]) y desde lo que traiga el mensaje, en local y gratis. Nunca escribe, ni dibuja, ni navega, ni hace planes; si el proyecto nunca habló de algo, lo dice. Otros agentes pueden darle un paso del plan para comprobar qué se decidió. Sale del proyecto cuando Ollama se apaga, y Diagnóstico lo avisa.',
+    'Cuando Ollama funciona con un modelo de chat, se suma un quinto agente al proyecto: @madre. Contesta desde toda la memoria del proyecto (notas resumidas y citas exactas, citadas como [#n]) y desde lo que traiga el mensaje, en local y gratis. Nunca escribe, ni dibuja, ni navega, ni hace planes; si el proyecto nunca habló de algo, lo dice. Otros agentes pueden darle un paso del plan para comprobar qué se decidió. Sale del proyecto cuando Ollama se apaga, y Diagnóstico lo avisa.',
   'Start Ollama and download a chat model in Settings › Local AI; its @madre switch there turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".':
     'Enciende Ollama y descarga un modelo de chat en Ajustes › IA local; su interruptor @madre, ahí mismo, apaga al agente si no lo quieres. Pregúntale «¿qué decidimos sobre…?» o «¿alguna vez hablamos de…?».',
 
@@ -2093,25 +2093,25 @@ export const ES = {
 
   'Memory review: whether the archive works': 'Revisión de la memoria: si de verdad funciona',
   'The six readings count what the archive is made of; they cannot say whether it works, because nothing about a pile of notes says whether the right one comes back when it is needed. COVERAGE takes real questions from this project, runs recall at the exact point each was asked, and scores what came back against the reply that was actually given. CONSISTENCY reads the contradictions the memory reviewer still holds and whether doubtful memories are being filed more often lately. MATCH asks the local model, with this archive behind it, real questions that one of your agents (Codex, Claude, Gemini or OpenCode) already answered. All three measure against a control, because everything in one project is about the same handful of subjects and any two pieces of it look alike to search by meaning: to count, what the archive handed over has to beat what it would have handed over for a different question.':
-    'Las seis lecturas dicen de qué está hecha la memoria; no pueden decir si funciona, porque una pila de notas no dice si la correcta aparece cuando hace falta. «Cobertura» toma preguntas reales de este proyecto, corre el recuerdo automático en el momento exacto en que se hizo cada una, y califica lo que encontró contra la respuesta que de verdad se dio. CONSISTENCIA revisa las contradicciones pendientes y si últimamente se guardan memorias dudosas más seguido. «Coincidencia» le hace al modelo local preguntas reales que contestó uno de los agentes principales (Codex, Claude, Gemini u OpenCode), con esta memoria de apoyo. Las tres miden contra un control, porque en un proyecto todo habla del mismo puñado de temas y para la búsqueda por significado dos fragmentos cualesquiera parecen cercanos: para contar, lo que la memoria entregó tiene que ganarle a lo que habría entregado para otra pregunta.',
+    'Las seis lecturas dicen de qué está hecha la memoria; no pueden decir si funciona, porque una pila de notas no dice si la correcta aparece cuando hace falta. «Cobertura» toma preguntas reales de este proyecto, ejecuta el recuerdo automático en el momento exacto en que se hizo cada una, y califica lo que encontró contra la respuesta que de verdad se dio. CONSISTENCIA revisa las contradicciones pendientes y si últimamente se guardan memorias dudosas más seguido. «Coincidencia» le hace al modelo local preguntas reales que contestó uno de los agentes principales (Codex, Claude, Gemini u OpenCode), con esta memoria de apoyo. Las tres miden contra un control, porque en un proyecto todo habla del mismo puñado de temas y para la búsqueda por significado dos fragmentos cualesquiera parecen cercanos: para contar, lo que la memoria entregó tiene que ganarle a lo que habría entregado para otra pregunta.',
   'Read the one sentence and the one instruction at the top of Settings → Memory; the readings and the tests are in Analysis and tests, below it. The free test is read as the panel opens, the cheap one keeps itself fresh once a day while the embeddings are local, and the slow one is yours to start and to stop. None of them spends a provider turn.':
     'Lee la frase y la instrucción que están hasta arriba de Ajustes → Memoria; las lecturas y las pruebas están más abajo, en Análisis y pruebas. La prueba gratis se calcula al abrir el panel, la barata se actualiza una vez al día mientras la búsqueda por significado sea local, y la lenta la arrancas y la detienes tú. Ninguna gasta una respuesta de un proveedor.',
 
   'Updating what a module drives': 'Actualizar lo que un módulo maneja',
   'When something newer exists and the module knows how to fetch it, the button is beside the version on its page in Modules. It asks twice on purpose: the first press answers with the command, the second runs exactly that, and the output lands in the project line by line. Nothing installs by itself — putting software on your computer unannounced would break the one thing MADRE promises, that a command is seen before it runs. The usual failure is npm refusing a global install with EACCES, which means the global prefix belongs to root; sudo works and leaves you with root-owned files, so a user-owned prefix or a version manager is the better answer.':
-    'Cuando hay una versión más nueva y el módulo sabe cómo descargarla, el botón está junto a la versión, en su ficha de Módulos. Pregunta dos veces a propósito: el primer toque te muestra el comando y el segundo corre exactamente ese comando; el resultado aparece en el proyecto línea por línea. Nada se instala solo: instalar software en tu computadora sin avisar rompería lo único que MADRE promete, que ves cada comando antes de que corra. La falla más común es que npm rechace una instalación global con EACCES: la carpeta global de npm es del administrador (root). Con sudo funciona, pero te deja archivos del administrador; es mejor darle a npm una carpeta tuya o usar un gestor de versiones.',
+    'Cuando hay una versión más nueva y el módulo sabe cómo descargarla, el botón está junto a la versión, en su ficha de Módulos. Pregunta dos veces a propósito: el primer toque te muestra el comando y el segundo ejecuta exactamente ese comando; el resultado aparece en el proyecto línea por línea. Nada se instala solo: instalar software en tu computadora sin avisar rompería lo único que MADRE promete, que ves cada comando antes de que se ejecute. La falla más común es que npm rechace una instalación global con EACCES: la carpeta global de npm es del administrador (root). Con sudo funciona, pero te deja archivos del administrador; es mejor darle a npm una carpeta tuya o usar un gestor de versiones.',
   'Press the button beside the version, read the command, run it. If npm refuses with EACCES, point npm at a prefix you own or use a version manager, then press it again.':
     'Pulsa el botón junto a la versión, lee el comando y córrelo. Si npm lo rechaza con EACCES, dale a npm una carpeta tuya o usa un gestor de versiones, y vuelve a pulsarlo.',
 
   'Installing a module somebody else wrote': 'Instalar un módulo que escribió alguien más',
   'Modules has + Add a module for a .mjs somebody wrote. MADRE checks it in a separate process and installs it only if it passes. Three things get a file refused, each with the reason: an id that belongs to a module MADRE ships with, a route outside its own corner of the API (/api/x/<id>/), and a file that will not load at all. Once installed, each call runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code: review its code and network destinations before installing it.':
-    'Módulos tiene + Agregar un módulo para un .mjs que escribió alguien. MADRE lo revisa en un proceso separado y solo lo instala si pasa. Tres cosas hacen que un archivo se rechace, cada una con su razón: un id que pertenece a un módulo de MADRE, una ruta fuera de su propio rincón de la API (/api/x/<id>/) y un archivo que no carga. Una vez instalado, cada llamada corre en un proceso Node separado con permisos limitados. Node no garantiza contener código malicioso: revisa el código y sus destinos de red antes de instalarlo.',
+    'Módulos tiene + Agregar un módulo para un .mjs que escribió alguien. MADRE lo revisa en un proceso separado y solo lo instala si pasa. Tres cosas hacen que un archivo se rechace, cada una con su razón: un id que pertenece a un módulo de MADRE, una ruta fuera de su propio rincón de la API (/api/x/<id>/) y un archivo que no carga. Una vez instalado, cada llamada se ejecuta en un proceso Node aparte con permisos limitados. Node no garantiza contener código malicioso: revisa el código y sus destinos de red antes de instalarlo.',
   'Install it only if you trust where it came from. A module you wrote can also be updated from where you publish it: declare updates: { url } in the file, or install it from a file and MADRE remembers which, and its page in Modules carries Get a newer file.':
     'Instálalo solo si confías en de dónde viene. Un módulo tuyo también se puede actualizar desde donde lo publiques: declara updates: { url } en el archivo, o instálalo desde un archivo y MADRE recuerda cuál, y su ficha en Módulos lleva Traer un archivo más nuevo.',
 
   'Is the local model ready to be worked in?': '¿El modelo local ya sirve para trabajar?',
   'Running is not the same as being of use. @madre being in the project means Ollama has a chat model; whether that model is worth your work on THIS project is a different question, and the project measures it: twelve real exchanges from this project are put back to the local model, and each answer is scored against what the agents actually answered that day — against a control, so that talking about the same project does not count. It takes minutes and spends nothing, because all of it runs on your machine.':
-    'Correr no es lo mismo que servir. Que @madre esté en el proyecto significa que Ollama tiene un modelo de chat; si ese modelo vale para tu trabajo en este proyecto es otra pregunta, y el proyecto la mide: se le devuelven al modelo local doce intercambios reales de este proyecto, y cada respuesta se califica contra lo que los agentes contestaron aquel día — contra un control, para que hablar del mismo proyecto no cuente. Tarda minutos y no gasta nada, porque todo corre en tu máquina.',
+    'Funcionar no es lo mismo que servir. Que @madre esté en el proyecto significa que Ollama tiene un modelo de chat; si ese modelo vale para tu trabajo en este proyecto es otra pregunta, y el proyecto la mide: se le devuelven al modelo local doce intercambios reales de este proyecto, y cada respuesta se califica contra lo que los agentes contestaron aquel día — contra un control, para que hablar del mismo proyecto no cuente. Tarda minutos y no gasta nada, porque todo ejecuta en tu máquina.',
   'The project says which of the two it has, once per model, in the line that begins "local · @madre". If nobody has measured it, that line carries TRY IT ON THIS PROJECT; the answer lands in the project when it finishes, with the one thing to do about it. A model that does not pass is not broken — the archive is still thin, and it fills where the work happens. The @madre sphere keeps the reading and its date after the line has scrolled away, and the same test lives in Memory map → MEMORY REVIEW.':
     'El proyecto dice cuál de las dos es, una vez por modelo, en la línea que empieza con «Local · @madre». Si nadie lo ha medido, esa línea trae «Probarlo con este proyecto»; el resultado aparece en el proyecto al terminar, con lo que conviene hacer. Un modelo que no pasa no está roto: la memoria todavía tiene poco, y se llena conforme trabajas. La esfera de @madre guarda el resultado con su fecha aunque la línea ya se haya ido hacia arriba, y la misma prueba está en Mapa de memoria → «Revisión de la memoria».',
 
@@ -2130,7 +2130,7 @@ export const ES = {
   'What leaves this computer, and how to stop each thing that does':
     'Qué sale de esta computadora y cómo apagar cada envío',
   'MADRE runs here and keeps what it knows in a file you own, and the list that qualifies that sentence is inside the core, under OUTBOUND. Seven addresses, each saying what it carries and where it is switched off: the briefing, which goes to whoever runs the agent you sent the turn to; Gemini embeddings, which carry the text of your memories; the image model, which carries the prompt an agent wrote; the npm registry and GitHub, which get a package name and nothing else; the error collector, which gets a redacted condition and only with your press; and Anthropic, for how much of your Claude plan is left. Ollama is on the list to be seen staying here.':
-    'MADRE corre aquí y lo que sabe se guarda en un archivo tuyo; las excepciones están listadas dentro del núcleo, en ENVÍOS. Siete destinos, cada uno con qué lleva y dónde se apaga: lo que MADRE le envía al agente, que va a la empresa que opera ese agente; la búsqueda por significado de Gemini, que lleva el texto de tus memorias; el modelo de imagen, que lleva la instrucción que escribió un agente; el registro de npm y GitHub, que reciben un nombre de paquete y nada más; el recolector de errores, que recibe un resumen sin datos privados y solo si das clic; y Anthropic, para saber cuánto queda de tu plan de Claude. Ollama está en la lista precisamente para que se vea que se queda en tu computadora.',
+    'MADRE funciona aquí y lo que sabe se guarda en un archivo tuyo; las excepciones están listadas dentro del núcleo, en ENVÍOS. Siete destinos, cada uno con qué lleva y dónde se apaga: lo que MADRE le envía al agente, que va a la empresa que opera ese agente; la búsqueda por significado de Gemini, que lleva el texto de tus memorias; el modelo de imagen, que lleva la instrucción que escribió un agente; el registro de npm y GitHub, que reciben un nombre de paquete y nada más; el recolector de errores, que recibe un resumen sin datos privados y solo si das clic; y Anthropic, para saber cuánto queda de tu plan de Claude. Ollama está en la lista precisamente para que se vea que se queda en tu computadora.',
   "Under the list is the fetch log for MADRE and its modules, including a module's separate process and its one-file MCP server. It does not include network calls made through other Node protocols or by an agent CLI. No body, header or query value is written there — only which parameters were set. An address nothing declares is reported as exactly that.":
     'Debajo de la lista está el registro de llamadas fetch de MADRE y sus módulos, incluidos el proceso separado de cada módulo y su servidor MCP de un solo archivo. No incluye las llamadas hechas con otros protocolos de Node ni las de las CLI de los agentes. Ahí nunca se escriben el contenido, los encabezados ni los valores de consulta: solo qué parámetros venían. Si una dirección no la declara nadie, se reporta así.',
 
@@ -2296,9 +2296,9 @@ export const ES = {
   'ASK AGAIN': 'Pedirlo otra vez',
   'Last time you said you created {files}, but nothing was written to disk. Create them now and check that they exist before you answer.': 'La vez pasada dijiste que creaste {files}, pero no se escribió nada. Créalos ahora y revisa que existan antes de contestar.',
   'Google rejected the Gemini credentials.': 'Google rechazó las credenciales de Gemini.',
-  'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
+  'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Ejecuta `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
   'Google no longer accepts this Gemini sign-in (IneligibleTierError): the free personal Google account is refused before it reaches a model.': 'Google ya no acepta este inicio de sesión de Gemini (IneligibleTierError): rechaza la cuenta personal gratuita de Google antes de llegar al modelo.',
-  'Paste a Gemini API key from Google AI Studio in Settings › Agents › Gemini, or run `gemini`, type /auth and pick "Use Gemini API key".': 'Pega una llave de API de Gemini de Google AI Studio en Ajustes › Agentes › Gemini, o corre `gemini`, escribe /auth y elige «Use Gemini API key».',
+  'Paste a Gemini API key from Google AI Studio in Settings › Agents › Gemini, or run `gemini`, type /auth and pick "Use Gemini API key".': 'Pega una llave de API de Gemini de Google AI Studio en Ajustes › Agentes › Gemini, o ejecuta `gemini`, escribe /auth y elige «Use Gemini API key».',
 
   // ── EL RECORRIDO DE PRIMER CONTACTO ───────────────────────────────────────
 
@@ -2630,7 +2630,7 @@ export const ES = {
   '# Settings → Memory → Analysis and tests → Memory review':
     '# Ajustes → Memoria → Análisis y pruebas → Revisión de la memoria',
   '# MATCH needs Ollama running with a chat model, and smart search on':
-    '# «Coincidencia» necesita Ollama corriendo con un modelo de chat, y la búsqueda inteligente encendida',
+    '# «Coincidencia» necesita Ollama abierto con un modelo de chat, y la búsqueda inteligente encendida',
   '# or: brew install node   # a Homebrew node owns its own prefix':
     '# o: brew install node   # el Node de Homebrew usa su propia carpeta',
   '# or use nvm, which owns the prefix it installs into':
@@ -2667,7 +2667,7 @@ export const ES = {
   'two memories that cannot both be true': 'dos memorias que no pueden ser ciertas a la vez',
   'created': 'creado',
   'all stop · {plans} plans, {turns} turns halted': 'alto total · {plans} planes y {turns} respuestas detenidos',
-  'all stop · nothing was running': 'alto total · no había nada corriendo',
+  'all stop · nothing was running': 'alto total · no había nada en ejecución',
   'Diagnostics › all stop. {plans} plans, {turns} turns halted.': 'Diagnóstico › alto total. {plans} planes y {turns} respuestas detenidos.',
   'Diagnostics detected a runaway sequence. STOP ALL halts every plan and every agent turn.':
     'Diagnóstico detectó una secuencia fuera de control. «Detener todo» detiene todos los planes y todas las respuestas.',
@@ -2706,7 +2706,7 @@ export const ES = {
   'systemd did not turn the service on: {detail}': 'systemd no encendió el servicio: {detail}',
   'On: Home starts when this computer does, and again if it falls, with the projects that were open.': 'Encendido: Inicio arranca con esta computadora, y otra vez si se cae, con los proyectos que estaban abiertos.',
   'Off: MADRE starts only when you open it.': 'Apagado: MADRE arranca solo cuando tú la abres.',
-  'For it to start before anyone signs in, run this once: {command}': 'Para que arranque aunque nadie haya entrado, corre esto una vez: {command}',
+  'For it to start before anyone signs in, run this once: {command}': 'Para que arranque aunque nadie haya entrado, ejecuta esto una vez: {command}',
   'When this computer starts': 'Al encender esta computadora',
   'Starts with the computer': 'Arranca con la computadora',
   'Does not start on its own': 'No arranca sola',
@@ -2714,7 +2714,7 @@ export const ES = {
   'Home starts with this computer.': 'Inicio arranca con esta computadora.',
   'MADRE starts only when you open it.': 'MADRE arranca solo cuando tú la abres.',
   'One more step, once': 'Un paso más, una vez',
-  'For it to start before anyone signs in, this computer asks for its password. Run this in its terminal: {command}': 'Para que arranque aunque nadie haya entrado, esta computadora pide su contraseña. Corre esto en su terminal: {command}',
+  'For it to start before anyone signs in, this computer asks for its password. Run this in its terminal: {command}': 'Para que arranque aunque nadie haya entrado, esta computadora pide su contraseña. Ejecuta esto en su terminal: {command}',
   'It did not change.': 'No cambió.',
   'This is done from Home, on this computer.': 'Esto se hace desde Inicio, en esta computadora.',
   'MADRE\'s errors as they are added and fixed: what is still to fix by class and type, what waits to be verified, and the last changes. Read from this Mac; only you see this.': 'Los errores de MADRE conforme se agregan y se arreglan: lo que falta arreglar por clase y tipo, lo que espera verificación y los últimos cambios. Se lee de esta Mac; solo tú lo ves.',
@@ -2794,7 +2794,7 @@ export const ES = {
   'Keep it': 'Conservarlo',
   'Uninstall': 'Desinstalar',
   'A module runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.':
-    'Un módulo corre en un proceso Node separado con permisos limitados. Node no garantiza contener código malicioso. Revisa el archivo y sus destinos de red antes de instalarlo.',
+    'Un módulo se ejecuta en un proceso Node aparte con permisos limitados. Node no garantiza contener código malicioso. Revisa el archivo y sus destinos de red antes de instalarlo.',
   'That file could not be read: {error}': 'Ese archivo no se pudo leer: {error}',
   'Diagnostics › {name} is already {version} · {from}': 'Diagnóstico › {name} ya está en {version} · {from}',
   'what is published': 'lo que está publicado',
@@ -3000,7 +3000,7 @@ export const ES = {
   'Preview reports an error in the page: {message}{where}. Find the cause and propose the fix.':
     'La vista previa reporta un error en la página: {message}{where}. Encuentra la causa y propón el arreglo.',
   '@madre runs on this machine and speaks for what the project remembers. "@madre, ask the agents …" opens a round with every agent online. To change files, write to one of the coding agents.':
-    '@madre corre en esta computadora y responde con lo que el proyecto recuerda. «@madre, pregúntale a los agentes …» abre una ronda con todos los agentes en línea. Para cambiar archivos, escríbele a uno de los agentes de programación.',
+    '@madre funciona en esta computadora y responde con lo que el proyecto recuerda. «@madre, pregúntale a los agentes …» abre una ronda con todos los agentes en línea. Para cambiar archivos, escríbele a uno de los agentes de programación.',
   'Measured against this project {when}: it landed where the agents landed on {matched} of {n} real questions{verdict}':
     'Medido contra este proyecto {when}: coincidió con los agentes en {matched} de {n} preguntas reales{verdict}',
   '. Ready to be worked in.': '. Listo para ponerse a trabajar.',
@@ -3045,45 +3045,45 @@ export const ES = {
   'Pressing it unlocks #{n} {label} for @{agent}': 'Al presionarla se desbloquea #{n} {label} para @{agent}',
   'CLI': 'CLI',
 
-  // Un comando que un agente te pide correr.
+  // Un comando que un agente te pide ejecutar.
   'on · agents may ask you to run commands': 'encendido · los agentes pueden pedirte que corras comandos',
   'Lets an agent ask you to run a command it cannot run in its mode (tests, a build, a linter). Each command is a button: nothing runs until you press it, it runs from the project root with no shell, a restore point is taken first, and when it has run the output goes back to the agent that asked, which goes on. Always on: about 300 tokens of instruction per turn below FULL ACCESS.':
-    'Deja que un agente te pida correr un comando que su nivel de permiso no le deja correr (pruebas, un build, un linter). Cada comando es un botón y nada corre hasta que lo presionas. Corre desde la carpeta principal del proyecto, sin terminal; antes se guarda un punto de restauración y, al terminar, el resultado vuelve al agente que lo pidió para que siga. Siempre encendido: cuesta unos 300 tokens por respuesta en los niveles por debajo de #4 ACCESO TOTAL.',
-  'Name the request and the line to run.': 'Di qué petición y qué línea correr.',
+    'Deja que un agente te pida ejecutar un comando que su nivel de permiso no le deja ejecutar (pruebas, un build, un linter). Cada comando es un botón y nada se ejecuta hasta que lo presionas. Se ejecuta desde la carpeta principal del proyecto, sin terminal; antes se guarda un punto de restauración y, al terminar, el resultado vuelve al agente que lo pidió para que siga. Siempre encendido: cuesta unos 300 tokens por respuesta en los niveles por debajo de #4 ACCESO TOTAL.',
+  'Name the request and the line to run.': 'Di qué petición y qué línea ejecutar.',
   'Command requests are off. Enable them in MODULES.': 'Las peticiones de comandos están apagadas. Enciéndelas en «Módulos».',
-  'A command is already running; wait for it to finish or press STOP ALL.': 'Ya corre un comando; espera a que termine o usa «Detener todo».',
+  'A command is already running; wait for it to finish or press STOP ALL.': 'Ya se está ejecutando un comando; espera a que termine o usa «Detener todo».',
   '@{agent} is working in {mode} on this project; run it when its turn ends.': '@{agent} está trabajando en {mode} en este proyecto; córrelo cuando termine su respuesta.',
-  '@{agent} asks you to run': '@{agent} te pide correr',
-  'RUNNING': 'Corriendo',
-  'WILL NOT RUN': 'No corre',
-  'This line does not run: it {why}.': 'Esta línea no corre: {why}.',
-  'Does not run: it {why}.': 'No corre: {why}.',
+  '@{agent} asks you to run': '@{agent} te pide ejecutar',
+  'RUNNING': 'Funcionando',
+  'WILL NOT RUN': 'No se ejecuta',
+  'This line does not run: it {why}.': 'Esta línea no se ejecuta: {why}.',
+  'Does not run: it {why}.': 'No se ejecuta: {why}.',
   'Runs {command} from the project root, with no shell. A restore point is taken first.':
     'Ejecuta {command} en la carpeta principal del proyecto, sin terminal (shell). Antes se guarda un punto de restauración.',
   'Runs {command} ({script}) from the project root, with no shell. A restore point is taken first.':
     'Ejecuta {command} ({script}) en la carpeta principal del proyecto, sin terminal (shell). Antes se guarda un punto de restauración.',
   'Each line runs when you press it · from the project root, no shell':
-    'Cada línea corre cuando la presionas · desde la carpeta principal del proyecto, sin terminal',
+    'Cada línea se ejecuta cuando la presionas · desde la carpeta principal del proyecto, sin terminal',
   'When they have run, the output goes back to @{agent} and it goes on at #{n} {label}.':
     'Al terminar, el resultado vuelve a @{agent} y sigue con #{n} {label}.',
   'When they have run, the output goes back to @{agent} and it goes on.':
     'Al terminar, el resultado vuelve a @{agent} y sigue.',
-  'RUN ALL · {n}': 'Correr todos · {n}',
+  'RUN ALL · {n}': 'Ejecutar todos · {n}',
   'Runs the lines one after another; it stops at the first one that fails.':
-    'Corre las líneas una tras otra; se detiene en la primera que falle.',
-  'HAND BACK WHAT RAN TO @{agent}': 'Devolver lo que corrió a @{agent}',
+    'Ejecuta las líneas una tras otra; se detiene en la primera que falle.',
+  'HAND BACK WHAT RAN TO @{agent}': 'Devolver lo que ejecutó a @{agent}',
   '@{agent} gets the output of the lines that ran and goes on without the rest.':
     '@{agent} recibe el resultado de las líneas que corrieron y sigue sin las demás.',
   'Output handed back to @{agent}{at}': 'Resultado devuelto a @{agent}{at}',
   'automatic · the commands ran': 'automático · ya corrieron los comandos',
-  'The command you asked for ran. Go on with what you proposed.': 'Ya corrió el comando que pediste. Sigue con lo que propusiste.',
+  'The command you asked for ran. Go on with what you proposed.': 'Ya ejecutó el comando que pediste. Sigue con lo que propusiste.',
   'The {n} commands you asked for ran. Go on with what you proposed.': 'Ya corrieron los {n} comandos que pediste. Sigue con lo que propusiste.',
   '{n} of the {total} commands you asked for ran. Go on with what you proposed.': 'Corrieron {n} de los {total} comandos que pediste. Sigue con lo que propusiste.',
   'Say which request to hand back.': 'Falta indicar qué petición devolver.',
   'MADRE is closing.': 'MADRE se está cerrando.',
   'Those results were already handed back.': 'Ese resultado ya se devolvió.',
-  'Nothing of that request has run yet.': 'Todavía no corre nada de esa petición.',
-  'A command of that request is still running; wait for it to end.': 'Un comando de esa petición sigue corriendo; espera a que termine.',
+  'Nothing of that request has run yet.': 'Todavía no se ejecuta nada de esa petición.',
+  'A command of that request is still running; wait for it to end.': 'Un comando de esa petición se sigue ejecutando; espera a que termine.',
   'STOP ALL held these results; hand them back from their card.': '«Detener todo» retuvo este resultado; devuélvelo desde su tarjeta.',
   'That command request is not in this project.': 'Esa petición de comandos no está en este proyecto.',
   'Put the project files back exactly as they were before this command. What it sent off this machine does not come back.':
@@ -3106,13 +3106,13 @@ export const ES = {
   'leaves a quote open': 'deja una comilla abierta',
   'is empty': 'está vacía',
   '"{name}" is a shell builtin; every line already runs from the project root':
-    '«{name}» es un comando interno del shell; cada línea ya corre desde la raíz del proyecto',
+    '«{name}» es un comando interno del shell; cada línea ya se ejecuta desde la raíz del proyecto',
   'sets an environment variable, which needs a shell': 'fija una variable de entorno, y eso necesita un shell',
   'is too long to read before pressing it': 'es demasiado larga para leerla antes de presionarla',
 
   // MU/TH/UR sobre modos, permisos y planes, dicho de nuevo en español.
   'A plan by @{agent} is still running. Your message will be answered, but no second plan will start.':
-    'Un plan de @{agent} sigue corriendo. Tu mensaje se contestará, pero no arrancará un segundo plan.',
+    'Un plan de @{agent} se sigue ejecutando. Tu mensaje se contestará, pero no arrancará un segundo plan.',
   ' Type STOPALL to halt every agent.':
     ' Escribe STOPALL para detener a todos los agentes.',
   '{n} agents are working at once. If this is not what you asked for, type STOPALL.':
@@ -3122,7 +3122,7 @@ export const ES = {
   ' STOPALL halts everything.':
     ' STOPALL detiene todo.',
   'The plan by @{agent} has been running for {n} min.':
-    'El plan de @{agent} lleva {n} min corriendo.',
+    'El plan de @{agent} lleva {n} min ejecutándose.',
   ' STOPALL halts it.':
     ' STOPALL lo detiene.',
   '@{holder} still holds EDIT; @{agent} answers read-only this turn.':
@@ -3499,10 +3499,10 @@ export const ES = {
   'The exposure check is unavailable.': 'La revisión de lo que queda expuesto no está disponible.',
   'MADRE {latest} is on npm · you run {current} · open SETTINGS for the command': 'MADRE {latest} está en npm · tú usas la {current} · abre «Ajustes» para ver el comando',
   'The version could not be read.': 'No se pudo leer la versión.',
-  'Runs without being installed (npx).': 'Corre sin instalarse (npx).',
+  'Runs without being installed (npx).': 'Funciona sin instalarse (npx).',
   'Installed inside this project.': 'Instalada dentro de este proyecto.',
   'Installed on this computer.': 'Instalada en esta computadora.',
-  'It runs from source.': 'Corre desde el código fuente.',
+  'It runs from source.': 'Funciona desde el código fuente.',
   'Up to date': 'Al día',
   'Open': 'Abrir',
   'Look for new versions': 'Buscar versiones nuevas',
@@ -3512,7 +3512,7 @@ export const ES = {
   'Not yet.': 'Aún no.',
   'Check now': 'Revisar ahora',
   'MADRE {version} is ready': 'MADRE {version} está lista',
-  'Restart here: the project closes, updates and comes back in a few seconds. Nothing is lost. Or run the command yourself.': 'Reinicia aquí: el proyecto se cierra, se actualiza y vuelve en unos segundos. No se pierde nada. O corre tú el comando.',
+  'Restart here: the project closes, updates and comes back in a few seconds. Nothing is lost. Or run the command yourself.': 'Reinicia aquí: el proyecto se cierra, se actualiza y vuelve en unos segundos. No se pierde nada. O ejecuta tú el comando.',
   'Pull the repository and start it again.': 'Actualiza el repositorio (git pull) y vuelve a arrancarla.',
   'Restarting…': 'Reiniciando…',
   'Restart with {version}': 'Reiniciar con {version}',
@@ -3579,7 +3579,7 @@ export const ES = {
   'Beside': 'Al lado',
   'Window': 'Ventana',
   'Your servers': 'Tus servidores',
-  'Web pages your project runs on this computer: beside the conversation, or floating.': 'Las páginas web que tu proyecto corre en esta computadora: junto a la conversación o flotando.',
+  'Web pages your project runs on this computer: beside the conversation, or floating.': 'Las páginas web que tu proyecto tiene abiertas en esta computadora: junto a la conversación o flotando.',
   'Docked': 'Acoplado',
   'It always opens beside the conversation: opening a file never splits the project on its own. From there it can float as a window.': 'Siempre se abre al lado de la conversación: abrir un archivo nunca divide la pantalla por sí solo. Desde ahí puedes sacarlo a una ventana.',
   'What they can show': 'Lo que pueden mostrar',
@@ -3605,7 +3605,7 @@ export const ES = {
   'every project': 'todos los proyectos',
   'Read the SDK ↗': 'Leer la guía de módulos (SDK) ↗',
   'Or write it yourself': 'O escríbelo tú',
-  'Put the file in one of these folders. A file somebody else wrote goes in with + Add a module, and MADRE checks it before it runs.': 'Pon el archivo en una de estas carpetas. Un archivo que escribió alguien más se agrega con + Agregar un módulo, y MADRE lo revisa antes de que corra.',
+  'Put the file in one of these folders. A file somebody else wrote goes in with + Add a module, and MADRE checks it before it runs.': 'Pon el archivo en una de estas carpetas. Un archivo que escribió alguien más se agrega con + Agregar un módulo, y MADRE lo revisa antes de que se ejecute.',
   'Reload modules': 'Recargar módulos',
   'Load it': 'Cárgalo',
   'Press Reload modules and it appears on the board with its own card, no restart.': 'Presiona Recargar módulos y aparece en el tablero con su propia tarjeta, sin reiniciar.',
@@ -3623,7 +3623,7 @@ export const ES = {
   'Turns measured': 'Respuestas medidas',
   'Read from cache': 'Leído de caché',
   'Server': 'Servidor',
-  'Running': 'Corriendo',
+  'Running': 'Funcionando',
   'Stopped': 'Detenido',
   'Models': 'Modelos',
   'none': 'ninguno',
@@ -3638,7 +3638,7 @@ export const ES = {
   'Commands': 'Comandos',
   'Writes': 'Escribe',
   'Needs': 'Necesita',
-  'Everything this module writes or needs, said before it runs.': 'Todo lo que este módulo escribe o necesita, dicho antes de que corra.',
+  'Everything this module writes or needs, said before it runs.': 'Todo lo que este módulo escribe o necesita, dicho antes de que se ejecute.',
   'What it adds to the Write box. Type it in the project.': 'Lo que agrega a la caja de Escribir. Escríbelo en el proyecto.',
   'read back from a cache, or never sent': 'reutilizados de la caché, o nunca enviados',
   'What it does': 'Qué hace',
@@ -3660,8 +3660,8 @@ export const ES = {
   'Get a newer file': 'Traer un archivo más nuevo',
   'Newer file': 'Archivo más nuevo',
   'It stops loading. The file stays where it is.': 'Deja de cargarse. El archivo se queda donde está.',
-  'Ollama on this computer: no provider tokens, nothing leaves.': 'Ollama corre en esta computadora: no gasta tokens de tu proveedor y nada sale de tu equipo.',
-  'Running · {host}': 'Corriendo · {host}',
+  'Ollama on this computer: no provider tokens, nothing leaves.': 'Ollama funciona en esta computadora: no gasta tokens de tu proveedor y nada sale de tu equipo.',
+  'Running · {host}': 'Funcionando · {host}',
   'Not running': 'Detenido',
   'Start Ollama': 'Encender Ollama',
   'Install Ollama': 'Instalar Ollama',
@@ -3774,8 +3774,8 @@ export const ES = {
   'Enter': 'Entrar',
   'Open Ollama': 'Abrir Ollama',
   'Start it, download its models and choose what it does in this project.': 'Enciéndelo, descarga sus modelos y elige qué hace en este proyecto.',
-  '@{agent} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
-  '@{agent} left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
+  '@{agent} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.': '@{agent} salió del proyecto: Ollama no está abierto. Enciende Ollama o prepara la IA local en Ajustes.',
+  '@{agent} left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.': '@{agent} salió del proyecto: Ollama no está abierto. Enciende Ollama o prepara la IA local en Ajustes.',
   'Hide': 'Ocultar',
   'Updating {name}': 'Actualizando {name}',
   'Installing {name}': 'Instalando {name}',
@@ -3786,7 +3786,7 @@ export const ES = {
   'Working': 'En curso',
   'Update {name} to {version}': 'Actualizar {name} a {version}',
   'Update {name}': 'Actualizar {name}',
-  'This runs on this computer, outside the project.': 'Esto corre en esta computadora, fuera del proyecto.',
+  'This runs on this computer, outside the project.': 'Esto funciona en esta computadora, fuera del proyecto.',
   'Update': 'Actualizar',
   'Its path from the project root. Missing folders are made; an existing file is never touched.': 'Su ruta desde la raíz del proyecto. Las carpetas que falten se crean; un archivo que ya existe nunca se toca.',
   'Path': 'Ruta',
@@ -3818,7 +3818,7 @@ export const ES = {
   'Something went wrong talking to GitHub: {message}': 'Algo falló al hablar con GitHub: {message}',
   'passing': 'pasa',
   'failing': 'falla',
-  'running': 'corriendo',
+  'running': 'funcionando',
   'no checks yet': 'todavía sin verificaciones',
   'closed': 'cerrado',
   'merged': 'fusionado',
@@ -3976,8 +3976,8 @@ export const ES = {
   'Waiting for you': 'Te espera',
   'Waiting for you · {n}': 'Te espera · {n}',
   '@{agent} asks for #{n} {label}': '@{agent} pide el permiso #{n} {label}',
-  '@{agent} wants to run {line}': '@{agent} quiere correr {line}',
-  '@{agent} wants to run a command': '@{agent} quiere correr un comando',
+  '@{agent} wants to run {line}': '@{agent} quiere ejecutar {line}',
+  '@{agent} wants to run a command': '@{agent} quiere ejecutar un comando',
   '@{agent} asks you: {question}': '@{agent} te pregunta: {question}',
   'Your Mac is not answering. Check that it is awake and on the same Wi-Fi.': 'Tu Mac no responde. Revisa que esté despierta y en el mismo Wi-Fi.',
   'On {mac}': 'En {mac}',
@@ -4028,7 +4028,7 @@ export const ES = {
   'A question is between 1 and {n} characters.': 'Una pregunta tiene entre 1 y {n} caracteres.',
   'The Coordinator did not wake up. Go back to Home and ask again.': 'El Coordinador no despertó. Vuelve a Inicio y pregunta de nuevo.',
   'Your question went to the Coordinator in Home. The answer comes here, for you only: this project\'s agents cannot read it without a connection.': 'Pregunta enviada al Coordinador en Inicio. La respuesta llega aquí, solo para ti: los agentes de este proyecto no la leen sin una conexión.',
-  'That order is not running.': 'Esa orden no está corriendo.',
+  'That order is not running.': 'Esa orden no se está ejecutando.',
   'That connection is not in this project.': 'Esa conexión no está en este proyecto.',
   'That connection is not waiting to be signed.': 'Esa conexión no está esperando tu firma.',
   'Only #3 and #4 come as a proposal.': 'Solo las órdenes en #3 y #4 llegan como propuesta.',
@@ -4134,7 +4134,7 @@ export const ES = {
   'An order is between 1 and {n} characters.': 'Una orden tiene entre 1 y {n} caracteres.',
   'That is not an order of a plan.': 'Eso no es una orden de un plan.',
   '@{agent} is not ready in that project.': '@{agent} no está listo en ese proyecto.',
-  'That project is already running an order. One at a time.': 'Ese proyecto ya está corriendo una orden. Una a la vez.',
+  'That project is already running an order. One at a time.': 'Ese proyecto ya está ejecutando una orden. Una a la vez.',
   'That project is working right now. An order never interrupts it; send it when it is free.': 'Ese proyecto está trabajando ahora. Una orden nunca lo interrumpe; envíala cuando esté libre.',
   'This connection carried {n} orders in the last hour, its limit. Try again later.': 'Esta conexión ya envió {n} órdenes en la última hora, su máximo. Inténtalo más tarde.',
   'That order is not waiting for an answer.': 'Esa orden no está esperando respuesta.',
@@ -4152,8 +4152,8 @@ export const ES = {
   '{n} in use': '{n} en uso',
   'No memories yet': 'Sin memorias todavía',
   'This page closes with it.': 'Esta página se cierra con el proyecto.',
-  'What is running stops.': 'Lo que está corriendo se detiene.',
-  'Nothing is running.': 'No hay nada corriendo.',
+  'What is running stops.': 'Lo que se está ejecutando se detiene.',
+  'Nothing is running.': 'No hay nada en ejecución.',
   'This project did not answer. It may have closed.': 'Este proyecto no respondió. Puede que se haya cerrado.',
   'The project did not open.': 'El proyecto no abrió.',
   'That project did not answer.': 'Ese proyecto no respondió.',
@@ -4258,7 +4258,7 @@ export const ES = {
   'Your servers on the Mac': 'Tus servidores en la Mac',
   'Switches in Settings': 'Abrir los interruptores en Ajustes',
   'The servers could not be read.': 'No se pudieron leer los servidores.',
-  'No server of this project is running on your Mac.': 'Ningún servidor de este proyecto está corriendo en tu Mac.',
+  'No server of this project is running on your Mac.': 'Ningún servidor de este proyecto está funcionando en tu Mac.',
   'Add a project': 'Agregar proyecto',
   'Add project': 'Agregar proyecto',
   'Add': 'Agregar',
@@ -4276,7 +4276,7 @@ export const ES = {
   'Connect your agents': 'Conecta tus agentes',
   'Connected': 'Conectado',
   'Continue': 'Continuar',
-  'Every project runs on this Mac, on its own, with its own memory.': 'Cada proyecto corre en esta Mac, por su cuenta y con su propia memoria.',
+  'Every project runs on this Mac, on its own, with its own memory.': 'Cada proyecto funciona en esta Mac, por su cuenta y con su propia memoria.',
   'Found on this Mac': 'Encontrados en esta Mac',
   'In Home': 'En Inicio',
   'Connect projects': 'Conectar proyectos',
@@ -4366,8 +4366,8 @@ export const ES = {
   'Reads the messages of your chats while it is on.': 'Lee los mensajes de tus chats mientras está encendido.',
   'Adds commands to the box: {commands}.': 'Agrega comandos a la caja de texto: {commands}.',
   'Serves pages of its own inside MADRE.': 'Sirve páginas propias dentro de MADRE.',
-  'Writes in your project, with a command you read and confirm before it runs.': 'Escribe en tu proyecto, con un comando que lees y confirmas antes de que corra.',
-  'A module runs in a separate process with limited permissions. MADRE checks its signature and declarations; Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.': 'Un módulo corre en un proceso separado con permisos limitados. MADRE revisa su firma y lo que declara; Node no garantiza contener código malicioso. Revisa el archivo y sus destinos de red antes de instalarlo.',
+  'Writes in your project, with a command you read and confirm before it runs.': 'Escribe en tu proyecto, con un comando que lees y confirmas antes de que se ejecute.',
+  'A module runs in a separate process with limited permissions. MADRE checks its signature and declarations; Node cannot guarantee containment of malicious code. Review the file and its network destinations before installing it.': 'Un módulo se ejecuta en un proceso aparte con permisos limitados. MADRE revisa su firma y lo que declara; Node no garantiza contener código malicioso. Revisa el archivo y sus destinos de red antes de instalarlo.',
   'MADRE could not reach the Market. Check your internet connection and try again.': 'MADRE no pudo llegar al Mercado. Revisa tu conexión a internet e inténtalo de nuevo.',
   'madre.run · the Market': 'madre.run · el Mercado',
   "Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author's signature before it is used.": 'Nada sobre ti: pide el catálogo de módulos, y el archivo de un módulo que obtuviste o que tiene una versión más nueva. Cada archivo se revisa contra la firma del autor antes de usarse.',
@@ -4452,7 +4452,7 @@ export const ES = {
   'A memory that searches by meaning, and @madre, on your own computer: free and private.': 'Una memoria que busca por significado, y @madre, en tu propia computadora: gratis y privada.',
   'the browser server could not be installed': 'no se pudo instalar el servidor del navegador',
   'Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.': 'Preparando el navegador de pruebas: MADRE descarga lo que le falta. Puede tardar unos minutos.',
-  'The project does not use git yet. MADRE runs `git init` in it first: it adds a .git folder and leaves your files as they are.': 'El proyecto todavía no usa git. MADRE corre primero `git init` en él: agrega una carpeta .git y deja tus archivos como están.',
+  'The project does not use git yet. MADRE runs `git init` in it first: it adds a .git folder and leaves your files as they are.': 'El proyecto todavía no usa git. MADRE ejecuta primero `git init` en él: agrega una carpeta .git y deja tus archivos como están.',
   'Continuity keeps its history with git, and this Mac does not have it yet. Install it with Apple\'s command line tools: it takes a few minutes, then come back here.': 'Continuidad guarda su historia con git, y esta Mac todavía no lo tiene. Instálalo con las herramientas de línea de comandos de Apple: tarda unos minutos y luego vuelves aquí.',
   'Continuity keeps its history with git, and this computer does not have it yet. Install git with your system\'s package manager, then come back here.': 'Continuidad guarda su historia con git, y esta computadora todavía no lo tiene. Instala git con el gestor de paquetes de tu sistema y luego vuelve aquí.',
   'Git refuses to read this project because its folder belongs to another user of this computer («dubious ownership»), as a project under /mnt/c can in WSL. Let git read it with `git config --global --add safe.directory \'{root}\'`, then come back here.': 'Git no quiere leer este proyecto porque su carpeta es de otro usuario de esta computadora («dubious ownership»), como puede pasar con un proyecto en /mnt/c dentro de WSL. Deja que git lo lea con `git config --global --add safe.directory \'{root}\'` y vuelve aquí.',
@@ -4573,7 +4573,7 @@ export const ES = {
   'Unknown agent: {id}.': 'MADRE no conoce el agente {id}.',
   '{label} is not installed on this computer.': '{label} no está instalado en esta computadora.',
   'MADRE does not know how to sign in to {id}.': 'MADRE no sabe cómo conectar {id}.',
-  '{label} signs in from its own window: run this in a terminal, then press Check again.': '{label} se conecta desde su propia ventana: corre esto en una terminal y luego pulsa «Revisar otra vez».',
+  '{label} signs in from its own window: run this in a terminal, then press Check again.': '{label} se conecta desde su propia ventana: ejecuta esto en una terminal y luego pulsa «Revisar otra vez».',
   'Another sign-in is running ({label}). Wait for it to finish or cancel it.': 'Ya hay otra conexión en curso ({label}). Espera a que termine o cancélala.',
   'The sign-in could not be prepared: {error}': 'No se pudo preparar la conexión: {error}',
   'No sign-in is running for that agent.': 'Ese agente no tiene ninguna conexión en curso.',
@@ -4584,7 +4584,7 @@ export const ES = {
   'You are connected to this computer from another one (SSH), so the browser is over there.': 'Estás conectado a esta computadora desde otra (SSH), así que el navegador está allá.',
   'On your own computer, open another terminal and paste:': 'En tu computadora, abre otra terminal y pega:',
   'Then open {address} in your browser.': 'Luego abre {address} en tu navegador.',
-  "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Opens Home: every project on this computer, in one place.\n  madre start [--project PATH] [--port 4317] [--no-open] [--setup]\n              Opens the project in this folder (or PATH) directly.\n              Without --port, the project opens on the port it kept, or the next free one.\n  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)\n  madre setup [--project PATH] [--port 4317] [--no-open]\n  madre doctor [--project PATH] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (none)  Opens Home. From there you add projects, connect the agents\n          and enter any project. The Coordinator lives there.\n  start   Opens the project in this folder. From your home folder, Home.\n  setup   Detects the agents on this computer, shows who has a session,\n          and runs each agent's own sign-in from here.\n  doctor  Prints the same diagnosis without the wizard.\n  servicio  Home starts with this Linux and comes back if it falls,\n          with the projects that were open.\n": "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Abre Inicio: todos los proyectos de esta computadora, en un lugar.\n  madre start [--project RUTA] [--port 4317] [--no-open] [--setup]\n              Abre directo el proyecto de esta carpeta (o de RUTA).\n              Sin --port, el proyecto abre en el puerto que guardó, o en el siguiente libre.\n  madre lobby [--port 4317] [--no-open]   (también: madre salas; abre Inicio)\n  madre setup [--project RUTA] [--port 4317] [--no-open]\n  madre doctor [--project RUTA] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (nada)  Abre Inicio. Desde ahí agregas proyectos, conectas los agentes\n          y entras a cualquier proyecto. Ahí vive el Coordinador.\n  start   Abre el proyecto de esta carpeta. Desde tu carpeta personal, Inicio.\n  setup   Encuentra los agentes de esta computadora, dice quién tiene sesión\n          y corre aquí el inicio de sesión de cada uno.\n  doctor  Muestra el mismo diagnóstico sin el asistente.\n  servicio  Inicio arranca con este Linux y vuelve si se cae,\n          con los proyectos que estaban abiertos.\n",
+  "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Opens Home: every project on this computer, in one place.\n  madre start [--project PATH] [--port 4317] [--no-open] [--setup]\n              Opens the project in this folder (or PATH) directly.\n              Without --port, the project opens on the port it kept, or the next free one.\n  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)\n  madre setup [--project PATH] [--port 4317] [--no-open]\n  madre doctor [--project PATH] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (none)  Opens Home. From there you add projects, connect the agents\n          and enter any project. The Coordinator lives there.\n  start   Opens the project in this folder. From your home folder, Home.\n  setup   Detects the agents on this computer, shows who has a session,\n          and runs each agent's own sign-in from here.\n  doctor  Prints the same diagnosis without the wizard.\n  servicio  Home starts with this Linux and comes back if it falls,\n          with the projects that were open.\n": "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Abre Inicio: todos los proyectos de esta computadora, en un lugar.\n  madre start [--project RUTA] [--port 4317] [--no-open] [--setup]\n              Abre directo el proyecto de esta carpeta (o de RUTA).\n              Sin --port, el proyecto abre en el puerto que guardó, o en el siguiente libre.\n  madre lobby [--port 4317] [--no-open]   (también: madre salas; abre Inicio)\n  madre setup [--project RUTA] [--port 4317] [--no-open]\n  madre doctor [--project RUTA] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (nada)  Abre Inicio. Desde ahí agregas proyectos, conectas los agentes\n          y entras a cualquier proyecto. Ahí vive el Coordinador.\n  start   Abre el proyecto de esta carpeta. Desde tu carpeta personal, Inicio.\n  setup   Encuentra los agentes de esta computadora, dice quién tiene sesión\n          y ejecuta aquí el inicio de sesión de cada uno.\n  doctor  Muestra el mismo diagnóstico sin el asistente.\n  servicio  Inicio arranca con este Linux y vuelve si se cae,\n          con los proyectos que estaban abiertos.\n",
   "MADRE doctor": "MADRE · diagnóstico",
   "detected": "encontrado",
   "not found": "no está",
@@ -4596,7 +4596,7 @@ export const ES = {
   "npm not reachable": "npm no responde",
   "update check off (PULSE_UPDATE_CHECK=0)": "revisión de versiones apagada (PULSE_UPDATE_CHECK=0)",
   "Ready to start. Known conditions and fixes: `madre doctor --catalog [query]`.": "Lista para empezar. Problemas conocidos y sus arreglos: `madre doctor --catalog [búsqueda]`.",
-  "No agent is online yet. Run `madre`: Home opens anyway and walks you through installing and connecting one. Known conditions and fixes: `madre doctor --catalog`.": "Todavía no hay ningún agente conectado. Corre `madre`: Inicio se abre igual y te guía para instalar y conectar uno. Problemas conocidos y sus arreglos: `madre doctor --catalog`.",
+  "No agent is online yet. Run `madre`: Home opens anyway and walks you through installing and connecting one. Known conditions and fixes: `madre doctor --catalog`.": "Todavía no hay ningún agente conectado. Ejecuta `madre`: Inicio se abre igual y te guía para instalar y conectar uno. Problemas conocidos y sus arreglos: `madre doctor --catalog`.",
   '{n} cores': '{n} núcleos',
   '{files} {noun} · +{add} −{del} lines': '{files} {noun} · +{add} −{del} líneas',
   'Reminder · due {when}': 'Recordatorio · venció {when}',
@@ -4816,7 +4816,7 @@ export const ES = {
   ' STOPALL if the room drifts.': ' STOPALL si el proyecto se desvía.',
   '@{agent} is capped at #{n} {label}; raise its max mode to #{wanted} in Settings › Permissions to arm {mode}.': '@{agent} tiene como límite #{n} {label}; sube su permiso máximo a #{wanted} en Ajustes › Permisos para desbloquear {mode}.',
   '@{agent} is capped at #{n} {label}; raise its MAX MODE to #{wanted} in CONNECTIONS to arm {mode}.': '@{agent} tiene como límite #{n} {label}; sube su permiso máximo a #{wanted} en Ajustes › Permisos para desbloquear {mode}.',
-  '@{agent} left the room: Ollama is not running. Start Ollama, or open Ollama in Modules.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
+  '@{agent} left the room: Ollama is not running. Start Ollama, or open Ollama in Modules.': '@{agent} salió del proyecto: Ollama no está abierto. Enciende Ollama o prepara la IA local en Ajustes.',
   // La segunda llave de #4: la misma, otra vez (2026-10-10).
   'Phrase, twice': 'Frase, dos veces',
   'Type your phrase again': 'Escribe tu frase otra vez',
@@ -4908,7 +4908,7 @@ export const ES = {
   'Read it again': 'Volver a leer',
   'Close MADRE': 'Cerrar MADRE',
   'MADRE is closed. You can close this tab.': 'MADRE está cerrada. Ya puedes cerrar esta pestaña.',
-  'MADRE could not be closed from here. Close the terminal where it runs.': 'MADRE no se pudo cerrar desde aquí. Cierra la terminal donde corre.',
+  'MADRE could not be closed from here. Close the terminal where it runs.': 'MADRE no se pudo cerrar desde aquí. Cierra la terminal donde se está ejecutando.',
   'Accept MADRE\'s license in Home to start.': 'Acepta la licencia de MADRE en Inicio para empezar.',
   'MADRE needs its license accepted to work.': 'MADRE necesita que aceptes su licencia para funcionar.',
   'This is done on the computer.': 'Esto se hace en la computadora.',
@@ -5080,7 +5080,7 @@ export const ES = {
   'Remove it?': '¿Quitarla?',
   'The key was not removed.': 'La llave de API no se quitó. Inténtalo de nuevo.',
   '{provider} no longer has a key in OpenCode.': '{provider} ya no tiene llave de API en OpenCode.',
-  'Signed in with its account from OpenCode. To sign it out, run `opencode auth logout` in a terminal.': 'Conectado con tu cuenta desde OpenCode. Para cerrar esa sesión, corre `opencode auth logout` en una terminal.',
+  'Signed in with its account from OpenCode. To sign it out, run `opencode auth logout` in a terminal.': 'Conectado con tu cuenta desde OpenCode. Para cerrar esa sesión, ejecuta `opencode auth logout` en una terminal.',
   'Hidden providers must be a list of provider names.': 'Los proveedores ocultos deben ser una lista de nombres de proveedor.',
   'A key is only changed from this computer, never over the network.': 'Una llave de API solo se cambia desde esta computadora, nunca por la red.',
   'Providers': 'Proveedores',
@@ -5102,7 +5102,7 @@ export const ES = {
   'Move after': 'Mover después',
   'Move before': 'Mover antes',
   'Move to the start': 'Mover al principio',
-  'No server is running in your open projects.': 'No hay servidores corriendo en tus proyectos abiertos.',
+  'No server is running in your open projects.': 'No hay servidores funcionando en tus proyectos abiertos.',
   'Nothing feeds it on this Mac yet.': 'Todavía no hay datos para esto en esta Mac.',
   'Ollama, its models, and how close each project is to its own.': 'Ollama, sus modelos y qué tan cerca está cada proyecto de tener su propio modelo.',
   'Open a project to read its memory.': 'Abre un proyecto para ver su memoria.',
@@ -5113,7 +5113,7 @@ export const ES = {
   'Take off Home': 'Quitar de Inicio',
   'The map of who looks up whom.': 'El mapa de quién consulta a quién.',
   'The questions and permissions an agent is waiting on.': 'Las preguntas y permisos que un agente espera.',
-  'The servers running in your open projects, and whether they answer.': 'Los servidores que corren en tus proyectos abiertos y si responden.',
+  'The servers running in your open projects, and whether they answer.': 'Los servidores que funcionan en tus proyectos abiertos y si responden.',
   'Tiles you took off and widgets you can put on Home. Right-click any tile to move it, resize it or take it off.': 'Lo que quitaste de Inicio y los widgets que puedes poner. Haz clic derecho en cualquier tarjeta para moverla, cambiar su tamaño o quitarla.',
   'Turn on Preview in a project\'s Modules to see its servers.': 'Enciende la Vista previa en los Módulos de un proyecto para ver sus servidores.',
   'What Home noticed that needs a hand.': 'Lo que Inicio detectó que necesita tu atención.',
@@ -5204,7 +5204,7 @@ export const ES = {
   'MADRE could not take the restore point before @{agent} writes, so nothing was changed: {error}': 'MADRE no pudo tomar el punto de restauración antes de que @{agent} escriba, así que no se cambió nada: {error}',
   'Reload and settings': 'Recargar y ajustes',
   '{names} will use it when restarted: it was started before this setting existed.': '{names} tomará el cambio al reiniciarse: se abrió antes de que existiera este ajuste.',
-  'Ollama runs local AI: it searches and sums up each project\'s memory and answers as @madre, free and private. Choose which projects use it.': 'Ollama corre IA local: busca y resume la memoria de cada proyecto y contesta como @madre, gratis y privado. Elige qué proyectos la usan.',
+  'Ollama runs local AI: it searches and sums up each project\'s memory and answers as @madre, free and private. Choose which projects use it.': 'Ollama ejecuta IA local: busca y resume la memoria de cada proyecto y contesta como @madre, gratis y privado. Elige qué proyectos la usan.',
   'Which projects': 'Qué proyectos',
   'Mode': 'Modo',
   'All of them use it. Choose «One by one» or «Manual» to turn some off.': 'Todos la usan. Elige «Uno a uno» o «Manual» para apagarla en algunos.',
@@ -5247,11 +5247,11 @@ export const ES = {
     'Se apaga con el diagnóstico anónimo: Ajustes › Versión y reportes › Enviar diagnóstico anónimo · o PULSE_TELEMETRY=0',
   "madre.run · the author's usage figures": 'madre.run · los números de uso del autor',
   "The author's token, to read how many copies are on and how far new ones get. Only in the author's own copy, run from source.":
-    'El token del autor, para leer cuántas copias están encendidas y hasta dónde llegan las nuevas. Solo en la copia del autor, corrida desde el código fuente.',
+    'El token del autor, para leer cuántas copias están encendidas y hasta dónde llegan las nuevas. Solo en la copia del autor, ejecutada desde el código fuente.',
   'while the «MADRE usage» or «MADRE\'s course» widget is on Home': 'mientras el widget «Uso de MADRE» o «Rumbo de MADRE» esté en Inicio',
   "npm · the package's download counts": 'npm · las descargas del paquete',
   'Nothing but the name of MADRE\'s package, to read how many times it was downloaded. Only in the author\'s own copy, run from source.':
-    'Solo el nombre del paquete de MADRE, para leer cuántas veces se descargó. Solo en la copia del autor, corrida desde el código fuente.',
+    'Solo el nombre del paquete de MADRE, para leer cuántas veces se descargó. Solo en la copia del autor, ejecutada desde el código fuente.',
   'while the «MADRE\'s course» widget is on Home, every half hour at most': 'mientras el widget «Rumbo de MADRE» esté en Inicio, a lo mucho cada media hora',
   "Only in the author's copy": 'Solo en la copia del autor',
   // Recorrido 1.1: quien ya tenía 1.0, los avisos de la primera vez y las guías de los widgets.
@@ -5271,7 +5271,7 @@ export const ES = {
   "How busy this Mac's processor is and how much memory is free. It updates on its own.":
     'Qué tan ocupado está el procesador de esta Mac y cuánta memoria queda libre. Se actualiza solo.',
   'The servers running in your open projects and whether they answer. A project shows here when its Preview is on.':
-    'Los servidores que corren en tus proyectos abiertos y si responden. Un proyecto aparece aquí cuando tiene la Vista previa encendida.',
+    'Los servidores que funcionan en tus proyectos abiertos y si responden. Un proyecto aparece aquí cuando tiene la Vista previa encendida.',
   "How grown each open project's memory is, and its weakest side: the one thing that would improve it most.":
     'Qué tan madura está la memoria de cada proyecto abierto y su punto más débil: lo que más la mejoraría.',
   "How far the Coordinator's own record is from training a model of its own.":
@@ -5397,7 +5397,7 @@ export const ES = {
   'Copilot: let the agent you write to drive the project for a while.': 'Copiloto: deja que el agente al que le escribes conduzca el proyecto un rato.',
   'Copilot off. Each #3 message asks you to confirm again.': 'Copiloto apagado. Cada mensaje en #3 vuelve a pedirte confirmación.',
   'The agent you write to drives the project: it edits and makes plans with the other agents (each step can go up to #3 EDIT). It runs on its own only the commands that read; tests, builds and commits wait for your click.':
-    'El agente al que le escribes conduce el proyecto: edita y arma planes con los demás agentes (cada paso puede llegar hasta «#3 Editar»). Por su cuenta solo corre los comandos que leen; las pruebas, las compilaciones y guardar versiones en git esperan tu clic.',
+    'El agente al que le escribes conduce el proyecto: edita y arma planes con los demás agentes (cada paso puede llegar hasta «#3 Editar»). Por su cuenta solo ejecuta los comandos que leen; las pruebas, las compilaciones y guardar versiones en git esperan tu clic.',
   "It never deletes, never touches MADRE's folders or your secrets, and never pushes, publishes or sends anything off this computer: that stays with you.":
     'Nunca borra, nunca toca las carpetas de MADRE ni tus secretos, y nunca sube, publica ni envía nada fuera de esta computadora: eso se queda contigo.',
   'On until {time} · {left} left': 'Encendido hasta las {time} · quedan {left}',
@@ -5406,7 +5406,7 @@ export const ES = {
   'It asks you to confirm #3 only once. STOP ALL ends it.': 'Te pide confirmar #3 una sola vez. «Detener todo» lo apaga.',
   'Turn the copilot on for {time}': 'Encender el copiloto por {time}',
   'The agent you write to edits the project without asking you to confirm each message, until it ends. It runs on its own only the commands that read; tests, builds and commits wait for your click.':
-    'El agente al que le escribes edita el proyecto sin pedirte confirmar cada mensaje, hasta que termine. Por su cuenta solo corre los comandos que leen; las pruebas, las compilaciones y guardar versiones en git esperan tu clic.',
+    'El agente al que le escribes edita el proyecto sin pedirte confirmar cada mensaje, hasta que termine. Por su cuenta solo ejecuta los comandos que leen; las pruebas, las compilaciones y guardar versiones en git esperan tu clic.',
   'It never deletes, pushes, publishes or deploys; each change gets a restore point; STOP ALL ends it.':
     'Nunca borra, sube, publica ni despliega; cada cambio tiene punto de restauración; «Detener todo» lo apaga.',
   'Copilot on.': 'Copiloto encendido.',
@@ -5420,10 +5420,10 @@ export const ES = {
   'The copilot is turned on from the computer, not from the phone.': 'El copiloto se enciende desde la computadora, no desde el teléfono.',
   'Choose how long the copilot lasts: up to 24 hours.': 'Elige cuánto dura el copiloto: hasta 24 horas.',
   'The copilot is off: it ended or was stopped. Turn it on again, or send and confirm #3.': 'El copiloto está apagado: terminó o lo detuvieron. Vuelve a encenderlo o envía y confirma #3.',
-  'The copilot ran commands by itself {n} times in a row; the next ones wait for you. Write to it to go on.': 'El copiloto corrió comandos por su cuenta {n} veces seguidas; los siguientes te esperan. Escríbele para que siga.',
+  'The copilot ran commands by itself {n} times in a row; the next ones wait for you. Write to it to go on.': 'El copiloto ejecutó comandos por su cuenta {n} veces seguidas; los siguientes te esperan. Escríbele para que siga.',
   'Copilot on. Say what you want done; it edits, plans and checks on its own.': 'Copiloto encendido. Di qué quieres lograr; edita, planea y revisa por su cuenta.',
   '@madre is in the project · {version}': '@madre está en el proyecto · {version}',
-  '@madre left the project: Ollama has no chat model running': '@madre salió del proyecto: Ollama no tiene un modelo de chat corriendo',
+  '@madre left the project: Ollama has no chat model running': '@madre salió del proyecto: Ollama no tiene un modelo de chat abierto',
   // Licencia y autoría (public/attribution.js, 2026-10-15).
   'License and authorship': 'Licencia y autoría',
   'Made by {author}': 'Hecho por {author}',
@@ -5431,7 +5431,7 @@ export const ES = {
   'Read': 'Leer',
   'The source code': 'El código fuente',
   'New: Copilot': 'Nuevo: Copiloto',
-  'Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.': 'Deja que un agente trabaje solo por un rato. Presiona el robot, elige cuánto tiempo, y el agente al que le escribes podrá cambiar archivos, armar planes y correr comandos seguros sin preguntarte cada vez. Te pide permiso una sola vez.',
+  'Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.': 'Deja que un agente trabaje solo por un rato. Presiona el robot, elige cuánto tiempo, y el agente al que le escribes podrá cambiar archivos, armar planes y ejecutar comandos seguros sin preguntarte cada vez. Te pide permiso una sola vez.',
   'New: Outside tools (MCP)': 'Nuevo: Conectores (MCP)',
   'Agents can now use other apps and services: a program on this computer or one on the internet. Add them in Settings › Outside tools (MCP). If you already set some up in Claude Code, Codex, Gemini or Cursor, you can bring them over.': 'Ahora los agentes pueden usar otras apps y servicios: un programa de esta computadora o uno de internet. Agrégalos en Ajustes › Conectores (MCP). Si ya tienes alguno en Claude Code, Codex, Gemini o Cursor, puedes traerlo.',
   'New: your files stay up to date': 'Nuevo: tus archivos al día',
@@ -5488,7 +5488,7 @@ export const ES = {
   'Linux with NVIDIA': 'Linux con NVIDIA',
   'Your computer': 'Tu computadora',
   'Any Mac with an M chip. Its memory decides the size you can train, below.': 'Cualquier Mac con chip M. Su memoria decide qué tamaño puedes entrenar, abajo.',
-  'Experimental: MLX runs on Linux with an NVIDIA card (CUDA 12, compute capability 7.5 or newer, glibc 2.35, Python 3.10), but mlx-lm only promises Apple chips. Step 2 checks the card first.': 'Experimental: MLX corre en Linux con una tarjeta NVIDIA (CUDA 12, capacidad de cómputo 7.5 o mayor, glibc 2.35, Python 3.10), pero mlx-lm solo garantiza los chips de Apple. El paso 2 revisa la tarjeta primero.',
+  'Experimental: MLX runs on Linux with an NVIDIA card (CUDA 12, compute capability 7.5 or newer, glibc 2.35, Python 3.10), but mlx-lm only promises Apple chips. Step 2 checks the card first.': 'Experimental: MLX funciona en Linux con una tarjeta NVIDIA (CUDA 12, capacidad de cómputo 7.5 o mayor, glibc 2.35, Python 3.10), pero mlx-lm solo garantiza los chips de Apple. El paso 2 revisa la tarjeta primero.',
   'Export the training data': 'Exporta los datos de entrenamiento',
   'Use «Export» above. Do it again whenever the project has grown.': 'Con «Exportar», arriba. Repítelo cuando el proyecto haya crecido.',
   'Prepare Python, once': 'Prepara Python, una sola vez',
@@ -5513,8 +5513,8 @@ export const ES = {
   'Hardware': 'Equipo',
   'Model for every day': 'Modelo para el día a día',
   '{model} · Ollama downloads it as {tag}': '{model} · Ollama lo descarga como {tag}',
-  'None runs well here: the project keeps using its providers.': 'Ninguno corre bien aquí: el proyecto sigue usando sus proveedores.',
-  'Yes, slowly: it runs on the processor.': 'Sí, lento: corre en el procesador.',
+  'None runs well here: the project keeps using its providers.': 'Ninguno funciona bien aquí: el proyecto sigue usando sus proveedores.',
+  'Yes, slowly: it runs on the processor.': 'Sí, lento: funciona en el procesador.',
   'Training starts at {gb} GB.': 'Entrenar empieza en {gb} GB.',
   'Training needs an Apple chip or an NVIDIA card.': 'Entrenar necesita un chip Apple o una tarjeta NVIDIA.',
   'Needs at least {model}, from {gb} GB.': 'Necesita al menos {model}, desde {gb} GB.',
@@ -5522,12 +5522,12 @@ export const ES = {
   'Slow': 'Lento',
   'Yes': 'Sí',
   'No': 'No',
-  'Every size, to run and to train': 'Cada tamaño, para correr y para entrenar',
-  'To run': 'Para correr',
+  'Every size, to run and to train': 'Cada tamaño, para usar y para entrenar',
+  'To run': 'Para usar',
   'To train': 'Para entrenar',
   'Here': 'Aquí',
-  'runs': 'corre',
-  'runs slowly': 'corre lento',
+  'runs': 'funciona',
+  'runs slowly': 'funciona lento',
   'trains': 'entrena',
   'does not fit': 'no alcanza',
   '{gb} GB': '{gb} GB',
@@ -5631,7 +5631,7 @@ export const ES = {
   "The Coordinator's local model gives orders up to #1.": 'El modelo local del Coordinador da órdenes hasta #1.',
   'the local model proposes no connections': 'el modelo local no propone conexiones',
   'on · @{agent} · passed its exam: orders up to #1': 'encendido · @{agent} · aprobó su examen: órdenes hasta #1',
-  'The exam is already running.': 'El examen ya está corriendo.',
+  'The exam is already running.': 'El examen ya está en curso.',
   "Local AI has no chat model to examine. Download one in Local AI, or train the Coordinator's.": 'La IA local no tiene un modelo de chat que examinar. Descarga uno en IA local, o entrena el del Coordinador.',
   // Apagar MADRE, IA local y notas entregadas en Ajustes (2026-10-16).
   'Delivered notes': 'Notas entregadas',
@@ -5788,11 +5788,11 @@ export const ES = {
   '{label} went silent for {seconds}s and was stopped.': '{label} se quedó callado {seconds} s y se detuvo.',
   '{label} exited with code {code}.': '{label} se cerró con el código {code}.',
   'The API account behind this agent has no credit left': 'La cuenta de API de este agente se quedó sin saldo',
-  'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.': 'El proveedor rechazó el turno porque la llave de API con la que se mandó ya no tiene saldo. Una llave de API se cobra aparte de una suscripción: un plan Claude Pro o Max, o ChatGPT, no la paga. En OpenCode es el proveedor del modelo que pidió el turno, y un turno que no pidió ninguno corrió con el modelo predeterminado de Ajustes › Agentes › OpenCode.',
+  'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.': 'El proveedor rechazó el turno porque la llave de API con la que se mandó ya no tiene saldo. Una llave de API se cobra aparte de una suscripción: un plan Claude Pro o Max, o ChatGPT, no la paga. En OpenCode es el proveedor del modelo que pidió el turno, y un turno que no pidió ninguno ejecutó con el modelo predeterminado de Ajustes › Agentes › OpenCode.',
   'Top up that API account, or give OpenCode a model whose provider has a session that works: your ChatGPT account (openai/…), GitHub Copilot, or OpenCode\'s own free models (opencode/…). Change the default in Settings › Agents › OpenCode, or pick another model in the Write box for one turn.': 'Recarga esa cuenta de API, o dale a OpenCode un modelo cuyo proveedor tenga una sesión que funcione: tu cuenta de ChatGPT (openai/…), GitHub Copilot o los modelos gratuitos de OpenCode (opencode/…). Cambia el predeterminado en Ajustes › Agentes › OpenCode, o elige otro modelo en la caja de texto para un solo turno.',
   'OpenCode\'s free models have run out for now': 'Se terminó por ahora el uso gratis de OpenCode',
   'OpenCode\'s own free models (opencode/…) answer without an account, but only up to a limit; when it is reached OpenCode retries in silence and never answers. MADRE now stops the turn as soon as OpenCode says so, instead of waiting for the clock. Nothing in the project is wrong.': 'Los modelos gratis de OpenCode (opencode/…) contestan sin cuenta, pero solo hasta un límite; al llegar a él, OpenCode reintenta en silencio y nunca contesta. MADRE ahora corta el turno en cuanto OpenCode lo dice, en vez de esperar al reloj. En el proyecto no hay nada mal.',
-  'Connect a provider of yours to OpenCode in Settings › Agents › OpenCode (your ChatGPT account, GitHub Copilot or an API key), ask another agent, or ask @madre, which runs on this computer. The free use comes back after a while.': 'Conecta a OpenCode un proveedor tuyo en Ajustes › Agentes › OpenCode (tu cuenta de ChatGPT, GitHub Copilot o una llave de API), pregúntale a otro agente, o a @madre, que corre en esta computadora. El uso gratis vuelve después de un rato.',
+  'Connect a provider of yours to OpenCode in Settings › Agents › OpenCode (your ChatGPT account, GitHub Copilot or an API key), ask another agent, or ask @madre, which runs on this computer. The free use comes back after a while.': 'Conecta a OpenCode un proveedor tuyo en Ajustes › Agentes › OpenCode (tu cuenta de ChatGPT, GitHub Copilot o una llave de API), pregúntale a otro agente, o a @madre, que funciona en esta computadora. El uso gratis vuelve después de un rato.',
   '# the providers OpenCode can use:': '# los proveedores que OpenCode puede usar:',
   '# subscription for more free use: https://opencode.ai/go': '# suscripción para más uso gratis: https://opencode.ai/go',
   'The free use of OpenCode ran out for now: its own free models have a limit and OpenCode stopped answering. Connect a provider of yours in Settings › Agents › OpenCode, or ask @madre or another agent.': 'Se terminó por ahora el uso gratis de OpenCode: sus modelos gratis tienen un límite y OpenCode dejó de contestar. Conecta un proveedor tuyo en Ajustes › Agentes › OpenCode, o pregúntale a @madre o a otro agente.',
@@ -5839,7 +5839,7 @@ export const ES = {
   // MU-076 y la tarjeta de IA local (2026-11-03): Ollama instalado a medias.
   'Ollama was left installed halfway': 'Ollama quedó instalado a medias',
   "Ollama's install stopped before it finished, usually because the download (more than a GB) was cut by the network or ran out of time. The program is there but the part that runs the models is not, so every answer of @madre fails.":
-    'La instalación de Ollama se detuvo antes de terminar, casi siempre porque la descarga (más de 1 GB) se cortó o se quedó sin tiempo. El programa está, pero falta la parte que corre los modelos, así que cada respuesta de @madre falla.',
+    'La instalación de Ollama se detuvo antes de terminar, casi siempre porque la descarga (más de 1 GB) se cortó o se quedó sin tiempo. El programa está, pero falta la parte que ejecuta los modelos, así que cada respuesta de @madre falla.',
   'Install Ollama again from Settings › Local AI: it downloads it whole and finishes it. Your models stay where they are.':
     'Instala Ollama de nuevo desde Ajustes › IA local: lo descarga completo y lo termina. Tus modelos se quedan donde están.',
   '# Home → Settings → Local AI → Install': '# Inicio → Ajustes → IA local → Instalar',
@@ -5885,7 +5885,7 @@ export const ES = {
   'Asks every agent to go straight to the point: no long introductions and no repeating what you already know. You spend less of your plan and read faster. Turn it off whenever you want the long answer.': 'Les pide a todos los agentes que vayan al grano: sin introducciones largas ni repetir lo que ya sabes. Gastas menos de tu plan y lees más rápido. Apágalo cuando quieras la respuesta larga.',
   'How hard each question should think': 'Cuánto debe pensar cada pregunta',
   'Before you send, it suggests the thinking level your question needs: low for a quick question, high for a hard bug. It learns from your own project and never changes anything without you.': 'Antes de enviar, te sugiere cuánto debe pensar el agente: poco para una pregunta rápida, mucho para un error difícil. Aprende de tu propio proyecto y nunca cambia nada sin ti.',
-  'AI that runs on your own computer': 'IA que corre en tu propia computadora',
+  'AI that runs on your own computer': 'IA que funciona en tu propia computadora',
   'A small AI model on your computer, with Ollama. It finds things in your project\'s memory by meaning, summarizes your conversations and answers as @madre. Free, private and it works without internet.': 'Un modelo de IA pequeño en tu computadora, con Ollama. Encuentra cosas en la memoria de tu proyecto por su significado, resume tus conversaciones y contesta como @madre. Gratis, privado y funciona sin internet.',
   'Logos and banners by your agents': 'Logos y banners de tus agentes',
   'Ask in the conversation for a logo, a banner or an illustration and the agent makes it with your own Gemini key. The images are saved in your project.': 'Pide en la conversación un logo, un banner o una ilustración y el agente lo hace con tu propia llave de Gemini. Las imágenes se guardan en tu proyecto.',
@@ -5896,7 +5896,7 @@ export const ES = {
   'Your repository, at a glance': 'Tu repositorio, de un vistazo',
   'Shows how your repository stands: what changed, the last commits and the branch you are on. It only reads; it never commits for you.': 'Muestra cómo está tu repositorio: qué cambió, las últimas versiones guardadas y la rama en la que estás. Solo lee; nunca guarda versiones por ti.',
   'An agent\'s commands, one press away': 'Comandos de tus agentes, en un clic',
-  'When an agent needs a command it cannot run in its mode, it asks you here. You see the exact command and run it with one press; MADRE takes a restore point first.': 'Cuando un agente necesita un comando que no puede correr en su modo, te lo pide aquí. Ves el comando exacto y lo corres con un clic; MADRE toma antes un punto de restauración.',
+  'When an agent needs a command it cannot run in its mode, it asks you here. You see the exact command and run it with one press; MADRE takes a restore point first.': 'Cuando un agente necesita un comando que no puede ejecutar en su modo, te lo pide aquí. Ves el comando exacto y lo ejecutas con un clic; MADRE toma antes un punto de restauración.',
   'Answer the agents with one press': 'Contesta a los agentes con un clic',
   'When an agent needs you to decide, it shows the options as buttons. You press one and the conversation goes on.': 'Cuando un agente necesita que decidas, te muestra las opciones como botones. Pulsas una y la conversación sigue.',
   'Pick up where you left off': 'Retoma donde te quedaste',
@@ -6077,7 +6077,7 @@ export const ES = {
   'What its code reaches for': 'A qué llega su código',
   'Nothing beyond what MADRE hands every module.': 'Nada más allá de lo que MADRE le da a todo módulo.',
   'Fields MADRE does not know: {list}': 'Campos que MADRE no conoce: {list}',
-  'Checked by MADRE (src/market-check.mjs). A person still reads the code before it is signed: an installed module runs in a separate process, but Node cannot guarantee containment of malicious code.': 'Revisado por MADRE (src/market-check.mjs). Una persona lee el código antes de firmarlo: un módulo instalado corre en un proceso separado, pero Node no garantiza contener código malicioso.',
+  'Checked by MADRE (src/market-check.mjs). A person still reads the code before it is signed: an installed module runs in a separate process, but Node cannot guarantee containment of malicious code.': 'Revisado por MADRE (src/market-check.mjs). Una persona lee el código antes de firmarlo: un módulo instalado se ejecuta en un proceso aparte, pero Node no garantiza contener código malicioso.',
   'Only a module you made can be sent to the Market.': 'Solo un módulo hecho por ti se puede enviar al Mercado.',
   '{name} came from the Market: its author sends its new versions.': '{name} vino del Mercado: sus versiones nuevas las envía su autor.',
   'The file of {name} is no longer where it was.': 'El archivo de {name} ya no está donde estaba.',
@@ -6218,7 +6218,7 @@ export const ES = {
   '… still running · {seconds}s · {note}': '… sigue trabajando · {seconds} s · {note}',
   'installer is quiet (npm install or git status can take a while)': 'la instalación no dice nada (npm install o git status pueden tardar)',
   'the sign-in is waiting on you: finish it in the page that opened': 'el inicio de sesión te espera: termínalo en la página que se abrió',
-  'Ollama is not running: open the Ollama app or run `ollama serve`, then check again.': 'Ollama no está corriendo: abre la app de Ollama o ejecuta `ollama serve`, y luego revisa otra vez.',
+  'Ollama is not running: open the Ollama app or run `ollama serve`, then check again.': 'Ollama no está abierto: abre la app de Ollama o ejecuta `ollama serve`, y luego revisa otra vez.',
   'Nothing was set. Ask any agent for one with /reminders.': 'No se guardó nada. Pídele uno a cualquier agente con /recordatorios.',
   '<what to note>': '<qué anotar>',
   'Ask the agent for a note: it writes it and it opens as a colored note.': 'Pídele una nota al agente: la escribe y se abre como nota de color.',
@@ -6263,7 +6263,7 @@ export const ES = {
   'With a code': 'Con un código',
   'OpenAI API key': 'Llave de API de OpenAI',
   'Opens your browser to sign in with your ChatGPT account.': 'Abre tu navegador para conectar tu cuenta de ChatGPT.',
-  'Gives you a code to type on OpenAI\'s page, from this or any other device. Use it when MADRE runs on another computer.': 'Te da un código para escribir en la página de OpenAI, desde este o cualquier otro dispositivo. Úsalo cuando MADRE corre en otra computadora.',
+  'Gives you a code to type on OpenAI\'s page, from this or any other device. Use it when MADRE runs on another computer.': 'Te da un código para escribir en la página de OpenAI, desde este o cualquier otro dispositivo. Úsalo cuando MADRE funciona en otra computadora.',
   'The key is handed to Codex itself, which keeps it in its own file, readable only by you. MADRE keeps no copy. It replaces the account Codex was signed in with, here and in your own terminal.': 'La llave se le entrega al propio Codex, que la guarda en su archivo, que solo tú puedes leer. MADRE no se queda con ninguna copia. Reemplaza la cuenta con la que Codex estaba conectado, aquí y en tu propia terminal.',
   'MADRE was started with an Ollama address of its own (PULSE_OLLAMA_HOST or OLLAMA_HOST). Start it without it to choose one here.': 'MADRE se inició con su propia dirección de Ollama (PULSE_OLLAMA_HOST u OLLAMA_HOST). Iníciala sin ella para elegir una aquí.',
   'This computer': 'Esta computadora',
@@ -6286,7 +6286,7 @@ export const ES = {
   'Left for later': 'Pendiente para después',
   'Skip for now': 'Saltar por ahora',
   'It did not finish.': 'No terminó.',
-  'Where MADRE runs': 'Dónde corre MADRE',
+  'Where MADRE runs': 'Dónde funciona MADRE',
   'Graphics card': 'Tarjeta gráfica',
   'Free space': 'Espacio libre',
   '{n} GB free': '{n} GB libres',
@@ -6297,9 +6297,9 @@ export const ES = {
   'Inside a container': 'Dentro de un contenedor',
   'Apple chip: the AI uses the computer\'s memory': 'Chip Apple: la IA usa la memoria de la computadora',
   'None the AI can use': 'Ninguna que la IA pueda usar',
-  'MADRE runs in a virtual machine: an AI here runs slower than on the computer itself. If that computer runs Windows, MADRE works better in WSL.': 'MADRE corre en una máquina virtual: aquí una IA va más lenta que en la computadora misma. Si esa computadora tiene Windows, MADRE funciona mejor con WSL.',
+  'MADRE runs in a virtual machine: an AI here runs slower than on the computer itself. If that computer runs Windows, MADRE works better in WSL.': 'MADRE funciona en una máquina virtual: aquí una IA va más lenta que en la computadora misma. Si esa computadora tiene Windows, MADRE funciona mejor con WSL.',
   'You\'re connected from another computer. Some agents connect with a code instead of opening a page; each one says so.': 'Entraste desde otra computadora. Algunos agentes se conectan con un código en lugar de abrir una página; cada uno te lo indica.',
-  'MADRE runs inside a container: what it installs stays in that container.': 'MADRE corre dentro de un contenedor: lo que instale se queda en ese contenedor.',
+  'MADRE runs inside a container: what it installs stays in that container.': 'MADRE funciona dentro de un contenedor: lo que instale se queda en ese contenedor.',
   'Without agents, MADRE cannot work for you.': 'Sin agentes, MADRE no puede trabajar por ti.',
   'Sign in with your Google account (Workspace / business) or paste a Gemini API key from Google AI Studio, free or paid (recommended for personal accounts).': 'Inicia sesión con tu cuenta de Google (Workspace / empresas) o pega una llave de API de Google AI Studio, gratuita o de paga (recomendada para cuentas personales).',
   'Cursor installs with its own installer. For your safety MADRE does not run installers downloaded from the internet: copy the line below into a terminal (the window where you type commands), once, then press «I did it». Or skip it: it is optional.': 'Cursor se instala con su propio instalador. Por tu seguridad, MADRE no ejecuta instaladores bajados de internet: copia la línea de abajo en una terminal (la ventana donde se escriben comandos), una sola vez, y luego pulsa «Ya lo hice». O sáltalo: es opcional.',
@@ -6376,20 +6376,20 @@ export const ES = {
   '{agent} does not take a key here: it signs in with a click.': '{agent} no usa llave aquí: se conecta con un clic.',
   // Diagnostics for the way from `npx madre` to a MADRE that is ready (1.0.6, troubleshooting.js MU-061..072).
   'See how to fix it': 'Ver cómo arreglarlo',
-  'MADRE runs here on Linux, inside Windows (WSL). Your Windows browser opens it directly.': 'MADRE corre aquí en Linux, dentro de Windows (WSL). Tu navegador de Windows la abre directo.',
-  'On Windows, MADRE runs inside WSL2, the Linux that comes with Windows 10 and 11. It does not run on Windows directly.': 'En Windows, MADRE funciona dentro de WSL2, el Linux que traen Windows 10 y 11. No corre directo en Windows.',
+  'MADRE runs here on Linux, inside Windows (WSL). Your Windows browser opens it directly.': 'MADRE funciona aquí en Linux, dentro de Windows (WSL). Tu navegador de Windows la abre directo.',
+  'On Windows, MADRE runs inside WSL2, the Linux that comes with Windows 10 and 11. It does not run on Windows directly.': 'En Windows, MADRE funciona dentro de WSL2, el Linux que traen Windows 10 y 11. No funciona directo en Windows.',
   '# On Windows, MADRE runs inside WSL2, Linux inside Windows: see «MADRE on Windows».': '# En Windows, MADRE funciona dentro de WSL2, Linux dentro de Windows: mira «MADRE en Windows».',
   '# in Ubuntu (WSL):': '# en Ubuntu (WSL):',
   '# the official app, which opens by itself with the Mac: https://ollama.com/download': '# la app oficial, que se abre sola con la Mac: https://ollama.com/download',
   '# or with Homebrew:': '# o con Homebrew:',
   'The browser did not open': 'El navegador no se abrió',
-  'MADRE opens its page in the browser of the computer it runs on. A Linux without a screen has none, a virtual machine may have none, and from inside WSL it asks Windows for its own, which does not always answer. When no browser opens, the terminal prints the address to open by hand: MADRE is running all the same.': 'MADRE abre su página en el navegador de la computadora donde corre. Un Linux sin pantalla no tiene, una máquina virtual puede no tener, y desde WSL le pide a Windows el suyo, que no siempre contesta. Cuando no se abre ninguno, la terminal escribe la dirección para abrirla a mano: MADRE ya está corriendo igual.',
+  'MADRE opens its page in the browser of the computer it runs on. A Linux without a screen has none, a virtual machine may have none, and from inside WSL it asks Windows for its own, which does not always answer. When no browser opens, the terminal prints the address to open by hand: MADRE is running all the same.': 'MADRE abre su página en el navegador de la computadora donde funciona. Un Linux sin pantalla no tiene, una máquina virtual puede no tener, y desde WSL le pide a Windows el suyo, que no siempre contesta. Cuando no se abre ninguno, la terminal escribe la dirección para abrirla a mano: MADRE ya se está ejecutando igual.',
   'Copy the address the terminal printed (it ends in /salas) and open it in your browser. In WSL, open it in your Windows browser, with localhost instead of 127.0.0.1.': 'Copia la dirección que escribió la terminal (termina en /salas) y ábrela en tu navegador. En WSL, ábrela en tu navegador de Windows, con localhost en lugar de 127.0.0.1.',
   '# the port is the one the terminal printed': '# el puerto es el que escribió la terminal',
   '# with no screen here, open that address in a browser on this computer': '# sin pantalla aquí, abre esa dirección en un navegador de esta computadora',
   '# so MADRE opens it by itself next time:': '# para que MADRE lo abra sola la próxima vez:',
-  'MADRE runs on another computer (SSH)': 'MADRE corre en otra computadora (SSH)',
-  'You reached the computer where MADRE runs from another one, over SSH. MADRE listens only on its own computer (127.0.0.1), on purpose: nothing on your network can reach it. So the browser on your computer needs a tunnel, which SSH makes with one command. The terminal printed it with your user, your server and the port.': 'Entraste a la computadora donde corre MADRE desde otra, por SSH. MADRE solo escucha en su propia computadora (127.0.0.1), a propósito: nada de tu red puede llegar a ella. Por eso el navegador de tu computadora necesita un túnel, que SSH hace con un comando. La terminal lo escribió con tu usuario, tu servidor y el puerto.',
+  'MADRE runs on another computer (SSH)': 'MADRE funciona en otra computadora (SSH)',
+  'You reached the computer where MADRE runs from another one, over SSH. MADRE listens only on its own computer (127.0.0.1), on purpose: nothing on your network can reach it. So the browser on your computer needs a tunnel, which SSH makes with one command. The terminal printed it with your user, your server and the port.': 'Entraste a la computadora donde funciona MADRE desde otra, por SSH. MADRE solo escucha en su propia computadora (127.0.0.1), a propósito: nada de tu red puede llegar a ella. Por eso el navegador de tu computadora necesita un túnel, que SSH hace con un comando. La terminal lo escribió con tu usuario, tu servidor y el puerto.',
   'On your own computer, open a new terminal, paste the command, leave it open, and open the address in your browser. Each project you open uses one more port: add it to the same command.': 'En tu computadora, abre otra terminal, pega el comando, déjala abierta y abre la dirección en tu navegador. Cada proyecto que abras usa un puerto más: agrégalo al mismo comando.',
   '# on YOUR computer, in a new terminal (leave it open):': '# en TU computadora, en otra terminal (déjala abierta):',
   '# then open http://127.0.0.1:5317/salas': '# luego abre http://127.0.0.1:5317/salas',
@@ -6421,9 +6421,9 @@ export const ES = {
   '# or nvm, with no administrator: https://github.com/nvm-sh/nvm': '# o nvm, sin administrador: https://github.com/nvm-sh/nvm',
   'The sign-in did not finish': 'No se terminó de conectar',
   'Connecting an agent opens its page and waits for you to finish there. It stops if it waits too long (15 minutes), if you cancel it, or if the page was opened on another computer and its code never came back. Nothing is wrong with the account.': 'Conectar un agente abre su página y espera a que termines ahí. Se detiene si espera demasiado (15 minutos), si lo cancelas, o si la página se abrió en otra computadora y su código nunca regresó. La cuenta no tiene ningún problema.',
-  'Start it again from Settings › Agents and finish it on the page that opens. If MADRE runs on another computer, choose «With a code» (Codex) or paste back the code the page gives you (Claude); for Gemini, paste an API key instead.': 'Empieza de nuevo desde Ajustes › Agentes y termina en la página que se abre. Si MADRE corre en otra computadora, elige «Con un código» (Codex) o pega aquí el código que te dé la página (Claude); para Gemini, pega una llave de acceso (API key).',
+  'Start it again from Settings › Agents and finish it on the page that opens. If MADRE runs on another computer, choose «With a code» (Codex) or paste back the code the page gives you (Claude); for Gemini, paste an API key instead.': 'Empieza de nuevo desde Ajustes › Agentes y termina en la página que se abre. Si MADRE funciona en otra computadora, elige «Con un código» (Codex) o pega aquí el código que te dé la página (Claude); para Gemini, pega una llave de acceso (API key).',
   '# Home → Settings → Agents → Sign in again': '# Inicio → Ajustes → Agentes → Iniciar sesión de nuevo',
-  '# or in a terminal on the computer where MADRE runs:': '# o en una terminal de la computadora donde corre MADRE:',
+  '# or in a terminal on the computer where MADRE runs:': '# o en una terminal de la computadora donde funciona MADRE:',
   'Ollama does not start': 'Ollama no arranca',
   'Nothing answers on Ollama\'s port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, on Linux its service did not start, or it is not installed yet.': 'Nada contesta en el puerto de Ollama (11434). Casi siempre está cerrado (en una Mac, la app no está abierta), otra copia de Ollama ya ocupa el puerto, en Linux su servicio no arrancó, o aún no está instalado.',
   'On a Mac, open the Ollama app. On Linux, start its service. Then press «I did it», or Check again in Settings › Local AI.': 'En una Mac, abre la app de Ollama. En Linux, enciende su servicio. Luego pulsa «Ya lo hice», o Revisar otra vez en Ajustes › IA local.',
@@ -6448,10 +6448,10 @@ export const ES = {
   '# inside WSL: keep the project in Linux': '# dentro de WSL: guarda el proyecto en Linux',
   '# then add ~/projects/<project> in Home': '# luego agrega ~/projects/<project> en Inicio',
   'MADRE on Windows': 'MADRE en Windows',
-  'On Windows, MADRE runs inside WSL2 (Windows Subsystem for Linux), the Linux that comes with Windows 10 and 11. Inside it MADRE works as on any Linux, and opens in your Windows browser. It does not run on Windows directly.': 'En Windows, MADRE funciona dentro de WSL2 (Subsistema de Windows para Linux), el Linux que traen Windows 10 y 11. Dentro de él, MADRE funciona como en cualquier Linux y se abre en tu navegador de Windows. No corre directo en Windows.',
+  'On Windows, MADRE runs inside WSL2 (Windows Subsystem for Linux), the Linux that comes with Windows 10 and 11. Inside it MADRE works as on any Linux, and opens in your Windows browser. It does not run on Windows directly.': 'En Windows, MADRE funciona dentro de WSL2 (Subsistema de Windows para Linux), el Linux que traen Windows 10 y 11. Dentro de él, MADRE funciona como en cualquier Linux y se abre en tu navegador de Windows. No funciona directo en Windows.',
   'Download MADRE\'s installer from madre.run/windows and open it with a double click: it turns WSL on, prepares MADRE\'s Linux and leaves MADRE in the Start menu, with no terminal. Keep your projects inside Linux, not in /mnt/c.': 'Descarga el instalador de MADRE en madre.run/windows y ábrelo con doble clic: enciende WSL, prepara el Linux de MADRE y deja MADRE en el menú Inicio, sin terminal. Guarda tus proyectos dentro de Linux, no en /mnt/c.',
   '# this is for Windows': '# esto es para Windows',
-  '# you are already in WSL: MADRE runs here as on any Linux': '# ya estás en WSL: MADRE corre aquí como en cualquier Linux',
+  '# you are already in WSL: MADRE runs here as on any Linux': '# ya estás en WSL: MADRE funciona aquí como en cualquier Linux',
   '# the installer, a double click and no terminal:': '# el instalador, con doble clic y sin terminal:',
   '# or by hand: in PowerShell, as administrator, once:': '# o a mano: en PowerShell, como administrador, una vez:',
   '# restart, open «Ubuntu» from the Start menu, and in it:': '# reinicia, abre «Ubuntu» desde el menú Inicio y, ahí:',
@@ -6500,7 +6500,7 @@ export const ES = {
   'See it as neurons': 'Verlo como neuronas',
   // Unlocking #3 and #4 with a confirmation (2026-10-28).
   'Confirm twice': 'Confirmar dos veces',
-  'With #4 the agent may run commands, publish and deploy: what leaves your Mac does not come back. That is why it asks you to confirm twice.': 'Con #4 el agente puede correr comandos, publicar y desplegar: lo que sale de tu Mac no regresa. Por eso te pide confirmar dos veces.',
+  'With #4 the agent may run commands, publish and deploy: what leaves your Mac does not come back. That is why it asks you to confirm twice.': 'Con #4 el agente puede ejecutar comandos, publicar y desplegar: lo que sale de tu Mac no regresa. Por eso te pide confirmar dos veces.',
   'Confirm once more to open it: what leaves your computer does not come back.': 'Confirma una vez más para abrirlo: lo que sale de tu computadora no regresa.',
   'Yes, open #4': 'Sí, abrir #4',
   'Two clicks: OPEN, then a second confirmation, because what leaves the computer does not come back.': 'Dos clics: ABRIR y una segunda confirmación, porque lo que sale de la computadora no regresa.',
@@ -6537,7 +6537,7 @@ export const ES = {
   'Quick test · you judge without knowing which is which': 'Prueba rápida · juzgas sin saber cuál es cuál',
   // Anonymous diagnostics (2026-10-28).
   'Anonymous diagnostics': 'Diagnóstico anónimo',
-  'So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE\'s modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.': 'Para que el autor sepa qué falla y qué se usa, sin preguntarte nada: los errores sin datos privados; cuántos turnos, modos y funciones se usaron; cómo corre esta copia (sistema, memoria, agentes, cuántos proyectos, módulos de MADRE) y si se instaló, se actualizó o se desinstaló; y, mientras MADRE está abierta, cada cinco minutos, que está encendida. Nunca lo que escribes, tus proyectos ni tus archivos.',
+  'So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE\'s modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.': 'Para que el autor sepa qué falla y qué se usa, sin preguntarte nada: los errores sin datos privados; cuántos turnos, modos y funciones se usaron; cómo funciona esta copia (sistema, memoria, agentes, cuántos proyectos, módulos de MADRE) y si se instaló, se actualizó o se desinstaló; y, mientras MADRE está abierta, cada cinco minutos, que está encendida. Nunca lo que escribes, tus proyectos ni tus archivos.',
   'Send anonymous diagnostics': 'Enviar diagnóstico anónimo',
   'Off: MADRE was started with PULSE_TELEMETRY=0.': 'Apagado: MADRE se inició con PULSE_TELEMETRY=0.',
   'Once a day, and soon after an error never seen before, to madre.run. Turning it off deletes what was waiting.': 'Una vez al día, y poco después de un error nunca visto, a madre.run. Si lo apagas, se borra lo que estaba esperando.',
@@ -6591,7 +6591,7 @@ export const ES = {
   'You can close this tab. Your projects are where they were.': 'Puedes cerrar esta pestaña. Tus proyectos siguen donde estaban.',
   'What the AIs created is still in each project, in .pulse/out.': 'Lo que crearon las IAs sigue en cada proyecto, en .pulse/out.',
   'To take the program away as well, type this in your Terminal:': 'Para quitar también el programa, escribe esto en tu Terminal:',
-  'This copy runs from its source folder; delete it yourself if you no longer want it: {folder}': 'Esta copia corre desde su carpeta de código; bórrala tú si ya no la quieres: {folder}',
+  'This copy runs from its source folder; delete it yourself if you no longer want it: {folder}': 'Esta copia funciona desde su carpeta de código; bórrala tú si ya no la quieres: {folder}',
   'If you ever want it back: npx @jossuealcala/madre': 'Si algún día la quieres de vuelta: npx @jossuealcala/madre',
   'Uninstall MADRE': 'Desinstalar MADRE',
   'Takes away what MADRE put on this computer: its conversations, memory and settings, and its folder inside your projects. Your projects and your AIs stay.': 'Borra lo que MADRE puso en esta computadora: sus conversaciones, memoria y ajustes, y su carpeta dentro de tus proyectos. Tus proyectos y tus IAs se quedan.',
@@ -6625,10 +6625,10 @@ export const ES = {
   'the project rejected it': 'el proyecto lo rechazó',
   '{who} is not signed in, so the question went to {to}.': '{who} no tiene sesión, así que la pregunta fue a {to}.',
   // «En marcha» (2026-10-30): lo que MADRE está haciendo, en todos tus proyectos abiertos.
-  'Running now': 'En marcha',
+  'Running now': 'Plan actual',
   'Stop the download': 'Detener la descarga',
-  'Running now · {n}': 'En marcha · {n}',
-  'Running now · nothing at the moment': 'En marcha · nada por ahora',
+  'Running now · {n}': 'Plan actual · {n}',
+  'Running now · nothing at the moment': 'Plan actual · nada por ahora',
   'Asking every open project…': 'Preguntando a tus proyectos abiertos…',
   'Reminders coming up': 'Recordatorios por venir',
   'A turn of {agent}': 'Un turno de {agent}',
@@ -6645,17 +6645,17 @@ export const ES = {
   'It ends on its own; you can keep working.': 'Termina solo; puedes seguir trabajando.',
   'Listening on {host}:{port}': 'Escuchando en {host}:{port}',
   'MADRE did not answer. Trying again…': 'MADRE no respondió. Lo intento otra vez…',
-  'Nothing running': 'Nada en marcha',
+  'Nothing running': 'Nada por ahora',
   'Plan by {agent} · {n} steps': 'Plan de {agent} · {n} pasos',
   'Ran out of time': 'Se le acabó el tiempo',
-  'Running…': 'Corriendo…',
+  'Running…': 'En ejecución…',
   'Step {step} of {total}': 'Paso {step} de {total}',
   'Stop everything': 'Detener todo',
   'Stop everything? Yes': '¿Detener todo? Sí',
   'Stop the plan': 'Detener el plan',
   'Stop the server': 'Detener el servidor',
   'Stop': 'Detener',
-  'When an agent answers, a command runs or something installs, you will see it here and can stop it.': 'Cuando una IA responda, corra un comando o algo se instale, lo verás aquí y podrás detenerlo.',
+  'When an agent answers, a command runs or something installs, you will see it here and can stop it.': 'Cuando una IA responda, se ejecute un comando o algo se instale, lo verás aquí y podrás detenerlo.',
   'With your permission #{mode} · the limit counts from when it started': 'Con tu permiso #{mode} · el límite se cuenta desde que empezó',
   'With your permission #{mode}': 'Con tu permiso #{mode}',
   'Working on it…': 'Trabajando…',
@@ -6670,7 +6670,7 @@ export const ES = {
   'reads the answers and closes the plan': 'lee las respuestas y cierra el plan',
   'Other projects are stopped from this computer.': 'Los demás proyectos se detienen desde esta computadora.',
   'That project is not open any more.': 'Ese proyecto ya no está abierto.',
-  'That is not running any more.': 'Eso ya no está en marcha.',
+  'That is not running any more.': 'Eso ya terminó.',
   // Rumbo de MADRE, el modelo del autor (2026-11-01, src/rumbo.mjs).
   'the first week the diagnostics can tell': 'la primera semana que el diagnóstico lo puede decir',
   'copies asked an AI something this week': 'copias le pidieron algo a una IA esta semana',
@@ -6802,7 +6802,7 @@ export const ES = {
   'Answers through the provider\'s API: it does not read the project or attachments, and writes nothing. Install the CLI for the rest.': 'Contesta por la API del proveedor: no lee el proyecto ni los adjuntos, y no escribe nada. Para lo demás, instala el CLI.',
   'Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.': 'El servidor de modelos de Ollama no contestó (un error de su lado). No es tu conexión: vuelve a intentarlo en unos minutos; lo que ya llegó se queda.',
   'That restore point is not known to this project.': 'Este proyecto no conoce ese punto de restauración.',
-  'That EDIT turn is still running: press STOP ALL first.': 'Ese turno de «Editar» sigue corriendo: pulsa primero «Detener todo».',
+  'That EDIT turn is still running: press STOP ALL first.': 'Ese turno de «Editar» se sigue ejecutando: pulsa primero «Detener todo».',
   'Project restored to the restore point taken before `{command}`: {restored} file(s) restored, {removed} removed.': 'Proyecto restaurado al punto de restauración de antes de `{command}`: {restored} archivo(s) restaurado(s), {removed} quitado(s).',
   'Project restored to the restore point taken before @{agent}\'s EDIT turn: {restored} file(s) restored, {removed} removed.': 'Proyecto restaurado al punto de restauración de antes del turno de «Editar» de @{agent}: {restored} archivo(s) restaurado(s), {removed} quitado(s).',
   'Incognito': 'Incógnito',
@@ -6853,7 +6853,7 @@ export const ES = {
   'Settings › Version › Notices from MADRE turns off the information and important ones; security notices always show · PULSE_NOTICES=0 for development': 'Ajustes › Versión › Avisos de MADRE apaga los de información y los importantes; los de seguridad se muestran siempre · PULSE_NOTICES=0 para desarrollo',
   // Grok (2026-11-06): solo lee y contesta.
   'xAI refused this Grok account (403). Sign in again (grok logout, then grok login); if it keeps happening, check at grok.com that your plan is active.': 'xAI rechazó esta cuenta de Grok (403). Vuelve a iniciar sesión (grok logout y luego grok login); si sigue pasando, revisa en grok.com que tu plan esté activo.',
-  'Grok is not signed in. Sign in from Settings › Agents › Grok, or run grok login in a terminal.': 'Grok no tiene sesión. Inicia sesión en Ajustes › Agentes › Grok, o corre grok login en una terminal.',
+  'Grok is not signed in. Sign in from Settings › Agents › Grok, or run grok login in a terminal.': 'Grok no tiene sesión. Inicia sesión en Ajustes › Agentes › Grok, o ejecuta grok login en una terminal.',
   'Grok says this account has reached its usage limit for now.': 'Grok dice que esta cuenta llegó a su límite de uso por ahora.',
   'Grok stopped the turn: a step needed an approval that a turn cannot give.': 'Grok detuvo el turno: un paso necesitaba una aprobación que un turno no puede dar.',
   'Grok returned an error: {error}': 'Grok devolvió un error: {error}',
@@ -6951,7 +6951,7 @@ export const ES = {
   "Do you already pay for an AI?": "¿Ya pagas alguna IA?",
   "If you already pay for ChatGPT, Claude or Grok, you use it here with the same account. Nothing more to pay.": "Si ya pagas ChatGPT, Claude o Grok, aquí la usas con la misma cuenta. No hay que pagar nada más.",
   "What does an AI do in here?": "¿Qué hace una IA aquí adentro?",
-  "The same as in the chat you already know, but with your files at hand: it reads them, sorts them and writes what you ask. It never touches anything without the permission you gave it. If a command has to run, which is a written order for the computer, the AI runs it: you never open the terminal.": "Lo mismo que en el chat que ya conoces, pero con tus archivos a la mano: los lee, los ordena y escribe lo que le pidas. Nunca toca algo sin el permiso que tú le diste. Si hay que correr un comando, que es una orden escrita para la computadora, lo corre ella: tú no abres la terminal.",
+  "The same as in the chat you already know, but with your files at hand: it reads them, sorts them and writes what you ask. It never touches anything without the permission you gave it. If a command has to run, which is a written order for the computer, the AI runs it: you never open the terminal.": "Lo mismo que en el chat que ya conoces, pero con tus archivos a la mano: los lee, los ordena y escribe lo que le pidas. Nunca toca algo sin el permiso que tú le diste. Si hay que ejecutar un comando, que es una orden escrita para la computadora, lo ejecuta ella: tú no abres la terminal.",
   "{n} on their way. They stay where they are; MADRE only learns where to find them.": "{n} en camino. Se quedan donde están; MADRE solo aprende dónde buscarlas.",
   "Mark the folders you want to bring.": "Marca las carpetas que quieras traer.",
   "{n} folders": "{n} carpetas",
@@ -7020,4 +7020,12 @@ export const ES = {
   "The AI on your computer has arrived.": "La IA de tu computadora ya llegó.",
   "Say hello": "Salúdala",
   "Ideas for {name}": "Ideas para {name}",
+  // Primer clic en las teclas principales (1.1, 2026-11-08).
+  "Everything MADRE is doing right now in your open projects: an AI answering, a command being run, something installing. If something takes too long, you stop it from here.": "Todo lo que MADRE está haciendo ahora en tus proyectos abiertos: una IA contestando, un comando ejecutándose, algo instalándose. Si algo tarda demasiado, desde aquí lo detienes.",
+  "Extra features for MADRE, made by its author and by the community: images, reminders, GitHub and more. Each one tells you what it does and what it touches before you install it.": "Funciones extra para MADRE, hechas por su autor y por la comunidad: imágenes, recordatorios, GitHub y más. Cada una te dice qué hace y qué toca antes de que la instales.",
+  "The modules you already have, and in which projects each one is on. Switch one on only where you need it.": "Los módulos que ya tienes y en qué proyectos está prendido cada uno. Prende uno solo donde lo necesites.",
+  "Each circle is one of your AIs, with a light that says whether it is ready. One that looks switched off still needs you to sign in: press it and MADRE takes you there.": "Cada círculo es una de tus IAs, con una luz que dice si está lista. Si se ve apagada, le falta iniciar sesión: tócala y MADRE te lleva ahí.",
+  "Add an image or a file to your message: a screenshot of what is failing, a PDF, a spreadsheet. You can also drop it on the box or paste it with ⌘ V.": "Súmale a tu mensaje una imagen o un archivo: una captura de lo que falla, un PDF, una hoja de cálculo. También puedes soltarlo sobre la caja o pegarlo con ⌘ V.",
+  "Model and effort": "Modelo y esfuerzo",
+  "Under the box you choose how far the AI may go, which model answers and how hard it thinks. A bigger model and more effort answer better, but take longer.": "Debajo de la caja eliges hasta dónde puede llegar la IA, qué modelo contesta y qué tanto piensa. Un modelo más grande y más esfuerzo contestan mejor, pero tardan más.",
 };

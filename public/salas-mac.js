@@ -2951,6 +2951,31 @@ homeTour.firstOpen('home-settings', ui.gear, {
   title: () => t('Home settings'),
   text: () => t('How Home looks and what its bar holds, your agents, the Coordinator, which projects use the local AI, your projects and the version. ⌘ , opens it from anywhere.'),
 });
+// The other main keys of Home (1.1, 2026-11-08): what each one is, said once, the first time it is pressed.
+homeTour.firstOpen('home-activity', $('sm-tb-activity'), {
+  opened: () => document.querySelector('.activity-panel:not([hidden])'),
+  title: () => t('Running now'),
+  text: () => t('Everything MADRE is doing right now in your open projects: an AI answering, a command being run, something installing. If something takes too long, you stop it from here.'),
+});
+homeTour.firstOpen('home-market', $('sm-tb-market'), {
+  opened: () => document.querySelector('.mk[role="dialog"]'),
+  title: () => t('Market'),
+  text: () => t('Extra features for MADRE, made by its author and by the community: images, reminders, GitHub and more. Each one tells you what it does and what it touches before you install it.'),
+  after: 700,
+});
+homeTour.firstOpen('home-modules', $('sm-tb-modules'), {
+  opened: () => document.querySelector('.mk[role="dialog"]'),
+  title: () => t('Modules'),
+  text: () => t('The modules you already have, and in which projects each one is on. Switch one on only where you need it.'),
+  after: 700,
+});
+homeTour.firstOpen('home-agents', ui.bar.agents, {
+  // Beside the list of agents it opened, under its title: Settings here is a window, not a modal sheet.
+  opened: () => topSheet()?.querySelector('.settings-detail .settings-detail-head, .settings-detail') ?? topSheet(),
+  inside: (box) => box.closest('.sm-settings-window') ?? box,
+  title: () => t('Your AIs'),
+  text: () => t('Each circle is one of your AIs, with a light that says whether it is ready. One that looks switched off still needs you to sign in: press it and MADRE takes you there.'),
+});
 // What each widget shows, the first time it is on Home: its own line, and how to change it.
 const WIDGET_GUIDE = {
   system: () => t('How busy this Mac\'s processor is and how much memory is free. It updates on its own.'),
