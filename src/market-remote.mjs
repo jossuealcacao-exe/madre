@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { t } from './i18n.mjs';
 import { MARKET_PUBLIC_KEY } from './market-key.mjs';
 import { mayInstall } from './market-license.mjs';
+import { MAX_FILES as MAX_SKILL_FILES, SKILL_FILES, installSkill, declaredBy as skillDeclares, readSkillText, removeSkill, runnable, safePath } from './skills.mjs';
 
 export const MARKET_URL = 'https://madre.run/mercado/catalogo.json';
 const MAX_CATALOG = 1024 * 1024;
@@ -147,10 +148,42 @@ export function readCatalog(text, { url = MARKET_URL } = {}) {
     if (!href || !SHA.test(raw.file?.sha256 ?? '') || typeof raw.file?.factory !== 'string' || raw.file.factory.length > MAX_SIGNATURE) continue;
     builtins.push({ id: raw.id, version: raw.version, sdk: raw.sdk, changes: words(raw.changes, 400), file: { url: href, sha256: raw.file.sha256, size: Number(raw.file.size) || null, factory: raw.file.factory.trim() } });
   }
+  // SKILLS (2026-11-08, H-4): ways of working, not code. A list of their own, like `builtins`, so a
+  // MADRE that does not know them (1.1.2 and before) never sees one as a module to install. Each
+  // file is pinned by its own sha256 — there is no archive to unpack, so there is no path to climb
+  // out of and no bomb to unzip — and every path is checked as the installer checks it.
+  const skills = [];
+  for (const raw of (Array.isArray(data.skills) ? data.skills : []).slice(0, 200)) {
+    if (!ID.test(raw?.id ?? '') || typeof raw.version !== 'string' || !/^\d+\.\d+\.\d+$/.test(raw.version)) continue;
+    const files = [];
+    let weight = 0;
+    for (const file of (Array.isArray(raw.files) ? raw.files : []).slice(0, MAX_SKILL_FILES)) {
+      const href = fileUrl(file?.url, url);
+      if (!href || !safePath(file?.path) || !SHA.test(file?.sha256 ?? '')) { files.length = 0; break; }
+      weight += Number(file.size) || 0;
+      files.push({ path: String(file.path), url: href, sha256: file.sha256, size: Number(file.size) || null });
+    }
+    // Its own page is what makes it a skill; without it there is nothing to read and nothing to run.
+    if (!files.length || !files.some((file) => SKILL_FILES.includes(file.path)) || weight > MAX_MODULE) continue;
+    skills.push({
+      id: raw.id, version: raw.version, files,
+      shelf: ID.test(raw.shelf ?? '') ? raw.shelf : null,
+      name: words(raw.name, 60), line: words(raw.line, 140), summary: words(raw.summary, 1200),
+      changes: words(raw.changes, 400), credit: words(raw.credit, 60),
+      minMadre: typeof raw.minMadre === 'string' && /^\d+\.\d+\.\d+$/.test(raw.minMadre) ? raw.minMadre : null,
+      hue: Array.isArray(raw.hue) && raw.hue.length === 2 && raw.hue.every((one) => COLOR.test(one)) ? raw.hue : null,
+      icon: typeof raw.icon === 'string' && raw.icon.length <= 8000 ? raw.icon : null,
+      community: raw.community === true,
+      author: raw.author && typeof raw.author === 'object' && typeof raw.author.name === 'string' && raw.author.name.trim()
+        ? { name: raw.author.name.trim().slice(0, 60), github: /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(raw.author.github ?? '') ? raw.author.github : null }
+        : null,
+      spdx: typeof raw.spdx === 'string' && /^[A-Za-z0-9.+-]{2,40}$/.test(raw.spdx) ? raw.spdx : null,
+    });
+  }
   // TAKEN BACK: a module, or one version of it, that must not run anywhere any more. A module got
   // from the Market is removed; a newer file of one of MADRE's own goes back to the one MADRE came with.
   const revoked = (Array.isArray(data.revoked) ? data.revoked : []).filter((one) => ID.test(one?.id ?? '')).map((one) => ({ id: one.id, version: typeof one.version === 'string' && /^\d+\.\d+\.\d+$/.test(one.version) ? one.version : null, why: words(one.why, 240) })).slice(0, 100);
-  return { schema: 1, issued: new Date(issued).toISOString(), shelves, featured, modules, news, builtins, revoked };
+  return { schema: 1, issued: new Date(issued).toISOString(), shelves, featured, modules, news, builtins, skills, revoked };
 }
 
 export async function bytesFrom(url, { fetchImpl, max }) {
@@ -327,4 +360,105 @@ export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre,
     await writeAtomic(join(folder(stateRoot), 'updates.json'), JSON.stringify(news, null, 2));
   }
   return updated;
+}
+
+// ---- SKILLS FROM THE MARKET (2026-11-08, H-4). The same chain of trust a module travels on: the
+// catalog is signed with the author's key, each file is pinned by its own sha256, and a version the
+// person never accepted is not installed on its own. What is different is what arrives — words, not
+// code — and that it arrives as several files instead of one, so what the person accepts is a seal
+// over all of them together.
+const SKILL_SEAL = (files) => sha256(Buffer.from([...files].map((file) => `${file.path}\0${file.sha256}`).sort().join('\n')));
+export const installedSkills = async (stateRoot) => (await readJson(join(folder(stateRoot), 'skills.json'))) ?? {};
+
+// One skill from the catalog onto this computer, for every project (each one says when it comes in).
+// Two steps, as a module's are: asked with `review`, every file is fetched and checked and what it
+// says comes back with its seal, and nothing is written; installed only when the person accepted
+// that very seal, so what is installed is what was read.
+export async function installSkillFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl = globalThis.fetch, review = false, accept = null, accepted = false }) {
+  const entry = catalog?.skills?.find((one) => one.id === id);
+  if (!entry) throw new Error(t('The Market has no skill «{id}» to install.', { id }));
+  if (!fitsVersion(madre, entry.minMadre)) throw new Error(t('This skill needs MADRE {version} or newer.', { version: entry.minMadre }));
+  const files = [];
+  for (const file of entry.files) {
+    const bytes = await bytesFrom(file.url, { fetchImpl, max: MAX_MODULE });
+    if (sha256(bytes) !== file.sha256) throw new Error(t('A file of this skill is not the one the Market signed, so MADRE did not install it.'));
+    files.push({ path: file.path, text: bytes });
+  }
+  const main = files.find((file) => SKILL_FILES.includes(file.path));
+  const read = readSkillText(main.text.toString('utf8'), { id });
+  if (read.id !== id) throw new Error(t('The file says it is «{found}», not «{id}», so MADRE did not install it.', { found: read.id, id }));
+  if (read.version !== entry.version) throw new Error(t('The skill says {found} and the Market said {said}, so MADRE did not install it.', { found: read.version ?? '—', said: entry.version }));
+  const shape = files.map((file) => ({ path: file.path, bytes: file.text.length, runs: runnable(file.path) }));
+  const declares = skillDeclares({ ...read, files: shape, scripts: shape.filter((file) => file.runs).map((file) => file.path) });
+  const seal = SKILL_SEAL(entry.files);
+  if (review) return { review: true, id, name: read.name, version: entry.version, seal, declares, body: read.body, files: shape };
+  if (!accepted && accept !== seal) throw Object.assign(new Error(t('Read what {name} tells your agents before installing it.', { name: read.name ?? id })), { code: 'REVIEW_FIRST' });
+  const done = await installSkill({ files, scope: 'user', stateRoot, projectRoot, source: { kind: 'market', from: entry.files.find((file) => SKILL_FILES.includes(file.path))?.url ?? null, id } });
+  const kept = await installedSkills(stateRoot);
+  // The programs by name, not by how many: what the person accepted is these files, and a version
+  // that swaps one for another is asking for something new even when the count has not moved.
+  kept[id] = { version: entry.version, seal, scripts: declares.scripts, at: new Date().toISOString() };
+  await writeAtomic(join(folder(stateRoot), 'skills.json'), JSON.stringify(kept, null, 2));
+  return { ...done, version: entry.version, declares };
+}
+
+// A skill removed by hand is no longer the Market's to update.
+export async function forgetSkillFromMarket(stateRoot, id) {
+  const kept = await installedSkills(stateRoot);
+  if (!kept[id]) return false;
+  delete kept[id];
+  await writeAtomic(join(folder(stateRoot), 'skills.json'), JSON.stringify(kept, null, 2));
+  return true;
+}
+
+// What a newer version asks for that the one the person accepted did not. For a skill there is one
+// thing that matters: PROGRAMS. Its words can be read and changed freely between versions, and the
+// mode of the turn still rules them; a file an agent could run at #4 is the one thing accepting
+// version 1.0.0 never agreed to. One that brings a program, or more of them, waits for the person.
+export function widensSkill(before = {}, after = {}) {
+  const had = new Set(before?.scripts ?? []);
+  return (after?.scripts ?? []).filter((path) => !had.has(path)).map((path) => ({ what: 'script', name: path }));
+}
+
+// Every skill got from the Market whose signed files changed: the new one, installed, and a line for
+// the person. Taken back first. One that would bring a program the person never accepted is not
+// installed on its own: it waits, and they are told once what it wants.
+export async function updateSkillsFromMarket({ stateRoot, projectRoot, catalog, madre, fetchImpl = globalThis.fetch }) {
+  const kept = await installedSkills(stateRoot);
+  const updated = [];
+  const removed = [];
+  const held = [];
+  for (const [id, have] of Object.entries({ ...kept })) {
+    const taken = (catalog?.revoked ?? []).find((one) => one.id === id && (!one.version || one.version === have.version));
+    if (!taken) continue;
+    await removeSkill({ id, stateRoot, projectRoot }).catch(() => null);
+    await forgetSkillFromMarket(stateRoot, id);
+    delete kept[id];
+    removed.push({ id, name: catalog?.skills?.find((one) => one.id === id)?.name ?? id, kind: 'removed', version: have.version ?? null, why: taken.why ?? null, at: new Date().toISOString() });
+  }
+  for (const [id, have] of Object.entries(kept)) {
+    const entry = catalog?.skills?.find((one) => one.id === id);
+    if (!entry || SKILL_SEAL(entry.files) === have.seal || !fitsVersion(madre, entry.minMadre)) continue;
+    try {
+      const seal = SKILL_SEAL(entry.files);
+      if (have.held === seal) continue;
+      const fresh = await installSkillFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl, review: true });
+      const more = widensSkill({ scripts: Array.isArray(have.scripts) ? have.scripts : [] }, fresh.declares);
+      if (more.length) {
+        const now = await installedSkills(stateRoot);
+        now[id] = { ...(now[id] ?? have), held: seal };
+        await writeAtomic(join(folder(stateRoot), 'skills.json'), JSON.stringify(now, null, 2));
+        held.push({ id, name: fresh.name ?? id, kind: 'held', from: have.version ?? null, to: entry.version, more, at: new Date().toISOString() });
+        continue;
+      }
+      await installSkillFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl, accepted: true });
+      updated.push({ id, name: fresh.name ?? id, from: have.version ?? null, to: entry.version, changes: entry.changes ?? null, at: new Date().toISOString() });
+    } catch { /* tried again the next time MADRE opens */ }
+  }
+  const told = [...updated, ...removed, ...held];
+  if (told.length) {
+    const news = [...(await marketNews(stateRoot)).filter((one) => !told.some((fresh) => fresh.id === one.id)), ...told];
+    await writeAtomic(join(folder(stateRoot), 'updates.json'), JSON.stringify(news, null, 2));
+  }
+  return { updated, removed, held };
 }

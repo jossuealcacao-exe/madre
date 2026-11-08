@@ -137,7 +137,7 @@ import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
 import { chooseSkills, declaredBy as skillDeclares, loadSkills, removeSkill, skillState, skillStateIn, SKILL_STATES } from './skills.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
-import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
+import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedFromMarket, installedSkills, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket, updateSkillsFromMarket } from './market-remote.mjs';
 // Not moved project by project: the Coordinator is Home's, Git has no switch, and Local AI keeps
 // its own list of projects (local-ai.mjs).
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
@@ -500,6 +500,9 @@ export async function createPulseServer({
       const read = await refreshCatalog({ stateRoot: root, fetchImpl: marketFetch, force, ...marketKeyed });
       const names = Object.fromEntries(MODULES.map((one) => [one.id, one.name]));
       if (read.catalog) await updateFromMarket({ ...marketTools(), catalog: read.catalog, names, remove: (id) => removeExternalModule({ id, stateRoot: root, projectRoot: canonicalProjectRoot }) }).catch(() => []);
+      // The ways of working got from the Market (H-4): a newer version installs itself, one taken
+      // back is removed, and one that would bring a program nobody accepted waits for the person.
+      if (read.catalog) await updateSkillsFromMarket({ stateRoot: root, projectRoot: canonicalProjectRoot, catalog: read.catalog, madre: PACKAGE.version, fetchImpl: marketFetch }).catch(() => null);
       // MADRE's own modules, newer from the Market and signed with the factory key (src/builtin-updates.mjs):
       // what came or was taken back is run from now on, in this project and in Home.
       if (read.catalog) {
@@ -5174,12 +5177,31 @@ export async function createPulseServer({
           return sendJson(response, 200, { ok: true, ...gone });
         } catch (error) { return sendJson(response, 404, { error: error.message }); }
       }
+      // A skill from the Market onto this computer (H-4). Asked twice on purpose, as a module is:
+      // first to read what it tells the agents, then to install the very files that were read.
+      if (request.method === 'POST' && url.pathname === '/api/market/skills/install') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const read = await syncMarket().catch(() => ({ catalog: null }));
+        const catalog = read.catalog ?? await keptCatalog({ stateRoot: root, ...marketKeyed });
+        if (!catalog) return sendJson(response, 503, { error: t('MADRE could not read the Market.') });
+        try {
+          const done = await installSkillFromMarket({
+            stateRoot: root, projectRoot: canonicalProjectRoot, madre: PACKAGE.version, fetchImpl: marketFetch,
+            id: String(payload.id ?? ''), catalog, review: payload.review === true, accept: payload.accept ?? null,
+          });
+          if (!done.review) await room.record('skill.installed', { id: done.id, version: done.version ?? null, from: 'market' });
+          return sendJson(response, 200, done);
+        } catch (error) {
+          return sendJson(response, error.code === 'REVIEW_FIRST' ? 409 : 400, { error: error.message, code: error.code ?? null });
+        }
+      }
       // THE MARKET's catalog for the page: the one kept here at once (and a fresh one asked for
       // behind it), what was got from it, and what it updated on its own that nobody was told yet.
       if (request.method === 'GET' && url.pathname === '/api/market') {
         const kept = await keptCatalog({ stateRoot: root, ...marketKeyed });
         const read = kept ? (void syncMarket().catch(() => null), { catalog: kept }) : await syncMarket().catch(() => ({ catalog: null }));
-        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
+        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), skills: await installedSkills(root), licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
       }
       if (request.method === 'POST' && url.pathname === '/api/market/seen') {
         await marketNewsSeen(root);

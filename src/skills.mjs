@@ -42,6 +42,19 @@ export const MAX_BYTES = 512 * 1024;
 // What an agent could run, and therefore what only #4 could ever reach. Read from the name, and
 // from the executable bit for anything else.
 const RUNNABLE = /\.(?:sh|bash|zsh|py|rb|pl|mjs|cjs|js|ts)$/i;
+// Read from the name alone, for a file that is not on this disk yet (the Market's, H-4). On disk the
+// executable bit counts too (readSkillFiles).
+export const runnable = (path) => RUNNABLE.test(String(path ?? ''));
+
+// Whether a skill may carry a file at this path. The paths come from outside MADRE — a file the
+// person dropped in, an entry of the Market's catalog — so they are checked before anything is
+// written: nothing climbs out, nothing is absolute, nothing hides.
+export const safePath = (path) => {
+  const said = String(path ?? '');
+  if (!said || said.length > 200 || said.startsWith('/') || said.startsWith('\\')) return false;
+  if (/(?:^|[\\/])\.\.(?:[\\/]|$)/.test(said)) return false;
+  return said.split(/[\\/]/).every((part) => part && !part.startsWith('.'));
+};
 
 export const skillFolders = ({ stateRoot, projectRoot }) => ({
   user: join(stateRoot, 'habilidades'),
@@ -217,11 +230,7 @@ export async function installSkill({ files, scope = 'user', stateRoot, projectRo
   let bytes = 0;
   for (const one of files) {
     const path = String(one.path ?? '');
-    // The paths come from outside MADRE (a file the person dropped in, a catalog entry), so each one
-    // is checked before anything is written: nothing climbs out, nothing is absolute, nothing hides.
-    if (!path || path.startsWith('/') || path.startsWith('\\') || /(?:^|[\\/])\.\.(?:[\\/]|$)/.test(path) || path.split(/[\\/]/).some((part) => part.startsWith('.'))) {
-      throw new Error(t('{file} is not a path a skill may carry.', { file: path || '—' }));
-    }
+    if (!safePath(path)) throw new Error(t('{file} is not a path a skill may carry.', { file: path || '—' }));
     const text = one.text ?? one.content ?? '';
     const data = Buffer.isBuffer(text) ? text : Buffer.from(String(text), 'utf8');
     bytes += data.length;

@@ -6131,6 +6131,13 @@ export const ES = {
   'You keep it on in this project. Press to read it.': 'La tienes encendida en este proyecto. Púlsala para leerla.',
   'It came in because you said: {words}. Press to read it.': 'Entró porque dijiste: {words}. Púlsala para leerla.',
   'Press to read it.': 'Púlsala para leerla.',
+  // Habilidades del Mercado (H-4).
+  'The Market has no skill «{id}» to install.': 'El Mercado no tiene ninguna habilidad «{id}» que instalar.',
+  'This skill needs MADRE {version} or newer.': 'Esta habilidad necesita MADRE {version} o más nueva.',
+  'A file of this skill is not the one the Market signed, so MADRE did not install it.': 'Un archivo de esta habilidad no es el que firmó el Mercado, así que MADRE no la instaló.',
+  'The skill says {found} and the Market said {said}, so MADRE did not install it.': 'La habilidad dice {found} y el Mercado decía {said}, así que MADRE no la instaló.',
+  'Read what {name} tells your agents before installing it.': 'Lee qué le dice {name} a tus agentes antes de instalarla.',
+  'MADRE could not read the Market.': 'MADRE no pudo leer el Mercado.',
   'For anyone to find it. MADRE checks it here; the author of MADRE reads it and signs it.': 'Para que cualquiera lo encuentre. MADRE lo revisa aquí; el autor de MADRE lo lee y lo firma.',
   '{name} could not be checked.': 'No se pudo revisar {name}.',
   'What the Market will show, in Spanish and English. MADRE checks it as the Market does; then the author of MADRE reads the code and signs it.': 'Lo que mostrará el Mercado, en español y en inglés. MADRE lo revisa como lo hace el Mercado; después el autor de MADRE lee el código y lo firma.',
