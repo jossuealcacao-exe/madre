@@ -27,9 +27,17 @@
 
 import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { t } from './i18n.mjs';
 
 export const SKILL_FILES = ['HABILIDAD.md', 'SKILL.md'];
+// A file an agent wrote that means «install me as a skill»: <id>.habilidad.md, as a module's own is
+// <id>.module.mjs (src/modules/index.mjs). The agent writes it in its draft folder and cannot
+// install it: the person does, from the room.
+export const isSkillFile = (path) => /\.habilidad\.md$/i.test(String(path ?? ''));
+export const skillIdOf = (path) => String(path ?? '').split(/[\\/]/).pop().replace(/\.habilidad\.md$/i, '');
+// Where the guide an agent writing a skill is pointed at lives in this installation.
+export const skillGuide = () => fileURLToPath(new URL('../docs/HABILIDADES.md', import.meta.url));
 export const ID = /^[a-z][a-z0-9-]{1,39}$/;
 const SEMVER = /^\d+\.\d+\.\d+$/;
 // The body is in every turn this skill enters, so it is the one thing with a tight cap: about two

@@ -366,3 +366,76 @@ test('skills · from the Market: signed, pinned file by file, read before it is 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// ---- H-6: written in the room, with words. The agent writes one file, the person installs it.
+test('skills · «/habilidad» hands the agent the guide, and only when the turn may create files', async () => {
+  const { promptParts, wantsSkill } = await import('../src/room/prompt.mjs');
+  const { skillGuide, isSkillFile, skillIdOf } = await import('../src/skills.mjs');
+  for (const said of ['/habilidad cuando te pida una cotización', '/skill something', 'créame una habilidad para cotizar', 'write me a skill for reports', 'hazme una habilidad']) {
+    assert.equal(wantsSkill(said), true, said);
+  }
+  // Wide on purpose, the way wantsModule is: a question about them pays for the guide it did not
+  // need, and that is the cheap mistake. The expensive one is an agent writing a skill blind.
+  assert.equal(wantsSkill('qué habilidades tengo'), true);
+  for (const said of ['arregla el login', 'hazme un módulo', '']) assert.equal(wantsSkill(said), false, said);
+  const base = { agent: { id: 'codex' }, text: '/habilidad cotiza siempre igual', requester: 'you', depth: 0, allowDelegation: false, context: { messages: [] }, mode: 2, skillGuide: skillGuide() };
+  // No lease, no guide: an agent that cannot write a file is not told how to write one.
+  assert.ok(!promptParts(base).some((part) => part.id === 'skill-sdk'));
+  const said = promptParts({ ...base, lease: { outDir: 'out', scratchDir: 'borrador' } }).find((part) => part.id === 'skill-sdk')?.text ?? '';
+  assert.match(said, /HABILIDADES\.md/, 'the guide it is told to read is the one that ships');
+  assert.match(said, /out\/borrador/, 'and the folder it may write in');
+  assert.match(said, /<id>\.habilidad\.md/);
+  assert.match(said, /gives no permission/, 'what a skill can never do travels with how to write one');
+  assert.match(said, /Do not touch ~\/\.pulse\/habilidades/);
+  // And the file it writes is the one MADRE recognises.
+  assert.equal(isSkillFile('borrador/cotizaciones.habilidad.md'), true);
+  assert.equal(isSkillFile('cotizaciones.md'), false);
+  assert.equal(skillIdOf('out/borrador/cotizaciones.habilidad.md'), 'cotizaciones');
+  // The guide is a file that is really there, with the words the block promises.
+  const guide = await readFile(skillGuide(), 'utf8');
+  for (const promise of [/^# Habilidades de MADRE/, /## `when`/, /8 000\s*caracteres/, /No da permiso/, /\/habilidad /]) assert.match(guide, promise);
+});
+
+test('skills · the room offers what the agent wrote, and the person installs it, over the real route', async () => {
+  const { createPulseServer } = await import('../src/server.mjs');
+  const { realpath } = await import('node:fs/promises');
+  const { loadSkills } = await import('../src/skills.mjs');
+  const state = await mkdtemp(join(tmpdir(), 'madre-skill-file-'));
+  const projectRoot = await realpath(await mkdtemp(join(tmpdir(), 'madre-skill-project-')));
+  await mkdir(join(projectRoot, 'borrador'), { recursive: true });
+  const written = 'borrador/cotizaciones.habilidad.md';
+  await writeFile(join(projectRoot, written), header({ id: 'cotizaciones', name: 'Cotizaciones', when: 'Una cotización o un presupuesto.', version: '1.0.0' }, 'Pon el IVA aparte.'));
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  const made = await createPulseServer({ projectRoot, stateRoot: state, agents: roster, invokers: {} });
+  const port = await new Promise((resolve) => made.server.listen(0, '127.0.0.1', () => resolve(made.server.address().port)));
+  const at = (path, options = {}) => fetch(`http://127.0.0.1:${port}${path}`, { ...options, headers: { 'content-type': 'application/json', origin: `http://127.0.0.1:${port}`, ...options.headers } });
+  const post = (payload) => at('/api/skills/install-file', { method: 'POST', body: JSON.stringify(payload) });
+  try {
+    // Read first: what it tells the agents, and nothing installed.
+    const read = await (await post({ path: written, review: true })).json();
+    assert.deepEqual([read.review, read.id, read.when], [true, 'cotizaciones', 'Una cotización o un presupuesto.']);
+    assert.equal(read.body, 'Pon el IVA aparte.');
+    assert.deepEqual((await loadSkills({ stateRoot: state, projectRoot })).loaded, [], 'reading installed nothing');
+    // Anything that is not a skill the agent proposed is refused before it is read.
+    for (const path of ['', '../fuera.habilidad.md', 'borrador/otra.md']) {
+      assert.equal((await post({ path })).status, 400, path);
+    }
+    // Installed by the person, for this project.
+    const done = await (await post({ path: written, scope: 'project' })).json();
+    assert.deepEqual([done.installed.id, done.installed.origin], ['cotizaciones', 'project']);
+    assert.deepEqual((await loadSkills({ stateRoot: state, projectRoot })).loaded.map((one) => [one.id, one.origin]), [['cotizaciones', 'project']]);
+    // And it is on the board, waiting for a match, like any other.
+    const board = await (await at('/api/skills')).json();
+    assert.deepEqual(board.skills.map((one) => [one.id, one.state]), [['cotizaciones', 'match']]);
+    // One that does not read as a skill says why, and nothing is written.
+    await writeFile(join(projectRoot, 'borrador/rota.habilidad.md'), 'sin cabecera');
+    const bad = await post({ path: 'borrador/rota.habilidad.md' });
+    assert.equal(bad.status, 422);
+    assert.match((await bad.json()).error, /header/i);
+  } finally {
+    made.server.closeAllConnections?.();
+    await new Promise((resolve) => made.server.close(() => resolve()));
+    await rm(state, { recursive: true, force: true });
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

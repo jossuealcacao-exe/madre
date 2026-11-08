@@ -212,6 +212,7 @@ function spokenCommand(item) {
 const CLIENT_COMMANDS = [
   // /create went away (2026-10-27): choosing #2 on the mode chip is the same thing, said once.
   { name: 'module', title: 'MODULE', usage: `/module ${t('<what it should do>')}`, summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
+  { name: 'habilidad', title: 'SKILL', usage: `/habilidad ${t('<how you work>')}`, summary: t('Write one skill: a way of working every agent of this room follows. The agent writes it, you read it and keep it.'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: `/image ${t('<what to draw>')}`, summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
   // Notes and Reminders through an agent (2026-10-20): the message goes to the agent chosen, and
@@ -5970,6 +5971,59 @@ function renderModuleProposed(event) {
   if (responseMessageId) node.dataset.for = responseMessageId;
   return node;
 }
+// skill · @codex
+// Wrote cotizaciones.habilidad.md.
+// [READ IT] [INSTALL FOR EVERY PROJECT] [INSTALL FOR THIS PROJECT]
+//
+// A skill is a page of instructions, so «read it» is a real option here in a way it never is for a
+// module: the person can actually read the whole thing before any of their agents does.
+function renderSkillProposed(event) {
+  const { agent, path, name, id, responseMessageId } = event.payload;
+  const node = el('div', 'system module-proposed');
+  tint(node, agent);
+  claimHead(node, t('SKILL'), `@${agent}`);
+  const link = el('a', 'file-link', name ?? path);
+  link.href = '#';
+  link.addEventListener('click', (ev) => { ev.preventDefault(); void openViewer({ root: 'project', path, label: `/${path}` }); });
+  const said = el('span', 'claim-body');
+  said.append(t('Wrote '), link);
+  node.append(said);
+  const ask = (extra = {}) => fetch('/api/skills/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, ...extra }) }).then((response) => response.json());
+  const read = el('button', 'claim-act', t('READ IT'));
+  read.type = 'button';
+  read.addEventListener('click', async () => {
+    const payload = await ask({ review: true });
+    if (payload.error) { toast(t('It could not be read: {error}', { error: payload.error })); return; }
+    openSkillText({ ...payload, dir: null, license: null, credit: payload.declares?.credit ?? null });
+  });
+  const install = async (scope, button) => {
+    button.disabled = true;
+    try {
+      const payload = await ask({ scope });
+      if (payload.error) throw new Error(payload.error);
+      toast(t('Diagnostics › {name} is yours now, for {where}. It comes in when it fits; change that in MODULES.', { name: skillWords(payload.installed.name) ?? payload.installed.id, where: scope === 'project' ? t('this project') : t('every project') }));
+      void refreshSkills();
+    } catch (error) { toast(t('The skill was not installed: {error}', { error: error.message })); button.disabled = false; }
+  };
+  const everyRoom = el('button', 'claim-act', t('INSTALL FOR EVERY PROJECT'));
+  everyRoom.type = 'button';
+  everyRoom.addEventListener('click', () => install('user', everyRoom));
+  const thisProject = el('button', 'claim-act', t('INSTALL FOR THIS PROJECT'));
+  thisProject.type = 'button';
+  thisProject.addEventListener('click', () => install('project', thisProject));
+  const acts = el('span', 'claim-acts');
+  acts.append(read, everyRoom, thisProject);
+  node.append(acts, el('span', 'claim-note', t('A skill gives no permission: it tells your agents how you work, inside whatever mode you give them. Read it before it reaches them.')));
+  // Already one by that name: the one installed keeps answering until this file replaces it.
+  if (id && (modules.skills ?? []).some((one) => one.id === id)) {
+    everyRoom.textContent = t('REPLACE FOR EVERY PROJECT');
+    thisProject.textContent = t('REPLACE FOR THIS PROJECT');
+    node.append(el('span', 'claim-note replaces', t('You already have a skill called «{id}»; it keeps coming into your turns until this file replaces it.', { id })));
+  }
+  if (responseMessageId) node.dataset.for = responseMessageId;
+  return node;
+}
+
 // The modules this room has, asked once per page load and shared by every card that wants to know.
 let installedModulesAsked = null;
 function installedModules() {
@@ -8087,6 +8141,7 @@ function renderEventNode(event) {
     case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
     case 'privacy.redacted': node = renderPrivacy(event); break;
     case 'module.proposed': node = renderModuleProposed(event); break;
+    case 'skill.proposed': node = renderSkillProposed(event); break;
     // A module from the Market, a file or an update: its card and its commands, at once (2026-10-30).
     case 'extension.installed': case 'extension.removed': if (!replaying) { void refreshCommands(); installedModulesAsked = null; void refreshModules(); } node = renderModuleInstalledOrRemoved(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
@@ -13183,7 +13238,9 @@ if (typeof ResizeObserver === 'function') {
 // /module has its own visual language before it ever reaches an agent. The class is also the
 // animation trigger: it is added once when the prefix becomes a command, and removed when the
 // human edits away from it or the message leaves the composer.
-const MODULE_COMMAND = /^\/module(?:\s|$)/i;
+// `/habilidad` asks for exactly what `/module` asks for — #2 CREATE and a draft folder of its own —
+// so it wears the same clothes in the composer.
+const MODULE_COMMAND = /^\/(?:module|habilidad|skill)(?:\s|$)/i;
 function syncModuleComposer() {
   const active = MODULE_COMMAND.test(els.input.value.trimStart());
   if (state.moduleCommand === active) return;

@@ -134,7 +134,7 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
-import { chooseSkills, declaredBy as skillDeclares, loadSkills, removeSkill, skillState, skillStateIn, SKILL_STATES } from './skills.mjs';
+import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
 import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedFromMarket, installedSkills, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket, updateSkillsFromMarket } from './market-remote.mjs';
@@ -5154,6 +5154,30 @@ export async function createPulseServer({
           everywhere: skillState(config, skill.id, null),
         }));
         return sendJson(response, 200, { skills, failures, folders, project: Boolean(scopeRoom) });
+      }
+      // A skill an agent wrote in its draft folder (H-6): read it, say what it tells the agents, and
+      // install it only when the person said so. The file is the agent's proposal; installing is
+      // theirs. Two steps like every other door into the skills folder: `review` writes nothing.
+      if (request.method === 'POST' && url.pathname === '/api/skills/install-file') {
+        const payload = await body(request).catch(() => ({}));
+        const relative = String(payload.path ?? '').replace(/^\/+/, '');
+        if (!relative || relative.includes('..') || !isSkillFile(relative)) return sendJson(response, 400, { error: t('Give the project-relative path of a <id>.habilidad.md file.') });
+        const file = join(canonicalProjectRoot, relative);
+        try {
+          const text = await readFile(file, 'utf8');
+          const read = readSkillText(text, { id: skillIdOf(relative) });
+          if (payload.review === true) {
+            return sendJson(response, 200, { review: true, id: read.id, name: read.name, when: read.when, version: read.version, body: read.body, unknown: read.unknown, declares: skillDeclares({ ...read, files: [], scripts: [] }) });
+          }
+          const done = await installSkill({
+            files: [{ path: SKILL_FILES[0], text }],
+            scope: payload.scope === 'project' ? 'project' : 'user',
+            stateRoot: root, projectRoot: canonicalProjectRoot,
+            source: { kind: 'file', from: relative, id: read.id },
+          });
+          await room.record('skill.installed', { id: done.id, name: done.name, origin: done.origin, from: relative, by: 'you' });
+          return sendJson(response, 200, { installed: done });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
       }
       // Off, matched or always on, for this project or for all of them. Nothing else changes.
       const skillState_ = request.method === 'POST' && url.pathname.match(/^\/api\/skills\/([a-z][a-z0-9-]{1,39})\/state$/);

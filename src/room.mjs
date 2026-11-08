@@ -45,6 +45,7 @@ import { stat as statFile, readdir, copyFile, mkdir as mkdirPath, readFile as re
 import { basename as baseName, join as joinPath } from 'node:path';
 import { declaredTypeFor, filesChangedSince } from './files.mjs';
 import { isModuleFile, sdkPaths } from './modules/index.mjs';
+import { isSkillFile, skillGuide, skillIdOf } from './skills.mjs';
 import { validateAshReply } from './modules/ash-policy.mjs';
 import { PHONE_MAX_MODE } from './bridge/policy.mjs';
 import { parseChoice, withoutChoice } from './choices.mjs';
@@ -1802,6 +1803,7 @@ export class Room {
       controlHolder: this.#controlDesk.holder?.agent ?? null,
       privacyMarker: this.#privacy?.marker ?? '[ENTIDAD-ORG]',
       sdk: input.lease?.sdk ?? sdkPaths(),
+      skillGuide: skillGuide(),
       madreModel: this.#agents.find((agent) => agent.id === 'madre' && agent.ready)?.version ?? null,
     });
   }
@@ -2113,6 +2115,11 @@ export class Room {
         // A <id>.module.mjs is an agent proposing a module: the human installs it from the room, or not.
         for (const file of artifacts.filter((item) => isModuleFile(item.path))) {
           await this.#emit('module.proposed', { agent: agent.id, messageId, responseMessageId, path: file.path, name: file.name });
+        }
+        // And a <id>.habilidad.md is one proposing a way of working (H-6). Same rule: it writes, the
+        // person installs.
+        for (const file of artifacts.filter((item) => isSkillFile(item.path))) {
+          await this.#emit('skill.proposed', { agent: agent.id, messageId, responseMessageId, path: file.path, name: file.name, id: skillIdOf(file.path) });
         }
       }
       if (createChanges && (createChanges.existingReverted.length || createChanges.forbiddenReverted.length)) {
