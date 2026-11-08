@@ -2743,6 +2743,8 @@ export const ES = {
   'Watch': 'Vigilar',
   'Decide': 'Decidir',
   'Your decision': 'Decisión tuya',
+  'Planned work': 'Obra planeada',
+  'Build': 'Obra',
   'From ~/madre-logs · INDICE.md has the whole table': 'De ~/madre-logs · la tabla completa está en INDICE.md',
   'The file is empty: there is nothing to attach.': 'El archivo está vacío: no hay nada que adjuntar.',
   'The attachment was rejected: {error}': 'El adjunto se rechazó: {error}',

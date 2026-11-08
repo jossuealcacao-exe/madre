@@ -18,7 +18,9 @@ export const logsFolder = (env = process.env) => env.MADRE_LOGS_DIR || join(home
 
 const TO_FIX = ['en-curso', 'abierto', 'investigando', 'decision'];
 const TO_VERIFY = ['arreglado', 'publicado'];
-const LEVELS = ['P0', 'P1', 'P2', 'Investigar', 'Vigilar', 'Decisión'];
+// Order the widget sorts by, most pressing first. «Obra» is planned work the author already asked
+// for (madre-logs' CLASIFICACION.md, 2026-11-08): it is not a failure, so it sits last.
+const LEVELS = ['P0', 'P1', 'P2', 'Investigar', 'Vigilar', 'Decisión', 'Obra'];
 
 // The block between the first two «---» lines: one «key: value» per line, as PLANTILLA.md has it.
 export function readFields(text) {
@@ -41,7 +43,7 @@ export function agentOf(text) {
   if (/claude/i.test(said)) return 'claude';
   return null;
 }
-const ERROR_ID = /\b(?:D|S|MR|L|RX|Q|W|CI)-[A-Z0-9]+\b/g;
+const ERROR_ID = /\b(?:D|S|MR|L|RX|Q|W|CI|H)-[A-Z0-9]+\b/g;
 
 // Who is working on what now: the rows of EN-CURSO.md (madre-logs' rule 12), with the errors each one
 // names. A row written in another shape is skipped, never guessed at.

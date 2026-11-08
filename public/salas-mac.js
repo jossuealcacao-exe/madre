@@ -2649,7 +2649,13 @@ const WIDGET_PAINT = {
     };
     // Who is working now (madre-logs' EN-CURSO.md): Claude, Codex and Antigravity each with its badge.
     const AGENTS = { claude: 'Claude', codex: 'Codex', antigravity: 'Antigravity' };
-    const badge = (agent, who) => el('span', `sm-logs-agent ag-${agent ?? 'other'}`, AGENTS[agent] ?? String(who ?? '').split('·')[0].trim());
+    // Whoever the row names, in its own words when they say more than the agent's name: the author
+    // works with two Claude accounts (2026-11-08) and «claude-personal» is which one.
+    const badge = (agent, who) => {
+      const said = String(who ?? '').split('·')[0].trim();
+      const known = AGENTS[agent] ?? null;
+      return el('span', `sm-logs-agent ag-${agent ?? 'other'}`, said && said.toLowerCase() !== (known ?? '').toLowerCase() ? said : known ?? said);
+    };
     const loose = reading.unregistered ?? [];
     if (reading.working?.length || loose.length) {
       const now = el('section', 'sm-logs-group sm-logs-working');
@@ -2683,11 +2689,14 @@ const WIDGET_PAINT = {
       [t('To investigate'), (one) => one.nivel === 'Investigar', 'lv-look'],
       [t('To watch'), (one) => one.nivel === 'Vigilar', 'lv-watch'],
       [t('Your decision'), (one) => one.nivel === 'Decisión', 'lv-decide'],
+      // Planned work, not a failure (madre-logs, 2026-11-08): a lot of a plan the author already
+      // asked for. Last, and it never looks urgent.
+      [t('Planned work'), (one) => one.nivel === 'Obra', 'lv-work'],
     ];
     const card = (one, tone) => {
       const row = el('article', `sm-logs-item ${tone} is-${one.estado}`);
       const side = el('div', 'sm-logs-side');
-      side.append(el('code', 'sm-logs-id', one.id), el('span', 'sm-logs-level', one.nivel === 'Investigar' ? t('Investigate') : one.nivel === 'Vigilar' ? t('Watch') : one.nivel === 'Decisión' ? t('Decide') : one.nivel));
+      side.append(el('code', 'sm-logs-id', one.id), el('span', 'sm-logs-level', one.nivel === 'Investigar' ? t('Investigate') : one.nivel === 'Vigilar' ? t('Watch') : one.nivel === 'Decisión' ? t('Decide') : one.nivel === 'Obra' ? t('Build') : one.nivel));
       const main = el('div', 'sm-logs-main');
       const top = el('div', 'sm-logs-top');
       top.append(el('b', 'sm-logs-title', one.title));

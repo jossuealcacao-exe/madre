@@ -2329,6 +2329,7 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 .lv-minor { --lv: var(--session-wait, #d9a90f); }
 .lv-look { --lv: #5b9cf5; }
 .lv-watch, .lv-decide { --lv: var(--text-3); }
+.lv-work { --lv: #8b7cf6; }
 .lv-done { --lv: var(--session-ok, var(--s-acc)); }
 .sm-logs-side { display: grid; align-content: start; gap: 4px; }
 .sm-logs-id { justify-self: start; padding: 0; background: none; font-size: 12.5px; font-weight: 650; color: var(--text); }

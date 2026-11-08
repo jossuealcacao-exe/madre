@@ -137,6 +137,38 @@ test('madre-logs · who is working now, from EN-CURSO.md and from each error, wi
   assert.match(page, /if \(one\.estado === 'en-curso' && \(one\.agent \|\| one\.responsable\)\) top\.append\(badge\(one\.agent, one\.responsable\)\);/);
 });
 
+// 2026-11-08: planned work the author already asked for is not a failure, and no level said that
+// without lying. «Obra» sits last of all, the widget draws it (a level with no group of its own is
+// drawn nowhere), the H- prefix of the Habilidades plan links its rows, and a row that names itself
+// «claude-personal» keeps that name: the author works with two Claude accounts.
+test('madre-logs · planned work («Obra») is read, sorted last and drawn, and a row keeps its own name', async () => {
+  const { readWorking } = await import('../src/madre-logs.mjs');
+  const table = '| Agente | Qué hace | Zona | Desde | Notas |\n|---|---|---|---|---|\n| claude-personal | Escribir H-1 de Habilidades | src/skills.mjs | 2026-11-08 | |\n';
+  assert.deepEqual(readWorking(table).map((one) => [one.who, one.agent, one.ids]), [['claude-personal', 'claude', ['H-1']]], 'the H- prefix of a plan is an id the widget knows');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-logs-obra-'));
+  try {
+    await mkdir(join(dir, 'errores'));
+    const base = { clase: 'Petición', tipo: 'Módulos y Mercado', origen: 'Plan', abierto: '2026-11-08' };
+    await writeFile(join(dir, 'errores', 'H-1.md'), entry({ id: 'H-1', titulo: 'La habilidad en MADRE', nivel: 'Obra', estado: 'abierto', ...base }));
+    await writeFile(join(dir, 'errores', 'H-2.md'), entry({ id: 'H-2', titulo: 'El bloque del prompt', nivel: 'Obra', estado: 'abierto', ...base }));
+    await writeFile(join(dir, 'errores', 'D-9.md'), entry({ id: 'D-9', titulo: 'Algo roto', nivel: 'P2', estado: 'abierto', ...base, clase: 'Fallo', origen: 'Diagnóstico' }));
+    await writeFile(join(dir, 'EN-CURSO.md'), table);
+    const reading = await readLogs({ dir, run: async () => '' });
+    assert.deepEqual(reading.toFix.map((one) => one.id), ['D-9', 'H-1', 'H-2'], 'planned work never looks more pressing than a failure');
+    assert.equal(reading.toFix.find((one) => one.id === 'H-1').estado, 'en-curso', 'the EN-CURSO row says who has H-1');
+    assert.equal(reading.toFix.find((one) => one.id === 'H-1').responsable, 'claude-personal');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  // A level the page has no group for is drawn nowhere, so the group and its words travel together.
+  const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(page, /\[t\('Planned work'\), \(one\) => one\.nivel === 'Obra', 'lv-work'\]/);
+  assert.match(page, /one\.nivel === 'Obra' \? t\('Build'\)/);
+  assert.match(await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8'), /\.lv-work \{/);
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  for (const word of ["'Planned work':", "'Build':"]) assert.ok(es.includes(word), `${word} is not translated`);
+});
+
 // 2026-11-05: Antigravity worked on RX-C1 without its row in EN-CURSO.md, and the widget had no way
 // to say so. Each agent's own sessions say when it last wrote; one at work without a row is shown.
 test('madre-logs · an agent at work without registering is shown, from the times of its own sessions', async () => {
