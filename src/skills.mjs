@@ -263,3 +263,124 @@ export async function removeSkill({ id, stateRoot, projectRoot }) {
   if (!removed.length) throw new Error(t('No skill «{id}».', { id }));
   return { id, removed };
 }
+
+// ---- WHICH SKILLS A TURN GETS (H-2). Two ways, and the person decides which per skill:
+//
+//   always   the person turned it on here, so it is in every turn of this project.
+//   match    the default: it enters when what was asked looks like what its `when` describes.
+//   off      it is kept, and it enters nothing.
+//
+// MATCHED BY WORDS, not by meaning. A word match is free, works with no internet and no model, is
+// the same every time, and — this is what decided it — it can be SHOWN: the room can say «this
+// entered because you said “cotización”», which a number from an embedder cannot. A meaning pass
+// is worth having on top, and it waits for a cutoff measured against real use rather than guessed
+// (the recall's cut was measured; this one would not be). `nearness` is where it will plug in.
+//
+// Every skill's own words count against one budget, so however many match, a turn pays about what
+// one skill costs and never more. The person's own «always» are seated first: their word before
+// MADRE's guess.
+
+// Words that say nothing about which skill is wanted. The ones almost every `when` carries are in
+// here on purpose: without them, «cuando el usuario pide algo» would match every message.
+const STOP = new Set(`
+a acerca al algo alguien algun alguna alguno ante antes aqui asi aun cada como con contra cual
+cuando cuanto de del desde donde dos el ella ellas ellos en entre era eran eres es esa ese eso
+esta estan este esto estos favor hace hacer hacia hasta hay las les lo los mas mientras muy nada
+ni nos nuestra nuestro para pero pide piden pides poco por porque pues que quien quiere quieren
+quieres saber se sea segun ser si sin sobre solo son su sus tal tambien tiene tienen todo todos
+tras una uno unos usa usar usuario ver vez vos
+about after all almost already also always and any anyone anything are ask asked asking asks
+because been before being between both but can cannot does doing done down each else even every
+everything first for from gets getting give given goes going has have having her him his how
+however into its just like made make makes making many may more most much must need needs never
+not now off once one only onto other our out over own same she should since some something such
+than that the their them then there these they this those through thus too under until use used
+user users uses using very wants want was were what when where which while who whom why will with
+within without would you your
+`.trim().split(/\s+/));
+const NO_MARKS = /\p{M}/gu;
+export const MIN_WORD = 4;
+// How many skills one turn may carry, before the budget has anything to say. Three is already more
+// than a person keeps in their head about one request.
+export const MAX_PER_TURN = 3;
+
+// The words of a sentence that could tell one skill from another: no accents, no punctuation, no
+// words everybody uses. Short ones are dropped, with two exceptions that carry a whole request on
+// their own: anything with a digit in it («1099», «#4») and a word written in capitals, which is
+// how a person writes the acronym their work turns on — IVA, SAT, RFC, PDF, SEO, API.
+export function keywords(text) {
+  const out = new Set();
+  for (const raw of String(text ?? '').split(/[^\p{L}\p{N}_-]+/u)) {
+    if (!raw) continue;
+    const word = raw.normalize('NFD').replace(NO_MARKS, '').toLowerCase();
+    if (!word || STOP.has(word)) continue;
+    if (word.length >= MIN_WORD || /\d/.test(word) || (word.length >= 3 && raw === raw.toUpperCase())) out.add(word);
+  }
+  return out;
+}
+
+// What the person said about this skill, in this project. The shape is the one a module's switch
+// has (src/module-scope.mjs): a word for every project, and a project's own word that wins.
+export const SKILL_STATES = ['off', 'match', 'always'];
+export function skillState(config = {}, id = null, roomId = null) {
+  const block = config?.skills?.[id] ?? {};
+  const own = roomId ? block?.rooms?.[roomId] : null;
+  const said = SKILL_STATES.includes(own) ? own : SKILL_STATES.includes(block?.state) ? block.state : 'match';
+  return said;
+}
+
+// The skills this turn carries, in the order they will be read, each with why it is here.
+// `nearness(skill, text)` is the meaning pass when there is one: a number from 0 to 1, consulted
+// only for a skill no word matched, and only above `near`.
+export function chooseSkills({ skills = [], text = '', config = {}, roomId = null, budget = MAX_BODY, limit = MAX_PER_TURN, nearness = null, near = 1 } = {}) {
+  const asked = keywords(text);
+  const seats = [];
+  for (const skill of skills) {
+    const state = skillState(config, skill.id, roomId);
+    if (state === 'off') continue;
+    if (state === 'always') { seats.push({ skill, state, why: [], score: Infinity }); continue; }
+    if (!skill.when) continue;                  // nothing to match on: only «always» ever seats it
+    const why = [...keywords(pick(skill.when, 'es') ?? skill.when)].filter((word) => asked.has(word));
+    const close = why.length ? 1 : typeof nearness === 'function' ? Number(nearness(skill, text)) || 0 : 0;
+    if (!why.length && !(close >= near && near <= 1)) continue;
+    seats.push({ skill, state, why, score: why.length || close });
+  }
+  seats.sort((a, b) => (b.score - a.score) || a.skill.id.localeCompare(b.skill.id));
+  const chosen = [];
+  let chars = 0;
+  for (const seat of seats) {
+    if (chosen.length >= limit) break;
+    if (chars + seat.skill.body.length > budget && chosen.length) break;
+    chars += seat.skill.body.length;
+    chosen.push({ ...seat.skill, state: seat.state, why: seat.why });
+  }
+  return { chosen, left: seats.slice(chosen.length).map((seat) => seat.skill.id), chars };
+}
+
+// ---- THE SKILLS OF ONE TURN, WRITTEN FOR THE AGENT (H-2). Model-facing, so it is in English like
+// the rest of a briefing (src/room/prompt.mjs) and never goes through the catalogue.
+//
+// A skill carries files MADRE does not hand over: its folder lives outside the project, and whether
+// an agent may read there is its own CLI's answer, not MADRE's. So the files are named with their
+// folder and the agent is told what to do when it cannot reach them, which is true for every agent
+// instead of being a promise only some keep.
+const english = (value) => (value && typeof value === 'object' ? value.en ?? value.es ?? null : value ?? null);
+const attribute = (value) => String(value ?? '').replace(/[<>"&\n]/g, ' ').trim().slice(0, 240);
+
+export function formatSkills(skills = [], { mode = 1 } = {}) {
+  const lines = [];
+  for (const skill of skills) {
+    const why = skill.state === 'always' ? 'the human turned it on for this project' : skill.why?.length ? `the human said: ${skill.why.join(', ')}` : 'it matches what was asked';
+    lines.push(`<skill name="${attribute(english(skill.name) ?? skill.id)}" why="${attribute(why)}">`);
+    lines.push(skill.body.trim());
+    const carried = (skill.files ?? []).filter((one) => !one.runs && !SKILL_FILES.includes(one.path)).map((one) => one.path);
+    if (carried.length) lines.push(`It carries ${carried.join(', ')}, in ${skill.dir}: read one when its instructions point at it. If you cannot reach that folder, say so in one line rather than guessing, and the human will attach what you need.`);
+    if (skill.scripts?.length) {
+      lines.push(mode === 4
+        ? `It carries ${skill.scripts.join(', ')}, in ${skill.dir}: you may run one this turn, and as with any command, say in one line what it does before you do.`
+        : `It carries ${skill.scripts.join(', ')}, which nothing runs in this mode: #4 AIRLOCK is the only turn that could, so do not try and do not ask the human to run one for you unless its instructions depend on it.`);
+    }
+    lines.push('</skill>');
+  }
+  return lines.join('\n');
+}

@@ -134,6 +134,7 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
+import { chooseSkills, loadSkills } from './skills.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
 import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
@@ -1135,6 +1136,13 @@ export async function createPulseServer({
     privacy,
     // Modules may hand tools to a turn; the room asks once per turn, the server knows the port.
     toolsForTurn: async (turn) => modulesToolsForTurn(await moduleContext(), { ...turn, port: listeningPort(), roomDir, preview: await previewBase() }),
+    // Ways of working this project keeps (H-2): read from disk each turn, so a skill the person just
+    // installed or switched is in the very next message, and chosen against what was asked.
+    skillsForTurn: async (turn) => {
+      const { loaded, failures } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
+      for (const one of failures) console.error(`MADRE skills: ${one.dir} was not read (${one.error})`);
+      return chooseSkills({ skills: loaded, text: turn.text, config: await readConfig(root), roomId: scopeRoom }).chosen;
+    },
     // What BISHOP reads for a turn is recorded in that turn's conversation, not the open one.
     bishopForTurn: salasRoom ? async (turn) => moduleById('bishop').promptForTurn({ ...(await moduleContext()), record: (type, payload) => ((turn.turn && liveRooms().find((one) => one.runningTurn?.(turn.turn))) || room).record(type, payload) }, turn) : null,
     // Fase 3e: notes a link with automatic recall brings to a turn. Never in the room of Salas

@@ -131,3 +131,95 @@ test('skills · both folders are read, this project wins, and one that fails lea
     await assert.rejects(removeSkill({ id: 'cotizaciones', stateRoot, projectRoot }), /No skill/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+// ---- H-2: how a skill enters a turn.
+const one = (id, when, body = 'Usa la plantilla.', extra = {}) => ({ id, name: id, when, body, dir: `/h/${id}`, files: [], scripts: [], ...extra });
+
+test('skills · chosen by the words of what was asked, accents and all, and said why', async () => {
+  const { chooseSkills, keywords } = await import('../src/skills.mjs');
+  const skills = [
+    one('cotizaciones', 'El usuario pide una cotización, un presupuesto o un precio para un cliente.'),
+    one('informes', 'Un informe mensual de resultados.'),
+  ];
+  const asked = chooseSkills({ skills, text: 'hazme una COTIZACION para Carlos' });
+  assert.deepEqual(asked.chosen.map((skill) => [skill.id, skill.why]), [['cotizaciones', ['cotizacion']]], 'the word is matched without its accent and said back');
+  assert.equal(chooseSkills({ skills, text: '¿qué hora es?' }).chosen.length, 0, 'a message that looks like nothing carries nothing');
+  // The words every «when» carries say nothing about which skill is wanted.
+  assert.equal(chooseSkills({ skills, text: 'el usuario pide algo cuando quiere' }).chosen.length, 0);
+  assert.ok(!keywords('el usuario pide algo para ver').size, 'every word of that sentence is a word everybody uses');
+  assert.ok(keywords('necesito el IVA').has('iva'), 'a short identifier counts whatever its length');
+  // A skill with nothing to match on is never guessed at: the person turns it on or it sits still.
+  assert.equal(chooseSkills({ skills: [one('sin-cuando', null)], text: 'lo que sea' }).chosen.length, 0);
+});
+
+test('skills · the person\'s word comes first: off, always, and this project over all of them', async () => {
+  const { chooseSkills, skillState } = await import('../src/skills.mjs');
+  const skills = [one('cotizaciones', 'Una cotización.'), one('informes', 'Un informe.')];
+  assert.equal(skillState({}, 'cotizaciones'), 'match', 'by default a skill waits to be a match');
+  assert.equal(skillState({ skills: { cotizaciones: { state: 'off' } } }, 'cotizaciones'), 'off');
+  // A project's own word wins over the one for every project, as a module's switch does.
+  const config = { skills: { cotizaciones: { state: 'off', rooms: { 'proyecto-1': 'always' } } } };
+  assert.equal(skillState(config, 'cotizaciones', 'proyecto-1'), 'always');
+  assert.equal(skillState(config, 'cotizaciones', 'proyecto-2'), 'off');
+  assert.equal(chooseSkills({ skills, text: 'una cotización', config }).chosen.length, 0, 'switched off, a match carries it no more');
+  const on = chooseSkills({ skills, text: '¿qué hora es?', config, roomId: 'proyecto-1' });
+  assert.deepEqual(on.chosen.map((skill) => [skill.id, skill.state, skill.why]), [['cotizaciones', 'always', []]], 'turned on, it does not wait for a word');
+  // Seated first, before anything MADRE guessed at: their word, then the match.
+  const both = chooseSkills({ skills, text: 'un informe', config, roomId: 'proyecto-1' });
+  assert.deepEqual(both.chosen.map((skill) => skill.id), ['cotizaciones', 'informes']);
+});
+
+test('skills · however many match, a turn pays about what one skill costs', async () => {
+  const { chooseSkills, MAX_PER_TURN } = await import('../src/skills.mjs');
+  const many = [1, 2, 3, 4, 5].map((n) => one(`h${n}`, 'Una cotización.', 'x'.repeat(400)));
+  const asked = chooseSkills({ skills: many, text: 'una cotización', budget: 1000 });
+  assert.equal(asked.chosen.length, 2, 'the budget stops it, and what did not fit is named');
+  assert.deepEqual(asked.left, ['h3', 'h4', 'h5']);
+  assert.equal(asked.chars, 800);
+  // And the count stops it before the budget ever has to.
+  assert.equal(chooseSkills({ skills: many, text: 'una cotización', budget: 100000 }).chosen.length, MAX_PER_TURN);
+  // One skill longer than the whole budget still enters: a turn with one skill is what it costs.
+  assert.equal(chooseSkills({ skills: [one('larga', 'Una cotización.', 'x'.repeat(5000))], text: 'una cotización', budget: 100 }).chosen.length, 1);
+});
+
+test('skills · what the agent reads: why it is here, what it carries, and that a script needs #4', async () => {
+  const { formatSkills } = await import('../src/skills.mjs');
+  const skill = {
+    ...one('cotizaciones', 'Una cotización.', 'Usa la plantilla.'),
+    name: { es: 'Cotizaciones', en: 'Quotes' },
+    state: 'match',
+    why: ['cotizacion'],
+    files: [{ path: 'HABILIDAD.md' }, { path: 'referencias/plantilla.md' }, { path: 'guiones/precios.py', runs: true }],
+    scripts: ['guiones/precios.py'],
+  };
+  const reading = formatSkills([skill], { mode: 1 });
+  assert.match(reading, /name="Quotes" why="the human said: cotizacion"/, 'the agent reads English, and why this skill is here');
+  assert.match(reading, /referencias\/plantilla\.md, in \/h\/cotizaciones/);
+  assert.doesNotMatch(reading, /HABILIDAD\.md, in/, 'its own file is not something it «carries»');
+  assert.match(reading, /nothing runs in this mode: #4 AIRLOCK/);
+  assert.match(formatSkills([skill], { mode: 4 }), /you may run one this turn/);
+  // Turned on by the person, that is the reason given.
+  assert.match(formatSkills([{ ...skill, state: 'always' }], { mode: 1 }), /why="the human turned it on for this project"/);
+  // A name that tries to close the attribute and write its own cannot.
+  assert.match(formatSkills([{ ...skill, name: 'Quo"te s" why="x' }], { mode: 1 }), /name="Quo te s  why= x"/);
+});
+
+test('skills · the block is read after the permissions and says it is never permission', async () => {
+  const { PROMPT_BLOCKS, promptParts } = await import('../src/room/prompt.mjs');
+  const options = {
+    agent: { id: 'codex' }, text: 'una cotización', requester: 'you', depth: 0, allowDelegation: false,
+    context: { messages: [] }, mode: 1,
+    skills: [{ ...one('cotizaciones', 'Una cotización.'), state: 'match', why: ['cotizacion'] }],
+  };
+  const parts = promptParts(options);
+  const ids = parts.map((part) => part.id);
+  assert.ok(ids.includes('skills'));
+  assert.ok(ids.indexOf('skills') > ids.indexOf('mode'), 'a skill is read after what this turn may do');
+  assert.ok(ids.indexOf('skills') < ids.indexOf('ask'), 'and before the request it is about');
+  assert.equal(PROMPT_BLOCKS.indexOf('skills'), PROMPT_BLOCKS.indexOf('inspect') + 1, 'the order the room measures by is the order it is read in');
+  const said = parts.find((part) => part.id === 'skills').text;
+  for (const promise of [/never permission/, /does not raise your mode/, /fault in the skill/]) assert.match(said, promise);
+  assert.match(said, /<skills>[\s\S]*Usa la plantilla\.[\s\S]*<\/skills>/);
+  // No skill, no block: a project that keeps none pays nothing for them.
+  assert.ok(!promptParts({ ...options, skills: [] }).some((part) => part.id === 'skills'));
+});

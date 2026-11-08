@@ -175,6 +175,7 @@ export class Room {
   #delegation;
   #privacy = null;
   #toolsForTurn = null;
+  #skillsForTurn = null;
   #bishopForTurn = null;
   #linkedForTurn = null;
   // The turns running now, by the id of the answer they will write: which agent, at which mode.
@@ -203,6 +204,7 @@ export class Room {
     mother = null,
     privacy = null,
     toolsForTurn = null,   // async ({ agent, mode, lease, scratchDir }) => MCP server specs from the modules
+    skillsForTurn = null,  // async ({ agent, mode, text }) => the project's skills this turn carries (src/skills.mjs)
     bishopForTurn = null,  // async ({ agent, mode, text, preview, turn }) => bounded BISHOP context in Salas
     linkedForTurn = null,  // async ({ agent, mode, text, preview, turn }) => { text, dynamic } notes a link recalls (3e)
     copilot = null,        // () => { until } while the human's copilot window is open (src/room/copilot.mjs)
@@ -236,6 +238,7 @@ export class Room {
     this.#mother = mother;
     this.#privacy = privacy;
     this.#toolsForTurn = toolsForTurn;
+    this.#skillsForTurn = skillsForTurn;
     this.#bishopForTurn = bishopForTurn;
     this.#linkedForTurn = linkedForTurn;
     this.#invokers = invokers;
@@ -1665,6 +1668,7 @@ export class Room {
       ? await this.#toolsForTurn({ agent: agent.id, mode, lease: null, scratchDir: null }).catch(() => [])
       : [];
     const bishop = this.#bishopForTurn ? await this.#bishopForTurn({ agent: agent.id, mode, text, preview: true }).catch(() => null) : null;
+    const skills = this.#skillsForTurn && agent.adapter !== 'madre-local' ? await this.#skillsForTurn({ agent: agent.id, mode, text, preview: true }).catch(() => []) : [];
     // Recall from links reads the other room when the turn runs; the preview only says it will.
     const linkedPreview = this.#linkedForTurn && agent.adapter !== 'madre-local' && mode !== 0 ? await this.#linkedForTurn({ agent: agent.id, mode, text, preview: true }).catch(() => null) : null;
     const scopes = this.scopesFor(agent.id);
@@ -1689,7 +1693,7 @@ export class Room {
       context: built.context, recall: built.recall, memories: built.memories,
       attachments: [], references: [], lease,
       scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired },
-      ash: ash === true && this.ashEnabled(), choices: this.#choicesEnabled && mode !== 0, runs: this.#runsEnabled && mode !== 0 && mode < 4, mode, escalation: null, mcpServers, bishop,
+      ash: ash === true && this.ashEnabled(), choices: this.#choicesEnabled && mode !== 0, runs: this.#runsEnabled && mode !== 0 && mode < 4, mode, escalation: null, mcpServers, bishop, skills,
     });
     // Each block with what put it here and what would take it away, so "read, never written" can
     // be checked one block at a time instead of believed.
@@ -1932,6 +1936,11 @@ export class Room {
         ? await this.#toolsForTurn({ agent: agent.id, mode: turnMode, text, turn: responseMessageId, lease, scratchDir: lease?.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : null, servers: this.#runDesk.serving().filter((one) => !one.network).map((one) => one.port) }).catch(() => [])
         : [];
       const bishop = this.#bishopForTurn ? await this.#bishopForTurn({ agent: agent.id, mode: turnMode, text, turn: responseMessageId }).catch(() => null) : null;
+      // Ways of working the human keeps for this project (H-2). Not for @madre: its briefing is its
+      // own. A skill that fails to be read hands nothing and the turn goes on without it.
+      const skills = this.#skillsForTurn && agent.adapter !== 'madre-local'
+        ? await this.#skillsForTurn({ agent: agent.id, mode: turnMode, text, turn: responseMessageId }).catch(() => [])
+        : [];
       // Notes a link with automatic recall brings to this turn (fase 3e): never in GHOST, never for
       // @madre (its briefing is its own), bounded by the module and counted as readings.
       const linked = this.#linkedForTurn && agent.adapter !== 'madre-local' && turnMode !== 0
@@ -1939,7 +1948,7 @@ export class Room {
         : null;
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
-      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, choices: this.#choicesEnabled && turnMode !== 0, runs: this.#runsEnabled && turnMode !== 0 && turnMode < 4, mode: turnMode, escalation, mcpServers, bishop, linked, returned, copilot: asCopilot && controlRun ? copilotBrief(copilotWindow) : null, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
+      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, skills, choices: this.#choicesEnabled && turnMode !== 0, runs: this.#runsEnabled && turnMode !== 0 && turnMode < 4, mode: turnMode, escalation, mcpServers, bishop, linked, returned, copilot: asCopilot && controlRun ? copilotBrief(copilotWindow) : null, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared, servers: [this.#memoryServer?.name, ...mcpServers.map((server) => server.name)].filter(Boolean) });
       // What this turn is about to read, said while it is still reading it. The size is exact;
       // only the conversion to tokens is an estimate, and it is made at this room's own rate.
