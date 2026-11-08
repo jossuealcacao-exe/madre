@@ -6896,7 +6896,6 @@ export const ES = {
   "Websites, apps, the usual repository.": "Páginas, apps, el repositorio de siempre.",
   "Writing and getting organised": "Escribir y organizarme",
   "Loose notes, to-dos, long texts.": "Notas sueltas, pendientes, textos largos.",
-  "Curiosity": "Curiosidad",
   "I just want to see what it does": "Solo quiero ver qué hace",
   "Show me, and then I will decide.": "Enséñame y luego decido.",
   "Write the description of my 5 best-selling products": "Escribe la descripción de mis 5 productos que más se venden",

@@ -1,49 +1,38 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
-// THE WELCOME'S STAGE (1.1, 2026-11-08, docs/private/BIENVENIDA-1.1.md): one picture above every step
-// that shows what that step is doing, so the welcome reads as one story and not as six forms.
+// THE WELCOME'S STAGE (1.1, 2026-11-08, docs/private/BIENVENIDA-1.1.md): one abstract picture above
+// every step, so the welcome reads as one story and not as six forms. No words, no logos, no
+// drawings of things: a field of points of light that takes a new shape at each step, and MADRE's
+// DOT (the logo's, «MADRE is ready») at the centre of it all.
 //
-// It is drawn with the brand book's own pieces (madre-landing/brand-kit, §3–§6), nothing else: the
-// near-black ground #050605 with its faint green glow and scan lines, the PULSE of the logo — a flat
-// line that beats once (a high peak, a valley, a small peak) and goes on — and its DOT, «MADRE is
-// ready». Phosphor #9bff66 is kept scarce and means something: what is connected, chosen or arriving.
-// Labels are JetBrains Mono in capitals. Motion as the book says: fades of 0.4 s, entries that rise
-// 24 px and settle, no spinning, no bouncing, no neon. Everything ends in the dot.
+// The same points travel from one step to the next — they are never thrown away and made again —
+// so every change of step is the field rearranging itself, not a cut:
 //
-//   hello     the pulse sweeps like a monitor while MADRE reads the computer; then it settles into
-//             the logo's own beat and its dot, and what was found rises in labels
-//   use       one line per use; the ones chosen light up, beat, and bend into the dot
-//   agents    each agent, with its owner's official mark, joined to the dot; a connected one sends
-//             beats along its line
-//   project   each folder found sends a thread to the dot; the folders stay where they are
-//   ai        the pulse is the download: it grows from the left with the beat at its head, and when
-//             it is complete it is the logo's beat, alive
-//   ready     the pulse reaches a message that writes itself; the dot is its cursor
+//   hello     a cloud the computer is read through: a soft wave crosses it; once read, it settles
+//             into a calm halo round the dot
+//   use       five nebulae round the dot; the ones the person marks grow, brighten and come closer
+//   agents    one small constellation per AI, round the dot; a connected one sends light to it
+//   project   threads from the edge, one per folder chosen, gathering into a ring round the dot
+//   ai        the points fall in a slow spiral into a core while it downloads, a fine arc saying how
+//             much; once there, they settle in three quiet orbits
+//   ready     the points draw the logo's pulse, flat, one beat, flat, and end in the dot
 //
-// A person who asked for less motion gets each picture still, in its final state.
+// MADRE's own style, from its brand book (madre-landing/brand-kit): the phosphor is the only colour
+// and means something; nothing spins fast, bounces or glows like neon; changes take about 0.4 s and
+// settle softly. It follows the look the person has on — light or dark, as their system or their
+// Settings say (`data-scheme` on the page) — and changes with it. A person who asked for less
+// motion gets each picture still, in its final shape.
 
-const BG = '#050605';
-const PHOSPHOR = [155, 255, 102];
-const TEXT = [238, 241, 234];
-const TEXT2 = [154, 161, 151];
-const CARD = '#161a16';
-const MONO = '600 10.5px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const READ = '450 13px Sora, Geist, ui-sans-serif, system-ui, sans-serif';
-const FADE = 0.4;        // s, the book's fade
-const RISE = 24;         // px an entry rises
-// The logo's beat is about as tall as it is wide (40 high for 47.5 long): the same here, wherever it is.
-const BEAT_PX = 64;
-const BEAT_AMP = 22;
+const N = 220;
+const RIPPLE = 2.6;          // s between two heartbeats of the dot
 
-const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a))})`;
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
-const easeOut = (x) => 1 - Math.pow(1 - clamp01(x), 3);
-const easeInOut = (x) => { const v = clamp01(x); return v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2; };
 const frac = (x) => x - Math.floor(x);
+const easeInOut = (x) => { const v = clamp01(x); return v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2; };
+const hash = (n) => frac(Math.sin(n * 127.1 + 311.7) * 43758.5453);
 
-// The beat of the logo (madre-mark: M1 10H20 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10H52, dot at
-// 60): 19 units long, 8 up and 8 down around the line, then the small peak. `u` runs 0…1 along it;
-// the answer is the height in units of 8 (negative is up).
+// The logo's beat (madre-mark: …H20 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10…): along 0…1, the height
+// in units of the beat (negative is up). The `ready` picture draws it with points.
 const BEAT = [[0, 0], [3.5, -1], [8, 1], [12, 0], [15, 0], [17, -0.5], [19, 0]];
 function beatAt(u) {
   if (u <= 0 || u >= 1) return 0;
@@ -55,17 +44,31 @@ function beatAt(u) {
   }
   return 0;
 }
+const bezier = (a, c, b, q) => (1 - q) * (1 - q) * a + 2 * (1 - q) * q * c + q * q * b;
 
-// An official mark as a picture for the canvas: the same SVG the room uses, in one light ink.
-const marks = new Map();
-function markImage(svg, ink) {
-  const key = `${ink}:${svg}`;
-  if (marks.has(key)) return marks.get(key);
-  const image = new Image();
-  image.decoding = 'async';
-  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.replace(/currentColor/g, ink).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" '))}`;
-  marks.set(key, image);
-  return image;
+// The two looks. In the dark the light adds up, as light does; in the light the points are ink.
+const LOOKS = {
+  dark: { ground: [5, 6, 5], ink: [155, 255, 102], soft: [238, 241, 234], glow: 0.075, scan: 0.03, blend: 'lighter', halo: 0.34 },
+  light: { ground: [238, 240, 234], ink: [47, 138, 28], soft: [18, 21, 18], glow: 0.06, scan: 0, blend: 'source-over', halo: 0.18 },
+};
+const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${clamp01(a)})`;
+
+// One point of light, drawn once and stamped: a solid core and a short soft halo, never a blur.
+function spriteOf(ink, halo) {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, rgba(ink, 1));
+  g.addColorStop(0.18, rgba(ink, 1));
+  g.addColorStop(0.3, rgba(ink, halo));
+  g.addColorStop(1, rgba(ink, 0));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  return canvas;
 }
 
 export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false } = {}) {
@@ -84,10 +87,30 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
   let h = 0;
   let dpr = 1;
   let frame = 0;
-  let scene = null;            // { id, data(), since }
-  let leaving = null;          // the scene that fades out under the new one
-  const born = new Map();      // what has appeared, and when: each label rises once
-  const fit = () => {
+  let scene = { id: 'hello', data: () => ({}), since: 0 };
+  const dot = { a: 0, r: 4.5 };         // the dot, eased like the points
+  let look = null;
+  let ground = null;                    // the ground's colour now, eased between looks
+  let sprite = null;
+  const parts = Array.from({ length: N }, (_, i) => ({
+    i, seed: hash(i + 1), seed2: hash(i + 1000), z: 0.35 + 0.65 * hash(i + 2000),
+    x: 0, y: 0, vx: 0, vy: 0, a: 0, s: 1,
+  }));
+  let placed = false;
+
+  const readLook = () => {
+    const next = LOOKS[document.documentElement.dataset.scheme === 'light' ? 'light' : 'dark'];
+    if (next === look) return;
+    look = next;
+    ground ??= [...look.ground];
+    sprite = spriteOf(look.ink, look.halo);
+  };
+  readLook();
+  // The look changes when the person or their system changes it: the picture goes with it.
+  const watcher = typeof MutationObserver === 'function' ? new MutationObserver(() => { readLook(); redraw(); }) : null;
+  watcher?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-scheme'] });
+
+  function fit() {
     const box = node.getBoundingClientRect();
     if (!box.width) return;
     dpr = Math.min(2, globalThis.devicePixelRatio || 1);
@@ -95,346 +118,241 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
     h = box.height;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
-  };
+    if (!placed) {
+      for (const p of parts) { p.x = w / 2 + (p.seed - 0.5) * w * 0.9; p.y = h / 2 + (p.seed2 - 0.5) * h * 0.8; }
+      placed = true;
+    }
+    redraw();
+  }
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
   observer?.observe(node);
 
-  // ---- The pieces every picture is drawn with.
-  const at = (now, key) => { if (!born.has(key)) born.set(key, now); return now - born.get(key); };
-  const entry = (now, key, delay = 0) => { const age = at(now, key) - delay; return still ? { a: 1, dy: 0 } : { a: easeOut(age / FADE), dy: RISE * (1 - easeOut(age / (FADE * 1.6))) }; };
-  function label(text, x, y, { a = 1, ink = TEXT2, align = 'left', font = MONO } = {}) {
-    ctx.font = font;
-    ctx.textAlign = align;
-    ctx.textBaseline = 'middle';
-    if (font === MONO && 'letterSpacing' in ctx) ctx.letterSpacing = '1.4px';
-    ctx.fillStyle = rgba(ink, a);
-    ctx.fillText(font === MONO ? String(text).toLocaleUpperCase() : text, x, y);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-  }
-  function dot(x, y, r, a = 1) {
-    ctx.fillStyle = rgba(PHOSPHOR, a);
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  }
-  // A beat that arrives at the dot makes it breathe once: no glow, only its size.
-  function liveDot(x, y, r, a, pulse = 0) { dot(x, y, r * (1 + 0.28 * Math.sin(Math.PI * clamp01(pulse))), a); }
-  // A line from a to b along which a beat travels: the beat's shape rides on the line itself.
-  function beatingLine(ax, ay, bx, by, { t, a = 1, amp = 7, speed = 0.55, offset = 0, width = 1.6, ink = PHOSPHOR, bend = 0 } = {}) {
-    const steps = 90;
-    const head = frac(t * speed + offset);
-    const span = Math.min(0.3, (BEAT_PX * 0.7) / Math.max(1, Math.hypot(bx - ax, by - ay)));
-    ctx.lineWidth = width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = rgba(ink, a);
-    ctx.beginPath();
-    for (let i = 0; i <= steps; i += 1) {
-      const u = i / steps;
-      // A bent line is a gentle curve that leaves level and arrives level.
-      const x = ax + (bx - ax) * u;
-      const y = bend ? by + (ay - by) * (1 - easeInOut(u)) : ay + (by - ay) * u;
-      const k = (u - (head - span)) / span;
-      const yy = y + (still ? 0 : beatAt(k) * amp);
-      if (i === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
-    }
-    ctx.stroke();
-    return head;
-  }
-  function plainLine(ax, ay, bx, by, { a = 1, ink = TEXT2, dash = null, width = 1, bend = false } = {}) {
-    ctx.lineWidth = width;
-    ctx.strokeStyle = rgba(ink, a);
-    ctx.setLineDash(dash ?? []);
-    ctx.beginPath();
-    if (bend) {
-      for (let i = 0; i <= 60; i += 1) { const u = i / 60; const x = ax + (bx - ax) * u; const y = by + (ay - by) * (1 - easeInOut(u)); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-    } else { ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  // The logo's pulse, whole, from x0 to x1 on the line y, with its dot: the shape MADRE signs with.
-  function logoPulse(x0, x1, y, { a = 1, amp = 10, beatFrom = 0.38, beatSpan = 0.3, drawn = 1, width = 1.9 } = {}) {
-    const end = x0 + (x1 - x0) * clamp01(drawn);
-    ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = rgba(PHOSPHOR, a);
-    ctx.beginPath();
-    const steps = 160;
-    for (let i = 0; i <= steps; i += 1) {
-      const x = x0 + ((end - x0) * i) / steps;
-      const u = (x - x0) / (x1 - x0);
-      const yy = y + beatAt((u - beatFrom) / beatSpan) * amp;
-      if (i === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
-    }
-    ctx.stroke();
-    return end;
-  }
-  function ground(t) {
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, w, h);
-    // The brand's one allowed glow: radial, faint, behind everything.
-    const glow = ctx.createRadialGradient(w * 0.62, h * 0.5, 0, w * 0.62, h * 0.5, Math.max(w, h) * 0.6);
-    glow.addColorStop(0, rgba(PHOSPHOR, 0.075));
-    glow.addColorStop(1, rgba(PHOSPHOR, 0));
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, w, h);
-    // Scan lines: 1 px every 4, phosphor at 3.5 %.
-    ctx.fillStyle = rgba(PHOSPHOR, 0.035);
-    for (let y = 0; y < h; y += 4) ctx.fillRect(0, y, w, 1);
-    void t;
-  }
-  const rows = (n, top, bottom) => Array.from({ length: n }, (_, i) => (n === 1 ? (top + bottom) / 2 : top + ((bottom - top) * i) / (n - 1)));
-
-  // ---- The pictures.
+  // ---- Where each point wants to be in each picture: [x, y, brightness, size]. Every picture keeps
+  // the dot in the same place, a little above the middle, so the eye has one place to rest.
+  const centre = () => ({ cx: w * 0.5, cy: h * 0.44, R: Math.min(h * 0.32, w * 0.16) });
+  const drift = (p, t, k = 1) => [Math.sin(t * 0.5 + p.seed * 40) * 3 * k * p.z, Math.cos(t * 0.42 + p.seed2 * 40) * 2.4 * k * p.z];
   const PICTURES = {
-    hello(t, now, data) {
-      const y = h * 0.38;
-      const x0 = w * 0.08;
-      const x1 = w * 0.92;
-      const dx = Math.min(w * 0.92 - 10, x1 + 18);
+    hello(p, t, data) {
+      const { cx, cy, R } = centre();
+      const [dx, dy] = drift(p, t);
       if (!data.scanned) {
-        // A monitor's sweep: the head runs left to right, the beat rides with it, the trail fades.
-        const head = still ? 0.6 : frac(t * 0.32);
-        const hx = x0 + (x1 - x0) * head;
-        ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-        const steps = 220;
-        for (let i = 1; i <= steps; i += 1) {
-          const ua = (i - 1) / steps;
-          const ub = i / steps;
-          const xa = x0 + (x1 - x0) * ua;
-          const xb = x0 + (x1 - x0) * ub;
-          const behind = (hx - xb) / (x1 - x0);
-          if (behind < 0) continue;
-          const alpha = Math.max(0, 1 - behind * 2.2);
-          const span = BEAT_PX / (x1 - x0);
-          const ya = y + beatAt((ua - (head - span)) / span) * BEAT_AMP;
-          const yb = y + beatAt((ub - (head - span)) / span) * BEAT_AMP;
-          ctx.strokeStyle = rgba(PHOSPHOR, alpha);
-          ctx.beginPath(); ctx.moveTo(xa, ya); ctx.lineTo(xb, yb); ctx.stroke();
-        }
-        dot(hx, y, 3, 1);
-        plainLine(x0, y, x1, y, { a: 0.08, ink: TEXT });
-      } else {
-        const age = at(now, 'hello:settled');
-        const drawn = still ? 1 : easeInOut(age / 1.1);
-        logoPulse(x0, x1, y, { drawn, amp: BEAT_AMP, beatFrom: 0.44, beatSpan: BEAT_PX / (x1 - x0) });
-        // The dot falls in once the line has arrived, then breathes with every beat.
-        const fall = still ? 1 : easeOut((age - 1.0) / 0.45);
-        const beat = still ? 0 : frac((age - 1.4) / 2.6);
-        if (drawn >= 1) liveDot(dx, y - 16 * (1 - fall), 4.6, fall, beat < 0.18 ? beat / 0.18 : 0);
+        // A wide soft cloud, and a wave that crosses it, as if the computer were read line by line.
+        const ang = p.seed * Math.PI * 2;
+        const rad = Math.sqrt(p.seed2);
+        const x = cx + Math.cos(ang) * rad * w * 0.36;
+        const y = cy + Math.sin(ang) * rad * R * 1.25;
+        const sweep = w * (0.08 + 0.84 * frac(t * 0.24));
+        const near = Math.exp(-(((x - sweep) / 46) ** 2));
+        return [x + dx, y + dy - near * 7, 0.14 + 0.7 * near, 1 + near * 0.9];
       }
-      // What MADRE found, rising one by one under the line.
-      const facts = data.facts ?? [];
-      facts.forEach((fact, i) => {
-        const e = entry(now, `hello:fact:${fact}`, i * 0.18);
-        const last = facts.length - 1;
-        const x = last ? x0 + ((x1 - x0) * i) / last : x0;
-        label(fact, x, h * 0.7 + e.dy, { a: e.a * 0.95, align: !last || i === 0 ? 'left' : i === last ? 'right' : 'center' });
-      });
+      // Read: the cloud gathers into a calm halo round the dot.
+      const ang = p.seed * Math.PI * 2 + t * 0.04;
+      const ring = R * (1.05 + (p.seed2 - 0.5) ** 2 * 2);
+      return [cx + Math.cos(ang) * ring * 1.9 + dx, cy + Math.sin(ang) * ring * 0.62 + dy, 0.22 + 0.45 * (1 - p.seed2), 1];
     },
-    use(t, now, data) {
+    use(p, t, data) {
+      const { cx, cy, R } = centre();
       const items = data.items ?? [];
-      const ys = rows(items.length, h * 0.13, h * 0.66);
-      const lx = w * 0.06;
-      const sx = w * 0.3;
-      const dx = w * 0.86;
-      const dy = h * 0.4;
-      let arriving = 0;
-      items.forEach((item, i) => {
-        const e = entry(now, `use:${item.id}`, i * 0.08);
-        const y = ys[i] + e.dy * 0.5;
-        label(item.label, lx, y, { a: e.a * (item.on ? 1 : 0.55), ink: item.on ? TEXT : TEXT2 });
-        if (item.on) {
-          const lit = still ? 1 : easeOut(at(now, `use:on:${item.id}`) / 0.5);
-          plainLine(sx, y, dx - 8, dy, { a: 0.1 * e.a, ink: TEXT, bend: true });
-          ctx.save();
-          ctx.beginPath(); ctx.rect(sx - 2, 0, (dx - sx) * lit + 4, h); ctx.clip();
-          const head = beatingLine(sx, y, dx - 8, dy, { t, a: e.a, amp: 9, speed: 0.42, offset: i * 0.23, bend: true });
-          ctx.restore();
-          if (head > 0.92) arriving = Math.max(arriving, (head - 0.92) / 0.08);
-        } else {
-          plainLine(sx, y, sx + (dx - sx) * 0.42, y, { a: 0.14 * e.a, ink: TEXT, dash: [2, 5] });
-        }
-      });
-      const any = items.some((item) => item.on);
-      liveDot(dx, dy, 5, any ? 1 : 0.35, arriving);
+      const k = items.length ? p.i % items.length : 0;
+      const on = Boolean(items[k]?.on);
+      // Five nebulae on an ellipse round the dot; a marked one comes a third of the way in.
+      const ang = -Math.PI / 2 + ((k + 0.5) / Math.max(1, items.length)) * Math.PI * 2;
+      const pull = on ? 0.66 : 1;
+      const nx = cx + Math.cos(ang) * w * 0.34 * pull;
+      const ny = cy + Math.sin(ang) * R * 1.05 * pull;
+      // A few points of a marked nebula carry light to the dot.
+      if (on && p.seed < 0.16) {
+        const q = frac(t * 0.3 + p.seed2 * 3);
+        const bend = (p.seed2 - 0.5) * 40;
+        return [bezier(nx, (nx + cx) / 2 + bend, cx, easeInOut(q)), bezier(ny, (ny + cy) / 2 - bend, cy, easeInOut(q)), 0.9 * Math.sin(q * Math.PI), 1.1];
+      }
+      const [dx, dy] = drift(p, t, on ? 1.4 : 0.8);
+      const spread = (on ? 26 : 14) * Math.sqrt(p.seed2);
+      const a2 = p.seed2 * 40 + t * (on ? 0.12 : 0.05);
+      return [nx + Math.cos(a2) * spread * 1.3 + dx, ny + Math.sin(a2) * spread + dy, on ? 0.45 + 0.45 * (1 - p.seed2) : 0.13, on ? 1.15 : 0.85];
     },
-    agents(t, now, data) {
+    agents(p, t, data) {
+      const { cx, cy, R } = centre();
       const items = data.items ?? [];
-      const ys = rows(items.length, h * 0.12, h * 0.68);
-      const lx = w * 0.07;
-      const sx = lx + 120;
-      const dx = w * 0.86;
-      const dy = h * 0.4;
-      let arriving = 0;
-      items.forEach((item, i) => {
-        const e = entry(now, `agents:${item.id}`, i * 0.07);
-        const y = ys[i] + e.dy * 0.5;
-        const image = item.mark ? markImage(item.mark, item.on ? '#eef1ea' : '#7c8479') : null;
-        if (image?.complete && image.naturalWidth) { ctx.globalAlpha = e.a * (item.on ? 1 : 0.7); ctx.drawImage(image, lx, y - 9, 18, 18); ctx.globalAlpha = 1; }
-        label(item.label, lx + 26, y, { a: e.a * (item.on ? 1 : 0.6), ink: item.on ? TEXT : TEXT2 });
-        if (item.on) {
-          const lit = still ? 1 : easeOut(at(now, `agents:on:${item.id}`) / 0.6);
-          ctx.save(); ctx.beginPath(); ctx.rect(sx - 2, 0, (dx - sx) * lit + 4, h); ctx.clip();
-          const head = beatingLine(sx, y, dx - 8, dy, { t, a: e.a, amp: 9, speed: 0.5, offset: i * 0.17, bend: true });
-          ctx.restore();
-          if (head > 0.92) arriving = Math.max(arriving, (head - 0.92) / 0.08);
-        } else {
-          plainLine(sx, y, dx - 8, dy, { a: 0.1 * e.a, ink: TEXT, dash: [2, 6], bend: true });
-        }
-      });
-      liveDot(dx, dy, 5.2, items.some((item) => item.on) ? 1 : 0.35, arriving);
-      if (data.count) label(data.count, dx, dy + 24, { a: 0.9, align: 'center' });
+      const n = Math.max(1, items.length);
+      const k = p.i % n;
+      const on = Boolean(items[k]?.on);
+      const ang = -Math.PI / 2 + ((k + 0.25) / n) * Math.PI * 2;
+      const nx = cx + Math.cos(ang) * w * 0.38;
+      const ny = cy + Math.sin(ang) * R * 1.1;
+      // A connected AI sends a stream of light along a gentle curve into the dot.
+      if (on && p.seed < 0.42) {
+        const q = frac(t * 0.26 + p.seed2 * 2);
+        const bend = Math.cos(ang) * 26;
+        return [bezier(nx, (nx + cx) / 2, cx, easeInOut(q)), bezier(ny, (ny + cy) / 2 + bend, cy, easeInOut(q)), 0.75 * Math.sin(q * Math.PI) ** 0.7, 0.95];
+      }
+      const [dx, dy] = drift(p, t, 0.7);
+      const spread = (on ? 13 : 8) * Math.sqrt(p.seed2);
+      const a2 = p.seed2 * 40 + t * 0.1;
+      return [nx + Math.cos(a2) * spread + dx, ny + Math.sin(a2) * spread * 0.8 + dy, on ? 0.6 + 0.3 * (1 - p.seed2) : 0.14, on ? 1.1 : 0.8];
     },
-    project(t, now, data) {
-      const items = (data.items ?? []).slice(0, 6);
-      const ys = rows(items.length || 1, h * 0.12, h * 0.68);
-      const lx = w * 0.07;
-      const sx = Math.min(w * 0.42, lx + 190);
-      const dx = w * 0.86;
-      const dy = h * 0.4;
-      let arriving = 0;
-      items.forEach((item, i) => {
-        const e = entry(now, `project:${item.path}`, i * 0.07);
-        const y = ys[i] + e.dy * 0.5;
-        // A folder, drawn as a glyph of the book: one stroke, round ends.
-        ctx.strokeStyle = rgba(item.on ? TEXT : TEXT2, e.a * (item.on ? 0.9 : 0.5));
-        ctx.lineWidth = 1.4; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(lx, y - 5); ctx.lineTo(lx + 5, y - 5); ctx.lineTo(lx + 7, y - 3); ctx.lineTo(lx + 15, y - 3); ctx.lineTo(lx + 15, y + 6); ctx.lineTo(lx, y + 6); ctx.closePath();
-        ctx.stroke();
-        const name = item.name.length > 22 ? `${item.name.slice(0, 21)}…` : item.name;
-        label(name, lx + 24, y, { a: e.a * (item.on ? 1 : 0.55), ink: item.on ? TEXT : TEXT2 });
-        if (item.on) {
-          const lit = still ? 1 : easeOut(at(now, `project:on:${item.path}`) / 0.6);
-          ctx.save(); ctx.beginPath(); ctx.rect(sx - 2, 0, (dx - sx) * lit + 4, h); ctx.clip();
-          const head = beatingLine(sx, y, dx - 8, dy, { t, a: e.a * 0.95, amp: 8, speed: 0.38, offset: i * 0.19, bend: true, width: 1.4 });
-          ctx.restore();
-          if (head > 0.92) arriving = Math.max(arriving, (head - 0.92) / 0.08);
-        }
-      });
-      if ((data.items ?? []).length > items.length) label(`+${data.items.length - items.length}`, lx + 24, h * 0.78, { a: 0.6 });
-      liveDot(dx, dy, 5.2, items.some((item) => item.on) ? 1 : 0.35, arriving);
-      if (data.count) label(data.count, dx, dy + 24, { a: 0.9, align: 'center' });
+    project(p, t, data) {
+      const { cx, cy, R } = centre();
+      const n = Math.min(8, data.count ?? 0);
+      // The ring round the dot: fuller with every folder that comes.
+      const ringShare = 0.12 + 0.07 * n;
+      const ringAng = p.seed * Math.PI * 2 + t * 0.06;
+      const ringR = R * (0.9 + 0.22 * (p.seed2 - 0.5));
+      const ring = [cx + Math.cos(ringAng) * ringR * 1.75, cy + Math.sin(ringAng) * ringR * 0.55];
+      if (!n) { const [dx, dy] = drift(p, t); return [ring[0] + dx * 3, ring[1] + dy * 3, p.seed2 < 0.4 ? 0.14 : 0, 0.8]; }
+      if (p.seed2 < ringShare) return [ring[0], ring[1], 0.28 + 0.4 * p.z, 0.95];
+      // Threads: one from each folder chosen, coming in from the left edge, joining the ring.
+      const k = p.i % n;
+      const sy = h * (0.14 + (n === 1 ? 0.3 : (k / (n - 1)) * 0.6));
+      const q = frac(t * 0.17 + p.seed * 1.7);
+      const ex = cx - ringR * 1.75 * 0.98;
+      return [bezier(-10, w * 0.22, ex, easeInOut(q)), bezier(sy, sy, cy, easeInOut(q)), 0.62 * Math.sin(q * Math.PI) ** 0.6, 0.9];
     },
-    ai(t, now, data) {
-      const y = h * 0.4;
-      const x0 = w * 0.08;
-      const x1 = w * 0.84;
-      const dx = w * 0.9;
-      if (data.state === 'downloading') plainLine(x0, y, x1, y, { a: 0.12, ink: TEXT });
+    ai(p, t, data) {
+      const { cx, cy, R } = centre();
+      const pct = clamp01((data.pct ?? 0) / 100);
       if (data.state === 'ready') {
-        const age = at(now, 'ai:ready');
-        const drawn = still ? 1 : easeInOut(age / 0.9);
-        logoPulse(x0, x1, y, { drawn, amp: BEAT_AMP, beatFrom: 0.46, beatSpan: BEAT_PX / (x1 - x0) });
-        const beat = still ? 0 : frac((age - 1) / 2.4);
-        if (drawn >= 1) liveDot(dx, y, 5, 1, beat < 0.18 ? beat / 0.18 : 0);
-      } else if (data.state === 'downloading') {
-        const pct = clamp01((data.pct ?? 0) / 100);
-        const end = x0 + (x1 - x0) * pct;
-        // The pulse grows with the download; its head beats while it works.
-        ctx.lineWidth = 1.8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.strokeStyle = rgba(PHOSPHOR, 1);
-        ctx.beginPath();
-        const steps = 140;
-        const phase = still ? 0.6 : frac(t * 0.9);
-        for (let i = 0; i <= steps; i += 1) {
-          const x = x0 + ((end - x0) * i) / steps;
-          const k = (x - (end - BEAT_PX * 0.8)) / (BEAT_PX * 0.8);
-          const yy = y + beatAt(k) * BEAT_AMP * 0.8 * (0.55 + 0.45 * Math.abs(Math.sin(phase * Math.PI)));
-          if (i === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
-        }
-        ctx.stroke();
-        dot(end, y, 3, 1);
-        liveDot(dx, y, 5, 0.3, 0);
-      } else {
-        // Waiting for a choice, or left for later: the pulse it will be, faint, and its dot, quiet. A
-        // ghost of the beat crosses it now and then, the way the line of a monitor waits.
-        logoPulse(x0, x1, y, { a: data.state === 'skip' ? 0.12 : 0.22, amp: BEAT_AMP, beatFrom: 0.46, beatSpan: BEAT_PX / (x1 - x0), width: 1.4 });
-        if (data.state !== 'skip' && !still) { const sweep = frac(t * 0.18); ctx.save(); ctx.beginPath(); ctx.rect(x0 + (x1 - x0) * sweep - 60, 0, 60, h); ctx.clip(); logoPulse(x0, x1, y, { a: 0.55, amp: BEAT_AMP, beatFrom: 0.46, beatSpan: BEAT_PX / (x1 - x0), width: 1.6 }); ctx.restore(); }
-        liveDot(dx, y, 5, data.state === 'skip' ? 0.25 : 0.5, 0);
+        // Three quiet orbits, each a little more tilted, slower further out.
+        const shell = p.i % 3;
+        const r = R * (0.5 + shell * 0.26);
+        const ang = p.seed * Math.PI * 2 + t * (0.11 - shell * 0.025) * (shell === 1 ? -1 : 1);
+        const tilt = [0.32, 0.48, 0.62][shell];
+        return [cx + Math.cos(ang) * r * 1.6, cy + Math.sin(ang) * r * tilt, 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(ang * 2 + t * 0.6)) * p.z, 0.95];
       }
-      if (data.model) label(data.model, x0, h * 0.7, { a: 0.9 });
-      if (data.detail) label(data.detail, x1, h * 0.7, { a: 0.9, align: 'right', ink: data.state === 'ready' ? PHOSPHOR : TEXT2 });
+      if (data.state === 'downloading') {
+        // Falling in, slowly, along a spiral: faster as more has arrived.
+        const q = frac(t * (0.12 + 0.18 * pct) + p.seed);
+        const r = R * (2.1 * (1 - q) + 0.28);
+        const ang = p.seed2 * Math.PI * 2 + q * 3.2;
+        return [cx + Math.cos(ang) * r * 1.5, cy + Math.sin(ang) * r * 0.6, 0.1 + 0.7 * q ** 1.4, 0.7 + 0.5 * q];
+      }
+      // Waiting, or left for later: a loose quiet disc.
+      const [dx, dy] = drift(p, t);
+      const ang = p.seed * Math.PI * 2;
+      const r = R * (0.6 + 1.3 * Math.sqrt(p.seed2));
+      return [cx + Math.cos(ang) * r * 1.6 + dx, cy + Math.sin(ang) * r * 0.55 + dy, data.state === 'skip' ? 0.07 : 0.15, 0.8];
     },
-    ready(t, now, data) {
-      const y = h * 0.4;
-      const x0 = w * 0.06;
-      const bx = Math.max(w * 0.4, w - Math.min(w * 0.52, 420) - w * 0.06);
-      const bw = w - bx - w * 0.06;
-      const bh = 46;
-      const age = at(now, `ready:${data.text}`);
-      // The pulse comes in from the left and arrives at the message.
-      const drawn = still ? 1 : easeInOut(age / 0.9);
-      logoPulse(x0, bx - 10, y, { drawn, amp: BEAT_AMP * 0.9, beatFrom: 0.4, beatSpan: (BEAT_PX * 0.9) / (bx - 10 - x0) });
-      // The message: the book's capsule, its words typed in, the dot as the cursor.
-      const shown = still ? 1 : easeOut((age - 0.7) / FADE);
-      ctx.globalAlpha = shown;
-      ctx.fillStyle = CARD;
-      ctx.beginPath();
-      ctx.roundRect?.(bx, y - bh / 2, bw, bh, 14) ?? ctx.rect(bx, y - bh / 2, bw, bh);
-      ctx.fill();
-      ctx.strokeStyle = rgba(TEXT, 0.14); ctx.lineWidth = 1; ctx.stroke();
-      ctx.globalAlpha = 1;
-      const text = String(data.text ?? '');
-      const typed = still ? text.length : Math.max(0, Math.floor((age - 1.0) * 26));
-      ctx.save(); ctx.beginPath(); ctx.rect(bx + 12, y - bh / 2, bw - 24, bh); ctx.clip();
-      ctx.font = READ;
-      const visible = text.slice(0, Math.min(text.length, typed));
-      const width = ctx.measureText(visible).width;
-      const shift = Math.max(0, width - (bw - 44));
-      label(visible, bx + 16 - shift, y + 1, { a: shown, ink: TEXT, font: READ });
-      ctx.restore();
-      const blink = still || typed < text.length ? 1 : (Math.sin(age * 5) > 0 ? 1 : 0.25);
-      dot(Math.min(bx + 16 + width - shift + 7, bx + bw - 14), y, 3.4, shown * blink);
+    ready(p, t, data, age) {
+      const { cy } = centre();
+      // The logo's pulse, drawn with points from the left, ending in the dot.
+      const x0 = w * 0.1;
+      const x1 = w * 0.5 - 14;
+      const u = p.i / (N - 1);
+      const drawn = still ? 1 : easeInOut(age / 1.6);
+      const amp = Math.min(30, h * 0.2);
+      const span = Math.min(0.32, 120 / Math.max(1, x1 - x0));
+      if (u > drawn) return [x0, cy, 0, 0.6];
+      const y = cy + beatAt((u - (0.62 - span / 2)) / span) * amp;
+      // A soft brightness runs along it, the way a heartbeat travels.
+      const runner = Math.exp(-(((u - frac(t * 0.22)) / 0.06) ** 2));
+      return [x0 + (x1 - x0) * u, y, 0.3 + 0.6 * runner, 0.75 + 0.4 * runner];
     },
   };
+  const dotOf = (id, data) => {
+    if (id === 'hello') return data.scanned ? 1 : 0;
+    if (id === 'use' || id === 'agents') return (data.items ?? []).some((one) => one.on) ? 1 : 0.45;
+    if (id === 'project') return data.count ? 1 : 0.45;
+    if (id === 'ai') return data.state === 'ready' ? 1 : data.state === 'downloading' ? 0.7 : data.state === 'skip' ? 0.3 : 0.5;
+    return 1;
+  };
+
+  // ---- Drawing.
+  function paintGround() {
+    ground = ground.map((v, i) => v + (look.ground[i] - v) * (still ? 1 : 0.12));
+    ctx.fillStyle = `rgb(${ground.map(Math.round).join(',')})`;
+    ctx.fillRect(0, 0, w, h);
+    const { cx, cy } = centre();
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.55);
+    glow.addColorStop(0, rgba(look.ink, look.glow));
+    glow.addColorStop(1, rgba(look.ink, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+    if (look.scan) { ctx.fillStyle = rgba(look.ink, look.scan); for (let y = 0; y < h; y += 4) ctx.fillRect(0, y, w, 1); }
+  }
+  function paintDot(t) {
+    if (dot.a < 0.01) return;
+    const { cx, cy } = centre();
+    // Its heartbeat: a fine ring that leaves it and fades, every few seconds.
+    if (!still) {
+      const beat = frac(t / RIPPLE);
+      ctx.strokeStyle = rgba(look.ink, dot.a * 0.45 * (1 - beat));
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(cx, cy, dot.r + 4 + easeInOut(beat) * 26, 0, Math.PI * 2); ctx.stroke();
+    }
+    const r = dot.r * (1 + (still ? 0 : 0.16 * Math.exp(-(((frac(t / RIPPLE) * RIPPLE) / 0.25) ** 2))));
+    ctx.globalAlpha = dot.a;
+    ctx.drawImage(sprite, cx - r * 3.6, cy - r * 3.6, r * 7.2, r * 7.2);
+    ctx.globalAlpha = 1;
+  }
+  // The download's arc: a fine track round the core and how much of it is done.
+  function paintArc(data) {
+    if (scene.id !== 'ai' || data.state !== 'downloading') return;
+    const { cx, cy, R } = centre();
+    const r = R * 0.62;
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = rgba(look.soft, 0.1);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = rgba(look.ink, 0.9);
+    ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp01((data.pct ?? 0) / 100)); ctx.stroke();
+  }
 
   function draw(nowMs) {
     frame = 0;
-    if (!node.isConnected) return;
-    if (!w) fit();
-    if (!ctx || !w) { if (!still) frame = requestAnimationFrame(draw); return; }
+    if (!node.isConnected || !ctx) return;
+    if (!w) { fit(); if (!w) return; }
     const now = nowMs / 1000;
-    const t = still ? 1 : now;
+    const t = still ? 2 : now;
+    const age = still ? 99 : now - scene.since;
+    const data = scene.data() ?? {};
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ground(t);
-    // The scene that leaves fades out for 0.4 s under the one that comes.
-    if (leaving) {
-      const gone = (now - leaving.since) / FADE;
-      if (gone >= 1 || still) leaving = null;
-      else { ctx.globalAlpha = 1 - easeOut(gone); PICTURES[leaving.id]?.(t, now, leaving.data()); ctx.globalAlpha = 1; }
+    paintGround();
+    const want = PICTURES[scene.id] ?? PICTURES.hello;
+    ctx.globalCompositeOperation = look.blend;
+    for (const p of parts) {
+      const [tx, ty, ta, ts] = want(p, t, data, age);
+      if (still) { p.x = tx; p.y = ty; p.a = ta; p.s = ts; } else {
+        // A soft spring: the points arrive and settle, never snap or bounce.
+        p.vx = (p.vx + (tx - p.x) * 0.032) * 0.84;
+        p.vy = (p.vy + (ty - p.y) * 0.032) * 0.84;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.a += (ta - p.a) * 0.07;
+        p.s += (ts - p.s) * 0.07;
+      }
+      const alpha = p.a * (0.45 + 0.55 * p.z);
+      if (alpha < 0.01) continue;
+      const r = (0.75 + 1.05 * p.z) * p.s;
+      ctx.globalAlpha = clamp01(alpha);
+      ctx.drawImage(sprite, p.x - r * 3.2, p.y - r * 3.2, r * 6.4, r * 6.4);
     }
-    if (scene) {
-      const age = still ? 1 : (now - scene.since) / FADE;
-      ctx.save();
-      ctx.globalAlpha = easeOut(age);
-      ctx.translate(0, still ? 0 : RISE * 0.5 * (1 - easeOut(age)));
-      PICTURES[scene.id]?.(t, now, scene.data() ?? {});
-      ctx.restore();
-    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    paintArc(data);
+    const target = dotOf(scene.id, data);
+    dot.a = still ? target : dot.a + (target - dot.a) * 0.06;
+    paintDot(t);
     if (!still) frame = requestAnimationFrame(draw);
   }
-  const start = () => { if (!frame) frame = requestAnimationFrame(draw); };
+  function redraw() { if (!frame) frame = requestAnimationFrame(draw); }
 
   return {
     node,
     // A step's picture: its id and a function that says, each time it is drawn, what it shows now.
     show(id, data = () => ({})) {
-      if (scene?.id === id) { scene.data = data; start(); return; }
-      const now = (globalThis.performance?.now() ?? Date.now()) / 1000;
-      if (scene) leaving = { ...scene, since: now };
-      scene = { id, data, since: now };
-      for (const key of [...born.keys()]) if (!key.startsWith(`${id}:`)) born.delete(key);
-      start();
-      if (still) requestAnimationFrame(draw);
+      if (scene.id !== id) scene = { id, data, since: (globalThis.performance?.now() ?? Date.now()) / 1000 };
+      else scene.data = data;
+      redraw();
     },
     // The line under the picture: what is happening now, in a few words.
     say(text) {
       if (words.textContent === text) return;
       words.textContent = text;
       if (!still) { caption.classList.remove('new'); void caption.offsetWidth; caption.classList.add('new'); }
-      if (still) requestAnimationFrame(draw);
+      redraw();
     },
-    // Still pictures are drawn again when what they show changes.
-    redraw() { if (still) requestAnimationFrame(draw); else start(); },
-    stop() { if (frame) cancelAnimationFrame(frame); frame = 0; observer?.disconnect(); },
+    // What it shows changed (a still picture is drawn again; a moving one already is).
+    redraw,
+    stop() { if (frame) cancelAnimationFrame(frame); frame = 0; observer?.disconnect(); watcher?.disconnect(); },
   };
 }

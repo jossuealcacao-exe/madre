@@ -19,7 +19,7 @@
 // closing the page halfway brings them back to the same step, from any project or port.
 //
 // The host page hands in what only it can do: `agentsPanel(options)` and `projectPicker(options)`
-// (Home's own), `mark(id, size)`, `closeKey(onClick)`, `projects()`, `openProject(room, { draft })`,
+// (Home's own), `mark(id, size)`, `projects()`, `openProject(room, { draft })`,
 // `setLanguage(code)`, `agentState(agent, answer)`, `saved(welcome)`, `refresh()` (Home's projects
 // read again) and `closed()`.
 
@@ -27,7 +27,6 @@ import { t, language } from './i18n.js';
 import { platformOf, remedyKey } from './remedy.js';
 import { MADRE_LOGO as BRAND_LOGO, playOpening } from './loader.js';
 import { trazo } from './icons.js';
-import { brandOf } from './brands.js';
 import { createScene } from './welcome-scene.js';
 
 const el = (tag, className = null, text = null) => {
@@ -62,11 +61,11 @@ const STEP_NAMES = {
 };
 // What MADRE is for to this person (src/tour.mjs, WELCOME_PROFILES): the examples follow it.
 const PROFILES = [
-  { id: 'business', short: () => t('Business'), title: () => t('My business'), sub: () => t('What I sell, my customers, my social media.') },
-  { id: 'numbers', short: () => t('Numbers'), title: () => t('Invoices and numbers'), sub: () => t('The spreadsheet, the expenses, what the accountant asks for.') },
-  { id: 'code', short: () => t('Code'), title: () => t('Programming'), sub: () => t('Websites, apps, the usual repository.') },
-  { id: 'notes', short: () => t('Notes'), title: () => t('Writing and getting organised'), sub: () => t('Loose notes, to-dos, long texts.') },
-  { id: 'curious', short: () => t('Curiosity'), title: () => t('I just want to see what it does'), sub: () => t('Show me, and then I will decide.') },
+  { id: 'business', title: () => t('My business'), sub: () => t('What I sell, my customers, my social media.') },
+  { id: 'numbers', title: () => t('Invoices and numbers'), sub: () => t('The spreadsheet, the expenses, what the accountant asks for.') },
+  { id: 'code', title: () => t('Programming'), sub: () => t('Websites, apps, the usual repository.') },
+  { id: 'notes', title: () => t('Writing and getting organised'), sub: () => t('Loose notes, to-dos, long texts.') },
+  { id: 'curious', title: () => t('I just want to see what it does'), sub: () => t('Show me, and then I will decide.') },
 ];
 // A first message for each, written as a person would ask it, and what to say first to @madre.
 const IDEAS = {
@@ -141,9 +140,10 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   const main = el('section', 'wl-main');
   const content = el('div', 'wl-content');
   const actions = el('div', 'wl-actions');
-  const close = host.closeKey?.(() => dialog.close()) ?? button('wl-close', '×', () => dialog.close());
-  close.classList.add('wl-close');
-  main.append(close, content, actions);
+  // No close key (1.1): the welcome is left through its own keys, «Skip for now» on a step or «Go to
+  // Home» at the end, so nobody leaves it halfway by a corner without knowing what was left undone.
+  main.append(content, actions);
+  dialog.addEventListener('cancel', (event) => event.preventDefault());
   shell.append(rail, main);
   dialog.append(shell);
   document.body.append(dialog);
@@ -398,9 +398,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       option.setAttribute('aria-checked', String(code === language()));
       seg.append(option);
     }
-    const hw = facts();
-    const found = [hw.chip, hw.memoryGb ? `${number(hw.memoryGb)} GB` : null, s.env?.disk ? t('{n} GB free', { n: number(s.env.disk.freeGb) }) : null].filter(Boolean);
-    const picture = { id: 'hello', data: () => ({ scanned: s.scanned, facts: s.scanned ? found : [] }) };
+    const picture = { id: 'hello', data: () => ({ scanned: s.scanned }) };
     const greeting = el('div', 'wl-hello');
     greeting.append(...head(t('Hello'), t('MADRE puts AIs to work in your folders. You ask for things the way you would ask someone on your team, and MADRE remembers what gets decided.'), picture, helloCaption()), seg);
     content.replaceChildren(greeting, machineFacts(), ...placeNotes());
@@ -415,7 +413,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
 
   // ---- 2 · WHAT YOU WANT IT FOR: one or several; the examples from here on follow it.
   function use() {
-    const picture = { id: 'use', data: () => ({ items: PROFILES.map((one) => ({ id: one.id, label: one.short(), on: s.profile.has(one.id) })) }) };
+    const picture = { id: 'use', data: () => ({ items: PROFILES.map((one) => ({ id: one.id, on: s.profile.has(one.id) })) }) };
     const parts = head(t('What do you want it for?'), t('Mark whatever looks like yours. That way the examples we show you are ones that help you, not a programmer\'s.'), picture, s.profile.size ? t('This picks the examples you will see.') : t('Mark one or several.'));
     const grid = el('div', 'wl-tiles');
     for (const one of PROFILES) {
@@ -460,7 +458,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     box.append(...lines);
     return box;
   }
-  const agentItems = () => (s.agents?.agents ?? []).filter((agent) => agent.id !== 'madre').map((agent) => ({ id: agent.id, label: agent.label ?? brandOf(agent.id).label, on: Boolean(host.agentState?.(agent, s.agents)?.ok), mark: brandOf(agent.id).mark() }));
+  const agentItems = () => (s.agents?.agents ?? []).filter((agent) => agent.id !== 'madre').map((agent) => ({ id: agent.id, on: Boolean(host.agentState?.(agent, s.agents)?.ok) }));
   const agentsCaption = () => (s.ready ? (s.ready === 1 ? t('One connected. One is enough to start.') : t('{n} connected. Each one works in all your projects.', { n: s.ready })) : t('Each AI you connect joins the centre.'));
   function agents() {
     const panel = host.agentsPanel?.({
@@ -510,7 +508,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const found = s.found ?? [];
     const looking = !s.found;
     const known = found.some((one) => one.from?.length);
-    const picture = { id: 'project', data: () => ({ items: (s.found ?? []).map((one) => ({ name: one.name, path: one.path, on: Boolean(s.picked?.has(one.path)) })), count: s.picked?.size ? t('{n} folders', { n: s.picked.size }) : '' }) };
+    const picture = { id: 'project', data: () => ({ count: s.picked?.size ?? 0 }) };
     const lead = looking ? t('Looking for your folders…') : !found.length ? t('Choose a folder you work in, or make a new one.')
       : known ? t('You already opened these folders with other tools. We marked the ones you used most recently; untick the ones you do not want.')
         : t('These folders look like projects. Mark the ones you want to bring.');

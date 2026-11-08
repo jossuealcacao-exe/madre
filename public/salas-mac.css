@@ -1997,17 +1997,13 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-step.skipped i { box-shadow: inset 0 0 0 1.5px var(--wl-warn); color: var(--wl-warn); }
 .wl-rail-foot { margin: auto 0 0; padding: 12px 10px 2px; font-size: 12px; line-height: 1.45; color: var(--text-3); }
 .wl-main { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
-.wl-close { position: absolute; top: 12px; right: 12px; z-index: 2; }
-/* Solid: the step scrolls under it, and a see-through key showed the text through itself. */
-.wl-close.surface-modes, .wl-close { border-radius: 10px; background: var(--wl-canvas) !important; box-shadow: 0 0 0 1px var(--wl-line), 0 2px 8px -2px rgba(0, 0, 0, .18) !important; }
-.wl-close .surface-mode:not(:hover, :focus-visible) { background: var(--wl-canvas); }
-/* Under the pointer it answers as every ✕ of MADRE does (styles.css, .x-close): it turns, and goes red on a red tint. */
-.wl-close .surface-mode.x-close:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--danger) 12%, var(--wl-canvas)); color: var(--danger); }
+/* No close key (1.1, 2026-11-08): the welcome is left through its own keys — «Skip for now» on each
+   step and «Go to Home» at the end — never by a corner. Escape does not close it either. */
 .wl-content { display: grid; align-content: start; gap: 12px; min-height: 0; padding: 22px 29px 18px 34px; border: 0 solid transparent; border-width: 8px 5px 0 0; overflow: auto; overscroll-behavior: contain; }
 .wl-content > * { margin: 0; }
 .wl-eyebrow { font-size: 12.5px; color: var(--text-3); }
 .wl-eyebrow.wl-gap { margin-top: 8px; }
-.wl-title { margin: -6px 0 0; padding-right: 40px; font: 600 22px/1.25 var(--read); letter-spacing: -.01em; }
+.wl-title { margin: -6px 0 0; font: 600 22px/1.25 var(--read); letter-spacing: -.01em; }
 .wl-title:focus { outline: none; }
 .wl-lead { max-width: 62ch; font-size: 14px; color: var(--text-2); }
 .wl-muted { margin: 0; font-size: 13px; color: var(--text-2); }
@@ -2111,13 +2107,15 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl .sm-agents { display: grid; gap: 8px; }
 .wl .sm-picker { min-width: 0; }
 .wl-keys { display: inline-flex; gap: 8px; }
-/* THE WELCOME OF 1.1 (2026-11-08, docs/private/BIENVENIDA-1.1.md). The stage above each step is the
-   brand book's (madre-landing/brand-kit): the near-black ground, the pulse and its dot, labels in
-   mono capitals; it is dark in both looks, like the opening. Under it, one question per step. */
-.wl-scene { position: relative; justify-self: stretch; width: 100%; height: 176px; margin: 0 0 6px; border-radius: 16px; overflow: hidden; background: #050605; box-shadow: 0 0 0 1px rgba(238, 241, 234, .06); }
+/* THE WELCOME OF 1.1 (2026-11-08, docs/private/BIENVENIDA-1.1.md). Above each step an abstract stage
+   (welcome-scene.js) in the brand book's colours, dark or light as the look on is; under it, one
+   question per step. */
+.wl-scene { --scene-ground: #050605; --scene-ink: #9bff66; --scene-cap: #9aa197; --scene-edge: rgba(238, 241, 234, .06); position: relative; justify-self: stretch; width: 100%; height: 176px; margin: 0 0 6px; border-radius: 16px; overflow: hidden; background: var(--scene-ground); box-shadow: 0 0 0 1px var(--scene-edge); }
+/* It follows the look on (welcome-scene.js reads the same data-scheme): ink on a pale ground in the light. */
+:root[data-scheme="light"] .wl-scene { --scene-ground: #eef0ea; --scene-ink: #2f8a1c; --scene-cap: #5d635b; --scene-edge: rgba(18, 21, 18, .07); }
 .wl-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.wl-scene-cap { position: absolute; left: 16px; right: 16px; bottom: 12px; display: flex; align-items: center; gap: 9px; margin: 0; color: #9aa197; font: 450 12.5px/1.35 var(--read); pointer-events: none; }
-.wl-scene-cap::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #9bff66; }
+.wl-scene-cap { position: absolute; left: 16px; right: 16px; bottom: 12px; display: flex; align-items: center; gap: 9px; margin: 0; color: var(--scene-cap); font: 450 12.5px/1.35 var(--read); pointer-events: none; }
+.wl-scene-cap::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--scene-ink); }
 .wl-scene-cap.new span { animation: wl-cap .4s cubic-bezier(.16, 1, .3, 1) both; }
 @keyframes wl-cap { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .wl-hello { display: grid; gap: 12px; justify-items: start; }

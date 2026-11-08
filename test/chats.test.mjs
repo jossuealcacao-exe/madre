@@ -1321,7 +1321,9 @@ test('review of 2026-10-28: a download can be stopped, «try it» is a talk, App
   // The brandbook's logo, drawn once; the close key solid.
   assert.match(welcome, /import \{ MADRE_LOGO as BRAND_LOGO[^}]*\} from '\.\/loader\.js';/);
   assert.match(await readFile(new URL('../public/loader.js', import.meta.url), 'utf8'), /export const MADRE_LOGO = '<svg class="brand-logo"/);
-  assert.match(homeCss, /\.wl-close\.surface-modes, \.wl-close \{ border-radius: 10px; background: var\(--wl-canvas\) !important;/);
+  // Since 1.1 the welcome has no close key, and Escape does not close it either.
+  assert.doesNotMatch(homeCss, /\.wl-close/);
+  assert.match(welcome, /dialog\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\);/);
   // Appearance opens from the side like every category, with Home as it looks now in its preview.
   assert.match(home, /const full = false;/);
   assert.match(home, /if \(root\.classList\.contains\('home-shell'\)\) \{\n    preview\.classList\.add\('shell'\);/);

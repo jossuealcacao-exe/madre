@@ -19,7 +19,7 @@ test('welcome 1.1 · six steps, the same on the page and on the server, and «wh
   const said = welcome.match(/export const WELCOME_STEPS = (\[[^\]]+\]);/)[1].replace(/'/g, '"');
   assert.deepEqual(JSON.parse(said), WELCOME_STEPS);
   // Each use the page offers is one the server keeps, and each has its own first messages.
-  const offered = [...welcome.matchAll(/\{ id: '(\w+)', short: /g)].map((match) => match[1]);
+  const offered = [...welcome.matchAll(/\{ id: '(\w+)', title: /g)].map((match) => match[1]);
   assert.deepEqual(offered, WELCOME_PROFILES);
   for (const id of [...WELCOME_PROFILES, 'none']) assert.match(welcome, new RegExp(`\\n  ${id}: \\(\\) => \\[t\\(`), `no first messages for ${id}`);
   assert.match(welcome, /await save\(\{ profile: \[\.\.\.s\.profile\] \}\);/);
@@ -28,26 +28,31 @@ test('welcome 1.1 · six steps, the same on the page and on the server, and «wh
   assert.match(welcome, /content\.replaceChildren\(greeting, machineFacts\(\), \.\.\.placeNotes\(\)\);/);
 });
 
-test('welcome 1.1 · the stage is the brand book\'s: its ground, its phosphor, its pulse, still for whoever asked for less motion', async () => {
+test('welcome 1.1 · the stage is abstract, in the brand book\'s colours, light or dark as the look on is, still for whoever asked for less motion', async () => {
   const scene = await pub('welcome-scene.js');
-  assert.match(scene, /const BG = '#050605';/);
-  assert.match(scene, /const PHOSPHOR = \[155, 255, 102\];/);
-  // The beat of the logo itself (madre-mark): flat, a high peak, a valley, a small peak.
-  assert.match(scene, /const BEAT = \[\[0, 0\], \[3\.5, -1\], \[8, 1\], \[12, 0\], \[15, 0\], \[17, -0\.5\], \[19, 0\]\];/);
+  // It loads: a mistake in it leaves Home without its page (2026-11-08).
+  const { createScene } = await import('../public/welcome-scene.js');
+  assert.equal(typeof createScene, 'function');
+  // Both looks, from the brand book: phosphor on near-black, and the light phosphor on a pale ground.
+  assert.match(scene, /dark: \{ ground: \[5, 6, 5\], ink: \[155, 255, 102\]/);
+  assert.match(scene, /light: \{ ground: \[238, 240, 234\], ink: \[47, 138, 28\]/);
+  // It reads the look the page has on, and follows it when it changes.
+  assert.match(scene, /document\.documentElement\.dataset\.scheme === 'light'/);
+  assert.match(scene, /attributeFilter: \['data-scheme'\]/);
   assert.match(scene, /prefers-reduced-motion: reduce/);
-  assert.match(scene, /const FADE = 0\.4;/);
-  assert.doesNotMatch(scene, /rotate\(|shadowBlur/, 'no spinning and no neon');
+  // Abstract: no words, no logos, no images of things drawn on it.
+  assert.doesNotMatch(scene, /fillText|drawImage\(image|markImage|shadowBlur/);
+  // The logo's beat, for the last picture.
+  assert.match(scene, /const BEAT = \[\[0, 0\], \[3\.5, -1\], \[8, 1\], \[12, 0\], \[15, 0\], \[17, -0\.5\], \[19, 0\]\];/);
   // Every picture the welcome asks for is drawn.
   const welcome = await pub('welcome.js');
   const asked = new Set([...welcome.matchAll(/\{ id: '(hello|use|agents|project|ai|ready)', data/g)].map((match) => match[1]));
-  for (const id of asked) assert.match(scene, new RegExp(`\\n    ${id}\\(t, now, data\\) \\{`), `no picture for ${id}`);
+  for (const id of asked) assert.match(scene, new RegExp(`\\n    ${id}\\(p, t, data`), `no picture for ${id}`);
   assert.equal(asked.size, 6);
-  // The agents are shown by their owners' official marks (brands.js), never redrawn.
-  assert.match(welcome, /mark: brandOf\(agent\.id\)\.mark\(\)/);
-  assert.match(scene, /svg\.replace\(\/currentColor\/g, ink\)/);
-  // Served like every module of the page.
+  // Served like every module of the page, and its frame follows the look too.
   assert.match(await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8'), /'\/welcome\.js', '\/welcome-scene\.js'/);
-  assert.match(await readFile(join(import.meta.dirname, '..', 'public', 'salas-mac.css'), 'utf8'), /\.wl-scene \{ position: relative; justify-self: stretch; width: 100%; height: 176px;/);
+  const css = await readFile(join(import.meta.dirname, '..', 'public', 'salas-mac.css'), 'utf8');
+  assert.match(css, /:root\[data-scheme="light"\] \.wl-scene \{ --scene-ground: #eef0ea; --scene-ink: #2f8a1c;/);
 });
 
 test('welcome 1.1 · the folders other tools know come along, read for their paths and nothing else', async () => {
