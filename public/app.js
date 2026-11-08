@@ -17968,6 +17968,14 @@ if (/^#chat=/.test(globalThis.location?.hash ?? '')) {
   history.replaceState(null, '', location.pathname + location.search);
   if (/^[a-z0-9]+$/.test(id ?? '')) setTimeout(() => { void openChatAt(id, messageId || null); }, motion(500));
 }
+// A first message written by the welcome (1.1, #escribe=<words>): it waits in the box, for the person
+// to read and send. Nothing is sent on its own.
+if (/^#escribe=/.test(globalThis.location?.hash ?? '')) {
+  let words = '';
+  try { words = decodeURIComponent(location.hash.slice(9)).slice(0, 2000); } catch { words = ''; }
+  history.replaceState(null, '', location.pathname + location.search);
+  if (words.trim()) setTimeout(() => { els.input.value = words; els.input.focus(); autosize(); renderHighlight(); }, motion(500));
+}
 // The Market's address in a project: #mercado, or #mercado=<module> on its page.
 if (/^#mercado(=|$)/.test(globalThis.location?.hash ?? '')) {
   const id = decodeURIComponent(location.hash.split('=')[1] ?? '') || null;

@@ -65,8 +65,12 @@ const BEFORE = ['1.0'];
 // ready after `npx madre` — agents, local AI, memory, the first project — in their order. Where the
 // person is, what they finished and what they left for later are kept here too, so closing the page
 // halfway brings them back to the same step, from whichever project or port they open next.
-export const WELCOME_STEPS = ['hello', 'machine', 'agents', 'project', 'ai', 'memory', 'ready'];
-const freshWelcome = () => ({ at: null, done: [], skipped: [], finished: null });
+// 1.1 (2026-11-08, docs/private/BIENVENIDA-1.1.md): six steps. What the computer is goes into the
+// greeting and the memory into the local AI; «what it is for» comes in, and is kept as `profile`, so
+// the examples MADRE gives are this person's and not a programmer's.
+export const WELCOME_STEPS = ['hello', 'use', 'agents', 'project', 'ai', 'ready'];
+export const WELCOME_PROFILES = ['business', 'numbers', 'code', 'notes', 'curious'];
+const freshWelcome = () => ({ at: null, done: [], skipped: [], finished: null, profile: [] });
 const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null, welcome: freshWelcome() });
 // A tab that shows the bonjour or the chapters says so every few seconds; another tab that finds it
 // said within this long tells the person it is open there, instead of a second bonjour.
@@ -100,6 +104,7 @@ export async function readTour(stateRoot) {
       done: Array.isArray(raw.welcome?.done) ? WELCOME_STEPS.filter((id) => raw.welcome.done.includes(id)) : [],
       skipped: Array.isArray(raw.welcome?.skipped) ? WELCOME_STEPS.filter((id) => raw.welcome.skipped.includes(id)) : [],
       finished: iso(raw.welcome?.finished),
+      profile: Array.isArray(raw.welcome?.profile) ? WELCOME_PROFILES.filter((id) => raw.welcome.profile.includes(id)) : [],
     },
   };
 }
@@ -165,6 +170,10 @@ async function applyChange(stateRoot, change, now) {
     if (said.done !== undefined) mark('done', 'skipped', said.done);
     if (said.skipped !== undefined) mark('skipped', 'done', said.skipped);
     if (said.finished === true) state.welcome.finished ??= at;
+    if (said.profile !== undefined) {
+      if (!Array.isArray(said.profile) || said.profile.some((id) => !WELCOME_PROFILES.includes(id))) return { error: 'profile' };
+      state.welcome.profile = WELCOME_PROFILES.filter((id) => said.profile.includes(id));
+    }
   }
   return writeTour(stateRoot, state);
 }

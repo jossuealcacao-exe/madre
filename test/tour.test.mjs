@@ -26,7 +26,7 @@ test('tour · kept in ~/.pulse, one change at a time, and a file for another ver
   const state = await scratch('madre-tour-');
   try {
     const first = await readTour(state);
-    assert.deepEqual(first, { version: '1.1', path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before: null, met: null, welcome: { at: null, done: [], skipped: [], finished: null } });
+    assert.deepEqual(first, { version: '1.1', path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before: null, met: null, welcome: { at: null, done: [], skipped: [], finished: null, profile: [] } });
     // One tab holds it while it shows it; only that tab lets go.
     await changeTour(state, { hold: 'tab-aaaaaa' });
     assert.equal((await readTour(state)).held.by, 'tab-aaaaaa');
@@ -73,30 +73,35 @@ test('tour · kept in ~/.pulse, one change at a time, and a file for another ver
 test('tour · the welcome of 1.0.6 keeps where the person is, what they did and what they left for later', async () => {
   const state = await scratch('madre-tour-welcome-');
   try {
-    assert.deepEqual(WELCOME_STEPS, ['hello', 'machine', 'agents', 'project', 'ai', 'memory', 'ready']);
+    assert.deepEqual(WELCOME_STEPS, ['hello', 'use', 'agents', 'project', 'ai', 'ready']);
     await changeTour(state, { welcome: { at: 'agents', done: 'hello' } });
-    await changeTour(state, { welcome: { done: 'machine' } });
+    await changeTour(state, { welcome: { done: 'use' } });
     await changeTour(state, { welcome: { skipped: 'agents', at: 'ai' } });
     let kept = (await readTour(state)).welcome;
-    assert.deepEqual(kept, { at: 'ai', done: ['hello', 'machine'], skipped: ['agents'], finished: null });
+    assert.deepEqual(kept, { at: 'ai', done: ['hello', 'use'], skipped: ['agents'], finished: null, profile: [] });
     // Done after all: it leaves the steps left for later.
     await changeTour(state, { welcome: { done: 'agents' } });
     kept = (await readTour(state)).welcome;
-    assert.deepEqual([kept.done, kept.skipped], [['hello', 'machine', 'agents'], []]);
+    assert.deepEqual([kept.done, kept.skipped], [['hello', 'use', 'agents'], []]);
     assert.equal((await changeTour(state, { welcome: { at: 'nowhere' } })).error, 'step');
     assert.equal((await changeTour(state, { welcome: { done: '../x' } })).error, 'step');
     assert.equal((await changeTour(state, { welcome: 'yes' })).error, 'welcome');
     await changeTour(state, { welcome: { finished: true } }, new Date('2026-10-28T12:00:00Z'));
     await changeTour(state, { welcome: { finished: true } }, new Date('2026-10-29T12:00:00Z'));
     assert.equal((await readTour(state)).welcome.finished, '2026-10-28T12:00:00.000Z', 'finished twice');
+    // What MADRE is for to this person (1.1): only the known uses, in their order; anything else refused.
+    await changeTour(state, { welcome: { profile: ['notes', 'business'] } });
+    assert.deepEqual((await readTour(state)).welcome.profile, ['business', 'notes']);
+    assert.equal((await changeTour(state, { welcome: { profile: ['spy'] } })).error, 'profile');
+    assert.equal((await changeTour(state, { welcome: { profile: 'business' } })).error, 'profile');
     // A file written by hand or by an older MADRE is read for what it says correctly.
     const file = JSON.parse(await readFile(join(state, 'tour.json'), 'utf8'));
-    file.welcome = { at: 'ai', done: ['hello', 'mystery'], skipped: 'no', finished: 'never' };
+    file.welcome = { at: 'ai', done: ['hello', 'mystery', 'machine'], skipped: 'no', finished: 'never', profile: ['code', 'x'] };
     await writeFile(join(state, 'tour.json'), JSON.stringify(file));
-    assert.deepEqual((await readTour(state)).welcome, { at: 'ai', done: ['hello'], skipped: [], finished: null });
+    assert.deepEqual((await readTour(state)).welcome, { at: 'ai', done: ['hello'], skipped: [], finished: null, profile: ['code'] });
     // «See the welcome again» starts it over and keeps everything else.
     await changeTour(state, { welcome: { reset: true, at: 'hello' } });
-    assert.deepEqual((await readTour(state)).welcome, { at: 'hello', done: [], skipped: [], finished: null });
+    assert.deepEqual((await readTour(state)).welcome, { at: 'hello', done: [], skipped: [], finished: null, profile: [] });
   } finally {
     await rm(state, { recursive: true, force: true });
   }

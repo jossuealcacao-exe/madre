@@ -1202,8 +1202,9 @@ test('the welcome of 1.0.6: seven steps in place of the bonjour, kept in ~/.puls
   const PULL_LINE = new RegExp(welcome.match(/const PULL_LINE = \/(.+)\/;/)[1]);
   assert.deepEqual(PULL_LINE.exec('pulling 2bada8a74506 · 45%').slice(1), ['2bada8a74506', '45']);
   assert.equal(PULL_LINE.exec('pulling manifest'), null);
-  // Training is made ready here and switched on in a project's Settings (B-7).
-  assert.match(welcome, /you turn it on in your project\\'s Settings › Memory › Train your own AI/);
+  // Since 1.1 (BV-6) the welcome ends in a project, not in more to do: training, the Market and the
+  // connections are met in Home and in a project's Settings, not in its last step.
+  assert.doesNotMatch(welcome, /Train your own AI|openMarket|openLinks/);
   // Its own window, the chat shell's grounds, and no sideways scroll on a phone.
   assert.match(css, /\.wl-window \{ position: relative; width: min\(980px, 100%\);/);
   assert.match(css, /@media \(max-width: 760px\) \{\n  \.wl-window \{ grid-template-columns: 1fr;/);

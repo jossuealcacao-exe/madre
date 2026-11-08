@@ -13,7 +13,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { closeSync, realpathSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import * as nodePath from 'node:path';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -200,12 +200,30 @@ export async function listFolders({ path = null, home, stateRoot }) {
 }
 
 // Folders that look like projects in the places people keep them, newest first, none already here.
-export async function suggestProjects({ home, stateRoot, limit = 24 }) {
+// Since 1.1 (the welcome of 2026-11-08, docs/private/BIENVENIDA-1.1.md) also the folders the
+// person already opened with another tool, each saying which: like moving to a new phone, what was
+// there comes along. Only the folder paths those tools keep are read, never a conversation, a key or
+// a setting (see foldersFromTools).
+export async function suggestProjects({ home, stateRoot, limit = 24, tools = true, platform = process.platform }) {
   const top = realFolder(home);
   const known = await knownRoots(stateRoot);
   const state = realFolder(stateRoot);
   const seen = new Map();
   const places = new Set();   // `Projects` and `projects` are one folder on a Mac: read it once
+  const keep = async (full, from = null) => {
+    const real = realFolder(full);
+    if (known.has(real) || inside(real, state)) return;
+    const had = seen.get(real);
+    if (had) { if (from && !had.from.includes(from)) had.from.push(from); return; }
+    const info = await stat(real).catch(() => null);
+    if (!info?.isDirectory()) return;
+    seen.set(real, { name: basename(real), path: real, when: info.mtimeMs ?? 0, from: from ? [from] : [] });
+  };
+  if (tools) for (const { path, from } of await foldersFromTools({ home: top, platform })) {
+    const real = realFolder(path);
+    if (!toolFolderFits(real, top)) continue;
+    await keep(real, from);
+  }
   for (const place of PROJECT_HOMES) {
     const base = join(top, place);
     const info = await stat(base).catch(() => null);
@@ -215,12 +233,83 @@ export async function suggestProjects({ home, stateRoot, limit = 24 }) {
     for (const entry of names) {
       if (!entry.isDirectory() || entry.name.startsWith('.') || NOT_PROJECTS.has(entry.name)) continue;
       const full = join(base, entry.name);
-      if (seen.has(full) || known.has(full) || inside(full, state) || !(await looksLikeProject(full))) continue;
-      const when = (await stat(full).catch(() => null))?.mtimeMs ?? 0;
-      seen.set(full, { name: entry.name, path: full, when });
+      if (seen.has(realFolder(full)) || !(await looksLikeProject(full))) continue;
+      await keep(full);
     }
   }
-  return [...seen.values()].sort((a, b) => b.when - a.when).slice(0, limit).map(({ name, path }) => ({ name, path }));
+  // What another tool already knows comes first, then the rest; the newest first in each.
+  return [...seen.values()]
+    .sort((a, b) => Number(b.from.length > 0) - Number(a.from.length > 0) || b.when - a.when)
+    .slice(0, limit)
+    .map(({ name, path, when, from }) => ({ name, path, when: when ? new Date(when).toISOString() : null, from }));
+}
+
+// A folder another tool knows is offered only inside the home, never the home itself, a folder
+// hidden anywhere on its way (a worktree under .claude/, a tool's own state) or one of the places
+// that hold everything (Documents, Desktop…): those are where projects live, not projects.
+const HOLDERS = new Set(['documents', 'documentos', 'desktop', 'escritorio', 'downloads', 'descargas', ...PROJECT_HOMES.filter(Boolean).map((one) => one.toLowerCase())]);
+export function toolFolderFits(folder, home, path = nodePath) {
+  if (!insideFolder(folder, home, path) || sameFolder(folder, home, path)) return false;
+  const parts = path.relative(home, folder).split(path.sep);
+  if (parts.some((part) => part.startsWith('.') || NOT_PROJECTS.has(part))) return false;
+  return !(parts.length === 1 && HOLDERS.has(parts[0].toLowerCase()));
+}
+
+// The folders other tools on this computer already worked in, by tool. Each one is read for paths
+// and nothing else, and a tool that is not there, or writes its file differently, simply adds none:
+//   claude    ~/.claude.json, the names of its `projects` (Claude Code keeps one entry per folder)
+//   codex     ~/.codex/sessions, the `cwd` on the first line of the newest sessions
+//   gemini    ~/.gemini/projects.json, the names of its `projects`
+//   cursor    Cursor's storage.json, the folders of its recent windows
+//   vscode    the same file of Visual Studio Code
+// In WSL, Cursor and VS Code keep theirs on the Windows side: only Linux's own are read.
+export const TOOL_NAMES = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini', cursor: 'Cursor', vscode: 'VS Code' };
+const CODEX_SESSIONS_READ = 300;
+export async function foldersFromTools({ home, platform = process.platform }) {
+  const found = [];
+  const add = (path, from) => { if (typeof path === 'string' && nodePath.isAbsolute(path)) found.push({ path, from }); };
+  const claude = await readJson(join(home, '.claude.json'));
+  for (const path of Object.keys(claude?.projects ?? {})) add(path, 'claude');
+  const gemini = await readJson(join(home, '.gemini', 'projects.json'));
+  for (const path of Object.keys(gemini?.projects ?? {})) add(path, 'gemini');
+  for (const path of await codexFolders(join(home, '.codex', 'sessions'))) add(path, 'codex');
+  const appData = platform === 'darwin' ? join(home, 'Library', 'Application Support') : join(home, '.config');
+  for (const [from, app] of [['cursor', 'Cursor'], ['vscode', 'Code']]) {
+    const storage = await readJson(join(appData, app, 'User', 'globalStorage', 'storage.json'));
+    const uris = [...Object.keys(storage?.profileAssociations?.workspaces ?? {}), ...(storage?.backupWorkspaces?.folders ?? []).map((one) => one?.folderUri)];
+    for (const uri of uris) { if (typeof uri === 'string' && uri.startsWith('file://')) { try { add(fileURLToPath(uri), from); } catch { /* not a local folder */ } } }
+  }
+  return found;
+}
+// Codex writes one file per session under year/month/day; the newest are read, and of each only its
+// first line, the one that says where the session ran.
+async function codexFolders(root) {
+  const files = [];
+  const walk = async (dir, depth) => {
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries.sort((a, b) => b.name.localeCompare(a.name))) {
+      if (files.length >= CODEX_SESSIONS_READ) return;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory() && depth < 3) await walk(full, depth + 1);
+      else if (entry.isFile() && entry.name.endsWith('.jsonl')) files.push(full);
+    }
+  };
+  await walk(root, 0);
+  const folders = new Set();
+  for (const file of files) {
+    // The first line may be longer than what is read: then the `cwd` is taken from the text itself.
+    const said = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(await firstLine(file));
+    try { const cwd = said ? JSON.parse(`"${said[1]}"`) : null; if (cwd) folders.add(cwd); } catch { /* not a session */ }
+  }
+  return [...folders];
+}
+async function firstLine(file) {
+  const handle = await open(file, 'r').catch(() => null);
+  if (!handle) return '';
+  try {
+    const { buffer, bytesRead } = await handle.read(Buffer.alloc(16384), 0, 16384, 0);
+    return buffer.subarray(0, bytesRead).toString('utf8').split('\n')[0];
+  } finally { await handle.close(); }
 }
 
 // Associates one folder with the lobby: a project inside the home, not the home itself and not

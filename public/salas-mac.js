@@ -3653,7 +3653,7 @@ async function adoptLanguage(code) {
   sayIn(code);
 }
 
-async function startRoom(room, { enter = false } = {}) {
+async function startRoom(room, { enter = false, draft = null } = {}) {
   busy.set(room.id, 'starting');
   failed.delete(room.id);
   draw();
@@ -3663,7 +3663,9 @@ async function startRoom(room, { enter = false } = {}) {
   busy.delete(room.id);
   if (!answer.ok) failed.set(room.id, answer.body.error ?? t('The project did not open.'));
   // Opened from its card, the person goes in: that is what «Open» means.
-  else if (enter && answer.body.port) { leaveTo(`http://127.0.0.1:${answer.body.port}/`); return answer; }
+  // From the welcome, with the first message already written: the project's page finds it in its address
+  // (#escribe=, app.js) and leaves it in the box, for the person to send.
+  else if (enter && answer.body.port) { leaveTo(`http://127.0.0.1:${answer.body.port}/${draft ? `#escribe=${encodeURIComponent(draft)}` : ''}`); return answer; }
   await refresh();
   return answer;
 }
@@ -5487,7 +5489,7 @@ const welcomeHost = {
   closeKey: (onClick) => closeKey(onClick),
   agentState: (agent, answer) => agentState(agent, answer),
   projects: () => (data ? projectsInOrder().all : []),
-  openProject: (room) => startRoom(room, { enter: true }),
+  openProject: (room, { draft = null } = {}) => startRoom(room, { enter: true, draft }),
   setLanguage: (code) => adoptLanguage(code),
   openLinks: () => openLinkSheet(),
   openMarket: () => void openHomeMarket('shop'),

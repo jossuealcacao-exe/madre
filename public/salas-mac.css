@@ -2070,8 +2070,9 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-path-words small { font-size: 12.5px; color: var(--text-2); }
 .wl-badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--wl-acc) 12%, transparent); color: var(--wl-acc); font-size: 11.5px; font-weight: 500; vertical-align: 1px; }
 :root[data-scheme="light"] .wl-badge { color: color-mix(in srgb, var(--wl-acc) 70%, var(--text)); }
-.wl-ai, .wl-memory { display: grid; gap: 12px; }
+.wl-ai { display: grid; gap: 12px; }
 .wl-flow { display: grid; gap: 8px; }
+.wl-flow > .wl-btn { justify-self: start; }
 .wl-flow-title { margin-top: 4px; font-weight: 600; }
 .wl-flow-title:first-child { margin-top: 0; }
 .wl-bar { height: 8px; border-radius: 999px; background: var(--wl-hover); overflow: hidden; }
@@ -2109,30 +2110,89 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-agent-why { margin: 0 0 4px; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .wl .sm-agents { display: grid; gap: 8px; }
 .wl .sm-picker { min-width: 0; }
-.wl-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.wl-next { display: grid; gap: 4px; width: 100%; border: 0; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.wl-next:hover { background: var(--wl-hover); }
-.wl-next:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
-.wl-next b, .wl-train > b { font-weight: 500; }
-.wl-next small { font-size: 12.5px; color: var(--text-2); }
-.wl-train { display: grid; gap: 4px; }
-/* The project to try MADRE (2026-11-01), under the folders; and the two quieter keys beside «Open». */
-.wl-sample { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-.wl-sample .wl-muted { flex: 1; margin: 0; }
 .wl-keys { display: inline-flex; gap: 8px; }
-.wl-reqs { display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
-.wl-reqs li { display: flex; gap: 8px; font-size: 13px; color: var(--text-2); }
-.wl-reqs li::before { content: '·'; color: var(--text-3); }
+/* THE WELCOME OF 1.1 (2026-11-08, docs/private/BIENVENIDA-1.1.md). The stage above each step is the
+   brand book's (madre-landing/brand-kit): the near-black ground, the pulse and its dot, labels in
+   mono capitals; it is dark in both looks, like the opening. Under it, one question per step. */
+.wl-scene { position: relative; justify-self: stretch; width: 100%; height: 176px; margin: 0 0 6px; border-radius: 16px; overflow: hidden; background: #050605; box-shadow: 0 0 0 1px rgba(238, 241, 234, .06); }
+.wl-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wl-scene-cap { position: absolute; left: 16px; right: 16px; bottom: 12px; display: flex; align-items: center; gap: 9px; margin: 0; color: #9aa197; font: 450 12.5px/1.35 var(--read); pointer-events: none; }
+.wl-scene-cap::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #9bff66; }
+.wl-scene-cap.new span { animation: wl-cap .4s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes wl-cap { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.wl-hello { display: grid; gap: 12px; justify-items: start; }
+.wl-hello .wl-title { font-size: 28px; letter-spacing: -.02em; }
+.wl-more summary, .wl-what summary { cursor: pointer; list-style: none; }
+.wl-more summary::-webkit-details-marker, .wl-what summary::-webkit-details-marker { display: none; }
+.wl-more summary { font-size: 12.5px; color: var(--text-3); }
+.wl-more summary:hover { color: var(--text-2); }
+.wl-more[open] summary { margin-bottom: 10px; }
+.wl-more .wl-tiny { margin: 8px 0 0; }
+.wl-what { padding: 10px 12px; border-radius: 10px; background: var(--wl-hover); font-size: 13px; color: var(--text-2); }
+.wl-what summary { color: var(--text); font-weight: 500; }
+.wl-what summary::before { content: '?'; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 8px; border-radius: 50%; background: var(--wl-sel); font-size: 10.5px; font-weight: 700; vertical-align: 1px; }
+.wl-what p { margin: 8px 0 0; line-height: 1.5; }
+.wl-section { margin-top: 6px !important; font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+.wl-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 10px; }
+.wl-tile { display: grid; align-content: start; gap: 4px; min-height: 84px; padding: 13px 14px; border: 0; border-radius: 12px; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: box-shadow .2s ease, background .2s ease; }
+.wl-tile:hover { background: var(--wl-hover); }
+.wl-tile:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
+.wl-tile[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--wl-acc); background: color-mix(in srgb, var(--wl-acc) 8%, var(--wl-canvas)); }
+.wl-tile b { font-weight: 600; }
+.wl-tile small { font-size: 12.5px; line-height: 1.4; color: var(--text-2); }
+.wl-tile:disabled { opacity: .6; cursor: default; }
+.wl-agent-plan { margin: 0 0 4px; font-size: 13px; line-height: 1.45; color: var(--text); }
+.wl-agent-notes { display: grid; gap: 2px; }
+.wl-found { display: grid; gap: 6px; }
+.wl-found-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 10px 14px; border: 0; border-radius: 10px; background: none; box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.wl-found-row:hover { background: var(--wl-hover); }
+.wl-found-row:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
+.wl-box { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--text-3); color: transparent; }
+.wl-box svg { width: 12px; height: 12px; }
+.wl-found-row[aria-checked="true"] .wl-box { background: var(--wl-acc); box-shadow: none; color: var(--wl-acc-ink); }
+.wl-found-words { display: grid; min-width: 0; }
+.wl-found-words b { font-weight: 500; overflow-wrap: anywhere; }
+.wl-found-words small { font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
+.wl-from { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.wl-from span { padding: 2px 8px; border-radius: 999px; background: var(--wl-hover); color: var(--text-2); font-size: 11.5px; white-space: nowrap; }
+.wl-otherways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.wl-coordinator { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 14px 16px; border-radius: 12px; box-shadow: 0 0 0 1px var(--wl-line); }
+.wl-coordinator b { display: block; margin-bottom: 4px; font-weight: 600; }
+.wl-coordinator p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+.wl-coordinator p + p { margin-top: 6px; }
+.wl-models { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.wl-model { display: grid; gap: 2px; padding: 11px 13px; border: 0; border-radius: 12px; background: none; box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.wl-model:hover { background: var(--wl-hover); }
+.wl-model[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--wl-acc); }
+.wl-model b { font-weight: 500; }
+.wl-model small { font-size: 12px; color: var(--text-2); }
+.wl-model-fit { margin-top: 4px; font-size: 11.5px; color: var(--text-3); }
+.wl-talk-head { display: flex; align-items: center; gap: 10px; }
+.wl-talk-head b { display: block; font-weight: 600; }
+.wl-talk-head small { display: block; font-size: 12px; color: var(--text-3); }
+.wl-talk-head .wl-chip { margin-left: auto; }
+.wl-talk-card .wl-msg { grid-template-columns: minmax(0, 1fr); gap: 3px; align-items: start; }
+.wl-msg-meta { padding: 0 4px; font-size: 11.5px; color: var(--text-3); }
+.wl-arrived { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--wl-acc) 10%, transparent); font-size: 13px; }
+.wl-arrived .wl-btn { margin-left: auto; }
+.wl-ideas { display: grid; gap: 8px; }
+.wl-idea { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-radius: 12px; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: 450 13.5px var(--read); text-align: left; cursor: pointer; }
+.wl-idea:hover { background: var(--wl-hover); box-shadow: 0 0 0 1px color-mix(in srgb, var(--wl-acc) 45%, transparent); }
+.wl-idea:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
+.wl-idea::after { content: '↗'; margin-left: auto; color: var(--text-3); }
+@media (prefers-reduced-motion: reduce) { .wl-scene-cap.new span { animation: none; } .wl-tile { transition: none; } }
 @media (max-width: 760px) {
   .wl-window { grid-template-columns: 1fr; height: calc(100dvh - 48px); }
   .wl-rail { display: none; }
 }
 @media (max-width: 640px) {
-  .wl-split { grid-template-columns: 1fr; }
   .wl-content, .wl-actions { padding-left: 18px; padding-right: 18px; }
   .wl-actions { flex-wrap: wrap; }
   .wl-skipnote { flex-basis: 100%; order: -1; text-align: left; }
-  .wl-sample { flex-direction: column; align-items: stretch; }
+  .wl-otherways { grid-template-columns: 1fr; }
+  .wl-found-row { grid-template-columns: 20px minmax(0, 1fr); }
+  .wl-from { grid-column: 2; justify-content: flex-start; }
+  .wl-scene { height: 150px; }
 }
 @media (prefers-reduced-motion: reduce) { .wl-bar > i { transition: none; } }
 
