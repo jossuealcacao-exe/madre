@@ -134,7 +134,7 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
-import { chooseSkills, loadSkills } from './skills.mjs';
+import { chooseSkills, declaredBy as skillDeclares, loadSkills, removeSkill, skillState, skillStateIn, SKILL_STATES } from './skills.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
 import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
@@ -5135,6 +5135,44 @@ export async function createPulseServer({
         const extensions = await describeModules(await moduleContext());
         void warmModuleUpdates(extensions);
         return sendJson(response, 200, { installing, extensions, failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: SDK_PAGE[roomLanguage()] ?? SDK_PAGE.es });
+      }
+      // HABILIDADES (H-3): the ways of working this project keeps, each with what it tells the
+      // agents, what it carries, and the word this project said about it. Read from disk every
+      // time: a skill the person just dropped in is on the board without reloading anything.
+      if (request.method === 'GET' && url.pathname === '/api/skills') {
+        const config = await readConfig(root);
+        const { loaded, failures, folders } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
+        const skills = loaded.map((skill) => ({
+          id: skill.id, name: skill.name, when: skill.when, version: skill.version, minMadre: skill.minMadre,
+          credit: skill.credit, license: skill.license, origin: skill.origin, dir: skill.dir, unknown: skill.unknown,
+          // What it says, whole: it is a page, and a person can actually read it before turning it on.
+          body: skill.body, declares: skillDeclares(skill),
+          state: skillState(config, skill.id, scopeRoom),
+          everywhere: skillState(config, skill.id, null),
+        }));
+        return sendJson(response, 200, { skills, failures, folders, project: Boolean(scopeRoom) });
+      }
+      // Off, matched or always on, for this project or for all of them. Nothing else changes.
+      const skillState_ = request.method === 'POST' && url.pathname.match(/^\/api\/skills\/([a-z][a-z0-9-]{1,39})\/state$/);
+      if (skillState_) {
+        const payload = await body(request).catch(() => ({}));
+        if (!SKILL_STATES.includes(payload.state)) return sendJson(response, 400, { error: t('A skill is off, matched or always on; nothing else.') });
+        const id = skillState_[1];
+        const config = await readConfig(root);
+        const here = payload.scope === 'everywhere' ? null : scopeRoom;
+        await updateConfig(root, { skills: { ...(config.skills ?? {}), [id]: skillStateIn(config.skills?.[id] ?? {}, here, payload.state) } });
+        await room.record('skill.switched', { id, state: payload.state, scope: here ? 'project' : 'everywhere' });
+        return sendJson(response, 200, { ok: true, id, state: payload.state });
+      }
+      // Removing one is the person's: the folder goes, and nothing a skill's scripts wrote is touched.
+      const skillGone = request.method === 'POST' && url.pathname.match(/^\/api\/skills\/([a-z][a-z0-9-]{1,39})\/remove$/);
+      if (skillGone) {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        try {
+          const gone = await removeSkill({ id: skillGone[1], stateRoot: root, projectRoot: canonicalProjectRoot });
+          await room.record('skill.removed', { id: gone.id, folders: gone.removed.length });
+          return sendJson(response, 200, { ok: true, ...gone });
+        } catch (error) { return sendJson(response, 404, { error: error.message }); }
       }
       // THE MARKET's catalog for the page: the one kept here at once (and a fresh one asked for
       // behind it), what was got from it, and what it updated on its own that nobody was told yet.

@@ -5217,6 +5217,33 @@ function subDetail(one, mode) {
   return item;
 }
 // The chips under «working…»: drawn again each time the CLI says something new about them.
+// WHICH WAY OF WORKING WENT INTO THIS TURN, said while it works (H-3). Pressing one opens what it
+// says: a skill nobody can see is a skill nobody can switch off when it was the wrong one.
+function showSkills(event) {
+  const { messageId, skills = [] } = event.payload ?? {};
+  const node = document.getElementById(`working-${messageId}`);
+  if (!node || !skills.length) return;
+  let strip = node.querySelector(':scope > .turn-skills');
+  if (!strip) { strip = el('div', 'turn-skills'); node.append(strip); }
+  strip.replaceChildren();
+  strip.append(el('span', 'sx-hint', skills.length === 1 ? t('Skill:') : t('Skills:')));
+  for (const skill of skills) {
+    const name = skillWords(skill.name) ?? skill.id;
+    const chip = el('button', 'turn-skill', name);
+    chip.type = 'button';
+    chip.title = skill.state === 'always' ? t('You keep it on in this project. Press to read it.') : skill.why?.length ? t('It came in because you said: {words}. Press to read it.', { words: skill.why.join(', ') }) : t('Press to read it.');
+    chip.addEventListener('click', () => void openSkillById(skill.id));
+    strip.append(chip);
+  }
+}
+// From the room, where only its name travelled: its text is read from the folder it lives in.
+async function openSkillById(id) {
+  const data = await fetch('/api/skills').then((response) => response.json()).catch(() => null);
+  const skill = (data?.skills ?? []).find((one) => one.id === id);
+  if (!skill) { toast(t('No skill «{id}».', { id })); return; }
+  openSkillText(skill);
+}
+
 function showHelpers(event) {
   const { messageId, subagents = [], mode } = event.payload ?? {};
   const node = document.getElementById(`working-${messageId}`);
@@ -8033,6 +8060,7 @@ function renderEventNode(event) {
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
     case 'turn.reading': showReading(event); return;
     case 'turn.subagents': showHelpers(event); return;
+    case 'turn.skills': showSkills(event); return;
     // Who has a session, once the probe that runs when the project starts comes back: the crew is
     // drawn again, so a first message never goes to an agent without one (QA 1.1.0, NUE-11).
     case 'sessions.updated': {
@@ -15310,6 +15338,9 @@ async function refreshModules() {
     const data = await fetch('/api/extensions').then((response) => response.json());
     modules.failures = data.failures ?? []; modules.folders = data.folders ?? null; modules.sdk = data.sdk ?? null; modules.items = data.extensions ?? [];
     modules.installing = data.installing ?? null;
+    // The ways of working this project keeps (H-3). Asked beside the modules and never in their way:
+    // a board without them is the board as it always was.
+    void refreshSkills();
     if (state.salas) {
       const card = modules.items.find((item) => item.id === 'bishop');
       const selected = card?.status?.installed ? card.controls?.find((control) => control.key === 'agent')?.value ?? null : null;
@@ -17179,6 +17210,7 @@ function renderModules() {
     grid.append(make);
   } else if (!shown.length) grid.append(el('p', 'settings-reading', t('Nothing called «{query}».', { query: modules.query.trim() })));
   board.append(grid);
+  if (!query) skillsSection(board);
   const item = modules.items.find((one) => one.id === modules.open);
   if (!item) { modules.open = null; list.replaceChildren(board); renderModuleWindows(); renderModulesDev(); return; }
   const sheet = el('div', `settings-sheet mods-sheet${modules.push ? ' full' : ''}`);
@@ -17193,6 +17225,128 @@ function renderModules() {
   }
   renderModuleWindows();
   renderModulesDev();
+}
+
+// ---- HABILIDADES (H-3). A skill is not a module: it adds no button and no page, it tells the
+// agents how the human works. So it is a row and not a tile — what matters about it is a sentence
+// (when it is for) and a page (what it says), which a tile cannot hold.
+//
+// Everything here is the person's: whether it waits for a match, is always on or is off, and
+// whether that word is this project's or every project's. And «What it says» shows the whole text
+// before any of that, because a skill reaching an agent that may hold CONTROL is something to read
+// first — and unlike a module's JavaScript, a person actually can.
+async function refreshSkills() {
+  try {
+    const data = await fetch('/api/skills').then((response) => response.json());
+    modules.skills = data.skills ?? [];
+    modules.skillFailures = data.failures ?? [];
+    modules.skillProject = Boolean(data.project);
+    // Drawn only while the board is open, as every other reading of it is.
+    if (modules.dialog?.open) renderModules();
+  } catch { /* the board keeps the skills it had */ }
+}
+
+const SKILL_STATES = () => [
+  ['match', t('When it fits')],
+  ['always', t('Always on')],
+  ['off', t('Off')],
+];
+async function switchSkill(skill, state, scope) {
+  const response = await fetch(`/api/skills/${skill.id}/state`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state, scope }) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(payload.error ?? t('{name} could not be changed.', { name: skillName(skill) })); return; }
+  await refreshSkills();
+}
+const skillName = (skill) => skillWords(skill?.name) ?? skill?.id ?? '';
+// Its name or its sentence, in the language the room speaks. Not i18n's `pick`: that one wants
+// both languages present, and a skill may well have written only one.
+function skillWords(value) {
+  if (!value || typeof value !== 'object') return value ?? null;
+  return value[language()] ?? value.es ?? value.en ?? null;
+}
+
+// WHAT IT SAYS: the whole page, what it carries, and every script marked with the one mode that
+// could run it. The same screen the Market will show before installing one (H-4).
+function openSkillText(skill) {
+  // The same dialog «Create your module» uses, so it looks like the rest of the board.
+  const dialog = el('dialog', 'module-guide skill-text');
+  const head = el('header', 'module-guide-head');
+  const named = el('div', 'skill-text-name');
+  named.append(el('span', 'custom-title', skillName(skill)), el('span', 'sx-hint', t('What it tells your agents')));
+  const close = el('button', 'module-guide-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', t('CLOSE'));
+  close.addEventListener('click', () => dialog.close());
+  head.append(named, close);
+  const body = el('div', 'module-guide-body');
+  if (skill.when) body.append(el('p', 'skill-when', `${t('It comes in when:')} ${skillWords(skill.when)}`));
+  body.append(el('pre', 'skill-body', skill.body));
+  const carries = skill.declares?.references?.filter((path) => !/^(HABILIDAD|SKILL)\.md$/.test(path)) ?? [];
+  if (carries.length) body.append(el('p', 'sx-hint', t('It carries: {list}', { list: carries.join(', ') })));
+  if (skill.declares?.scripts?.length) {
+    const warn = el('p', 'mods-submit-warn');
+    warn.append(el('b', null, t('It carries programs: {list}', { list: skill.declares.scripts.join(', ') })));
+    warn.append(el('span', null, ` ${t('MADRE never runs one. Only an agent can, and only in #4 AIRLOCK: in every other mode they do nothing. Read one before you open that mode.')}`));
+    body.append(warn);
+  }
+  for (const [label, value] of [[t('Version'), skill.version], [t('Idea by'), skill.credit], [t('License'), skill.license], [t('Folder'), skill.dir]]) {
+    if (value) body.append(el('p', 'sx-hint', `${label}: ${value}`));
+  }
+  if (skill.unknown?.length) body.append(el('p', 'mods-submit-warn', t('Fields MADRE does not know: {list}', { list: skill.unknown.join(', ') })));
+  dialog.append(head, body);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+  dialog.showModal();
+}
+
+function skillRow(skill) {
+  const row = el('article', `skill-row is-${skill.state}`);
+  const words = el('div', 'skill-words');
+  const top = el('div', 'skill-top');
+  top.append(el('b', 'skill-name', skillName(skill)));
+  if (skill.origin === 'project') top.append(el('span', 'skill-tag', t('this project only')));
+  if (skill.version) top.append(el('span', 'skill-tag', skill.version));
+  if (skill.declares?.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: skill.declares.scripts.length })));
+  words.append(top);
+  words.append(el('span', 'sx-hint', skillWords(skill.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
+  const keys = el('div', 'skill-keys');
+  const choose = sxSelect(SKILL_STATES(), skill.state, (value) => void switchSkill(skill, value, 'project'), t('When this skill comes in'));
+  keys.append(choose);
+  keys.append(sxButton(t('What it says'), () => openSkillText(skill)));
+  const gone = sxButton(t('Remove'), async () => {
+    const answer = await roomAsk({
+      title: t('Remove {name}?', { name: skillName(skill) }),
+      body: t('Its folder {dir} is deleted. What it told your agents stops reaching them. Nothing a program of its own may have written elsewhere is touched.', { dir: skill.dir }),
+      choices: [{ value: 'keep', label: t('Keep it'), focus: true }, { value: 'remove', label: t('Remove'), tone: 'danger' }],
+    });
+    if (answer !== 'remove') return;
+    gone.disabled = true;
+    const response = await fetch(`/api/skills/${skill.id}/remove`, { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { gone.disabled = false; toast(payload.error ?? t('{name} could not be removed.', { name: skillName(skill) })); return; }
+    await refreshSkills();
+  }, { tone: 'danger' });
+  keys.append(gone);
+  row.append(words, keys);
+  // The word for every project, said only when this project has one of its own: otherwise it is
+  // the same word twice and the row reads like a puzzle.
+  if (modules.skillProject && skill.state !== skill.everywhere) {
+    const all = el('div', 'skill-all');
+    all.append(el('span', 'sx-hint', t('In every other project: {state}', { state: SKILL_STATES().find(([value]) => value === skill.everywhere)?.[1] ?? skill.everywhere })));
+    all.append(sxButton(t('Use it everywhere'), () => void switchSkill(skill, skill.state, 'everywhere')));
+    row.append(all);
+  }
+  return row;
+}
+
+function skillsSection(board) {
+  const skills = modules.skills ?? [];
+  const failures = modules.skillFailures ?? [];
+  if (!skills.length && !failures.length) return;
+  const block = sxBlock(board, t('Skills'), t('Ways of working you keep, handed to whichever agent answers. They tell your agents how you work; they never give them permission.'), { className: 'skills-block' });
+  for (const skill of skills) block.rows.append(skillRow(skill));
+  for (const one of failures) block.rows.append(el('p', 'mods-submit-warn', t('{dir} was not read: {error}', { dir: one.dir, error: one.error })));
 }
 
 // A module that has something to read can float: its card in a window of its own, kept up to date

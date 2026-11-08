@@ -319,14 +319,25 @@ export function keywords(text) {
   return out;
 }
 
+// Only the words that are words, as a module's switch keeps only the booleans (module-scope.mjs).
+export const roomsIn = (block = {}) => Object.fromEntries(Object.entries(block?.rooms ?? {}).filter(([id, said]) => /^[\w.:-]{1,200}$/.test(id) && SKILL_STATES.includes(said)));
+
+// The block written when a skill's switch moves. From Home, with no project, it is the word for
+// every project and each project follows it again; from a project, that project's own word, which
+// wins. The whole block, because updateConfig merges one level down.
+export function skillStateIn(block = {}, roomId = null, state) {
+  if (!SKILL_STATES.includes(state)) throw new Error(t('A skill is off, matched or always on; nothing else.'));
+  if (!roomId) return { ...block, state, rooms: {} };
+  return { ...block, rooms: { ...roomsIn(block), [roomId]: state } };
+}
+
 // What the person said about this skill, in this project. The shape is the one a module's switch
 // has (src/module-scope.mjs): a word for every project, and a project's own word that wins.
 export const SKILL_STATES = ['off', 'match', 'always'];
 export function skillState(config = {}, id = null, roomId = null) {
   const block = config?.skills?.[id] ?? {};
   const own = roomId ? block?.rooms?.[roomId] : null;
-  const said = SKILL_STATES.includes(own) ? own : SKILL_STATES.includes(block?.state) ? block.state : 'match';
-  return said;
+  return SKILL_STATES.includes(own) ? own : SKILL_STATES.includes(block?.state) ? block.state : 'match';
 }
 
 // The skills this turn carries, in the order they will be read, each with why it is here.

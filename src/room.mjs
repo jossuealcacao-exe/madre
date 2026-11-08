@@ -1948,6 +1948,9 @@ export class Room {
         : null;
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
+      // Said in the room while the turn works: which way of working went in, and why. A skill the
+      // person never sees is a skill they cannot switch off when it was the wrong one.
+      if (skills.length) this.#say('turn.skills', { messageId, agent: agent.id, skills: skills.map(({ id, name, state, why }) => ({ id, name, state, why })) });
       const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, skills, choices: this.#choicesEnabled && turnMode !== 0, runs: this.#runsEnabled && turnMode !== 0 && turnMode < 4, mode: turnMode, escalation, mcpServers, bishop, linked, returned, copilot: asCopilot && controlRun ? copilotBrief(copilotWindow) : null, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared, servers: [this.#memoryServer?.name, ...mcpServers.map((server) => server.name)].filter(Boolean) });
       // What this turn is about to read, said while it is still reading it. The size is exact;

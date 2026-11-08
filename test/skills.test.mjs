@@ -223,3 +223,59 @@ test('skills · the block is read after the permissions and says it is never per
   // No skill, no block: a project that keeps none pays nothing for them.
   assert.ok(!promptParts({ ...options, skills: [] }).some((part) => part.id === 'skills'));
 });
+
+// ---- H-3: the board. The switch the person moves, and the routes behind it.
+test('skills · the switch: from Home it is the word for every project, from a project it is that project\'s', async () => {
+  const { roomsIn, skillStateIn, skillState } = await import('../src/skills.mjs');
+  // From a project: its own word, and the one for every project untouched.
+  const own = skillStateIn({ state: 'match' }, 'proyecto-1', 'always');
+  assert.deepEqual(own, { state: 'match', rooms: { 'proyecto-1': 'always' } });
+  assert.equal(skillState({ skills: { h: own } }, 'h', 'proyecto-1'), 'always');
+  assert.equal(skillState({ skills: { h: own } }, 'h', 'proyecto-2'), 'match');
+  // From Home: the word for all of them, and every project follows it again.
+  assert.deepEqual(skillStateIn(own, null, 'off'), { state: 'off', rooms: {} });
+  assert.equal(skillState({ skills: { h: skillStateIn(own, null, 'off') } }, 'h', 'proyecto-1'), 'off');
+  // Nothing that is not one of the three words is kept, whoever wrote it in the file by hand.
+  assert.deepEqual(roomsIn({ rooms: { 'proyecto-1': 'always', 'proyecto-2': 'quizá', '': 'off' } }), { 'proyecto-1': 'always' });
+  assert.throws(() => skillStateIn({}, null, 'quizá'), /off, matched or always/i);
+});
+
+test('skills · the board reads them, switches one and removes it, over the real routes', async () => {
+  const { createPulseServer } = await import('../src/server.mjs');
+  const { mkdtemp: temp, realpath } = await import('node:fs/promises');
+  const state = await temp(join(tmpdir(), 'madre-skills-api-'));
+  const projectRoot = await realpath(await temp(join(tmpdir(), 'madre-skills-project-')));
+  await mkdir(join(state, 'habilidades', 'cotizaciones', 'guiones'), { recursive: true });
+  await writeFile(join(state, 'habilidades', 'cotizaciones', 'HABILIDAD.md'), header({ id: 'cotizaciones', name: '{ es: "Cotizaciones", en: "Quotes" }', when: 'Una cotización.', version: '1.0.0' }));
+  await writeFile(join(state, 'habilidades', 'cotizaciones', 'guiones', 'precios.py'), 'print(1)');
+  await mkdir(join(state, 'habilidades', 'rota'), { recursive: true });
+  await writeFile(join(state, 'habilidades', 'rota', 'HABILIDAD.md'), 'sin cabecera');
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  const made = await createPulseServer({ projectRoot, stateRoot: state, agents: roster, invokers: {} });
+  const port = await new Promise((resolve) => made.server.listen(0, '127.0.0.1', () => resolve(made.server.address().port)));
+  const at = (path, options = {}) => fetch(`http://127.0.0.1:${port}${path}`, { ...options, headers: { 'content-type': 'application/json', origin: `http://127.0.0.1:${port}`, ...options.headers } });
+  try {
+    const read = await (await at('/api/skills')).json();
+    assert.deepEqual(read.skills.map((skill) => [skill.id, skill.state, skill.name.es]), [['cotizaciones', 'match', 'Cotizaciones']], 'by default a skill waits to be a match');
+    // What the person reads before turning it on: the whole text, and every program marked.
+    assert.match(read.skills[0].body, /Cuando te pidan una cotización/);
+    assert.deepEqual(read.skills[0].declares.scripts, ['guiones/precios.py']);
+    assert.equal(read.failures.length, 1, 'the one that cannot be read is said, and does not hide the other');
+    // Switched, and read back switched.
+    const moved = await at('/api/skills/cotizaciones/state', { method: 'POST', body: JSON.stringify({ state: 'always', scope: 'everywhere' }) });
+    assert.equal(moved.status, 200);
+    assert.equal((await (await at('/api/skills')).json()).skills[0].state, 'always');
+    // A word nobody knows changes nothing.
+    assert.equal((await at('/api/skills/cotizaciones/state', { method: 'POST', body: JSON.stringify({ state: 'quizá' }) })).status, 400);
+    assert.equal((await (await at('/api/skills')).json()).skills[0].state, 'always');
+    // Removed: its folder goes, and the board says so without it.
+    assert.equal((await at('/api/skills/cotizaciones/remove', { method: 'POST' })).status, 200);
+    assert.deepEqual((await (await at('/api/skills')).json()).skills, []);
+    assert.equal((await at('/api/skills/cotizaciones/remove', { method: 'POST' })).status, 404);
+  } finally {
+    made.server.closeAllConnections?.();
+    await new Promise((resolve) => made.server.close(() => resolve()));
+    await rm(state, { recursive: true, force: true });
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
