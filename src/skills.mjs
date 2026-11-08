@@ -102,6 +102,20 @@ export function words(value, max) {
   }
   return unquote(said).slice(0, max) || null;
 }
+// Who made it: a name, or `{ name: "Ana Ruiz", github: "anaruiz" }`. The name is what the Market
+// shows; the GitHub user is only how a pull request is signed, so it is read and never demanded.
+export function author(value) {
+  const said = unquote(value ?? '');
+  if (!said) return null;
+  if (!said.startsWith('{')) return { name: said.slice(0, MAX_NAME), github: null };
+  const of = (key) => {
+    const hit = said.match(new RegExp(`\\b${key}\\s*:\\s*(?:"([^"]*)"|'([^']*)'|([^,}]*))`));
+    return unquote(hit?.[1] ?? hit?.[2] ?? hit?.[3] ?? '') || null;
+  };
+  const name = of('name') ?? of('nombre');
+  return name ? { name: name.slice(0, MAX_NAME), github: of('github') } : null;
+}
+
 // Whichever language the room speaks, for a name that may be one word or two.
 export const pick = (value, language = 'es') => (value && typeof value === 'object' ? value[language] ?? value.es ?? value.en ?? null : value ?? null);
 
@@ -109,7 +123,16 @@ export const pick = (value, language = 'es') => (value && typeof value === 'obje
 // person writing by hand will reach for, and the ones a skill of Claude's already carries:
 // `description` is its `when`. MADRE's own words are in English and the room speaks the person's
 // language (src/i18n.mjs), here as everywhere.
-const KEYS = { id: ['id'], name: ['name', 'nombre'], when: ['when', 'cuando', 'description'], version: ['version', 'versión'], minMadre: ['minMadre', 'minmadre'], credit: ['credit', 'credito', 'crédito'], license: ['license', 'licencia'] };
+// The last four are only needed to PUBLISH one (src/skill-check.mjs, H-5): what the Market shows.
+// A skill is one file, so they live in its own header — asking for a second file with the same
+// facts in JSON is work for whoever sends it and one more place for the two to disagree.
+const KEYS = {
+  id: ['id'], name: ['name', 'nombre'], when: ['when', 'cuando', 'description'],
+  version: ['version', 'versión'], minMadre: ['minMadre', 'minmadre'],
+  credit: ['credit', 'credito', 'crédito'], license: ['license', 'licencia'],
+  line: ['line', 'linea', 'línea'], summary: ['summary', 'resumen'], shelf: ['shelf', 'estante'],
+  author: ['author', 'autor', 'autora'],
+};
 export const KNOWN = new Set(Object.values(KEYS).flat());
 const field = (fields, key) => KEYS[key].map((name) => fields[name]).find((value) => String(value ?? '').trim());
 
@@ -137,6 +160,11 @@ export function readSkillText(text, { id = null } = {}) {
     minMadre: minMadre || null,
     credit: words(field(fields, 'credit'), MAX_NAME),
     license: unquote(field(fields, 'license') ?? '') || null,
+    // Only for the Market, and only when it is going there (H-5).
+    line: words(field(fields, 'line'), 140),
+    summary: words(field(fields, 'summary'), 1200),
+    shelf: unquote(field(fields, 'shelf') ?? '') || null,
+    author: author(field(fields, 'author')),
     body,
     // Said, never ignored in silence, as a module's unknown fields are said when it is installed.
     unknown: Object.keys(fields).filter((key) => !KNOWN.has(key)),
