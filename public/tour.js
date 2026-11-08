@@ -404,8 +404,12 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     current = shown;
     const back = path() === 'back';
     const since = path() === 'since';
-    windowNode.querySelector('.tour-head .wn-eyebrow').textContent = since ? t('What is new since 1.0') : back ? t('The tour of MADRE 1.0') : t('Getting to know MADRE');
-    windowNode.querySelector('#tour-window-title').textContent = since ? t('What changed since 1.0') : back ? t('What is new since 0.7.2') : t('The basics of MADRE');
+    // For someone new (1.1, 2026-11-08) the window is called what the welcome's last key called it,
+    // «Get to know MADRE», with nothing above it: it is the welcome's second part, not another thing.
+    const eyebrow = windowNode.querySelector('.tour-head .wn-eyebrow');
+    eyebrow.textContent = since ? t('What is new since 1.0') : back ? t('The tour of MADRE 1.0') : '';
+    eyebrow.hidden = !since && !back;
+    windowNode.querySelector('#tour-window-title').textContent = since ? t('What changed since 1.0') : back ? t('What is new since 0.7.2') : t('Getting to know MADRE');
     void keep({ chapter: chapter.id, at: chapter.id });
     if (!state.done.includes(chapter.id)) state.done = [...state.done, chapter.id];
     const list = chapters();

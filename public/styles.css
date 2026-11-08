@@ -785,7 +785,7 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 /* The hint under a bubble when its agent saved a memory on request. */
 .memory-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 12px 0; animation: hint-in calc(600ms * var(--motion-scale)) cubic-bezier(.2, .7, .2, 1) 1; }
 .memory-hint .lead { font-family: var(--sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--agent, var(--text-3)); }
-.memory-hint .pill { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid color-mix(in srgb, var(--kind) 55%, transparent); background: color-mix(in srgb, var(--kind) 8%, transparent); color: var(--text-2); font: inherit; font-size: 11px; padding: 3px 10px; border-radius: 999px; cursor: pointer; text-align: left; box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 45%, transparent); animation: hint-glow 2.4s ease-out 1; transition: background calc(200ms * var(--motion-scale)), color calc(200ms * var(--motion-scale)); }
+.memory-hint .pill { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 0; background: color-mix(in srgb, var(--kind) 13%, transparent); color: var(--text-2); font: inherit; font-size: 11px; padding: 3px 10px; border-radius: 999px; cursor: pointer; text-align: left; box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 45%, transparent); animation: hint-glow 2.4s ease-out 1; transition: background calc(200ms * var(--motion-scale)), color calc(200ms * var(--motion-scale)); }
 .memory-hint .pill b { font-family: var(--sans); font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--kind); }
 .memory-hint .pill:hover { background: color-mix(in srgb, var(--kind) 18%, transparent); color: var(--text); }
 .memory-hint .more { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
@@ -1156,8 +1156,8 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .stop-all.armed { opacity: 1; cursor: pointer; border-color: var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); text-shadow: none; animation: blink 1.4s infinite; }
 .stop-all.armed:hover { background: var(--terror); color: #fff; text-shadow: none; animation: none; }
 /* The version alert: an amber hairline, a soft fill, no glow. It should read as information, not alarm. */
-.update-pill { opacity: 1; cursor: pointer; border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 9%, transparent); color: var(--warn); text-shadow: none; transition: background-color calc(220ms * var(--motion-scale)) ease, border-color calc(220ms * var(--motion-scale)) ease, color calc(220ms * var(--motion-scale)) ease, transform calc(160ms * var(--motion-scale)) ease; }
-.update-pill:hover { background: color-mix(in srgb, var(--warn) 16%, transparent); border-color: color-mix(in srgb, var(--warn) 70%, transparent); }
+.update-pill { opacity: 1; cursor: pointer; border-color: transparent; background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); text-shadow: none; transition: background-color calc(220ms * var(--motion-scale)) ease, border-color calc(220ms * var(--motion-scale)) ease, color calc(220ms * var(--motion-scale)) ease, transform calc(160ms * var(--motion-scale)) ease; }
+.update-pill:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); border-color: transparent; }
 .update-pill:active { transform: scale(.98); }
 .update-pill:focus-visible { outline: 2px solid color-mix(in srgb, var(--warn) 60%, transparent); outline-offset: 2px; }
 .update-pill .update-glyph { border-radius: 50%; opacity: .9; }
@@ -1891,7 +1891,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
    as the memory chips, so the room has one way of showing a note and not three. */
 .settled { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 12px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .settled-lead { font-family: var(--sans); font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--text-3); }
-.settled-note { display: inline-flex; align-items: center; gap: 7px; max-width: min(380px, 100%); padding: 3px 10px 3px 8px; border: 1px solid color-mix(in srgb, var(--text-3) 26%, transparent); background: color-mix(in srgb, var(--text-3) 7%, transparent); color: var(--text-2); font: inherit; font-size: 11px; line-height: 1.45; border-radius: 999px; cursor: pointer; text-align: left; }
+.settled-note { display: inline-flex; align-items: center; gap: 7px; max-width: min(380px, 100%); padding: 3px 10px 3px 8px; border: 0; background: color-mix(in srgb, var(--text-3) 12%, transparent); color: var(--text-2); font: inherit; font-size: 11px; line-height: 1.45; border-radius: 999px; cursor: pointer; text-align: left; }
 .settled-note .dot { flex: none; width: 7px; height: 7px; border-radius: 999px; background: #ffdc3c; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-3) 45%, transparent); }
 .settled-note .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settled-note:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); }
@@ -1983,7 +1983,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .choice-key { display: grid; place-items: center; width: 24px; height: 24px; margin-top: -1px; border: 1px solid var(--line-2); border-radius: 7px; font-family: var(--mono); font-size: 10.5px; font-weight: 600; color: var(--text-3); transition: color calc(150ms * var(--motion-scale)), border-color calc(150ms * var(--motion-scale)), background calc(150ms * var(--motion-scale)); }
 .choice-option:hover .choice-key { color: var(--text); }
 .choice-text { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
-.choice-tag { align-self: center; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--agent, var(--phosphor)) 45%, transparent); border-radius: 999px; color: var(--agent, var(--phosphor)); font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: 0; white-space: nowrap; }
+.choice-tag { align-self: center; padding: 4px 9px; border: 0; background: color-mix(in srgb, var(--agent, var(--phosphor)) 14%, transparent); border-radius: 999px; color: var(--agent, var(--phosphor)); font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: 0; white-space: nowrap; }
 .choice-option.recommended { border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 40%, var(--line-2)); background: color-mix(in srgb, var(--agent, var(--phosphor)) 6%, var(--panel)); }
 .choice-option.recommended .choice-key { border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 50%, transparent); color: var(--agent, var(--phosphor)); }
 .choice-tags { align-self: center; display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
@@ -2989,7 +2989,7 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .slash-menu .item.starter[aria-selected="true"], .slash-menu .item.starter:hover { border-color: color-mix(in srgb, var(--shape) 55%, transparent); background: color-mix(in srgb, var(--shape) 10%, transparent); }
 .slash-menu .item.starter .starter-icon { grid-row: 1 / 3; width: 18px; height: 18px; margin-top: 2px; color: var(--shape); }
 .slash-menu .item.starter .idea { font-size: 12.5px; line-height: 1.4; color: var(--text); text-align: left; }
-.slash-menu .item.starter .shape { justify-self: start; font-family: var(--sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; padding: 2px 7px; border-radius: 999px; color: var(--shape); border: 1px solid color-mix(in srgb, var(--shape) 45%, transparent); }
+.slash-menu .item.starter .shape { justify-self: start; font-family: var(--sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; padding: 2px 7px; border-radius: 999px; color: var(--shape); border: 0; background: color-mix(in srgb, var(--shape) 14%, transparent); }
 .slash-menu .item.starter:has(.shape.connector) { --shape: var(--module-electric); }
 .slash-menu .item.starter:has(.shape.sends) { --shape: var(--mode-4); }
 .slash-menu .item.starter:has(.shape.card) { --shape: var(--mode-2); }
@@ -6160,7 +6160,7 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .sx-chip.on { background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--phosphor); }
 /* The model that fits this computer (Home › Settings › Local AI): a small pill in the accent beside
    its name, as the room's other tags. */
-.sx-recommend { justify-self: start; align-self: start; display: inline-flex; align-items: center; gap: 4px; width: max-content; max-width: 100%; margin: 2px 0 1px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; line-height: 1.5; color: var(--acc, var(--phosphor)); background: color-mix(in srgb, var(--acc, var(--phosphor)) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc, var(--phosphor)) 22%, transparent); white-space: nowrap; }
+.sx-recommend { justify-self: start; align-self: start; display: inline-flex; align-items: center; gap: 4px; width: max-content; max-width: 100%; margin: 2px 0 1px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; line-height: 1.5; color: var(--acc, var(--phosphor)); background: color-mix(in srgb, var(--acc, var(--phosphor)) 14%, transparent); box-shadow: none; white-space: nowrap; }
 .sx-recommend svg { width: 11px; height: 11px; flex: none; }
 :root[data-scheme="light"] .sx-recommend { color: color-mix(in srgb, var(--acc, var(--phosphor)) 72%, #000); }
 .sx-chip.off { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
@@ -7256,7 +7256,7 @@ dialog.nostromo-key .room-ask-icon { --tone: #e5484d; }
    the med bay, grey once jettisoned — and its meaning in a sentence under it. NOSTROMO is dark in
    both themes, so the colours are the dark theme's and do not follow the light one. */
 #nostromo .nostromo-card .meta dd.zone { display: grid; justify-items: start; gap: 4px; }
-#nostromo .nostromo-card .zone-word { --zone: #9bff66; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 10.5px; letter-spacing: .1em; color: var(--zone); background: color-mix(in srgb, var(--zone) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zone) 42%, transparent); }
+#nostromo .nostromo-card .zone-word { --zone: #9bff66; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 10.5px; letter-spacing: .1em; color: var(--zone); background: color-mix(in srgb, var(--zone) 16%, transparent); box-shadow: none; }
 #nostromo .nostromo-card .zone-bridge .zone-word { --zone: #d2ffb8; }
 #nostromo .nostromo-card .zone-medbay .zone-word { --zone: #ffd166; }
 #nostromo .nostromo-card .zone-jettisoned .zone-word { --zone: rgba(242, 241, 238, .55); }
@@ -8824,7 +8824,7 @@ html.chat-shell dialog.tour-window { --tour-surface: var(--cs-canvas); }
 @keyframes ts-switch { 0%, 20% { background: color-mix(in srgb, var(--text) 16%, transparent); } 30%, 100% { background: var(--tour-acc); } }
 
 /* The pill that waits in the bar while the tour is not finished. */
-.tour-pill { display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 3px 0 0; border-radius: 999px; background: color-mix(in srgb, var(--tour-acc) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tour-acc) 40%, transparent); }
+.tour-pill { display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 3px 0 0; border-radius: 999px; background: color-mix(in srgb, var(--tour-acc) 16%, transparent); box-shadow: none; }
 .tour-pill-go { height: 28px; padding: 0 6px 0 12px; border: 0; background: transparent; font: inherit; font-family: var(--read); font-size: 12.5px; font-weight: 600; white-space: nowrap; color: color-mix(in srgb, var(--tour-acc) 70%, var(--text)); cursor: pointer; }
 .tour-pill-x { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); background: transparent; cursor: pointer; }
 .tour-pill-x svg { width: var(--ico-xs); height: var(--ico-xs); }

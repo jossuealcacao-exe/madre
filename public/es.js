@@ -4793,7 +4793,6 @@ export const ES = {
   'The tour of MADRE 1.0': 'El recorrido de MADRE 1.0',
   'What is new since 0.7.2': 'Lo nuevo desde 0.7.2',
   'Getting to know MADRE': 'Conoce MADRE',
-  'The basics of MADRE': 'Lo básico de MADRE',
   'The essentials, chapter by chapter. ? opens the gestures anywhere.': 'Lo básico, capítulo por capítulo. Pulsa ? en cualquier pantalla para ver los atajos.',
   'New in 1.0': 'Nuevo en 1.0',
   'Changed in 1.0': 'Cambió en 1.0',
