@@ -25,6 +25,10 @@ function mockSseResponse(chunks, { status = 200 } = {}) {
   return { ok: status >= 200 && status < 300, status, body: stream, async text() { return chunks.join(''); }, async json() { return JSON.parse(chunks.join('')); } };
 }
 const refusal = (status, error) => ({ ok: false, status, async json() { return { error }; } });
+// AbortSignal.timeout does not keep Node running: with nothing else pending, Node 22 and 24 ended the
+// file while a test waited for it, and every test after it was cancelled (CI, 2026-11-09). A server
+// keeps MADRE itself alive; here, a timer does, for as long as the test that waits.
+const awake = () => { const timer = setInterval(() => {}, 1000); return () => clearInterval(timer); };
 const modelOf = (url) => url.match(/models\/([^:]+):streamGenerateContent/)?.[1] ?? '';
 
 test('Google\'s refusals are said as what they are', () => {
@@ -77,7 +81,8 @@ test('«auto» is the CLI\'s router: through the API it is the default model', a
   assert.deepEqual(asked, [DEFAULT_GEMINI_REST_MODEL]);
 });
 
-test('a refused or missing model tries the spare once, and keeps the first reason when that fails too', async () => {
+test('a refused or missing model tries the spare once, and keeps the first reason when that fails too', async (context) => {
+  context.after(awake());
   const asked = [];
   const answered = await invokeGeminiRest({
     prompt: 'x', model: 'gemini-3-pro-preview', fallbackModel: 'gemini-3-flash-preview', key: 'k', env: {},
@@ -108,7 +113,8 @@ test('a refused or missing model tries the spare once, and keeps the first reaso
   );
 });
 
-test('time running out mid-answer, no network and a blocked message are each said plainly', async () => {
+test('time running out mid-answer, no network and a blocked message are each said plainly', async (context) => {
+  context.after(awake());
   const hanging = () => ({ ok: true, status: 200, body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(sse([{ candidates: [{ content: { parts: [{ text: 'half' }] } }] }])[0])); } }) });
   await assert.rejects(
     invokeGeminiRest({ prompt: 'x', key: 'k', env: {}, timeoutMs: 80, fallbackModel: '', fetchImpl: async (url, { signal }) => {

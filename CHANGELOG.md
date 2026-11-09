@@ -6,6 +6,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.4 · Sin publicar
 
+- **Deshacer no deja atrás lo que una IA crea al empezar su turno.** En Linux, un archivo escrito en los primeros milisegundos del turno, en una carpeta que git ignora, podía quedar fuera de la lista de lo creado y de Deshacer.
+
 ## 1.1.3 · 2026-11-09
 
 - **Una bienvenida como estrenar teléfono.** Seis pasos, cada uno con una sola pregunta en palabras de todos los días y una animación que enseña qué está pasando, hecha con el pulso del logo. MADRE revisa tu computadora mientras lees el saludo; te pregunta para qué la quieres y con eso te da ejemplos tuyos, no de programador; reconoce las IAs que ya tienen sesión y te dice cuál es cuál («¿Pagas ChatGPT Plus? Aquí se llama Codex»); trae marcadas las carpetas que ya abriste con Claude Code, Codex, Gemini, Cursor o VS Code (solo lee dónde están, nunca lo que dicen); baja la IA de tu computadora y su memoria de un solo toque mientras sigues, y te deja platicar con ella en cuanto llega. Termina dentro de tu proyecto con el primer mensaje ya escrito, para que solo lo mandes.

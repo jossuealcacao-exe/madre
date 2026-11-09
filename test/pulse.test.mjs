@@ -1444,6 +1444,10 @@ test('modules: AHP+ preflight refuses when the git root is not the project or np
     // owner that is not this user.
     await execFileAsync('git', ['init', '-q'], { cwd: project });
     process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER = '1';
+    // CI's image trusts every folder (safe.directory = *): git's own configuration stays out of it.
+    const gitConfig = { GIT_CONFIG_NOSYSTEM: process.env.GIT_CONFIG_NOSYSTEM, GIT_CONFIG_GLOBAL: process.env.GIT_CONFIG_GLOBAL };
+    process.env.GIT_CONFIG_NOSYSTEM = '1';
+    process.env.GIT_CONFIG_GLOBAL = '/dev/null';
     try {
       assert.equal(await gitToplevel(project), null, 'git read a repository of another owner');
       const dubious = await ahp.preflight(project, { npx: async () => '/usr/bin/npx', git: async () => true });
@@ -1453,6 +1457,7 @@ test('modules: AHP+ preflight refuses when the git root is not the project or np
       assert.ok(dubious.problems[0].includes(`git config --global --add safe.directory '${real}'`), dubious.problems[0]);
     } finally {
       delete process.env.GIT_TEST_ASSUME_DIFFERENT_OWNER;
+      for (const [key, value] of Object.entries(gitConfig)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
       await rm(join(project, '.git'), { recursive: true, force: true });
     }
     // Git root is a parent (the home-directory-was-git-inited case).

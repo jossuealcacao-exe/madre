@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DIAGNOSTICS_SINCE, guessClass, keepSync, readFields, readLogs, syncDiagnostics, syncSentinel } from '../src/madre-logs.mjs';
 
+// keepSync commits with the computer's git identity, and CI has none (2026-11-09): the commit did
+// not happen there and the log still said «inicio». The suite brings its own.
+for (const [key, value] of [['GIT_AUTHOR_NAME', 't'], ['GIT_AUTHOR_EMAIL', 't@t'], ['GIT_COMMITTER_NAME', 't'], ['GIT_COMMITTER_EMAIL', 't@t']]) process.env[key] ??= value;
+
 const entry = (fields) => `---\n${Object.entries(fields).map(([key, value]) => `${key}: ${value}`).join('\n')}\n---\n\n## Qué pasa\n\nalgo\n`;
 
 // 2026-11-05: the author's error log on Home, as agents add and close errors in ~/madre-logs.

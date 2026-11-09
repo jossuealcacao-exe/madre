@@ -6,6 +6,8 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.4 · Unreleased
 
+- **Undo no longer leaves behind what an AI creates as its turn begins.** On Linux, a file written in the first milliseconds of the turn, in a folder git ignores, could fall out of the list of what was created and of Undo.
+
 ## 1.1.3 · 2026-11-09
 
 - **A welcome like setting up a new phone.** Six steps, each with one question in everyday words and an animation, made with the logo's pulse, that shows what is happening. MADRE looks over your computer while you read the greeting; it asks what you want it for and gives you examples of your own, not a programmer's; it recognises the AIs that already have a session and tells you which is which («Pay for ChatGPT Plus? Here it's called Codex»); it brings ticked the folders you already opened with Claude Code, Codex, Gemini, Cursor or VS Code (it only reads where they are, never what they say); it downloads the AI on your computer and its memory with one touch while you carry on, and lets you talk to it as soon as it arrives. It ends inside your project with the first message already written, so you only send it.

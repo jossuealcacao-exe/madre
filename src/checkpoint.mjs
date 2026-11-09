@@ -335,6 +335,10 @@ async function diffOne(root, before, prefix = '', exclude = []) {
 // own list of what it ignores, without walking what is ignored for its size (dependencies, builds,
 // caches), MADRE's own folders or the .env files the guard already puts back; bounded, because it
 // is a note on the card and not a record.
+// Linux stamps a file with a coarse clock that can run a few milliseconds behind Date.now(): a file
+// written right as the turn began looked older than the turn (CI, 2026-11-09). Its margin is small,
+// and a file that was there before and did not change is told apart afterwards (sortIgnoredWrites).
+const MTIME_SLACK_MS = 50;
 export async function ignoredWrittenSince(root, checkpoint, since, { limit = 500, budget = 20000 } = {}) {
   const listed = await git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'], { via: checkpoint?.via }).catch(() => '');
   const nested = (checkpoint?.exclude ?? []).map((dir) => dir.replace(/\/$/, ''));
@@ -348,7 +352,7 @@ export async function ignoredWrittenSince(root, checkpoint, since, { limit = 500
     const info = await lstat(join(root, bare)).catch(() => null);
     if (info?.isDirectory()) {
       for (const entry of (await readdir(join(root, bare)).catch(() => [])).sort()) await walk(`${bare}/${entry}`);
-    } else if (info?.isFile() && info.mtimeMs >= since) found.push(bare);
+    } else if (info?.isFile() && info.mtimeMs >= since - MTIME_SLACK_MS) found.push(bare);
   };
   for (const path of listed.split('\0').filter(Boolean)) await walk(path);
   return found;
