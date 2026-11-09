@@ -134,10 +134,12 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
-import { chooseSkills, loadSkills } from './skills.mjs';
+import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
+import { findSkills, importSkills } from './skills-import.mjs';
+import { ASKS as SKILL_ASKS, SKILL_LICENSES, SKILL_SHELVES, submissionDraft as skillDraft, writeSubmission as writeSkillSubmission } from './skill-check.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
-import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
+import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedFromMarket, installedSkills, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket, updateSkillsFromMarket } from './market-remote.mjs';
 // Not moved project by project: the Coordinator is Home's, Git has no switch, and Local AI keeps
 // its own list of projects (local-ai.mjs).
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
@@ -500,6 +502,9 @@ export async function createPulseServer({
       const read = await refreshCatalog({ stateRoot: root, fetchImpl: marketFetch, force, ...marketKeyed });
       const names = Object.fromEntries(MODULES.map((one) => [one.id, one.name]));
       if (read.catalog) await updateFromMarket({ ...marketTools(), catalog: read.catalog, names, remove: (id) => removeExternalModule({ id, stateRoot: root, projectRoot: canonicalProjectRoot }) }).catch(() => []);
+      // The ways of working got from the Market (H-4): a newer version installs itself, one taken
+      // back is removed, and one that would bring a program nobody accepted waits for the person.
+      if (read.catalog) await updateSkillsFromMarket({ stateRoot: root, projectRoot: canonicalProjectRoot, catalog: read.catalog, madre: PACKAGE.version, fetchImpl: marketFetch }).catch(() => null);
       // MADRE's own modules, newer from the Market and signed with the factory key (src/builtin-updates.mjs):
       // what came or was taken back is run from now on, in this project and in Home.
       if (read.catalog) {
@@ -5136,12 +5141,128 @@ export async function createPulseServer({
         void warmModuleUpdates(extensions);
         return sendJson(response, 200, { installing, extensions, failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: SDK_PAGE[roomLanguage()] ?? SDK_PAGE.es });
       }
+      // HABILIDADES (H-3): the ways of working this project keeps, each with what it tells the
+      // agents, what it carries, and the word this project said about it. Read from disk every
+      // time: a skill the person just dropped in is on the board without reloading anything.
+      if (request.method === 'GET' && url.pathname === '/api/skills') {
+        const config = await readConfig(root);
+        const { loaded, failures, folders } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
+        const fromMarket = await installedSkills(root);
+        const skills = loaded.map((skill) => ({
+          id: skill.id, name: skill.name, when: skill.when, version: skill.version, minMadre: skill.minMadre,
+          credit: skill.credit, license: skill.license, origin: skill.origin, dir: skill.dir, unknown: skill.unknown,
+          // What it says, whole: it is a page, and a person can actually read it before turning it on.
+          body: skill.body, declares: skillDeclares(skill),
+          state: skillState(config, skill.id, scopeRoom),
+          everywhere: skillState(config, skill.id, null),
+          // One the Market signed is not the person's to send: it is already there.
+          market: Boolean(fromMarket[skill.id]),
+        }));
+        return sendJson(response, 200, { skills, failures, folders, project: Boolean(scopeRoom) });
+      }
+      // SENDING ONE'S OWN SKILL TO THE MARKET (H-8). A skill is one file, so this is not a form full
+      // of what MADRE already knows: only what nobody but the person can say, written into its own
+      // header. Asked once for the draft, then again to write the folder they will send.
+      if (request.method === 'POST' && url.pathname === '/api/skills/submission') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const { loaded } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
+        const mine = loaded.find((one) => one.id === String(payload.id ?? ''));
+        if (!mine) return sendJson(response, 404, { error: t('No skill «{id}».', { id: payload.id }) });
+        try {
+          const draft = skillDraft(mine, { madre: PACKAGE.version });
+          if (!payload.write) return sendJson(response, 200, { draft, asks: SKILL_ASKS, shelves: SKILL_SHELVES, licenses: SKILL_LICENSES });
+          const written = await writeSkillSubmission({ stateRoot: root, dir: mine.dir, entry: payload.entry ?? {} });
+          const shown = payload.reveal === true ? await openInBrowser(written.folder, await environmentOnce().catch(() => null)).catch(() => false) : false;
+          return sendJson(response, 200, { draft, asks: SKILL_ASKS, shelves: SKILL_SHELVES, licenses: SKILL_LICENSES, ...written, shown });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+      }
+      // THE SKILLS THIS COMPUTER ALREADY HAS (H-7): read where each CLI keeps them, with what would
+      // happen to each one here. Nothing is brought over until the person says which.
+      if (request.method === 'GET' && url.pathname === '/api/skills/import') {
+        const found = await findSkills({ projectRoot: canonicalProjectRoot, stateRoot: root });
+        return sendJson(response, 200, { found });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/skills/import') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const ids = (Array.isArray(payload.ids) ? payload.ids : []).slice(0, 50).map((id) => String(id));
+        if (!ids.length) return sendJson(response, 400, { error: t('Name which ones to bring over.') });
+        const done = await importSkills({ ids, stateRoot: root, projectRoot: canonicalProjectRoot, scope: payload.scope === 'project' ? 'project' : 'user' });
+        for (const one of done.brought) await room.record('skill.installed', { id: one.id, name: one.name, origin: payload.scope === 'project' ? 'project' : 'user', from: one.who, by: 'you' });
+        return sendJson(response, 200, done);
+      }
+      // A skill an agent wrote in its draft folder (H-6): read it, say what it tells the agents, and
+      // install it only when the person said so. The file is the agent's proposal; installing is
+      // theirs. Two steps like every other door into the skills folder: `review` writes nothing.
+      if (request.method === 'POST' && url.pathname === '/api/skills/install-file') {
+        const payload = await body(request).catch(() => ({}));
+        const relative = String(payload.path ?? '').replace(/^\/+/, '');
+        if (!relative || relative.includes('..') || !isSkillFile(relative)) return sendJson(response, 400, { error: t('Give the project-relative path of a <id>.habilidad.md file.') });
+        const file = join(canonicalProjectRoot, relative);
+        try {
+          const text = await readFile(file, 'utf8');
+          const read = readSkillText(text, { id: skillIdOf(relative) });
+          if (payload.review === true) {
+            return sendJson(response, 200, { review: true, id: read.id, name: read.name, when: read.when, version: read.version, body: read.body, unknown: read.unknown, declares: skillDeclares({ ...read, files: [], scripts: [] }) });
+          }
+          const done = await installSkill({
+            files: [{ path: SKILL_FILES[0], text }],
+            scope: payload.scope === 'project' ? 'project' : 'user',
+            stateRoot: root, projectRoot: canonicalProjectRoot,
+            source: { kind: 'file', from: relative, id: read.id },
+          });
+          await room.record('skill.installed', { id: done.id, name: done.name, origin: done.origin, from: relative, by: 'you' });
+          return sendJson(response, 200, { installed: done });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+      }
+      // Off, matched or always on, for this project or for all of them. Nothing else changes.
+      const skillState_ = request.method === 'POST' && url.pathname.match(/^\/api\/skills\/([a-z][a-z0-9-]{1,39})\/state$/);
+      if (skillState_) {
+        const payload = await body(request).catch(() => ({}));
+        if (!SKILL_STATES.includes(payload.state)) return sendJson(response, 400, { error: t('A skill is off, matched or always on; nothing else.') });
+        const id = skillState_[1];
+        const config = await readConfig(root);
+        const here = payload.scope === 'everywhere' ? null : scopeRoom;
+        await updateConfig(root, { skills: { ...(config.skills ?? {}), [id]: skillStateIn(config.skills?.[id] ?? {}, here, payload.state) } });
+        await room.record('skill.switched', { id, state: payload.state, scope: here ? 'project' : 'everywhere' });
+        return sendJson(response, 200, { ok: true, id, state: payload.state });
+      }
+      // Removing one is the person's: the folder goes, and nothing a skill's scripts wrote is touched.
+      const skillGone = request.method === 'POST' && url.pathname.match(/^\/api\/skills\/([a-z][a-z0-9-]{1,39})\/remove$/);
+      if (skillGone) {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        try {
+          const gone = await removeSkill({ id: skillGone[1], stateRoot: root, projectRoot: canonicalProjectRoot });
+          await room.record('skill.removed', { id: gone.id, folders: gone.removed.length });
+          return sendJson(response, 200, { ok: true, ...gone });
+        } catch (error) { return sendJson(response, 404, { error: error.message }); }
+      }
+      // A skill from the Market onto this computer (H-4). Asked twice on purpose, as a module is:
+      // first to read what it tells the agents, then to install the very files that were read.
+      if (request.method === 'POST' && url.pathname === '/api/market/skills/install') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const read = await syncMarket().catch(() => ({ catalog: null }));
+        const catalog = read.catalog ?? await keptCatalog({ stateRoot: root, ...marketKeyed });
+        if (!catalog) return sendJson(response, 503, { error: t('MADRE could not read the Market.') });
+        try {
+          const done = await installSkillFromMarket({
+            stateRoot: root, projectRoot: canonicalProjectRoot, madre: PACKAGE.version, fetchImpl: marketFetch,
+            id: String(payload.id ?? ''), catalog, review: payload.review === true, accept: payload.accept ?? null,
+          });
+          if (!done.review) await room.record('skill.installed', { id: done.id, version: done.version ?? null, from: 'market' });
+          return sendJson(response, 200, done);
+        } catch (error) {
+          return sendJson(response, error.code === 'REVIEW_FIRST' ? 409 : 400, { error: error.message, code: error.code ?? null });
+        }
+      }
       // THE MARKET's catalog for the page: the one kept here at once (and a fresh one asked for
       // behind it), what was got from it, and what it updated on its own that nobody was told yet.
       if (request.method === 'GET' && url.pathname === '/api/market') {
         const kept = await keptCatalog({ stateRoot: root, ...marketKeyed });
         const read = kept ? (void syncMarket().catch(() => null), { catalog: kept }) : await syncMarket().catch(() => ({ catalog: null }));
-        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
+        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), skills: await installedSkills(root), licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
       }
       if (request.method === 'POST' && url.pathname === '/api/market/seen') {
         await marketNewsSeen(root);

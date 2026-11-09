@@ -15,7 +15,7 @@
 // `openProject(projectId, item)` (Home), `toast(text)` and `changed()`.
 
 import { t, language } from './i18n.js';
-import { appIcon, communityOf, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace, remoteEntry } from './market.js';
+import { appIcon, communityOf, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, marketSkills, moduleFace, remoteEntry, skillHere } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
 import { trazo } from './icons.js';
 
@@ -99,7 +99,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   if (home) {
     const seg = el('div', 'mk-tabs');
     seg.setAttribute('role', 'tablist');
-    for (const [id, label] of [['shop', t('Market')], ['mine', t('Modules')]]) {
+    for (const [id, label] of [['shop', t('Market')], ['skills', t('Skills')], ['mine', t('Modules')]]) {
       const key = button('mk-tab', label, () => go({ tab: id }));
       key.setAttribute('role', 'tab');
       tabs[id] = key;
@@ -109,7 +109,16 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   } else {
     const here = el('span', 'mk-here');
     here.append(el('b', null, t('Market')), el('span', null, t('for {project}', { project: project?.name ?? t('this project') })));
-    middle.append(here);
+    // A skill is not a module and does not share a shelf with one (H-8): its own tab, here too.
+    const seg = el('div', 'mk-tabs');
+    seg.setAttribute('role', 'tablist');
+    for (const [id, label] of [['shop', t('Modules')], ['skills', t('Skills')]]) {
+      const key = button('mk-tab', label, () => go({ tab: id }));
+      key.setAttribute('role', 'tab');
+      tabs[id] = key;
+      seg.append(key);
+    }
+    middle.append(here, seg);
   }
   // The same search as every other one in MADRE (styles.css, .settings-search).
   const search = glyph(el('label', 'settings-search mk-search'), 'search');
@@ -678,20 +687,115 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     return box;
   };
 
+  // ---- SKILLS (H-8). Their own tab, because a skill is not a module: it adds no button and no
+  // page, it tells whichever agent answers how the person works. So no tiles and no carousel — a
+  // row with its sentence, and a page with the whole text before anything is kept.
+  //
+  // Getting one is two steps, as a module's is: MADRE fetches every file and checks it against the
+  // signature, shows what it says and what it carries, and only then — on the very seal that was
+  // read — keeps it. Nothing of it runs: a program it carries could only ever run inside #4.
+  const skillsPage = (focus) => {
+    const page = el('div', 'mk-page mk-skills');
+    const all = marketSkills();
+    const one = focus ? all.find((skill) => skill.id === focus) : null;
+    if (one) return skillPage(one);
+    const head = el('header', 'mk-shelf-head');
+    head.append(el('h2', null, t('Skills')), el('p', null, t('Ways of working, handed to whichever agent answers. The same one works for Codex, Claude, Gemini, OpenCode, Cursor and Grok, because MADRE is the one that writes the briefing.')));
+    page.append(head);
+    if (!all.length) {
+      page.append(el('p', 'mk-empty', t('None in the Market yet. You can write your own: type /habilidad in the conversation.')));
+      return page;
+    }
+    const list = el('div', 'mk-skill-list');
+    for (const skill of all) {
+      const row = el('article', 'mk-skill-row');
+      const words = el('div', 'mk-skill-words');
+      const top = el('div', 'mk-skill-top');
+      top.append(el('b', null, skill.name));
+      if (skill.community && skill.author?.name) top.append(communityTag(), el('span', 'mk-skill-by', t('by {name}', { name: skill.author.name })));
+      if (skill.version) top.append(el('span', 'mk-skill-tag', skill.version));
+      words.append(top, el('p', 'mk-skill-line', skill.line || skill.summary));
+      const have = skillHere(skill.id);
+      const key = have
+        ? button('mk-get on', t('Yours'), () => go({ tab: 'skills', focus: skill.id }))
+        : button('mk-get', t('Read it'), () => go({ tab: 'skills', focus: skill.id }));
+      row.append(words, key);
+      list.append(row);
+    }
+    page.append(list);
+    return page;
+  };
+
+  // One skill's page: what it tells the agents, whole, before it is kept. Read it and you have read
+  // the review — which is the one thing a module's page can never offer.
+  const skillPage = (skill) => {
+    const page = el('div', 'mk-page mk-skill-page');
+    page.append(glyph(button('mk-back', t('Skills'), () => go({ tab: 'skills' })), 'back'));
+    const head = el('header', 'mk-skill-head');
+    head.append(el('h2', null, skill.name));
+    const meta = el('div', 'mk-skill-meta');
+    for (const word of [skill.version, skill.author?.name ? t('by {name}', { name: skill.author.name }) : null, skill.spdx, skill.credit ? t('Idea by {name}', { name: skill.credit }) : null].filter(Boolean)) meta.append(el('span', null, word));
+    if (skill.community) meta.append(communityTag());
+    head.append(el('p', 'mk-skill-line', skill.summary || skill.line), meta);
+    page.append(head);
+    const have = skillHere(skill.id);
+    if (have) page.append(el('p', 'mk-skill-have', t('You have it, version {version}. It comes in when it fits; you decide that in MODULES → Skills.', { version: have.version })));
+    if (!fits(madre, skill.minMadre)) {
+      page.append(el('p', 'mk-skill-warn', t('It needs MADRE {version} or newer.', { version: skill.minMadre })));
+      return page;
+    }
+    const body = el('div', 'mk-skill-read');
+    const said = el('p', 'mk-skill-said');
+    const keep = button('mk-get', have ? t('Get it again') : t('Keep it'), null);
+    keep.hidden = true;
+    const read = button('mk-get', t('Read what it tells my agents'), async () => {
+      read.disabled = true;
+      said.textContent = t('Reading it…');
+      const { ok, body: payload } = await post('/api/market/skills/install', { id: skill.id, review: true });
+      read.disabled = false;
+      if (!ok) { said.textContent = payload.error ?? t('It could not be read.'); return; }
+      said.textContent = '';
+      read.hidden = true;
+      body.replaceChildren();
+      if (payload.declares?.when) body.append(el('p', 'mk-skill-when', `${t('It comes in when:')} ${payload.declares.when}`));
+      body.append(el('pre', 'mk-skill-body', payload.body));
+      const carries = (payload.declares?.references ?? []).filter((path) => !/^(HABILIDAD|SKILL)\.md$/.test(path));
+      if (carries.length) body.append(el('p', 'mk-skill-files', t('It carries: {list}', { list: carries.join(', ') })));
+      if (payload.declares?.scripts?.length) {
+        body.append(el('p', 'mk-skill-warn', `${t('It carries programs: {list}', { list: payload.declares.scripts.join(', ') })} ${t('MADRE never runs one. Only an agent can, and only in #4 AIRLOCK: in every other mode they do nothing. Read one before you open that mode.')}`));
+      }
+      keep.hidden = false;
+      keep.onclick = async () => {
+        keep.disabled = true;
+        said.textContent = t('Keeping it…');
+        const done = await post('/api/market/skills/install', { id: skill.id, accept: payload.seal });
+        keep.disabled = false;
+        if (!done.ok) { said.textContent = done.body.error ?? t('It could not be kept.'); return; }
+        said.textContent = '';
+        notice(t('{name} is yours now. It comes in when it fits; change that in MODULES.', { name: skill.name }));
+        host.changed?.();
+        await refresh();
+        go({ tab: 'skills', focus: skill.id });
+      };
+    });
+    page.append(read, body, keep, said);
+    return page;
+  };
+
   // WHERE IT IS: a view, the address that reopens it, and the page scrolled to the top.
   const render = () => {
     if (!current) return;
     for (const [id, key] of Object.entries(tabs)) key.setAttribute('aria-selected', String(id === view.tab));
-    search.hidden = view.tab === 'mine' || Boolean(view.focus);
+    search.hidden = view.tab === 'mine' || view.tab === 'skills' || Boolean(view.focus);
     const item = view.focus ? items.find((one) => one.id === view.focus) : null;
-    const page = view.tab === 'mine' ? mine(view.focus) : item ? detail(item, { choose: view.choose }) : shop();
+    const page = view.tab === 'skills' ? skillsPage(view.focus) : view.tab === 'mine' ? mine(view.focus) : item ? detail(item, { choose: view.choose }) : shop();
     main.replaceChildren(page);
     if (view.tab === 'mine' && view.focus) requestAnimationFrame(() => document.getElementById(`mk-card-${view.focus}`)?.scrollIntoView({ block: 'center' }));
-    const hash = view.tab === 'mine' ? '#modulos' : item ? `#mercado=${encodeURIComponent(item.id)}` : '#mercado';
+    const hash = view.tab === 'skills' ? (view.focus ? `#habilidades=${encodeURIComponent(view.focus)}` : '#habilidades') : view.tab === 'mine' ? '#modulos' : item ? `#mercado=${encodeURIComponent(item.id)}` : '#mercado';
     try { history.replaceState(history.state, '', `${location.pathname}${location.search}${hash}`); } catch { /* the address stays as it was */ }
   };
   const go = ({ tab: nextTab = view.tab, focus: nextFocus = null, choose = false } = {}) => {
-    view = { tab: home ? nextTab : 'shop', focus: nextFocus, choose };
+    view = { tab: home || nextTab === 'skills' ? nextTab : 'shop', focus: nextFocus, choose };
     main.scrollTop = 0;
     render();
   };

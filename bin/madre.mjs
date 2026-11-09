@@ -111,6 +111,7 @@ const HELP_TEXT = `MADRE
   madre setup [--project PATH] [--port 4317] [--no-open]
   madre doctor [--project PATH] [--json]
   madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]
+  madre check-skill --folder <habilidades/id> [--json] [--lang es]
   madre servicio [activar|quitar|estado]   (Linux)
 
   (none)  Opens Home. From there you add projects, connect the agents
@@ -202,7 +203,7 @@ if (has('--version') || has('-v') || command === 'version') {
 }
 // A command that only reads leaves nothing behind (QA 1.1.0, NUE-37): after uninstalling, `madre
 // doctor` made ~/.pulse again, with Home's folder and the update cache in it.
-const onlyReads = command === 'doctor' || command === 'check-module';
+const onlyReads = command === 'doctor' || command === 'check-module' || command === 'check-skill';
 if (command !== 'help' && !(onlyReads && isSalasRoom(projectRoot, salasHome))) {
   // The notebook of Salas is MADRE's own folder: made here, empty, the first time it is opened
   // (D-S08). If it cannot be made, the check below says so, as for any folder that is not there.
@@ -336,6 +337,17 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   const entry = entryFile ? JSON.parse(await readFile(entryFile, 'utf8')) : null;
   const { basename: fileName } = await import('node:path');
   const result = await checkSubmission({ text, entry, name: fileName(file) });
+  if (has('--json')) console.log(JSON.stringify({ ...result, markdown: undefined }, null, 2));
+  else console.log(result.markdown);
+  process.exitCode = result.ok ? 0 : 1;
+} else if (command === 'check-skill') {
+  // The same check for a skill (src/skill-check.mjs): what the madre-mercado repository's CI runs on
+  // every pull request that adds habilidades/<id>/, and what anyone can run before sending one.
+  const folder = option('--folder', null) ?? option('--dir', null);
+  if (!folder) { console.error('Usage: madre check-skill --folder <habilidades/id> [--json] [--lang es]'); process.exit(2); }
+  (await import('../src/i18n.mjs')).setLanguage(option('--lang', 'en'));
+  const { checkSkillFolder } = await import('../src/skill-check.mjs');
+  const result = await checkSkillFolder(folder);
   if (has('--json')) console.log(JSON.stringify({ ...result, markdown: undefined }, null, 2));
   else console.log(result.markdown);
   process.exitCode = result.ok ? 0 : 1;

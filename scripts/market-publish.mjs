@@ -21,6 +21,17 @@
 // every MADRE that understands its contract runs it instead of its own (src/builtin-updates.mjs).
 // `revoked` takes a module, or one version of it, back: `{ id, version?, why }`.
 //
+// THE COMMUNITY'S SKILLS (2026-11-08, H-5) come from the same public repository, in
+// `habilidades/<id>/`, and are checked here as their pull request was (src/skill-check.mjs). Unlike
+// a module's, that check runs right here and needs no fenced node of its own: a skill is text, and
+// nothing in it is ever executed to read it. Its entry comes from its own header — no entrada.json.
+//
+// SKILLS (2026-11-08, H-4) go in `skills`: `{ id, folder, shelf, name, line, summary, changes,
+// minMadre, hue, icon }`, where `folder` is where its HABILIDAD.md lives, relative to the source.
+// Its version is the one the skill itself declares, not one written twice. Every file it carries is
+// published under its version and pinned by its own sha256: there is no archive, so there is
+// nothing to unpack on the other side. The community's skills come with their check (H-5).
+//
 // THE COMMUNITY'S MODULES (2026-10-28) come from the public `madre-mercado` repository (--community
 // <folder>, by default ~/Pangea OS/madre-mercado when it is there): every `modulos/<id>/` merged there
 // was read by the author first. Each is checked again here as its pull request was
@@ -33,6 +44,8 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readCatalog, sha256, verifySigned } from '../src/market-remote.mjs';
+import { readSkill } from '../src/skills.mjs';
+import { checkSkillFolder } from '../src/skill-check.mjs';
 import { verifyBuiltinText, verifyModuleText } from '../src/modules/index.mjs';
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
@@ -83,8 +96,9 @@ for (const entry of source.modules ?? []) {
   modules.push({ ...entry, file: { url: `${base}/modulos/${name}`, sha256: sha256(bytes), size: bytes.length } });
 }
 const fallbackCommunity = join(homedir(), 'Pangea OS', 'madre-mercado');
-const community = arg('community', existsSync(join(fallbackCommunity, 'modulos')) ? fallbackCommunity : null);
-if (community) {
+const community = arg('community', ['modulos', 'habilidades'].some((what) => existsSync(join(fallbackCommunity, what))) ? fallbackCommunity : null);
+// The repository may hold modules, skills or both (2026-11-08): each folder is read only if it is there.
+if (community && existsSync(join(community, 'modulos'))) {
   const ids = (await readdir(join(community, 'modulos'), { withFileTypes: true })).filter((one) => one.isDirectory() && !one.name.startsWith('.')).map((one) => one.name).sort();
   for (const id of ids) {
     if (modules.some((one) => one.id === id)) throw new Error(`${id}: the community's module has the id of one already in the Market.`);
@@ -113,7 +127,53 @@ if ((source.builtins ?? []).length) {
     builtins.push({ id: entry.id, version: checked.version, sdk: checked.sdk, changes: entry.changes ?? null, file: { url: `${base}/modulos/${name}`, sha256: sha256(bytes), size: bytes.length, factory: sign(null, bytes, factory).toString('base64') } });
   }
 }
-const catalog = { schema: 1, issued: new Date().toISOString(), shelves: source.shelves ?? [], featured: source.featured ?? [], news: source.news ?? [], modules, builtins, revoked: source.revoked ?? [] };
+// THE WAYS OF WORKING. Read and validated as MADRE reads one before it loads it, so a skill that
+// would be refused there is refused here; its own page says its version.
+const skills = [];
+for (const entry of source.skills ?? []) {
+  if (!entry.folder) throw new Error(`${entry.id}: a skill needs the folder its HABILIDAD.md lives in.`);
+  const read = await readSkill(resolve(src, entry.folder));
+  if (read.id !== entry.id) throw new Error(`${entry.folder} says it is "${read.id}", not "${entry.id}".`);
+  if (!read.version) throw new Error(`${entry.id}: its HABILIDAD.md needs a version like 1.0.0.`);
+  if (!read.when) throw new Error(`${entry.id}: without «when», nobody's MADRE will ever bring it into a turn on its own.`);
+  const where = `habilidades/${entry.id}-${read.version}`;
+  const files = [];
+  for (const file of read.files) {
+    const bytes = await readFile(join(read.dir, file.path));
+    await mkdir(dirname(join(out, where, file.path)), { recursive: true });
+    await writeFile(join(out, where, file.path), bytes);
+    files.push({ path: file.path, url: `${base}/${where}/${file.path}`, sha256: sha256(bytes), size: bytes.length });
+  }
+  const { folder, ...said } = entry;
+  skills.push({ ...said, version: read.version, credit: entry.credit ?? read.credit ?? null, spdx: entry.spdx ?? read.license ?? null, files });
+}
+// The community's, from the public repository: read first, checked, and published like the author's
+// own, with `community: true` and whatever their header says about who they are.
+if (community && existsSync(join(community, 'habilidades'))) {
+  const ids = (await readdir(join(community, 'habilidades'), { withFileTypes: true })).filter((one) => one.isDirectory() && !one.name.startsWith('.')).map((one) => one.name).sort();
+  for (const id of ids) {
+    if (skills.some((one) => one.id === id)) throw new Error(`${id}: the community's skill has the id of one already in the Market.`);
+    const dir = join(community, 'habilidades', id);
+    const checked = await checkSkillFolder(dir);
+    if (!checked.ok) throw new Error(`${id} does not pass the skills' check:\n- ${checked.problems.join('\n- ')}`);
+    const read = await readSkill(dir);
+    if (read.id !== id) throw new Error(`habilidades/${id} says it is "${read.id}".`);
+    const where = `habilidades/${id}-${read.version}`;
+    const files = [];
+    for (const file of read.files) {
+      const bytes = await readFile(join(read.dir, file.path));
+      await mkdir(dirname(join(out, where, file.path)), { recursive: true });
+      await writeFile(join(out, where, file.path), bytes);
+      files.push({ path: file.path, url: `${base}/${where}/${file.path}`, sha256: sha256(bytes), size: bytes.length });
+    }
+    skills.push({
+      id, community: true, version: read.version, minMadre: read.minMadre, shelf: read.shelf,
+      name: read.name, line: read.line, summary: read.summary,
+      author: read.author, spdx: read.license, credit: read.credit ?? null, files,
+    });
+  }
+}
+const catalog = { schema: 1, issued: new Date().toISOString(), shelves: source.shelves ?? [], featured: source.featured ?? [], news: source.news ?? [], modules, builtins, skills, revoked: source.revoked ?? [] };
 const bytes = Buffer.from(`${JSON.stringify(catalog, null, 2)}\n`);
 const signature = sign(null, bytes, key).toString('base64');
 await writeFile(join(out, 'catalogo.json'), bytes);
@@ -125,7 +185,7 @@ if (!verifySigned(bytes, signature, MARKET_PUBLIC_KEY)) throw new Error('The sig
 const read = readCatalog(bytes.toString('utf8'), { url: `${base}/catalogo.json` });
 const { FACTORY_PUBLIC_KEY } = await import('../src/market-key.mjs');
 for (const one of builtins) if (!FACTORY_PUBLIC_KEY || !verifySigned(await readFile(join(out, 'modulos', `${one.id}-${one.version}.builtin.mjs`)), one.file.factory, FACTORY_PUBLIC_KEY)) throw new Error(`${one.id}: the factory signature does not verify with the key in src/market-key.mjs.`);
-const lost = [...catalog.modules.filter((one) => !read.modules.some((kept) => kept.id === one.id)), ...builtins.filter((one) => !read.builtins.some((kept) => kept.id === one.id))].map((one) => one.id);
+const lost = [...catalog.modules.filter((one) => !read.modules.some((kept) => kept.id === one.id)), ...builtins.filter((one) => !read.builtins.some((kept) => kept.id === one.id)), ...skills.filter((one) => !read.skills.some((kept) => kept.id === one.id))].map((one) => one.id);
 if (lost.length) throw new Error(`MADRE would leave out: ${lost.join(', ')}.`);
-console.log(`✓ ${out}/catalogo.json · ${read.modules.length} modules (${read.modules.filter((one) => one.file).length} with a file, ${read.modules.filter((one) => one.community).length} of the community) · ${read.builtins.length} newer of MADRE's own · ${read.revoked.length} taken back · issued ${catalog.issued}`);
+console.log(`✓ ${out}/catalogo.json · ${read.modules.length} modules (${read.modules.filter((one) => one.file).length} with a file, ${read.modules.filter((one) => one.community).length} of the community) · ${read.skills.length} skills (${read.skills.filter((one) => one.community).length} of the community) · ${read.builtins.length} newer of MADRE's own · ${read.revoked.length} taken back · issued ${catalog.issued}`);
 console.log('  Signed and verified. Publish madre.run as usual to put it online.');

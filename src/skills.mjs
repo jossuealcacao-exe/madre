@@ -27,21 +27,52 @@
 
 import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { t } from './i18n.mjs';
 
 export const SKILL_FILES = ['HABILIDAD.md', 'SKILL.md'];
+// A file an agent wrote that means «install me as a skill»: <id>.habilidad.md, as a module's own is
+// <id>.module.mjs (src/modules/index.mjs). The agent writes it in its draft folder and cannot
+// install it: the person does, from the room.
+export const isSkillFile = (path) => /\.habilidad\.md$/i.test(String(path ?? ''));
+export const skillIdOf = (path) => String(path ?? '').split(/[\\/]/).pop().replace(/\.habilidad\.md$/i, '');
+// Where the guide an agent writing a skill is pointed at lives in this installation.
+export const skillGuide = () => fileURLToPath(new URL('../docs/HABILIDADES.md', import.meta.url));
 export const ID = /^[a-z][a-z0-9-]{1,39}$/;
 const SEMVER = /^\d+\.\d+\.\d+$/;
 // The body is in every turn this skill enters, so it is the one thing with a tight cap: about two
 // thousand tokens. A skill with more to say puts it in referencias/ and points at it.
 export const MAX_BODY = 8000;
-export const MAX_WHEN = 400;
+// `when` never travels in the prompt — only the body does — so its only cost is the matching, and a
+// truncated trigger loses exactly the half that matters: the «and NOT when…» at the end. Measured
+// against the skills on a real computer (H-7, 2026-11-08), where Claude's run to about 900.
+export const MAX_WHEN = 1000;
 export const MAX_NAME = 60;
-export const MAX_FILES = 40;
-export const MAX_BYTES = 512 * 1024;
+// What a skill may weigh ON THIS DISK, which is a different question from what may travel through
+// the Market (src/market-remote.mjs keeps its own, tighter bound: one signed download each). The
+// real ones measured on 2026-11-08 reach 61 files and 1158 KB — Claude's xlsx, pptx and docx carry
+// their own libraries — and refusing those on a number nobody had measured would have been a guess
+// dressed as a rule.
+export const MAX_FILES = 200;
+export const MAX_BYTES = 4 * 1024 * 1024;
+// And what may be SENT to the Market: there each file is a download of its own, signed and pinned.
+export const MARKET_MAX_FILES = 40;
 // What an agent could run, and therefore what only #4 could ever reach. Read from the name, and
 // from the executable bit for anything else.
 const RUNNABLE = /\.(?:sh|bash|zsh|py|rb|pl|mjs|cjs|js|ts)$/i;
+// Read from the name alone, for a file that is not on this disk yet (the Market's, H-4). On disk the
+// executable bit counts too (readSkillFiles).
+export const runnable = (path) => RUNNABLE.test(String(path ?? ''));
+
+// Whether a skill may carry a file at this path. The paths come from outside MADRE — a file the
+// person dropped in, an entry of the Market's catalog — so they are checked before anything is
+// written: nothing climbs out, nothing is absolute, nothing hides.
+export const safePath = (path) => {
+  const said = String(path ?? '');
+  if (!said || said.length > 200 || said.startsWith('/') || said.startsWith('\\')) return false;
+  if (/(?:^|[\\/])\.\.(?:[\\/]|$)/.test(said)) return false;
+  return said.split(/[\\/]/).every((part) => part && !part.startsWith('.'));
+};
 
 export const skillFolders = ({ stateRoot, projectRoot }) => ({
   user: join(stateRoot, 'habilidades'),
@@ -81,6 +112,20 @@ export function words(value, max) {
   }
   return unquote(said).slice(0, max) || null;
 }
+// Who made it: a name, or `{ name: "Ana Ruiz", github: "anaruiz" }`. The name is what the Market
+// shows; the GitHub user is only how a pull request is signed, so it is read and never demanded.
+export function author(value) {
+  const said = unquote(value ?? '');
+  if (!said) return null;
+  if (!said.startsWith('{')) return { name: said.slice(0, MAX_NAME), github: null };
+  const of = (key) => {
+    const hit = said.match(new RegExp(`\\b${key}\\s*:\\s*(?:"([^"]*)"|'([^']*)'|([^,}]*))`));
+    return unquote(hit?.[1] ?? hit?.[2] ?? hit?.[3] ?? '') || null;
+  };
+  const name = of('name') ?? of('nombre');
+  return name ? { name: name.slice(0, MAX_NAME), github: of('github') } : null;
+}
+
 // Whichever language the room speaks, for a name that may be one word or two.
 export const pick = (value, language = 'es') => (value && typeof value === 'object' ? value[language] ?? value.es ?? value.en ?? null : value ?? null);
 
@@ -88,7 +133,16 @@ export const pick = (value, language = 'es') => (value && typeof value === 'obje
 // person writing by hand will reach for, and the ones a skill of Claude's already carries:
 // `description` is its `when`. MADRE's own words are in English and the room speaks the person's
 // language (src/i18n.mjs), here as everywhere.
-const KEYS = { id: ['id'], name: ['name', 'nombre'], when: ['when', 'cuando', 'description'], version: ['version', 'versión'], minMadre: ['minMadre', 'minmadre'], credit: ['credit', 'credito', 'crédito'], license: ['license', 'licencia'] };
+// The last four are only needed to PUBLISH one (src/skill-check.mjs, H-5): what the Market shows.
+// A skill is one file, so they live in its own header — asking for a second file with the same
+// facts in JSON is work for whoever sends it and one more place for the two to disagree.
+const KEYS = {
+  id: ['id'], name: ['name', 'nombre'], when: ['when', 'cuando', 'description'],
+  version: ['version', 'versión'], minMadre: ['minMadre', 'minmadre'],
+  credit: ['credit', 'credito', 'crédito'], license: ['license', 'licencia'],
+  line: ['line', 'linea', 'línea'], summary: ['summary', 'resumen'], shelf: ['shelf', 'estante'],
+  author: ['author', 'autor', 'autora'],
+};
 export const KNOWN = new Set(Object.values(KEYS).flat());
 const field = (fields, key) => KEYS[key].map((name) => fields[name]).find((value) => String(value ?? '').trim());
 
@@ -116,6 +170,11 @@ export function readSkillText(text, { id = null } = {}) {
     minMadre: minMadre || null,
     credit: words(field(fields, 'credit'), MAX_NAME),
     license: unquote(field(fields, 'license') ?? '') || null,
+    // Only for the Market, and only when it is going there (H-5).
+    line: words(field(fields, 'line'), 140),
+    summary: words(field(fields, 'summary'), 1200),
+    shelf: unquote(field(fields, 'shelf') ?? '') || null,
+    author: author(field(fields, 'author')),
     body,
     // Said, never ignored in silence, as a module's unknown fields are said when it is installed.
     unknown: Object.keys(fields).filter((key) => !KNOWN.has(key)),
@@ -217,11 +276,7 @@ export async function installSkill({ files, scope = 'user', stateRoot, projectRo
   let bytes = 0;
   for (const one of files) {
     const path = String(one.path ?? '');
-    // The paths come from outside MADRE (a file the person dropped in, a catalog entry), so each one
-    // is checked before anything is written: nothing climbs out, nothing is absolute, nothing hides.
-    if (!path || path.startsWith('/') || path.startsWith('\\') || /(?:^|[\\/])\.\.(?:[\\/]|$)/.test(path) || path.split(/[\\/]/).some((part) => part.startsWith('.'))) {
-      throw new Error(t('{file} is not a path a skill may carry.', { file: path || '—' }));
-    }
+    if (!safePath(path)) throw new Error(t('{file} is not a path a skill may carry.', { file: path || '—' }));
     const text = one.text ?? one.content ?? '';
     const data = Buffer.isBuffer(text) ? text : Buffer.from(String(text), 'utf8');
     bytes += data.length;
@@ -319,14 +374,25 @@ export function keywords(text) {
   return out;
 }
 
+// Only the words that are words, as a module's switch keeps only the booleans (module-scope.mjs).
+export const roomsIn = (block = {}) => Object.fromEntries(Object.entries(block?.rooms ?? {}).filter(([id, said]) => /^[\w.:-]{1,200}$/.test(id) && SKILL_STATES.includes(said)));
+
+// The block written when a skill's switch moves. From Home, with no project, it is the word for
+// every project and each project follows it again; from a project, that project's own word, which
+// wins. The whole block, because updateConfig merges one level down.
+export function skillStateIn(block = {}, roomId = null, state) {
+  if (!SKILL_STATES.includes(state)) throw new Error(t('A skill is off, matched or always on; nothing else.'));
+  if (!roomId) return { ...block, state, rooms: {} };
+  return { ...block, rooms: { ...roomsIn(block), [roomId]: state } };
+}
+
 // What the person said about this skill, in this project. The shape is the one a module's switch
 // has (src/module-scope.mjs): a word for every project, and a project's own word that wins.
 export const SKILL_STATES = ['off', 'match', 'always'];
 export function skillState(config = {}, id = null, roomId = null) {
   const block = config?.skills?.[id] ?? {};
   const own = roomId ? block?.rooms?.[roomId] : null;
-  const said = SKILL_STATES.includes(own) ? own : SKILL_STATES.includes(block?.state) ? block.state : 'match';
-  return said;
+  return SKILL_STATES.includes(own) ? own : SKILL_STATES.includes(block?.state) ? block.state : 'match';
 }
 
 // The skills this turn carries, in the order they will be read, each with why it is here.

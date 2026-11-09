@@ -212,6 +212,7 @@ function spokenCommand(item) {
 const CLIENT_COMMANDS = [
   // /create went away (2026-10-27): choosing #2 on the mode chip is the same thing, said once.
   { name: 'module', title: 'MODULE', usage: `/module ${t('<what it should do>')}`, summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
+  { name: 'habilidad', title: 'SKILL', usage: `/habilidad ${t('<how you work>')}`, summary: t('Write one skill: a way of working every agent of this room follows. The agent writes it, you read it and keep it.'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: `/image ${t('<what to draw>')}`, summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
   // Notes and Reminders through an agent (2026-10-20): the message goes to the agent chosen, and
@@ -5219,6 +5220,33 @@ function subDetail(one, mode) {
   return item;
 }
 // The chips under «working…»: drawn again each time the CLI says something new about them.
+// WHICH WAY OF WORKING WENT INTO THIS TURN, said while it works (H-3). Pressing one opens what it
+// says: a skill nobody can see is a skill nobody can switch off when it was the wrong one.
+function showSkills(event) {
+  const { messageId, skills = [] } = event.payload ?? {};
+  const node = document.getElementById(`working-${messageId}`);
+  if (!node || !skills.length) return;
+  let strip = node.querySelector(':scope > .turn-skills');
+  if (!strip) { strip = el('div', 'turn-skills'); node.append(strip); }
+  strip.replaceChildren();
+  strip.append(el('span', 'sx-hint', skills.length === 1 ? t('Skill:') : t('Skills:')));
+  for (const skill of skills) {
+    const name = skillWords(skill.name) ?? skill.id;
+    const chip = el('button', 'turn-skill', name);
+    chip.type = 'button';
+    chip.title = skill.state === 'always' ? t('You keep it on in this project. Press to read it.') : skill.why?.length ? t('It came in because you said: {words}. Press to read it.', { words: skill.why.join(', ') }) : t('Press to read it.');
+    chip.addEventListener('click', () => void openSkillById(skill.id));
+    strip.append(chip);
+  }
+}
+// From the room, where only its name travelled: its text is read from the folder it lives in.
+async function openSkillById(id) {
+  const data = await fetch('/api/skills').then((response) => response.json()).catch(() => null);
+  const skill = (data?.skills ?? []).find((one) => one.id === id);
+  if (!skill) { toast(t('No skill «{id}».', { id })); return; }
+  openSkillText(skill);
+}
+
 function showHelpers(event) {
   const { messageId, subagents = [], mode } = event.payload ?? {};
   const node = document.getElementById(`working-${messageId}`);
@@ -5945,6 +5973,59 @@ function renderModuleProposed(event) {
   if (responseMessageId) node.dataset.for = responseMessageId;
   return node;
 }
+// skill · @codex
+// Wrote cotizaciones.habilidad.md.
+// [READ IT] [INSTALL FOR EVERY PROJECT] [INSTALL FOR THIS PROJECT]
+//
+// A skill is a page of instructions, so «read it» is a real option here in a way it never is for a
+// module: the person can actually read the whole thing before any of their agents does.
+function renderSkillProposed(event) {
+  const { agent, path, name, id, responseMessageId } = event.payload;
+  const node = el('div', 'system module-proposed');
+  tint(node, agent);
+  claimHead(node, t('SKILL'), `@${agent}`);
+  const link = el('a', 'file-link', name ?? path);
+  link.href = '#';
+  link.addEventListener('click', (ev) => { ev.preventDefault(); void openViewer({ root: 'project', path, label: `/${path}` }); });
+  const said = el('span', 'claim-body');
+  said.append(t('Wrote '), link);
+  node.append(said);
+  const ask = (extra = {}) => fetch('/api/skills/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, ...extra }) }).then((response) => response.json());
+  const read = el('button', 'claim-act', t('READ IT'));
+  read.type = 'button';
+  read.addEventListener('click', async () => {
+    const payload = await ask({ review: true });
+    if (payload.error) { toast(t('It could not be read: {error}', { error: payload.error })); return; }
+    openSkillText({ ...payload, dir: null, license: null, credit: payload.declares?.credit ?? null });
+  });
+  const install = async (scope, button) => {
+    button.disabled = true;
+    try {
+      const payload = await ask({ scope });
+      if (payload.error) throw new Error(payload.error);
+      toast(t('Diagnostics › {name} is yours now, for {where}. It comes in when it fits; change that in MODULES.', { name: skillWords(payload.installed.name) ?? payload.installed.id, where: scope === 'project' ? t('this project') : t('every project') }));
+      void refreshSkills();
+    } catch (error) { toast(t('The skill was not installed: {error}', { error: error.message })); button.disabled = false; }
+  };
+  const everyRoom = el('button', 'claim-act', t('INSTALL FOR EVERY PROJECT'));
+  everyRoom.type = 'button';
+  everyRoom.addEventListener('click', () => install('user', everyRoom));
+  const thisProject = el('button', 'claim-act', t('INSTALL FOR THIS PROJECT'));
+  thisProject.type = 'button';
+  thisProject.addEventListener('click', () => install('project', thisProject));
+  const acts = el('span', 'claim-acts');
+  acts.append(read, everyRoom, thisProject);
+  node.append(acts, el('span', 'claim-note', t('A skill gives no permission: it tells your agents how you work, inside whatever mode you give them. Read it before it reaches them.')));
+  // Already one by that name: the one installed keeps answering until this file replaces it.
+  if (id && (modules.skills ?? []).some((one) => one.id === id)) {
+    everyRoom.textContent = t('REPLACE FOR EVERY PROJECT');
+    thisProject.textContent = t('REPLACE FOR THIS PROJECT');
+    node.append(el('span', 'claim-note replaces', t('You already have a skill called «{id}»; it keeps coming into your turns until this file replaces it.', { id })));
+  }
+  if (responseMessageId) node.dataset.for = responseMessageId;
+  return node;
+}
+
 // The modules this room has, asked once per page load and shared by every card that wants to know.
 let installedModulesAsked = null;
 function installedModules() {
@@ -8035,6 +8116,7 @@ function renderEventNode(event) {
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
     case 'turn.reading': showReading(event); return;
     case 'turn.subagents': showHelpers(event); return;
+    case 'turn.skills': showSkills(event); return;
     // Who has a session, once the probe that runs when the project starts comes back: the crew is
     // drawn again, so a first message never goes to an agent without one (QA 1.1.0, NUE-11).
     case 'sessions.updated': {
@@ -8061,6 +8143,7 @@ function renderEventNode(event) {
     case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
     case 'privacy.redacted': node = renderPrivacy(event); break;
     case 'module.proposed': node = renderModuleProposed(event); break;
+    case 'skill.proposed': node = renderSkillProposed(event); break;
     // A module from the Market, a file or an update: its card and its commands, at once (2026-10-30).
     case 'extension.installed': case 'extension.removed': if (!replaying) { void refreshCommands(); installedModulesAsked = null; void refreshModules(); } node = renderModuleInstalledOrRemoved(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
@@ -13159,7 +13242,9 @@ if (typeof ResizeObserver === 'function') {
 // /module has its own visual language before it ever reaches an agent. The class is also the
 // animation trigger: it is added once when the prefix becomes a command, and removed when the
 // human edits away from it or the message leaves the composer.
-const MODULE_COMMAND = /^\/module(?:\s|$)/i;
+// `/habilidad` asks for exactly what `/module` asks for — #2 CREATE and a draft folder of its own —
+// so it wears the same clothes in the composer.
+const MODULE_COMMAND = /^\/(?:module|habilidad|skill)(?:\s|$)/i;
 function syncModuleComposer() {
   const active = MODULE_COMMAND.test(els.input.value.trimStart());
   if (state.moduleCommand === active) return;
@@ -15314,6 +15399,9 @@ async function refreshModules() {
     const data = await fetch('/api/extensions').then((response) => response.json());
     modules.failures = data.failures ?? []; modules.folders = data.folders ?? null; modules.sdk = data.sdk ?? null; modules.items = data.extensions ?? [];
     modules.installing = data.installing ?? null;
+    // The ways of working this project keeps (H-3). Asked beside the modules and never in their way:
+    // a board without them is the board as it always was.
+    void refreshSkills();
     if (state.salas) {
       const card = modules.items.find((item) => item.id === 'bishop');
       const selected = card?.status?.installed ? card.controls?.find((control) => control.key === 'agent')?.value ?? null : null;
@@ -17183,6 +17271,7 @@ function renderModules() {
     grid.append(make);
   } else if (!shown.length) grid.append(el('p', 'settings-reading', t('Nothing called «{query}».', { query: modules.query.trim() })));
   board.append(grid);
+  if (!query) skillsSection(board);
   const item = modules.items.find((one) => one.id === modules.open);
   if (!item) { modules.open = null; list.replaceChildren(board); renderModuleWindows(); renderModulesDev(); return; }
   const sheet = el('div', `settings-sheet mods-sheet${modules.push ? ' full' : ''}`);
@@ -17197,6 +17286,287 @@ function renderModules() {
   }
   renderModuleWindows();
   renderModulesDev();
+}
+
+// ---- HABILIDADES (H-3). A skill is not a module: it adds no button and no page, it tells the
+// agents how the human works. So it is a row and not a tile — what matters about it is a sentence
+// (when it is for) and a page (what it says), which a tile cannot hold.
+//
+// Everything here is the person's: whether it waits for a match, is always on or is off, and
+// whether that word is this project's or every project's. And «What it says» shows the whole text
+// before any of that, because a skill reaching an agent that may hold CONTROL is something to read
+// first — and unlike a module's JavaScript, a person actually can.
+async function refreshSkills() {
+  try {
+    const data = await fetch('/api/skills').then((response) => response.json());
+    modules.skills = data.skills ?? [];
+    modules.skillFailures = data.failures ?? [];
+    modules.skillProject = Boolean(data.project);
+    // Drawn only while the board is open, as every other reading of it is.
+    if (modules.dialog?.open) renderModules();
+  } catch { /* the board keeps the skills it had */ }
+}
+
+const SKILL_STATES = () => [
+  ['match', t('When it fits')],
+  ['always', t('Always on')],
+  ['off', t('Off')],
+];
+async function switchSkill(skill, state, scope) {
+  const response = await fetch(`/api/skills/${skill.id}/state`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state, scope }) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(payload.error ?? t('{name} could not be changed.', { name: skillName(skill) })); return; }
+  await refreshSkills();
+}
+const skillName = (skill) => skillWords(skill?.name) ?? skill?.id ?? '';
+// Its name or its sentence, in the language the room speaks. Not i18n's `pick`: that one wants
+// both languages present, and a skill may well have written only one.
+function skillWords(value) {
+  if (!value || typeof value !== 'object') return value ?? null;
+  return value[language()] ?? value.es ?? value.en ?? null;
+}
+
+// WHAT IT SAYS: the whole page, what it carries, and every script marked with the one mode that
+// could run it. The same screen the Market will show before installing one (H-4).
+function openSkillText(skill) {
+  // The same dialog «Create your module» uses, so it looks like the rest of the board.
+  const dialog = el('dialog', 'module-guide skill-text');
+  const head = el('header', 'module-guide-head');
+  const named = el('div', 'skill-text-name');
+  named.append(el('span', 'custom-title', skillName(skill)), el('span', 'sx-hint', t('What it tells your agents')));
+  const close = el('button', 'module-guide-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', t('CLOSE'));
+  close.addEventListener('click', () => dialog.close());
+  head.append(named, close);
+  const body = el('div', 'module-guide-body');
+  if (skill.when) body.append(el('p', 'skill-when', `${t('It comes in when:')} ${skillWords(skill.when)}`));
+  body.append(el('pre', 'skill-body', skill.body));
+  const carries = skill.declares?.references?.filter((path) => !/^(HABILIDAD|SKILL)\.md$/.test(path)) ?? [];
+  if (carries.length) body.append(el('p', 'sx-hint', t('It carries: {list}', { list: carries.join(', ') })));
+  if (skill.declares?.scripts?.length) {
+    const warn = el('p', 'mods-submit-warn');
+    warn.append(el('b', null, t('It carries programs: {list}', { list: skill.declares.scripts.join(', ') })));
+    warn.append(el('span', null, ` ${t('MADRE never runs one. Only an agent can, and only in #4 AIRLOCK: in every other mode they do nothing. Read one before you open that mode.')}`));
+    body.append(warn);
+  }
+  for (const [label, value] of [[t('Version'), skill.version], [t('Idea by'), skill.credit], [t('License'), skill.license], [t('Folder'), skill.dir]]) {
+    if (value) body.append(el('p', 'sx-hint', `${label}: ${value}`));
+  }
+  if (skill.unknown?.length) body.append(el('p', 'mods-submit-warn', t('Fields MADRE does not know: {list}', { list: skill.unknown.join(', ') })));
+  dialog.append(head, body);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+  dialog.showModal();
+}
+
+function skillRow(skill) {
+  const row = el('article', `skill-row is-${skill.state}`);
+  const words = el('div', 'skill-words');
+  const top = el('div', 'skill-top');
+  top.append(el('b', 'skill-name', skillName(skill)));
+  if (skill.origin === 'project') top.append(el('span', 'skill-tag', t('this project only')));
+  if (skill.version) top.append(el('span', 'skill-tag', skill.version));
+  if (skill.declares?.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: skill.declares.scripts.length })));
+  words.append(top);
+  words.append(el('span', 'sx-hint', skillWords(skill.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
+  const keys = el('div', 'skill-keys');
+  const choose = sxSelect(SKILL_STATES(), skill.state, (value) => void switchSkill(skill, value, 'project'), t('When this skill comes in'));
+  keys.append(choose);
+  keys.append(sxButton(t('What it says'), () => openSkillText(skill)));
+  const gone = sxButton(t('Remove'), async () => {
+    const answer = await roomAsk({
+      title: t('Remove {name}?', { name: skillName(skill) }),
+      body: t('Its folder {dir} is deleted. What it told your agents stops reaching them. Nothing a program of its own may have written elsewhere is touched.', { dir: skill.dir }),
+      choices: [{ value: 'keep', label: t('Keep it'), focus: true }, { value: 'remove', label: t('Remove'), tone: 'danger' }],
+    });
+    if (answer !== 'remove') return;
+    gone.disabled = true;
+    const response = await fetch(`/api/skills/${skill.id}/remove`, { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { gone.disabled = false; toast(payload.error ?? t('{name} could not be removed.', { name: skillName(skill) })); return; }
+    await refreshSkills();
+  }, { tone: 'danger' });
+  keys.append(gone);
+  // Sending one's own: only for a skill that is the person's, never for one the Market signed.
+  if (!skill.market) keys.append(sxButton(t('Send to the Market'), () => openSkillSubmit(skill)));
+  row.append(words, keys);
+  // The word for every project, said only when this project has one of its own: otherwise it is
+  // the same word twice and the row reads like a puzzle.
+  if (modules.skillProject && skill.state !== skill.everywhere) {
+    const all = el('div', 'skill-all');
+    all.append(el('span', 'sx-hint', t('In every other project: {state}', { state: SKILL_STATES().find(([value]) => value === skill.everywhere)?.[1] ?? skill.everywhere })));
+    all.append(sxButton(t('Use it everywhere'), () => void switchSkill(skill, skill.state, 'everywhere')));
+    row.append(all);
+  }
+  return row;
+}
+
+// BRING OVER WHAT YOU ALREADY HAVE (H-7). MADRE keeps every agent's own skills out of a turn on
+// purpose, so somebody arriving from Claude lost what they had written. This is the door back.
+// Nothing is brought on its own: each one says what would happen to it, and the person picks.
+function openSkillImport() {
+  const dialog = el('dialog', 'module-guide skill-text');
+  const head = el('header', 'module-guide-head');
+  const named = el('div', 'skill-text-name');
+  named.append(el('span', 'custom-title', t('Bring over what you already have')), el('span', 'sx-hint', t('The skills your agents keep on this computer')));
+  const close = el('button', 'module-guide-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', t('CLOSE'));
+  close.addEventListener('click', () => dialog.close());
+  head.append(named, close);
+  const body = el('div', 'module-guide-body');
+  body.append(el('p', 'sx-intro', t('Inside MADRE your agents never read their own skills: that is how one way of working can be the same for all of them. Here you bring the ones you want into MADRE, and from then on every agent follows them.')));
+  const list = el('div', 'skill-import-list');
+  body.append(list, el('p', 'sx-hint', t('Reading them changes nothing. What you bring is copied into MADRE; the original stays where it is.')));
+  const bring = sxButton(t('Bring the ones I ticked'), null, { tone: 'primary' });
+  const said = el('p', 'sx-hint');
+  body.append(bring, said);
+  const picked = new Set();
+  const draw = (found) => {
+    list.replaceChildren();
+    if (!found.length) { list.append(el('p', 'settings-reading', t('No agent on this computer keeps skills of its own.'))); bring.hidden = true; return; }
+    for (const one of found) {
+      const row = el('label', `skill-import ${one.fits ? 'fits' : 'off'}`);
+      const box = el('input');
+      box.type = 'checkbox';
+      box.disabled = !one.fits;
+      box.addEventListener('change', () => { if (box.checked) picked.add(one.id); else picked.delete(one.id); said.textContent = ''; });
+      const words = el('div', 'skill-import-words');
+      const top = el('div', 'skill-top');
+      top.append(el('b', 'skill-name', skillWords(one.name) ?? one.id), el('span', 'skill-tag', one.label));
+      if (one.synced) top.append(el('span', 'skill-tag', t('from your account')));
+      if (one.replaces) top.append(el('span', 'skill-tag warn', t('replaces the one you have')));
+      if (one.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: one.scripts.length })));
+      words.append(top);
+      if (one.fits) {
+        words.append(el('span', 'sx-hint', skillWords(one.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
+        words.append(el('span', 'sx-hint', t('{chars} characters · {files} file(s)', { chars: one.chars.toLocaleString(), files: one.files })));
+        // A skill that says it is proprietary may be kept and used; it may not be sent to the Market.
+        if (one.license && !/^(CC|MIT|Apache|AGPL|GPL|ISC|BSD|MPL)/i.test(one.license)) words.append(el('span', 'mods-submit-warn', t('Its license says: {license} — yours to use, not yours to share.', { license: one.license })));
+      } else {
+        words.append(el('span', 'mods-submit-warn', one.why));
+        words.append(el('span', 'sx-hint', t('Ask an agent to shorten it with /habilidad, and bring that one over instead.')));
+      }
+      row.append(box, words);
+      list.append(row);
+    }
+  };
+  bring.addEventListener('click', async () => {
+    if (!picked.size) { said.textContent = t('Tick at least one.'); return; }
+    bring.disabled = true;
+    const payload = await fetch('/api/skills/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [...picked] }) }).then((response) => response.json()).catch(() => ({ error: 'network' }));
+    bring.disabled = false;
+    if (payload.error) { said.textContent = t('They could not be brought over: {error}', { error: payload.error }); return; }
+    said.textContent = payload.brought.length
+      ? t('{n} brought in. They come in when they fit; change that in MODULES.', { n: payload.brought.length })
+      : t('None could come. Each one says why.');
+    for (const one of payload.left ?? []) said.textContent += ` · ${one.id}: ${one.why}`;
+    picked.clear();
+    await refreshSkills();
+    void fetch('/api/skills/import').then((response) => response.json()).then((data) => draw(data.found ?? [])).catch(() => {});
+  });
+  dialog.append(head, body);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+  dialog.showModal();
+  list.append(el('p', 'settings-reading', t('Looking…')));
+  void fetch('/api/skills/import').then((response) => response.json()).then((data) => draw(data.found ?? [])).catch(() => { list.replaceChildren(el('p', 'mods-submit-warn', t('MADRE could not read them.'))); });
+}
+
+// SENDING YOUR OWN SKILL (H-8). A skill is one file, so this asks only what nobody but the person
+// can say — which shelf, their name, which license — and writes it into the skill's own header.
+// Everything else it already said about itself.
+function openSkillSubmit(skill) {
+  const dialog = el('dialog', 'module-guide skill-text');
+  const head = el('header', 'module-guide-head');
+  const named = el('div', 'skill-text-name');
+  named.append(el('span', 'custom-title', t('Send {name} to the Market', { name: skillName(skill) })), el('span', 'sx-hint', t('MADRE checks it here, the author of MADRE reads it and signs it, and then anyone can find it.')));
+  const close = el('button', 'module-guide-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', t('CLOSE'));
+  close.addEventListener('click', () => dialog.close());
+  head.append(named, close);
+  const body = el('div', 'module-guide-body');
+  dialog.append(head, body);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.showModal();
+  const ask = (payload = {}) => fetch('/api/skills/submission', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: skill.id, ...payload }) }).then((response) => response.json());
+  body.append(el('p', 'settings-reading', t('Looking…')));
+  void ask().then((first) => {
+    if (first.error) { body.replaceChildren(el('p', 'mods-submit-warn', first.error)); return; }
+    body.replaceChildren();
+    const draft = first.draft;
+    const pair = (value, { area = false } = {}) => {
+      const box = el('div', 'sx-field mods-pair');
+      const made = (lang, label) => { const node = el(area ? 'textarea' : 'input', 'sx-input'); node.value = (value && typeof value === 'object' ? value[lang] : lang === 'es' ? value : '') ?? ''; node.placeholder = label; node.setAttribute('aria-label', label); if (area) node.rows = 3; return node; };
+      const es = made('es', t('Spanish'));
+      const en = made('en', t('English'));
+      box.append(es, en);
+      // One language is enough: a skill written in Spanish does not have to invent an English line.
+      return { box, read: () => { const said = {}; if (es.value.trim()) said.es = es.value.trim(); if (en.value.trim()) said.en = en.value.trim(); return Object.keys(said).length ? said : null; } };
+    };
+    const line = pair(draft.line);
+    const summary = pair(draft.summary, { area: true });
+    const block = sxBlock(body, t('What the Market will show'), t('In Spanish, in English, or in one of the two: the Market shows whichever it has.'));
+    sxRow(block, t('In one line'), null, line.box, { stack: true });
+    sxRow(block, t('What it does and when to use it'), null, summary.box, { stack: true });
+    const shelf = sxSelect([['', t('Choose…')], ...first.shelves.map((id) => [id, t(MARKET_SHELVES.find((one) => one.id === id)?.title ?? id)])], draft.shelf ?? '', () => {}, t('Shelf'));
+    sxRow(block, t('Shelf'), t('Where it sits in the Market.'), shelf);
+    const who = el('div', 'sx-field mods-pair');
+    const author = el('input', 'sx-input'); author.value = draft.author?.name ?? ''; author.placeholder = t('Your name');
+    const github = el('input', 'sx-input'); github.value = draft.author?.github ?? ''; github.placeholder = t('Your GitHub user, if you have one');
+    who.append(author, github);
+    sxRow(block, t('Who made it'), t('Your name is what the Market shows. The GitHub user is only how the pull request is signed.'), who, { stack: true });
+    const license = sxSelect([['', t('Choose…')], ...first.licenses.map((id) => [id, id])], draft.license ?? '', () => {}, t('License of your text'));
+    sxRow(block, t('License of your text'), t('Under which others may read it, use it and change it.'), license);
+    const oldest = el('input', 'sx-input mono'); oldest.value = draft.minMadre ?? ''; oldest.placeholder = '1.1.2';
+    sxRow(block, t('Oldest MADRE it works with'), null, oldest);
+    if (draft.scripts?.length) block.rows.append(el('p', 'mods-submit-warn', t('It carries programs: {list}. Whoever reviews it reads every one of them, and so does whoever installs it.', { list: draft.scripts.join(', ') })));
+    const said = el('div', 'mods-submit-said');
+    const read = () => ({ line: line.read(), summary: summary.read(), shelf: shelf.value, author: author.value.trim() ? { name: author.value.trim(), github: github.value.trim() } : null, license: license.value, minMadre: oldest.value.trim() });
+    const show = (result) => {
+      said.replaceChildren();
+      if (result.problems?.length) {
+        const list = el('ul', 'mods-submit-problems');
+        for (const one of result.problems) list.append(el('li', null, one));
+        said.append(el('b', null, t('To fix first')), list);
+      }
+      if (!result.folder) return;
+      const ready = el('div', 'mods-submit-ready');
+      ready.append(el('b', null, t('Your skill is ready to send')), el('code', null, result.folder));
+      const steps = el('ol', 'mods-submit-steps');
+      for (const step of [t('Open GitHub: it asks you to sign in if you are not.'), t('Drag every file of that folder onto the page.'), t('Say in one line what your skill is for and press «Propose changes».'), t('The author of MADRE reads it; once signed, it is in the Market for everyone.')]) steps.append(el('li', null, step));
+      const go = el('a', 'sx-btn primary', t('Open GitHub'));
+      go.href = result.upload; go.target = '_blank'; go.rel = 'noopener';
+      const again = sxButton(t('Show the folder'), () => void ask({ entry: read(), write: true, reveal: true }));
+      const keys = el('div', 'mods-submit-keys');
+      keys.append(go, again);
+      ready.append(steps, keys);
+      said.append(ready);
+    };
+    const prepare = sxButton(t('Prepare'), async () => {
+      prepare.disabled = true;
+      const result = await ask({ entry: read(), write: true });
+      prepare.disabled = false;
+      if (result.error) { said.replaceChildren(el('p', 'mods-submit-warn', result.error)); return; }
+      show(result);
+    }, { tone: 'primary' });
+    body.append(prepare, said);
+  }).catch(() => { body.replaceChildren(el('p', 'mods-submit-warn', t('MADRE did not answer.'))); });
+}
+
+function skillsSection(board) {
+  const skills = modules.skills ?? [];
+  const failures = modules.skillFailures ?? [];
+  const aside = sxButton(t('Bring over what you already have'), () => openSkillImport());
+  const block = sxBlock(board, t('Skills'), t('Ways of working you keep, handed to whichever agent answers. They tell your agents how you work; they never give them permission.'), { className: 'skills-block', aside });
+  if (!skills.length) block.rows.append(el('p', 'settings-reading', t('None yet. Write one with /habilidad in the conversation, or bring over the ones your agents already keep.')));
+  for (const skill of skills) block.rows.append(skillRow(skill));
+  for (const one of failures) block.rows.append(el('p', 'mods-submit-warn', t('{dir} was not read: {error}', { dir: one.dir, error: one.error })));
 }
 
 // A module that has something to read can float: its card in a window of its own, kept up to date
