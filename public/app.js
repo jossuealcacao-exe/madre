@@ -11811,7 +11811,7 @@ function renderChats() {
       win.innerHTML = WINDOW_ICON; // trusted: our own SVG string
       win.setAttribute('aria-label', floating ? t('Close this window') : t('Open this conversation in a window'));
       win.setAttribute('aria-pressed', String(floating));
-      win.addEventListener('click', (event) => { event.stopPropagation(); if (floating) closeConvWindow(chat.id); else openConvWindow(chat.id); });
+      win.addEventListener('click', (event) => { event.stopPropagation(); if (floating) closeConvWindow(chat.id); else floatConversation(chat.id); });
       ways.append(half, win);
       row.append(open, ways, drop);
     } else row.append(open, drop);
@@ -12172,7 +12172,7 @@ if (split.float && !SPLIT_CHAT) {
   const modes = modeButtons({
     side: 'right',
     split: { on: () => true, run: () => {}, label: () => t('In the other half of the window') },
-    window: { on: () => false, run: () => { const id = split.chat; if (!id) return; closeSplit(); openConvWindow(id); }, label: () => t('Float it as a window') },
+    window: { on: () => false, run: () => { const id = split.chat; if (!id) return; closeSplit(); floatConversation(id); }, label: () => t('Float it as a window') },
     close: split.close,
   });
   split.float.replaceWith?.(modes.group);
@@ -12244,6 +12244,13 @@ function placeConvWindow(win, box) {
   applyWindowBox(win.node, win.box);
 }
 
+// A conversation «in a window», asked for by the person. Inside MADRE's app (desktop/, 2026-11-09)
+// that is a real window of the app, with the conversation's own page (desktop/src-tauri/src/
+// windows.js); in a browser, a window over the room, as always.
+function floatConversation(id) {
+  if (window.__madreApp?.openConversation && id && id !== chats.active && !SPLIT_CHAT) { window.__madreApp.openConversation(id); return; }
+  openConvWindow(id);
+}
 function openConvWindow(id, { box = null, animate = true } = {}) {
   if (SPLIT_CHAT || state.device || !id || id === chats.active) return;
   if (convWindows.has(id)) { bringWindowForward(convWindows.get(id).node); return; }
