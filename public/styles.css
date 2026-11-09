@@ -2882,12 +2882,109 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .wn-card:active { box-shadow: var(--key-down); }
 .wn-card:focus-visible { box-shadow: var(--raise, var(--float-sm)), 0 0 0 2px color-mix(in srgb, var(--phosphor) 55%, transparent); }
 .wn-card-shot { margin-bottom: 4px; }
-/* A note's moving picture (1.1.3): the stage of the welcome, filling the frame, with no caption. */
-.wn-shot.scene { display: block; }
-.wn-shot.scene .wl-scene { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: inherit; overflow: hidden; background: #050605; box-shadow: none; }
-:root[data-scheme="light"] .wn-shot.scene .wl-scene { background: #eef0ea; }
-.wn-shot.scene .wl-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.wn-shot.scene .wl-scene-cap { display: none; }
+/* A note's moving picture (1.1.3, public/news-scenes.js): MADRE's own pieces, small, acting out what
+   is new in a few beats. Sized from the frame's width, so the card and the detail show the same. */
+.wn-shot.scene { display: block; container-type: inline-size; }
+.ns {
+  --ns-ground: radial-gradient(120% 90% at 50% 0%, #121812 0%, #070907 70%);
+  --ns-glass: rgba(238, 241, 234, .065);
+  --ns-glass-2: rgba(238, 241, 234, .11);
+  --ns-edge: rgba(238, 241, 234, .09);
+  --ns-text: #eef1ea;
+  --ns-text-2: #9aa197;
+  --ns-accent: #9bff66;
+  --ns-hint-bg: #eef1ea;
+  --ns-hint-ink: #0b0d0b;
+  --ns-shadow: 0 .6em 1.6em rgba(0, 0, 0, .38), 0 .1em .3em rgba(0, 0, 0, .3);
+  --ns-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --ns-glide: cubic-bezier(.16, 1, .3, 1);
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 1.1em;
+  overflow: hidden; border-radius: inherit; background: var(--ns-ground); color: var(--ns-text);
+  font: 500 clamp(9px, 5.1cqw, 18px)/1.25 var(--read); letter-spacing: -.01em;
+  transition: opacity .4s var(--ns-glide);
+}
+:root[data-scheme="light"] .ns {
+  --ns-ground: radial-gradient(120% 90% at 50% 0%, #ffffff 0%, #eceee8 75%);
+  --ns-glass: rgba(255, 255, 255, .78);
+  --ns-glass-2: rgba(18, 21, 18, .07);
+  --ns-edge: rgba(18, 21, 18, .08);
+  --ns-text: #151815;
+  --ns-text-2: #5d635b;
+  --ns-accent: #2f8a1c;
+  --ns-hint-bg: #151815;
+  --ns-hint-ink: #f4f5f1;
+  --ns-shadow: 0 .6em 1.6em rgba(30, 40, 30, .12), 0 .1em .3em rgba(30, 40, 30, .08);
+}
+.ns.out { opacity: 0; }
+.ns.reset, .ns.reset * { transition: none !important; animation: none !important; }
+.ns svg { display: block; width: 100%; height: 100%; }
+.ns-face { display: grid; place-items: center; flex: none; width: 1.9em; height: 1.9em; border-radius: 50%; background: var(--ns-brand); color: var(--ns-ink); box-shadow: 0 .1em .3em rgba(0, 0, 0, .25); }
+.ns-face svg { width: 74%; height: 74%; }
+
+/* Skills: the card is written alone in the middle, moves aside, and each AI takes it up. */
+.ns-doc { position: relative; display: grid; gap: .42em; flex: none; width: 8.4em; padding: .8em .85em .75em; border-radius: .9em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(12px); transform: translateX(var(--ns-doc-shift, 5.4em)) scale(1.06); opacity: 0; transition: transform .8s var(--ns-glide), opacity .5s var(--ns-glide); }
+.ns-skills.b1 .ns-doc { opacity: 1; }
+.ns-skills.b3 .ns-doc { transform: none; }
+.ns-doc-head { display: flex; align-items: center; gap: .45em; margin-bottom: .15em; font-size: .86em; white-space: nowrap; }
+.ns-doc-icon { display: grid; place-items: center; flex: none; width: 1.5em; height: 1.5em; padding: .22em; border-radius: .42em; background: color-mix(in srgb, var(--ns-accent) 18%, transparent); color: var(--ns-accent); }
+.ns-line { display: block; height: .38em; border-radius: 1em; background: var(--ns-glass-2); transform: scaleX(0); transform-origin: left; transition: transform .7s var(--ns-glide) calc(var(--i) * .22s); }
+.ns-line:nth-of-type(2) { width: 84%; }
+.ns-line:nth-of-type(3) { width: 62%; }
+.ns-skills.b2 .ns-line { transform: scaleX(1); }
+.ns-tag { justify-self: start; margin-top: .2em; padding: .18em .55em; border-radius: 1em; background: color-mix(in srgb, var(--ns-accent) 16%, transparent); color: var(--ns-accent); font-size: .66em; font-weight: 600; opacity: 0; transition: opacity .4s var(--ns-glide) .5s; }
+.ns-skills.b2 .ns-tag { opacity: 1; }
+.ns-agents { display: grid; gap: .55em; flex: none; }
+.ns-row { display: flex; align-items: center; gap: .45em; opacity: 0; transform: translateX(-1.2em) scale(.92); transition: opacity .45s var(--ns-glide) calc(var(--i) * .16s), transform .6s var(--ns-spring) calc(var(--i) * .16s); }
+.ns-skills.b3 .ns-row { opacity: 1; transform: none; }
+.ns-pill { display: flex; align-items: center; gap: .35em; padding: .28em .32em .28em .62em; border-radius: 1em; background: var(--ns-glass); box-shadow: inset 0 0 0 1px var(--ns-edge); font-size: .7em; white-space: nowrap; }
+.ns-check { display: grid; place-items: center; width: 1.25em; height: 1.25em; padding: .18em; border-radius: 50%; background: var(--ns-accent); color: #0a1405; transform: scale(0); transition: transform .45s var(--ns-spring); }
+.ns-row .ns-check { transition-delay: calc(var(--i) * .2s); }
+.ns-skills.b4 .ns-check { transform: scale(1); }
+
+/* Grok: it joins the dock, bounces once, says it is connected and what it can do. */
+.ns-newagent { flex-direction: column; gap: .8em; }
+.ns-dock { display: flex; align-items: center; gap: .5em; padding: .5em; border-radius: 1.1em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(14px); }
+.ns-app { display: grid; place-items: center; flex: none; width: 2.5em; height: 2.5em; border-radius: .66em; background: var(--ns-brand); color: var(--ns-ink); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 .12em .3em rgba(0, 0, 0, .25); }
+.ns-app svg { width: 70%; height: 70%; }
+.ns-new { width: 0; margin-left: -.5em; opacity: 0; transform: scale(.4) translateY(1em); transition: width .6s var(--ns-glide), margin .6s var(--ns-glide), opacity .3s var(--ns-glide) .15s, transform .7s var(--ns-spring) .1s; }
+.ns-newagent.b1 .ns-new { width: 2.5em; margin-left: 0; opacity: 1; transform: none; }
+.ns-newagent.b2 .ns-new { animation: ns-bounce .9s var(--ns-glide); }
+@keyframes ns-bounce { 0%, 100% { transform: none; } 30% { transform: translateY(-.7em); } 55% { transform: none; } 72% { transform: translateY(-.25em); } }
+.ns-status { display: flex; align-items: center; gap: .45em; padding: .3em .75em; border-radius: 1em; background: var(--ns-glass); box-shadow: inset 0 0 0 1px var(--ns-edge); font-size: .74em; opacity: 0; transform: translateY(.5em); transition: opacity .45s var(--ns-glide), transform .55s var(--ns-glide); }
+.ns-newagent.b3 .ns-status { opacity: 1; transform: none; }
+.ns-dot { width: .55em; height: .55em; border-radius: 50%; background: var(--ns-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ns-accent) 50%, transparent); }
+.ns-newagent.b3 .ns-dot { animation: ns-ping 1.4s var(--ns-glide) .2s; }
+@keyframes ns-ping { to { box-shadow: 0 0 0 .7em transparent; } }
+.ns-can { display: flex; flex-wrap: wrap; justify-content: center; gap: .35em; max-width: 92%; }
+.ns-chip { padding: .22em .6em; border-radius: 1em; background: var(--ns-glass-2); color: var(--ns-text-2); font-size: .64em; white-space: nowrap; opacity: 0; transform: scale(.85); transition: opacity .35s var(--ns-glide) calc(var(--i) * .12s), transform .5s var(--ns-spring) calc(var(--i) * .12s); }
+.ns-newagent.b4 .ns-chip { opacity: 1; transform: none; }
+
+/* Explains: a pointer reaches a key, the first click opens its note, and the plan fills its bars. */
+.ns-win { position: relative; width: 82%; border-radius: .9em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(12px); }
+.ns-bar { display: flex; align-items: center; justify-content: space-between; padding: .55em .7em; border-bottom: 1px solid var(--ns-edge); }
+.ns-brand { width: 1.15em; height: 1.15em; color: var(--ns-accent); }
+.ns-keys { display: flex; gap: .4em; }
+.ns-key { display: grid; place-items: center; width: 1.7em; height: 1.7em; padding: .32em; border-radius: .5em; background: var(--ns-glass-2); color: var(--ns-text-2); transition: transform .25s var(--ns-spring), background .3s, color .3s; }
+.ns-tips.b2 .ns-target { transform: scale(.86); }
+.ns-tips.b3 .ns-target { transform: none; background: color-mix(in srgb, var(--ns-accent) 22%, transparent); color: var(--ns-accent); }
+.ns-body { padding: .75em .8em .85em; }
+.ns-plan { display: flex; align-items: center; gap: .6em; }
+.ns-meters { display: grid; flex: 1; gap: .4em; }
+.ns-meter { display: grid; grid-template-columns: 2.8em 1fr; align-items: center; gap: .4em; color: var(--ns-text-2); font-size: .64em; }
+.ns-meter i { position: relative; height: .55em; border-radius: 1em; background: var(--ns-glass-2); overflow: hidden; }
+.ns-meter i::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--ns-accent); transform: scaleX(0); transform-origin: left; transition: transform 1.1s var(--ns-glide) calc(.3s + var(--i) * .2s); }
+.ns-tips.b4 .ns-meter i::after { transform: scaleX(var(--share)); }
+.ns-hint { position: absolute; top: 2.85em; right: .45em; z-index: 1; display: grid; gap: .15em; max-width: 10em; padding: .5em .65em; border-radius: .7em; background: var(--ns-hint-bg); color: var(--ns-hint-ink); box-shadow: var(--ns-shadow); font-size: .72em; opacity: 0; transform: translateY(-.4em) scale(.94); transform-origin: 70% 0; transition: opacity .35s var(--ns-glide), transform .5s var(--ns-spring); }
+.ns-hint::before { content: ''; position: absolute; top: -.3em; right: var(--ns-arrow, 3.1em); width: .7em; height: .7em; border-radius: .12em; background: inherit; transform: rotate(45deg); }
+.ns-hint span { opacity: .72; font-weight: 450; }
+.ns-tips.b3 .ns-hint { opacity: 1; transform: none; }
+.ns-tips.b4 .ns-hint { opacity: 0; transform: translateY(-.3em) scale(.97); }
+.ns-pointer { position: absolute; left: var(--ns-from-x, 30%); top: var(--ns-from-y, 80%); width: 1.05em; height: 1.3em; filter: drop-shadow(0 0 .05em #111) drop-shadow(0 0 .05em #111) drop-shadow(0 .1em .2em rgba(0, 0, 0, .35)); transition: transform 1s cubic-bezier(.45, 0, .2, 1), opacity .4s; }
+.ns-pointer::before { content: ''; position: absolute; inset: 0; background: #fff; clip-path: polygon(8% 4%, 8% 80%, 31% 62%, 47% 96%, 63% 89%, 48% 57%, 82% 57%); }
+.ns-tips.b1 .ns-pointer { transform: translate(var(--ns-to-x, 0), var(--ns-to-y, 0)); }
+.ns-tips.b2 .ns-pointer { transform: translate(var(--ns-to-x, 0), var(--ns-to-y, 0)) scale(.88); }
+.ns-tips.b3 .ns-pointer { transform: translate(var(--ns-to-x, 0), var(--ns-to-y, 0)); opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .ns, .ns * { transition: none !important; animation: none !important; } }
 .wn-card-title { padding: 0 4px; font-size: 14px; font-weight: 600; line-height: 1.3; }
 .wn-card-line { padding: 0 4px; font-size: 13px; line-height: 1.45; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 

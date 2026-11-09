@@ -45,17 +45,6 @@ function beatAt(u) {
   return 0;
 }
 const bezier = (a, c, b, q) => (1 - q) * (1 - q) * a + 2 * (1 - q) * q * c + q * q * b;
-// A point along the edge of a rectangle centred at x, y: `u` runs 0…1 once round it.
-function rectAt(u, x, y, rw, rh) {
-  let d = frac(u) * 2 * (rw + rh);
-  if (d < rw) return [x - rw / 2 + d, y - rh / 2];
-  d -= rw;
-  if (d < rh) return [x + rw / 2, y - rh / 2 + d];
-  d -= rh;
-  if (d < rw) return [x + rw / 2 - d, y + rh / 2];
-  d -= rw;
-  return [x - rw / 2, y + rh / 2 - d];
-}
 
 // The two looks. In the dark the light adds up, as light does; in the light the points are ink.
 const LOOKS = {
@@ -259,69 +248,6 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
       return [x0 + (x1 - x0) * u, y, 0.3 + 0.6 * runner, 0.75 + 0.4 * runner];
     },
   };
-  // ---- The pictures of what a version brings (1.1.3, the sheet of what is new): same points, same dot.
-  Object.assign(PICTURES, {
-    // A skill: a page written once (left) goes through MADRE's dot to every AI (right).
-    skills(p, t) {
-      const { cx, cy, R } = centre();
-      const px = w * 0.2;
-      const pw = R * 1.05;
-      const ph = R * 1.35;
-      const ai = (k) => [w * 0.8, cy + (k - 1.5) * R * 0.72];
-      if (p.i < 64) { const [x, y] = rectAt(p.i / 64, px, cy, pw, ph); return [x, y, 0.55, 0.85]; }
-      if (p.i < 92) { const j = p.i - 64; const row = Math.floor(j / 7); const col = j % 7; return [px - pw * 0.32 + col * pw * 0.1, cy - ph * 0.3 + row * ph * 0.2, row === 0 ? 0.75 : 0.4, 0.75]; }
-      if (p.i < 132) { const k = (p.i - 92) % 4; const [ax, ay] = ai(k); const a = p.seed * Math.PI * 2 + t * 0.4; const r = 7 * Math.sqrt(p.seed2); return [ax + Math.cos(a) * r * 1.3, ay + Math.sin(a) * r, 0.65, 1]; }
-      const k = p.i % 4;
-      const q = frac(t * 0.2 + p.seed * 1.4);
-      const [ax, ay] = ai(k);
-      if (q < 0.5) { const u = easeInOut(q / 0.5); return [bezier(px + pw / 2, (px + cx) / 2, cx, u), bezier(cy, cy - R * 0.25, cy, u), 0.75 * Math.sin(q * Math.PI), 0.9]; }
-      const u = easeInOut((q - 0.5) / 0.5);
-      return [bezier(cx, (cx + ax) / 2, ax, u), bezier(cy, (cy + ay) / 2, ay, u), 0.75 * Math.sin(q * Math.PI), 0.9];
-    },
-    // A new AI: five already round the dot, sending it light; a sixth comes in from the edge, finds
-    // its place and starts sending too. Then it leaves, softly, and comes again.
-    newagent(p, t) {
-      const { cx, cy, R } = centre();
-      const n = 6;
-      const k = p.i % n;
-      const ang = -Math.PI / 2 + ((k + 0.5) / n) * Math.PI * 2;
-      let nx = cx + Math.cos(ang) * w * 0.33;
-      let ny = cy + Math.sin(ang) * R * 1.05;
-      let shown = 1;
-      let here = true;
-      if (k === n - 1) {
-        const cycle = frac(t / 9);
-        const come = easeInOut(cycle / 0.3);
-        nx = w + 30 + (nx - w - 30) * come;
-        here = cycle > 0.3;
-        shown = cycle > 0.9 ? 1 - (cycle - 0.9) / 0.1 : 1;
-      }
-      if (here && p.seed < 0.35) {
-        const q = frac(t * 0.26 + p.seed2 * 2);
-        return [bezier(nx, (nx + cx) / 2, cx, easeInOut(q)), bezier(ny, (ny + cy) / 2 + Math.cos(ang) * 20, cy, easeInOut(q)), 0.7 * Math.sin(q * Math.PI) * shown, 0.95];
-      }
-      const a = p.seed2 * 40 + t * 0.1;
-      const r = (k === n - 1 ? 12 : 9) * Math.sqrt(p.seed2);
-      return [nx + Math.cos(a) * r, ny + Math.sin(a) * r * 0.8, (k === n - 1 ? 0.9 : 0.5) * shown, k === n - 1 ? 1.15 : 0.95];
-    },
-    // A first touch: the dot presses a key, and a short note gathers above it, stays, and goes.
-    tips(p, t) {
-      const { cx, cy, R } = centre();
-      const ky = cy + R * 0.6;
-      const by = cy - R * 0.5;
-      if (p.i < 56) { const [x, y] = rectAt(p.i / 56, cx, ky, R * 1.3, R * 0.5); return [x, y, 0.5, 0.8]; }
-      const cycle = frac(t / 6);
-      const form = cycle < 0.12 ? 0 : cycle < 0.35 ? easeInOut((cycle - 0.12) / 0.23) : cycle < 0.82 ? 1 : 1 - easeInOut((cycle - 0.82) / 0.18);
-      const j = p.i - 56;
-      const [tx, ty] = j < 96 ? rectAt(j / 96, cx, by, R * 2.4, R * 0.95) : [cx - R * 0.9 + ((j - 96) % 34) * R * 0.055, by - R * 0.12 + Math.floor((j - 96) / 34) * R * 0.24];
-      const sx = cx + (p.seed - 0.5) * w * 0.85;
-      const sy = cy + (p.seed2 - 0.5) * h * 0.8;
-      const [dx, dy] = drift(p, t, 1.2);
-      return [sx + (tx - sx) * form + dx * (1 - form), sy + (ty - sy) * form + dy * (1 - form), 0.1 + 0.7 * form, 0.8 + 0.2 * form];
-    },
-  });
-  // Where the dot stands in a picture, when not at the centre: on the key it presses.
-  const DOT_AT = { tips: () => { const { cx, cy, R } = centre(); return [cx, cy + R * 0.6]; } };
   const dotOf = (id, data) => {
     if (id === 'hello') return data.scanned ? 1 : 0;
     if (id === 'use' || id === 'agents') return (data.items ?? []).some((one) => one.on) ? 1 : 0.45;
@@ -345,7 +271,7 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
   }
   function paintDot(t) {
     if (dot.a < 0.01) return;
-    const [cx, cy] = DOT_AT[scene.id]?.() ?? (({ cx: x, cy: y }) => [x, y])(centre());
+    const { cx, cy } = centre();
     // Its heartbeat: a fine ring that leaves it and fades, every few seconds.
     if (!still) {
       const beat = frac(t / RIPPLE);

@@ -37,7 +37,7 @@ import { trazo, trazoDrawing } from './icons.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
-import { createScene } from './welcome-scene.js';
+import { createNewsScene } from './news-scenes.js';
 
 // Nothing of MADRE starts before its license and privacy notice are accepted on this computer
 // (public/terms.js, src/terms.mjs): the page waits here.
@@ -22720,13 +22720,12 @@ const firstSentence = (text) => String(text ?? '').match(/^.*?[.!?…](?=\s|$)/s
 const newsScenes = new Set();
 function newsShot(item, className) {
   const shot = el('span', `wn-shot ${className}`);
-  // A moving picture of what it is (1.1.3, public/welcome-scene.js) in place of a screenshot.
+  // A moving picture of what it is (1.1.3, public/news-scenes.js) in place of a screenshot.
   if (item.scene) {
-    const scene = createScene();
+    const scene = createNewsScene(item.scene);
     newsScenes.add(scene);
     shot.classList.add('scene');
     shot.append(scene.node);
-    scene.show(item.scene);
     return shot;
   }
   const icon = pixelIcon(item.icon, 'pixel-icon wn-shot-icon');

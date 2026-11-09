@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NEWS_ACTIONS, NOTES, bootWhatsNew, markSeen, newestNotes, notesFor, readSeen, shouldShow, whatsNew } from '../src/whats-new.mjs';
 import { compareVersions } from '../src/updates.mjs';
+import { NEWS_SCENES } from '../public/news-scenes.js';
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
@@ -95,10 +96,10 @@ test('whats new: from 1.0 a sheet is a board — each thing has its picture, and
     assert.equal(new Set(ids).size, ids.length, `${version} gives two things the same id`);
     for (const item of notes.items) {
       assert.match(item.id ?? '', /^[a-z]+$/, `${version} · "${item.title.en}" has no id`);
-      // A moving picture of its own (1.1.3): one of the stage's scenes (public/welcome-scene.js) in
-      // place of a screenshot.
+      // A moving picture of its own (1.1.3): one of the scenes of public/news-scenes.js in place of
+      // a screenshot.
       if (item.scene) {
-        assert.ok(['skills', 'newagent', 'tips'].includes(item.scene), `${version} · "${item.id}" asks for a scene the stage does not draw: ${item.scene}`);
+        assert.ok(NEWS_SCENES.includes(item.scene), `${version} · "${item.id}" asks for a scene the stage does not draw: ${item.scene}`);
         assert.equal(item.image, undefined, `${version} · "${item.id}" has a scene and a picture`);
         assert.ok(item.action === null || NEWS_ACTIONS.includes(item.action), `${version} · "${item.id}" takes you somewhere the room does not know: ${item.action}`);
         continue;
