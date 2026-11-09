@@ -3511,6 +3511,8 @@ export function renderMarkdown(text) {
 
 /* ---------- agents bar, picker & onboarding ---------- */
 
+// A plan's window in words: «5 hours», «7 days» (1.1).
+const humanWindow = (minutes) => { const m = Number(minutes); if (!Number.isFinite(m)) return t('a while'); if (m % 1440 === 0) return m === 1440 ? t('day') : t('{n} days', { n: m / 1440 }); if (m % 60 === 0) return m === 60 ? t('hour') : t('{n} hours', { n: m / 60 }); return t('{n} min', { n: m }); };
 const fmtWindow = (minutes) => (!Number.isFinite(Number(minutes)) ? 'window' : Number(minutes) % 1440 === 0 ? `${Number(minutes) / 1440}d` : Number(minutes) % 60 === 0 ? `${Number(minutes) / 60}h` : `${minutes}m`);
 const fmtReset = (iso) => { if (!iso) return ''; const date = new Date(iso); if (Number.isNaN(date.getTime())) return ''; const sameDay = date.toDateString() === new Date().toDateString(); return sameDay ? date.toLocaleTimeString(language(), { hour: '2-digit', minute: '2-digit' }) : date.toLocaleString(language(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
 // An official window whose reset time has passed counts as empty until the CLI reports again.
@@ -3574,11 +3576,11 @@ function renderAgents() {
     node.title = [
       `${agent.label}${vendorWord(agent.id) ? ` · ${vendorWord(agent.id)}` : ''}`,
       signedOut ? t('Not signed in') : agent.ready ? t('Ready') : agent.detected ? t('Detected, but MADRE cannot use it yet') : t('Not installed'),
-      agent.version ? agent.version : null,
+      // Said plainly (1.1): how much of the plan is used and when it renews; the details are one click in.
       official === null
-        ? (agent.tokens ? t('Usage: local 5h window · {pct}% of {total} budget tokens', { pct: Math.round(percent), total: formatTokens(state.budget ?? 0) }) : t('Usage: local window · nothing used yet'))
-        : t('Usage: provider limit · {pct}% used', { pct: Math.round(official) }) + (agent.officialResetAt ? t(' · resets {when}', { when: fmtReset(agent.officialResetAt) }) : ''),
-      agent.tokens ? t('{n} budget tokens in the local window', { n: agent.tokens.toLocaleString() }) : null,
+        ? (agent.tokens ? t('{pct}% of the limit you gave it in this project', { pct: Math.round(percent) }) : t('Nothing used yet in this project'))
+        : t('Your plan: {pct}% used', { pct: Math.round(official) }) + (agent.officialResetAt ? t(' · renews {when}', { when: fmtReset(agent.officialResetAt) }) : ''),
+      t('Click for its usage and what it can do'),
     ].filter(Boolean).join('\n');
     fresh.push(node);
   }
@@ -9019,7 +9021,7 @@ const SETTINGS_INDEX = [
   ['files', 'Files'], ['files', 'Your servers'], ['files', 'File viewer'], ['files', 'Preview'], ['files', "Test browser"],
   ['room', 'Usage limit per agent'], ['room', 'Default time limit'], ['room', 'Silence limit'], ['room', 'Retries'], ['room', 'Model'],
   ['agents', 'Max mode'], ['agents', 'Starting mode'], ['agents', 'Web access'], ['agents', 'Generate images'], ['agents', 'Time limit'], ['agents', 'Sign in'],
-  ['memory', 'Who takes notes first'], ['memory', 'Who may take notes'], ['memory', 'Room for memories'], ['memory', 'Related memories'], ['memory', 'Search by meaning'], ['memory', 'Training data'], ['memory', 'Details and checkups'],
+  ['memory', 'Who does it first'], ['memory', 'Who may do it'], ['memory', 'How many notes it hands over'], ['memory', 'Related notes'], ['memory', 'Search by meaning'], ['memory', 'Training data'], ['memory', 'Details and checkups'],
   ['mcp', 'Outside tools (MCP)'], ['mcp', 'Add a tool'], ['mcp', 'Import from your apps'], ['mcp', 'Can act from'],
   ['permissions', 'How you unlock modes'], ['permissions', 'Your phrase'], ['permissions', 'Remember permission'], ['permissions', 'Memory access'], ['permissions', 'Who may do what'],
   ['privacy', 'Words to hide'], ['privacy', 'Replaced with'], ['privacy', 'Access keys and emails'], ['privacy', 'Your home folder'], ['privacy', 'Erase private data'],
@@ -9046,8 +9048,8 @@ function settingsStatus(id) {
   }
   if (id === 'room') {
     const turns = turnsUI.turns;
-    const how = !turns ? t('Reading…') : turns.enabled ? t('Several at once · {n}', { n: turns.chats }) : t('One conversation at a time');
-    return { line: data ? `${how} · ${t('{n} tokens per agent', { n: formatTokens(data.settings.softTokenBudget) })}` : how };
+    const how = !turns ? t('Reading…') : turns.enabled ? t('{n} conversations at once', { n: turns.chats }) : t('One conversation at a time');
+    return { line: data ? `${how} · ${t('up to {n} tokens per AI every 5 hours', { n: formatTokens(data.settings.softTokenBudget) })}` : how };
   }
   if (id === 'files') {
     const finder = surfaceModes.tree === 'window' ? t('Files as a window') : t('Files beside');
@@ -9074,7 +9076,9 @@ function settingsStatus(id) {
     const mem = data.settings.memory;
     if (!mem) return { line: t('This project has no memory yet') };
     const who = mem.archivist === 'auto' || !mem.archivist ? t('the cheapest agent') : `@${mem.archivist}`;
-    return { line: t('Notes: {who} · search: {how}', { who, how: (mem.embedProvider ?? 'auto').toUpperCase() }) };
+    // Who writes the notes and how they are found, in words (1.1): «search: AUTO» told nobody anything.
+    const how = { ollama: t('with the AI on your computer'), gemini: t('with Gemini'), off: t('by exact words') }[mem.embedProvider] ?? t('the best way available');
+    return { line: t('Notes by {who} · found {how}', { who, how }) };
   }
   if (id === 'permissions') {
     const config = data.settings.override ?? OVERRIDE_DEFAULT;
@@ -18025,17 +18029,28 @@ function trackStats(event) {
 function fmtUsd(value) { return value > 0 && value < 0.01 ? '< $0.01' : `$${value.toFixed(2)}`; }
 function fmtMs(ms) { return ms === null ? '—' : ms < 1000 ? `${ms}ms` : `${Math.round(ms / 1000)}s`; }
 
-function capabilityBadges(id) {
+// What an agent can do, as things it does (1.1, 2026-11-08): what it can, ticked; what it cannot, said
+// as such, so a person knows before asking.
+const CAN_DO = {
+  read: [() => t('Read your project'), () => t('It cannot read your project')],
+  imageIn: [() => t('See the images you send it'), () => t('It cannot see images')],
+  write: [() => t('Create and change files, when you allow it'), () => t('It cannot change files: it only reads')],
+  imageGen: [() => t('Make images'), () => t('It cannot make images')],
+  web: [() => t('Look things up on the internet'), () => t('It cannot look things up on the internet')],
+};
+function capabilityList(id) {
   const caps = state.capabilities[id] ?? {};
-  const wrap = el('div', 'caps');
-  wrap.style.marginTop = '10px';
-  for (const [key, labelText] of Object.entries(CAP_LABELS)) {
-    const badge = el('span', `cap${caps[key] ? ' on' : ''}`, labelText);
+  const box = el('section', 'pop-can');
+  box.append(el('h4', null, t('What it can do')));
+  const list = el('ul');
+  for (const [key, [can, cannot]] of Object.entries(CAN_DO)) {
+    const item = el('li', caps[key] ? 'on' : 'off', caps[key] ? can() : cannot());
     const detail = caps.detail?.[key];
-    badge.title = caps[key] ? `${labelText}: ${detail?.how ?? t('available')}${detail?.note ? ` · ${detail.note}` : ''}` : t('{what}: not available from this CLI', { what: labelText });
-    wrap.append(badge);
+    if (caps[key] && (detail?.how || detail?.note)) item.title = [detail.how, detail.note].filter(Boolean).join(' · ');
+    list.append(item);
   }
-  return wrap;
+  box.append(list);
+  return box;
 }
 
 // Where a card stands: under what opened it, inside the window.
@@ -18113,21 +18128,24 @@ function openAgentPop(id, anchor, { back = null } = {}) {
   const lamp = session?.state === 'signed-in' ? 'ok' : session?.state === 'signed-out' || !agent.ready ? 'bad' : 'wait';
   head.append(el('span', `pop-session ${lamp}`, session ? ({ 'signed-in': t('signed in'), 'signed-out': t('signed out') }[session.state] ?? t('unknown')) : agent.ready ? t('unknown') : t('not ready')));
   pop.append(head);
-  // Read top to bottom (2026-10-14): one figure and its gauge, four plain numbers, what the
-  // provider says (or that it says nothing), the connection in one line, what it can do, and the
-  // way to its settings.
+  // Read top to bottom (2026-10-14; said plainly in 1.1, 2026-11-08): how much of your plan is used and
+  // when it renews, what it spent here (with what a token is), how long MADRE waits for it, what it
+  // can do — said as things it does, not as labels — and the way to its settings.
   const hero = el('div', 'pop-hero');
   let figure;
   let caption;
   if (official !== null) {
     figure = `${Math.round(official)}%`;
-    caption = t("of the provider's {window} limit", { window: fmtWindow(agent.officialWindows?.primary?.windowMinutes ?? 300) });
+    // The figure is the window closest to its limit, which is not always the 5-hour one: say which.
+    const windows = [agent.officialWindows?.primary, agent.officialWindows?.secondary].filter(Boolean);
+    const binding = windows.find((one) => Math.round(one.usedPercent) === Math.round(official)) ?? windows[0];
+    caption = t('of what your plan lets you use every {window}', { window: humanWindow(binding?.windowMinutes ?? 300) });
   } else if (state.budget) {
     figure = `${Math.round(percent)}%`;
-    caption = t("of this project's limit · last 5 h");
+    caption = t('of the limit you gave it in this project, over the last 5 hours');
   } else {
     figure = formatTokens(agent.tokens ?? 0) || '0';
-    caption = t('tokens in the last 5 h');
+    caption = t('tokens in the last 5 hours');
   }
   const big = el('div', 'big', figure);
   big.append(el('small', null, caption));
@@ -18136,28 +18154,29 @@ function openAgentPop(id, anchor, { back = null } = {}) {
   const fill = el('i'); fill.style.width = `${shown}%`; gauge.append(fill);
   hero.append(gauge);
   const under = official !== null
-    ? (agent.officialResetAt ? t(' · resets {when}', { when: fmtReset(agent.officialResetAt) }) : t(' · window reset')).replace(/^\s*·\s*/, '')
+    ? (agent.officialResetAt ? t('It renews {when}.', { when: fmtReset(agent.officialResetAt) }) : t('It has just renewed.'))
     : state.budget ? t('{used} of {total} tokens', { used: formatTokens(agent.tokens ?? 0) || '0', total: formatTokens(state.budget) }) + (agent.rollsOverAt ? t(' · oldest turn drops {when}', { when: fmtReset(agent.rollsOverAt) }) : '') : null;
   if (under) hero.append(el('div', 'pop-reset', under));
   pop.append(hero);
 
   const grid = el('div', 'pop-stats');
   const stat = (label, value) => { const box = el('div', 'pop-stat'); box.append(el('span', null, label), el('b', null, value)); grid.append(box); };
-  stat(t('In this project'), `${formatTokens(agent.rawTokens ?? 0) || '0'} tok`);
-  stat(t('Answers'), String(stats.turns));
-  stat(t('Last answer'), stats.lastTurnMs ? `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)}` : ''}` : '—');
+  stat(t('Spent in this project'), `${formatTokens(agent.rawTokens ?? 0) || '0'} tokens`);
+  stat(t('Answers here'), String(stats.turns));
+  stat(t('Its last answer'), stats.lastTurnMs ? `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)}` : ''}` : '—');
   stat(stats.costEstimated ? t('Cost (estimated)') : t('Cost'), stats.cost > 0 ? `${stats.costEstimated ? '≈ ' : ''}${fmtUsd(stats.cost)}` : '—');
   pop.append(grid);
+  pop.append(el('p', 'pop-note pop-token', t('A token is a piece of a word: it is how AIs count what they read and write. A short answer is a few hundred.')));
 
   const provider = el('section', 'pop-provider');
   if (agent.officialWindows) {
     const { primary, secondary } = agent.officialWindows;
     const line = (one) => {
       const row = el('div', `pop-limit${one.usedPercent >= 80 ? ' hot' : ''}`);
-      row.append(el('span', null, t('{window} limit', { window: fmtWindow(one.windowMinutes) })), el('b', null, one.resetAt ? t('{pct}% · resets {when}', { pct: Math.round(one.usedPercent), when: fmtReset(one.resetAt) }) : `${Math.round(one.usedPercent)}%`));
+      row.append(el('span', null, t('Every {window}', { window: humanWindow(one.windowMinutes) })), el('b', null, one.resetAt ? t('{pct}% used · renews {when}', { pct: Math.round(one.usedPercent), when: fmtReset(one.resetAt) }) : t('{pct}% used', { pct: Math.round(one.usedPercent) })));
       provider.append(row);
     };
-    provider.append(el('h4', null, t('Your plan')));
+    provider.append(el('h4', null, t('Your plan')), el('p', 'pop-note', t('Your plan lets you use this AI up to a limit, which renews every so often. When it reaches 100 %, it waits until it renews.')));
     if (primary) line(primary);
     if (secondary) line(secondary);
   } else if (Number.isFinite(agent.officialPercent)) {
@@ -18168,9 +18187,10 @@ function openAgentPop(id, anchor, { back = null } = {}) {
   pop.append(provider);
 
   const timeout = Math.round((state.timeouts[id] ?? 180000) / 1000);
-  const meta = [session?.detail, agent.version ? t('version {version}', { version: agent.version }) : null, t('waits up to {time}', { time: timeout >= 120 ? t('{n} min', { n: Math.round(timeout / 60) }) : `${timeout}s` })].filter(Boolean);
+  const wait = timeout >= 120 ? t('{n} min', { n: Math.round(timeout / 60) }) : `${timeout}s`;
+  const meta = [session?.detail, t('If it takes longer than {time} to answer, MADRE stops waiting.', { time: wait }), agent.version ? t('version {version}', { version: agent.version }) : null].filter(Boolean);
   pop.append(el('p', 'pop-meta', meta.join(' · ')));
-  pop.append(capabilityBadges(id));
+  pop.append(capabilityList(id));
   const go = el('button', 'pop-go', t('Connection and limits in Settings'));
   go.type = 'button';
   go.addEventListener('click', (event) => { event.stopPropagation(); closeAgentPop(); openSettingsOn('agents', { agent: id }); });
@@ -19455,7 +19475,7 @@ async function drawMemoryDashboard(glance, analysis, stamp) {
     for (const [id, n] of [['search', dash.via.search], ['cascade', dash.via.cascade]]) { const part = el('i', id); part.style.flexGrow = String(n); split.append(part); }
     recall.append(split);
     const legend = el('div', 'mem-legend');
-    for (const [id, label, n] of [['search', t('Search'), dash.via.search], ['cascade', t('Related memories'), dash.via.cascade]]) {
+    for (const [id, label, n] of [['search', t('Search'), dash.via.search], ['cascade', t('Related notes'), dash.via.cascade]]) {
       const key = el('span', `k ${id}`);
       key.append(el('i'), `${label} `, el('b', null, `${memFmt(n)} · ${memPct(n / carried)}`));
       legend.append(key);
@@ -19716,7 +19736,7 @@ function connectionCard(agent) {
   // The start: where a message to this agent begins. #2 means every turn may create files without arming CREATE.
   const currentStart = agentScopes.defaultMode ?? 1;
   if (readsOnly) sxRow(modes, t('Starting mode'), t('Always #1: every message to it is answered by reading.'));
-  else sxRow(modes, t('Starting mode'), currentStart === 2 ? t('Every turn may create files, plan steps too.') : t('Read-only until you unlock CREATE.'), sxSeg([1, 2].map((n) => ({
+  else sxRow(modes, t('Starting mode'), currentStart === 2 ? t('Every answer may create files and plan steps.') : t('It only reads and answers until you let it create.'), sxSeg([1, 2].map((n) => ({
     value: n, text: `#${n}`, className: `o${n}`, disabled: n > currentCap,
     title: n === 2 ? t('Every message to this agent starts in #2 CREATE: it may add new files, but existing files stay untouched. Plan steps sent to it too.') : t('Messages start in #1 CHAT ONLY; turn on #2 CREATE when you want files.'),
   })), currentStart, async (n, seg) => {
@@ -19889,8 +19909,8 @@ function drawMemory(host, data) {
   aside.append(sxButton(t('Refresh'), () => void drawMemoryDashboard(glance, analysis, stamp)));
   void drawMemoryDashboard(glance, analysis, stamp);
 
-  const keep = sxBlock(host, t('Who takes notes'), t('An agent rereads recent conversations and saves only what is worth remembering. The cheapest one goes first; local AI is free and private.'));
-  sxRow(keep, t('Who takes notes first'), null, select([['auto', t('Automatic · the cheapest one')], ...mem.candidates.map((c) => [c.id, `@${c.id}${c.local ? ` · ${c.label}` : ''}`])], mem.archivist, (value) => save({ archivist: value }, value === 'auto' ? t('notes: the cheapest agent goes first.') : t('notes: @{agent} goes first.', { agent: value })), t('Who takes notes first')));
+  const keep = sxBlock(host, t('Who takes notes'), t('So that MADRE remembers, every so often an AI rereads your latest conversations and writes down what matters: decisions, names, to-dos. The cheapest one does it first; the AI on your computer does it free, without anything leaving it.'));
+  sxRow(keep, t('Who does it first'), null, select([['auto', t('Automatic · the cheapest one')], ...mem.candidates.map((c) => [c.id, `@${c.id}${c.local ? ` · ${c.label}` : ''}`])], mem.archivist, (value) => save({ archivist: value }, value === 'auto' ? t('notes: the cheapest agent goes first.') : t('notes: @{agent} goes first.', { agent: value })), t('Who takes notes first')));
   const allowed = new Set(mem.archivists ?? mem.candidates.map((c) => c.id));
   const who = el('div', 'sx-chips');
   for (const candidate of mem.candidates) {
@@ -19905,16 +19925,17 @@ function drawMemory(host, data) {
     });
     who.append(chip);
   }
-  sxRow(keep, t('Who may take notes'), t('Only the agents switched on here take notes.'), who, { stack: true });
-  sxRow(keep, t('Every'), t('How many exchanges pass before it takes notes again.'), sxNumber(mem.every, t('exchanges'), { min: 1, label: t('Every'), wire: { toPatch: (value) => ({ memory: { every: value } }), describe: (value) => t('notes every {n} exchanges.', { n: value }) } }));
-  sxRow(keep, t('Or after'), t('Or take notes after this many quiet minutes.'), sxNumber(mem.idleMinutes, t('min'), { min: 1, label: t('Or after'), wire: { toPatch: (value) => ({ memory: { idleMinutes: value } }), describe: (value) => t('or after {n} quiet minutes.', { n: value }) } }));
+  sxRow(keep, t('Who may do it'), t('Only the AIs switched on here.'), who, { stack: true });
+  sxRow(keep, t('Every'), t('It writes notes again after this many messages.'), sxNumber(mem.every, t('exchanges'), { min: 1, label: t('Every'), wire: { toPatch: (value) => ({ memory: { every: value } }), describe: (value) => t('notes every {n} exchanges.', { n: value }) } }));
+  sxRow(keep, t('Or after'), t('Or when the project has been quiet this long.'), sxNumber(mem.idleMinutes, t('min'), { min: 1, label: t('Or after'), wire: { toPatch: (value) => ({ memory: { idleMinutes: value } }), describe: (value) => t('or after {n} quiet minutes.', { n: value }) } }));
 
-  const recall = sxBlock(host, t('Using memories'), t('How many memories each answer uses, and how they are found.'));
-  sxRow(recall, t('Room for memories'), t('At most, how much of what an agent reads can be memories.'), sxNumber(Math.round(mem.recallShare * 100), '%', { min: 0, step: 5, label: t('Room for memories'), wire: { toPatch: (value) => ({ memory: { recallShare: Math.min(60, value) / 100 } }), describe: (value) => t("memories may take up to {n}% of what each agent reads.", { n: Math.min(60, value) }) } }));
-  const cascade = sxSwitch(mem.cascade !== false, (on) => save({ cascade: on }, on ? t('related memories come along too.') : t('only memories that match come along.')), { label: t('Related memories') });
-  sxRow(recall, t('Related memories'), t('Memories that are often used together are brought in together.'), cascade);
-  const embedNow = mem.embedder ? mem.embedder : t('off');
-  sxRow(recall, t('Search by meaning'), t('Finds memories by what they mean, not only by exact words. Now: {what}.', { what: embedNow }), select([
+  const recall = sxBlock(host, t('Using memories'), t('When you ask something, MADRE hands the AI the notes that have to do with it. Here you choose how many, and how it finds them.'));
+  sxRow(recall, t('How many notes it hands over'), t('At most, this share of what the AI reads can be notes. More notes, a better memory, and also more tokens.'), sxNumber(Math.round(mem.recallShare * 100), '%', { min: 0, step: 5, label: t('How many notes it hands over'), wire: { toPatch: (value) => ({ memory: { recallShare: Math.min(60, value) / 100 } }), describe: (value) => t("memories may take up to {n}% of what each agent reads.", { n: Math.min(60, value) }) } }));
+  const cascade = sxSwitch(mem.cascade !== false, (on) => save({ cascade: on }, on ? t('related memories come along too.') : t('only memories that match come along.')), { label: t('Related notes') });
+  sxRow(recall, t('Related notes'), t('Notes that are usually needed together come together: if one about your prices comes, the one about your discounts comes too.'), cascade);
+  // Said as where it happens, not as the model's name (1.1): «ollama:nomic-embed-text:latest» told nobody anything.
+  const embedNow = !mem.embedder ? t('off') : /^ollama/i.test(mem.embedder) ? t('with the AI on your computer') : /^gemini/i.test(mem.embedder) ? t('with Gemini') : mem.embedder;
+  sxRow(recall, t('Search by meaning'), t('It finds a note even if you ask in other words: «how much do we charge?» finds «price: 450». Now: {what}.', { what: embedNow }), select([
     ['auto', t('Automatic · Local AI if running, else Gemini')],
     ['ollama', `Ollama · ${t('local')}${mem.ollama.embedModel ? ` · ${mem.ollama.embedModel}` : ` · ${t('no model yet')}`}`],
     ['gemini', t('Gemini · needs your key')],
@@ -19923,7 +19944,7 @@ function drawMemory(host, data) {
   if (mem.envWins) sxFoot(recall, t('Some of these values are fixed by how MADRE was started; those win next time it starts.'));
 
   // The dataset behind MADRE AI, and the recipe that trains on it, outside MADRE.
-  const train = sxBlock(host, t('Train your own AI'), t('Advanced: export what the project learned, train a model on your computer, and @madre answers with it.'));
+  const train = sxBlock(host, t('Train your own AI'), t('For later, if you want: MADRE can teach a small AI on your computer what this project learned, so that @madre answers with it. It takes a while and it is optional.'));
   const datasetHint = el('span', 'sx-hint', t('Reading…'));
   const exportButton = sxButton(t('Export'), async () => {
     exportButton.disabled = true;
@@ -21876,6 +21897,11 @@ function roomTour() {
 // what it is for. Once per button: after that the button is just a button. From 1.1 every key of
 // the bar that opens something says so too (2026-10-14).
 const FIRST_TOUCH = {
+  copilot: {
+    button: '.copilot-chip',
+    title: t('Copilot'),
+    text: t('The copilot lets an AI work on its own for a while. You choose for how long, and the AI you are writing to can change files and make plans without asking you at every step. It never deletes anything, never sends anything outside this computer, and you stop it whenever you want.'),
+  },
   // The keys every person presses in their first minutes (1.1, 2026-11-08): what each does, once.
   activity: {
     button: '#activity-button',
@@ -22074,7 +22100,18 @@ function showFirstTouch(hint, button, { step = 0, of = 0, skip = null } = {}) {
   }, 0);
   ok.focus({ preventScroll: true });
 }
-for (const id of Object.keys(FIRST_TOUCH)) document.querySelector(FIRST_TOUCH[id].button)?.addEventListener('click', () => firstTouch(id));
+// Listened to on the page, not on each key (1.1): some keys are drawn again (the copilot's chip, under
+// the box), and a listener on the old one heard nothing; heard on the way down, since some keys stop
+// their click. A press inside two of them (the copilot's chip inside the row under the box) speaks of
+// the innermost.
+document.addEventListener('click', (event) => {
+  let best = null;
+  for (const id of Object.keys(FIRST_TOUCH)) {
+    const hit = event.target?.closest?.(FIRST_TOUCH[id].button);
+    if (hit && (!best || best.hit.contains(hit))) best = { id, hit };
+  }
+  if (best) firstTouch(best.id);
+}, true);
 
 // What a small version brings is said with the same cards, once each, on their own: no welcome and
 // no tour (1.0.2: the copilot, outside tools, the Finder, the memory's door and the folded

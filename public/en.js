@@ -387,7 +387,6 @@ export const EN = {
   "ACCEPT": "Accept",
   "On for CREATE.": "On for «Create».",
   "Applies to its next CREATE.": "Applies to its next «Create».",
-  "Read-only until you unlock CREATE.": "Read-only until you unlock «Create».",
   "Every message to this agent starts in #2 CREATE: it may add new files, but existing files stay untouched. Plan steps sent to it too.": "Every message to this agent starts in «#2 Create»: it may add new files, but existing files stay untouched. Plan steps sent to it too.",
   "Messages start in #1 CHAT ONLY; turn on #2 CREATE when you want files.": "Messages start in «#1 Chat only»; turn on «#2 Create» when you want files.",
   "@{agent} starts in #2 CREATE: every turn may add files to the project.": "@{agent} starts in «#2 Create»: every answer may add files to the project.",

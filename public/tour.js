@@ -599,9 +599,32 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     card.append(keys);
     hintNode = card;
     void keep({ hint: id });
+    // Over a modal window (1.1, 2026-11-08): no longer inside its content, pushing it down, but a
+    // card of its own beside the window — on its right, else on its left, else over its top corner.
+    // It belongs to the window (so the window does not make it unreachable) and leaves with it.
     if (inside) {
-      anchor.prepend(card);
-      anchor.closest('dialog')?.addEventListener('close', done, { once: true });
+      const dialog = anchor.closest('dialog') ?? anchor;
+      card.classList.remove('inline');
+      card.classList.add('beside-window');
+      if (typeof card.showPopover === 'function') card.popover = 'manual';
+      dialog.append(card);
+      try { card.showPopover?.(); } catch { /* not a popover: inside the window */ }
+      const width = Math.min(300, window.innerWidth - 24);
+      card.style.width = `${width}px`;
+      const placeBeside = () => {
+        if (!card.isConnected) return;
+        const whole = dialog.getBoundingClientRect();
+        const framed = whole.width >= window.innerWidth - 4 && dialog.firstElementChild ? dialog.firstElementChild.getBoundingClientRect() : whole;
+        const height = card.getBoundingClientRect().height;
+        const top = Math.max(12, Math.min(window.innerHeight - height - 12, framed.top));
+        let left = framed.right - width - 16;
+        let at = top + 16;
+        if (window.innerWidth - framed.right >= width + 28) { left = framed.right + 16; at = top; } else if (framed.left >= width + 28) { left = framed.left - width - 16; at = top; }
+        Object.assign(card.style, { position: 'fixed', margin: '0', left: `${left}px`, top: `${at}px` });
+      };
+      placeBeside();
+      window.addEventListener('resize', placeBeside);
+      dialog.addEventListener('close', () => { window.removeEventListener('resize', placeBeside); done(); }, { once: true });
       return true;
     }
     if (typeof card.showPopover === 'function') card.popover = 'manual';

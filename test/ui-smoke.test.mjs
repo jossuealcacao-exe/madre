@@ -300,7 +300,9 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(clickHandler, 'sphere click handler installed');
   clickHandler({ target: { closest: () => sphere } });
   assert.equal(popup.hidden, false);
-  assert.match(popup.textContent, /del límite de [0-9]*[hd] del proveedor|del límite de este proyecto · últimas 5 h|tokens en las últimas 5 h/);
+  assert.match(popup.textContent, /de lo que tu plan te deja usar cada|del límite que le pusiste en este proyecto|tokens en las últimas 5 horas/);
+  // What it can do, said as things it does (1.1).
+  assert.match(popup.textContent, /Lo que puede hacer/);
   assert.match(popup.textContent, /Respuestas/);
   const statsText = popup.textContent;
   assert.ok(/\d+/.test(statsText));

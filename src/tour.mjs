@@ -53,7 +53,7 @@ export const HINTS = ['switch', 'links', 'key4',
   // The two drawings of a map, planets and neurons (2026-10-28): said once, by the key that switches them.
   'map-views',
   // The first press of the main keys (1.1, 2026-11-08): Home's and a project's.
-  'home-activity', 'home-market', 'home-modules', 'home-agents', 'touch-activity', 'touch-attach', 'touch-options'];
+  'home-activity', 'home-market', 'home-modules', 'home-agents', 'touch-activity', 'touch-attach', 'touch-options', 'touch-copilot'];
 const PATHS = ['new', 'back', 'since'];
 // The news this code knows (2026-10-21): written on the bonjour as the version a person MET MADRE
 // with (`met`). The cards of what is new are for whoever met it before a version; someone who meets
