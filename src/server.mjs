@@ -5649,6 +5649,16 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
       server.close(() => process.exit(0));
     });
   }
+  // Inside the app (desktop/, Tauri), the app holds this process's stdin open and never writes to it:
+  // when the app dies — Force Quit, a crash — the pipe closes, and Home closes as it does for a signal,
+  // projects first, instead of staying behind with nobody to see it (2026-11-09).
+  if (process.env.MADRE_APP === '1' && salasRoom) {
+    process.stdin.once('end', async () => {
+      await closeOtherRooms().catch(() => null);
+      server.close(() => process.exit(0));
+    });
+    process.stdin.resume();
+  }
   // Salas asked this room to close: the same as a signal.
   server.once('madre:close', () => server.close(() => process.exit(0)));
   // Uninstalling (src/uninstall.mjs): the room closes as it does for a signal — every write done,
