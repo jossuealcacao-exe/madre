@@ -19,7 +19,9 @@ test('inside the app, Home closes itself when the app\'s pipe closes', { timeout
   try {
     const child = spawn(process.execPath, [MADRE, 'lobby', '--no-open'], {
       cwd: home,
-      env: { ...process.env, HOME: home, PULSE_HOME: state, PULSE_LOBBY_HOME: home, MADRE_APP: '1', PULSE_TERMS: 'accepted', PULSE_MARKET: '0', PULSE_OLLAMA: '0' },
+      // A port of its own: on 4317 it would find another Home (the author's, or another test's) and
+      // join it instead of starting, which is what the app does, not what this tests.
+      env: { ...process.env, HOME: home, PULSE_HOME: state, PULSE_LOBBY_HOME: home, MADRE_APP: '1', PULSE_TERMS: 'accepted', PULSE_MARKET: '0', PULSE_OLLAMA: '0', PULSE_PORT_BASE: String(46000 + Math.floor(Math.random() * 3000)) },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let said = '';
