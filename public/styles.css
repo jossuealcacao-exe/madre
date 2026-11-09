@@ -13026,3 +13026,15 @@ html.chat-shell[data-scheme="dark"] .tree-search .tree-find:focus-within { box-s
 /* ONE «FILES» (2026-11-09): the panel's tab says it; the list's head keeps its keys without saying
    it again (the empty viewer no longer says it either, app.js showCodeHome). */
 html.chat-shell .code-files-head > span:first-child { font-size: 0; }
+
+/* A REPLY'S CAPSULE KEEPS ITS WHOLE EDGE (2026-11-09): its edge was half a pixel, and a capsule at a
+   fractional height (269.25 px) lost the bottom one between two screen pixels: some capsules showed
+   no bottom edge. One pixel, fainter, draws the same line at any height. */
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who { box-shadow: inset 0 0 0 1px rgb(var(--plane-ink) / .075) !important; }
+
+/* THE SYSTEM'S NOTICES FLOAT IN LIGHT (2026-11-09): an older rule (light theme, .toast) won over the
+   chat shell's and drew half a pixel and a white halo, which on the white canvas left the notice
+   flat. A faint line and a soft, light shadow under it: it floats, it does not shout. */
+:is(html.chat-shell, html.home-shell)[data-scheme="light"] .toast:not([hidden]) {
+  box-shadow: 0 0 0 1px rgba(20, 30, 20, .07), 0 1px 2px rgba(20, 30, 20, .05), 0 8px 22px -6px rgba(20, 30, 20, .14), 0 22px 46px -18px rgba(20, 30, 20, .12);
+}
