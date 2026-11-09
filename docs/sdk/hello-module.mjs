@@ -20,7 +20,7 @@ export default {
   name: 'HELLO',                     // how MODULES shows it
   vendor: 'you',                     // a person, a team, a company
   version: '0.1.0',
-  summary: 'Greets the room from the composer. The smallest possible module: a switch, one setting, one slash command.',
+  summary: 'Greets the room from the composer. A small module with everything in its place: a switch, one setting, one slash command with its link, and two routes.',
   creates: ['nothing in the project'],
   requires: [],
   settings: { enabled: false, greeting: 'hola' },   // defaults; the human changes them in config.json
@@ -28,7 +28,9 @@ export default {
   // nearest of its own tile colors, so draw it on any grid and do not worry about its size.
   icon: { svg: '<path d="M4 10.5c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>', color: '#0f766e' },
 
-  // What MODULES shows for this module. ctx.settings already has the defaults applied.
+  // What MODULES shows for this module. ctx.settings already has the defaults applied. The whole
+  // shape: { status: { installed, detail }, preflight: { ok, problems }, install: { display },
+  // runs: [{ name, version, target }] }; only `status` is needed, `detail` is the line beside «On».
   async status(ctx) {
     return { status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? `on · says "${ctx.settings.greeting}"` : 'off' } };
   },
@@ -40,9 +42,42 @@ export default {
       name: 'hello',
       usage: '/hello [name]',
       summary: 'Greets someone in the room.',
+      // The answer: { ok, title, text, link }. `link` is optional: { href, label }, where href is one
+      // of this module's own routes (/api/x/<id>/…, no spaces or quotes, up to 400 characters) and
+      // label is cut at 80. The card offers it as a key that opens another tab, already with MADRE's
+      // ficha. A link anywhere else is dropped without a word.
       async execute(ctx, args) {
         const who = args[0] ?? 'crew';
-        return { ok: true, title: 'HELLO', text: `${ctx.settings.greeting}, ${who}. Project: ${ctx.projectRoot.split('/').pop()}. Agents online: ${ctx.agents.filter((agent) => agent.ready).map((agent) => `@${agent.id}`).join(', ') || 'none'}.` };
+        const page = /^[a-z0-9-]{1,40}$/i.test(who) ? who.toLowerCase() : 'crew';
+        return {
+          ok: true,
+          title: 'HELLO',
+          text: `${ctx.settings.greeting}, ${who}. Project: ${ctx.projectRoot.split('/').pop()}. Agents online: ${ctx.agents.filter((agent) => agent.ready).map((agent) => `@${agent.id}`).join(', ') || 'none'}.`,
+          link: { href: `/api/x/hello/card/${page}`, label: 'Open the greeting' },
+        };
+      },
+    },
+  ],
+
+  // Routes of its own: { method, path, handler(ctx, { payload, params, url, request, viaPhone }) }.
+  // `path` is the whole address and always lives under /api/x/<id>/: a string, matched exactly, or a
+  // pattern, whose captures arrive in `params` as a list, in order. `payload` is the JSON body of a
+  // POST ({} otherwise), `url` a URL, `request` only { method, headers }, `viaPhone` true when it comes
+  // from a paired phone. Answer { status, body } for JSON or { status, html } for a page.
+  routes: [
+    {
+      method: 'GET',
+      path: '/api/x/hello/greeting',
+      async handler(ctx) {
+        return { status: 200, body: { greeting: ctx.settings.greeting } };
+      },
+    },
+    {
+      method: 'GET',
+      path: /^\/api\/x\/hello\/card\/([a-z0-9-]{1,40})$/,
+      async handler(ctx, { params }) {
+        const [who] = params;
+        return { status: 200, html: `<!doctype html><meta charset="utf-8"><title>HELLO</title><p>${ctx.settings.greeting}, ${who}.</p>` };
       },
     },
   ],

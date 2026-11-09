@@ -96,6 +96,32 @@ the suite compares this table against the code, so if they ever drift apart, it'
 | `preflight(ctx)`, `detect(ctx)`, `installCommand(ctx)` | **Legacy**, from when a module could only be an installer. They still work; for something new, return `preflight` from `status(ctx)` as above |
 | `describe(ctx)` | MADRE builds it from everything above. **Don't declare it**: it is on the list because the object carries it, not because you have to write it |
 
+### Routes, link and status, exactly
+
+The three shapes an agent must not guess, as MADRE reads them. `docs/sdk/hello-module.mjs` has them working.
+
+**Routes.** Each is `{ method, path, handler }`. `path` is the whole address and always lives under `/api/x/<id>/`: a string, matched exactly, or a regular expression (it may start with `^`), whose captures arrive in `params` as a list, in order. A module you install only answers under its `/api/x/<id>/`, whatever its expression says.
+
+```js
+routes: [
+  { method: 'GET', path: '/api/x/report/today', async handler(ctx) { return { status: 200, body: { ok: true } }; } },
+  { method: 'GET', path: /^\/api\/x\/report\/day\/(\d{4}-\d{2}-\d{2})$/, async handler(ctx, { params }) {
+    const [day] = params;
+    return { status: 200, html: `<!doctype html><meta charset="utf-8"><h1>Report for ${day}</h1>` };
+  } },
+],
+```
+
+The handler's second argument is `{ payload, params, url, request, viaPhone }`. `payload` is the JSON body of a `POST` (`{}` otherwise), `url` a `URL`, `request` only `{ method, headers }`, and `viaPhone` is `true` when it comes from a paired phone. Answer `{ status, body }` for JSON or `{ status, html }` for a page.
+
+**A card's link.** A `slash` command returns `{ ok, title, text, link }`. `link` is optional: `{ href, label }`, where `href` is a route of yours (it starts with `/api/x/<id>/`, no spaces or quotes, up to 400 characters) and `label` is cut at 80. The card offers it as a key that opens another tab, already with MADRE's ficha; a link anywhere else is dropped without a word.
+
+```js
+return { ok: true, title: 'Report', text: `The report for ${day} is ready.`, link: { href: `/api/x/report/day/${day}`, label: 'Open the report' } };
+```
+
+**Status.** `status(ctx)` returns `{ status: { installed, detail } }`; `detail` is the line beside «On». Optional: `preflight: { ok, problems: [] }` (what is missing before it can be used, in sentences), `install: { display }`, and `runs: [{ name, version, target }]` if it wraps an outside program.
+
 ### Can it connect to *X*?
 
 That doesn't depend on MADRE. A module can do whatever a Node process can do on your

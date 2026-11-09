@@ -74,7 +74,9 @@ function checkExternal(module, { replace = false } = {}) {
   // replaced, because that is what installing a newer copy of it is.
   if (taken && (!replace || !taken.external)) throw new Error(`the id "${module.id}" is already taken`);
   for (const route of module.routes ?? []) {
-    const path = typeof route.path === 'string' ? route.path : route.path?.source ?? '';
+    // A pattern may start with «^», as MADRE's own do: /^\/api\/x\/<id>\/…$/ was refused, and the
+    // person who wrote it was told to live where they already lived (2026-11-09, a report on Facebook).
+    const path = typeof route.path === 'string' ? route.path : String(route.path?.source ?? '').replace(/^\^/, '');
     if (!path.startsWith(`/api/x/${module.id}/`) && !path.startsWith(`\\/api\\/x\\/${module.id}\\/`)) throw new Error(`route ${path} must live under /api/x/${module.id}/`);
   }
   return module;
@@ -356,6 +358,10 @@ export async function describeModules(ctx) {
 // One flat list of every route a module serves, with the module attached.
 export function findModuleRoute(method, pathname) {
   for (const module of MODULES) {
+    // A module somebody installed answers only under its own /api/x/<id>/, whatever its pattern says:
+    // checking how a pattern starts let /\/api\/x\/<id>\/|\/api\/state/ through, and these routes are
+    // matched before MADRE's own (2026-11-09).
+    if (module.external && !String(pathname).startsWith(`/api/x/${module.id}/`)) continue;
     const hit = matchRoute(module.routes, method, pathname);
     if (hit) return { module, ...hit };
   }

@@ -6,6 +6,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.4 · Sin publicar
 
+- **Escribir un módulo sin adivinar.** La guía del SDK trae completas las formas de las rutas, del enlace de una tarjeta y del estado, y el ejemplo `hello` las usa funcionando, así que tu IA ya no tiene que pedirte que busques en el código de MADRE. Una ruta escrita como expresión que empieza con `^` ya no se rechaza al instalar el módulo, y un módulo que instalas solo contesta en sus propias direcciones (`/api/x/<id>/`), nunca en las de MADRE.
 - **Deshacer no deja atrás lo que una IA crea al empezar su turno.** En Linux, un archivo escrito en los primeros milisegundos del turno, en una carpeta que git ignora, podía quedar fuera de la lista de lo creado y de Deshacer.
 
 ## 1.1.3 · 2026-11-09

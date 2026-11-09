@@ -96,6 +96,32 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 | `preflight(ctx)`, `detect(ctx)`, `installCommand(ctx)` | **Herencia**, de cuando un módulo solo podía ser un instalador. Siguen funcionando; para algo nuevo, devuelve `preflight` desde `status(ctx)` como arriba |
 | `describe(ctx)` | Lo arma MADRE con todo lo anterior. **No lo declares**: está en la lista porque el objeto lo lleva, no porque tengas que escribirlo |
 
+### Rutas, enlace y estado, exactos
+
+Las tres formas que un agente no debe adivinar, tal como MADRE las lee. `docs/sdk/hello-module.mjs` las trae funcionando.
+
+**Rutas.** Cada una es `{ method, path, handler }`. `path` es la dirección completa y vive siempre debajo de `/api/x/<id>/`: un texto, que se compara exacto, o una expresión regular (puede empezar con `^`), cuyas capturas llegan en `params` como lista, en orden. Un módulo que instalas solo contesta debajo de su `/api/x/<id>/`, diga lo que diga su expresión.
+
+```js
+routes: [
+  { method: 'GET', path: '/api/x/informe/hoy', async handler(ctx) { return { status: 200, body: { ok: true } }; } },
+  { method: 'GET', path: /^\/api\/x\/informe\/dia\/(\d{4}-\d{2}-\d{2})$/, async handler(ctx, { params }) {
+    const [dia] = params;
+    return { status: 200, html: `<!doctype html><meta charset="utf-8"><h1>Informe del ${dia}</h1>` };
+  } },
+],
+```
+
+El segundo argumento del `handler` es `{ payload, params, url, request, viaPhone }`. `payload` es el cuerpo JSON de un `POST` (`{}` en lo demás), `url` un `URL`, `request` solo `{ method, headers }` y `viaPhone` es `true` si llega desde un teléfono enlazado. Se responde `{ status, body }` para JSON o `{ status, html }` para una página.
+
+**El enlace de una tarjeta.** Un comando de `slash` devuelve `{ ok, title, text, link }`. `link` es opcional: `{ href, label }`, donde `href` es una ruta tuya (empieza con `/api/x/<id>/`, sin espacios ni comillas, hasta 400 caracteres) y `label` se corta en 80. La tarjeta lo ofrece como botón que abre otra pestaña, ya con la ficha de MADRE; un enlace a otro lado se ignora sin avisar.
+
+```js
+return { ok: true, title: 'Informe', text: `Listo el informe del ${dia}.`, link: { href: `/api/x/informe/dia/${dia}`, label: 'Abrir el informe' } };
+```
+
+**El estado.** `status(ctx)` devuelve `{ status: { installed, detail } }`; `detail` es la frase junto a «Activo». Opcionales: `preflight: { ok, problems: [] }` (lo que falta antes de usarlo, en frases), `install: { display }` y `runs: [{ name, version, target }]` si envuelve un programa de fuera.
+
 ### ¿Se puede conectar con *X*?
 
 No depende de MADRE. Un módulo puede hacer lo que pueda hacer un proceso de Node en tu

@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { writeSecret } from '../src/vault.mjs';
 import { MODULE_FIELDS } from '../src/modules/sdk.mjs';
-import { MODULES, sdkPaths, loadExternalModules, moduleById, moduleCommands, describeModules, toolsForTurn, installModuleFile, removeExternalModule, isModuleFile } from '../src/modules/index.mjs';
+import { MODULES, sdkPaths, loadExternalModules, moduleById, moduleCommands, describeModules, toolsForTurn, installModuleFile, removeExternalModule, isModuleFile, findModuleRoute } from '../src/modules/index.mjs';
 
 test('external modules: a plain object in ~/.pulse/modules or .madre/modules becomes a module with its switch, command and tools; a broken file is reported, not fatal', async () => {
   const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-state-'));
@@ -445,5 +445,41 @@ test('RX-2: a module waiting on MADRE (a slow local model) is not cut; one that 
     await assert.rejects(runExternal({ file, id: 'slow', configKey: 'slow', operation: 'slash', index: 0, ctx, args: [[]], limitMs: 500, ceilingMs: 900 }), /did not answer in/);
   } finally {
     await rm(folder, { recursive: true, force: true });
+  }
+});
+
+// 2026-11-09, a report on Facebook: an agent writing a module asked the person to grep MADRE's code for
+// the exact shape of routes, a card's link and status. The shipped example shows all three, and runs.
+// And a pattern starting with «^», as MADRE's own do, is no longer refused; a pattern that also
+// reaches MADRE's own addresses never answers them.
+test('external modules: the example\'s routes, its link and a «^» pattern answer as documented, and only under /api/x/<id>/', async () => {
+  const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-routes-state-'));
+  const projectRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-routes-project-'));
+  try {
+    await mkdir(join(stateRoot, 'modules'), { recursive: true });
+    await writeFile(join(stateRoot, 'modules', 'hello.mjs'), await readFile(new URL('../docs/sdk/hello-module.mjs', import.meta.url), 'utf8'));
+    await writeFile(join(stateRoot, 'modules', 'sly.mjs'), "export default { id: 'sly', name: 'SLY', routes: [{ method: 'GET', path: /\\/api\\/x\\/sly\\/|\\/api\\/state/, handler: () => ({ status: 200, body: { mine: true } }) }] };");
+    const outcome = await loadExternalModules({ stateRoot, projectRoot });
+    assert.deepEqual(outcome.failures, [], 'a pattern starting with ^ under its own path was refused');
+    const ctx = { projectRoot, stateRoot, config: { modules: { hello: { enabled: true, greeting: 'hola' } } }, env: {}, agents: [], room: null, readConfig: async () => ({}), updateConfig: async () => {}, record: async () => {} };
+
+    const exact = findModuleRoute('GET', '/api/x/hello/greeting');
+    assert.equal(exact?.module.id, 'hello');
+    assert.deepEqual(await exact.route.handler(ctx, { params: exact.params, payload: {}, url: new URL('http://127.0.0.1/api/x/hello/greeting'), request: { method: 'GET', headers: {} }, viaPhone: false }), { status: 200, body: { greeting: 'hola' } });
+    const pattern = findModuleRoute('GET', '/api/x/hello/card/ripley');
+    assert.deepEqual(pattern?.params, ['ripley'], 'the captures do not arrive as a list, in order');
+    assert.match((await pattern.route.handler(ctx, { params: pattern.params, payload: {}, url: null, request: { method: 'GET', headers: {} }, viaPhone: false })).html, /hola, ripley\./);
+
+    const command = moduleCommands().find((one) => one.name === 'hello');
+    const answer = await command.execute({ ...ctx, settings: command.module.settingsFrom(ctx.config) }, ['Ripley']);
+    assert.deepEqual(answer.link, { href: '/api/x/hello/card/ripley', label: 'Open the greeting' });
+    assert.ok(findModuleRoute('GET', answer.link.href), 'the example links to a route it does not serve');
+
+    assert.equal(findModuleRoute('GET', '/api/x/sly/anything')?.module.id, 'sly');
+    assert.equal(findModuleRoute('GET', '/api/state'), null, 'an installed module answered one of MADRE\'s own addresses');
+  } finally {
+    await loadExternalModules({ stateRoot: join(stateRoot, 'none'), projectRoot: join(projectRoot, 'none') });
+    await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
