@@ -1891,10 +1891,13 @@ html.home-shell .mk.flat .mk-mine .mk-card-words span { font: 450 12.5px/1.4 var
 html.home-shell .mk.flat .mk-mine .mk-all > span { display: none; }
 html.home-shell .mk.flat .mk-mine .mk-card-head .mk-get { height: 26px; padding: 0 10px; font: 500 12px var(--read); }
 html.home-shell .mk.flat .mk-mine .mk-chips { gap: 6px; padding: 0; }
-html.home-shell .mk.flat .mk-mine .mk-chip { height: 24px; padding: 0 9px; font: 500 12px var(--read); }
+/* The projects a module is in (1.1, 2026-11-08): the name in the middle of its chip, not stuck to its
+   top, and the chips as tall as the key beside them. */
+html.home-shell .mk.flat .mk-mine .mk-chip { display: inline-flex; align-items: center; height: 26px; padding: 0 11px; font: 500 12px/1 var(--read); white-space: nowrap; }
 html.home-shell .mk.flat .mk-mine .mk-card-foot { gap: 6px; min-width: 0; padding-left: 0; }
 html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-chips:empty { display: none; }
-html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-get { height: 24px; margin-left: auto; padding: 0 10px; font: 500 12px var(--read); }
+html.home-shell .mk.flat .mk-mine .mk-card-foot { align-items: center; row-gap: 8px; }
+html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-get { display: inline-flex; align-items: center; height: 26px; margin-left: auto; padding: 0 11px; font: 500 12px/1 var(--read); }
 html.home-shell .mk.flat .mk-mine .mk-said:empty { display: none; }
 
 /* The Coordinator's summary before there is one (2026-10-28): what will come there, in the middle of
