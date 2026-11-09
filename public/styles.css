@@ -6323,6 +6323,14 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .settings-detail .sx-analysis .mem-signal .top b, .settings-detail .sx-analysis .exam-head b { font-size: 12.5px; font-weight: 500; }
 /* The review's questions are written in sentence case; lowering them would turn «IA» into «ia». */
 .settings-detail .sx-analysis .exam-head b { text-transform: none; }
+/* The checkups in Settings › Memory (1.1, 2026-11-08): the title as written (a rule above lowered it
+   to «¿La ia local…»), every checkup the same flat row — the one that passed wore the console's frame —
+   and its key a quiet one, not the room's main green. */
+.settings-detail .sx-analysis .exams .exam .exam-head b { text-transform: none; }
+.settings-detail .sx-analysis .exams .exam:is(.passed, .failed) { border: 0; border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent); background: none; }
+.settings-detail .sx-analysis .exams .exam button.primary { background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--text); }
+.settings-detail .sx-analysis .exams .exam button.primary:is(:hover, :focus-visible):not(:disabled) { background: color-mix(in srgb, var(--phosphor) 22%, transparent); }
+:root[data-scheme="light"] .settings-detail .sx-analysis .exams .exam button.primary { background: color-mix(in srgb, var(--s-acc, #2f8a1c) 12%, transparent); }
 .settings-detail .sx-analysis .exams .said { font-family: var(--read); font-size: 12.5px; line-height: 1.5; }
 .settings-detail .sx-analysis .mem-cols i:not(.zero) { background: color-mix(in srgb, #3fb6d9 70%, transparent); }
 .settings-detail .sx-analysis .mem-cols i.now { background: #3fb6d9; }
@@ -8088,9 +8096,24 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
 .agent-pop .pop-limit.hot b { color: var(--crit); }
 .agent-pop .pop-note { margin: 0; font-family: var(--read, var(--sans)); font-size: 12px; line-height: 1.45; color: var(--text-2); }
 .agent-pop .pop-meta { margin: 10px 0 0; font-family: var(--read, var(--sans)); font-size: 11.5px; line-height: 1.45; color: var(--text-3); }
+.sx-train-how { display: grid; gap: 6px; margin: 4px 0 6px; padding: 0 0 0 4px; list-style: none; counter-reset: how; }
+.sx-train-how li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: baseline; font: 450 13px/1.45 var(--read, var(--sans)); color: var(--text); counter-increment: how; }
+.sx-train-how li::before { content: counter(how); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--text); font: 600 11px var(--read, var(--sans)); }
+/* The plan as small gauges and the connection as chips (1.1): less to read, more to see. */
+.agent-pop .pop-limit { display: grid; grid-template-columns: 64px minmax(0, 1fr) 42px; align-items: center; gap: 2px 10px; }
+.agent-pop .pop-limit .pop-window { color: var(--text-2); }
+.agent-pop .pop-limit b { text-align: right; }
+.agent-pop .pop-limit small { grid-column: 2 / -1; font-size: 11px; color: var(--text-3); }
+.agent-pop .pop-meter { height: 5px; border-radius: 5px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; }
+.agent-pop .pop-meter i { display: block; height: 100%; border-radius: inherit; background: var(--agent, var(--phosphor)); }
+.agent-pop .pop-limit.hot .pop-meter i { background: var(--crit); }
+.agent-pop .pop-provider h4[title], .agent-pop .pop-stat[title] span { cursor: help; text-decoration: underline dotted color-mix(in srgb, var(--text) 30%, transparent); text-underline-offset: 3px; }
+.agent-pop .pop-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.agent-pop .pop-chips span { padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); font: 450 11.5px var(--read, var(--sans)); color: var(--text-2); }
+.agent-pop .pop-chips span[title] { cursor: help; }
+.agent-pop .pop-can ul { grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+.agent-pop .pop-can li { font-size: 12px; }
 /* What it can do, as things it does (1.1): what it can, ticked in its colour; what it cannot, quieter. */
-.agent-pop .pop-token { margin-top: 8px; font-size: 11.5px; color: var(--text-3); }
-.agent-pop .pop-provider .pop-note + .pop-limit { margin-top: 6px; }
 .agent-pop .pop-can { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .agent-pop .pop-can h4 { margin: 0 0 6px; font: 600 12px var(--read, var(--sans)); color: var(--text); letter-spacing: 0; text-transform: none; }
 .agent-pop .pop-can ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }

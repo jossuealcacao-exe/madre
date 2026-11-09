@@ -18160,23 +18160,30 @@ function openAgentPop(id, anchor, { back = null } = {}) {
   pop.append(hero);
 
   const grid = el('div', 'pop-stats');
-  const stat = (label, value) => { const box = el('div', 'pop-stat'); box.append(el('span', null, label), el('b', null, value)); grid.append(box); };
-  stat(t('Spent in this project'), `${formatTokens(agent.rawTokens ?? 0) || '0'} tokens`);
+  const stat = (label, value) => { const box = el('div', 'pop-stat'); box.append(el('span', null, label), el('b', null, value)); grid.append(box); return box; };
+  // What a token is, where it is asked: on the figure, not as a paragraph under it.
+  stat(t('Spent in this project'), `${formatTokens(agent.rawTokens ?? 0) || '0'} tokens`).title = t('A token is a piece of a word: it is how AIs count what they read and write. A short answer is a few hundred.');
   stat(t('Answers here'), String(stats.turns));
   stat(t('Its last answer'), stats.lastTurnMs ? `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)}` : ''}` : '—');
   stat(stats.costEstimated ? t('Cost (estimated)') : t('Cost'), stats.cost > 0 ? `${stats.costEstimated ? '≈ ' : ''}${fmtUsd(stats.cost)}` : '—');
   pop.append(grid);
-  pop.append(el('p', 'pop-note pop-token', t('A token is a piece of a word: it is how AIs count what they read and write. A short answer is a few hundred.')));
 
   const provider = el('section', 'pop-provider');
   if (agent.officialWindows) {
     const { primary, secondary } = agent.officialWindows;
+    // Each limit of the plan as its own small gauge (1.1): the window, how full, and when it renews.
     const line = (one) => {
-      const row = el('div', `pop-limit${one.usedPercent >= 80 ? ' hot' : ''}`);
-      row.append(el('span', null, t('Every {window}', { window: humanWindow(one.windowMinutes) })), el('b', null, one.resetAt ? t('{pct}% used · renews {when}', { pct: Math.round(one.usedPercent), when: fmtReset(one.resetAt) }) : t('{pct}% used', { pct: Math.round(one.usedPercent) })));
+      const pct = Math.max(0, Math.min(100, Math.round(one.usedPercent)));
+      const row = el('div', `pop-limit${pct >= 80 ? ' hot' : ''}`);
+      const meter = el('span', 'pop-meter');
+      const fill = el('i'); fill.style.width = `${pct}%`; meter.append(fill);
+      row.append(el('span', 'pop-window', humanWindow(one.windowMinutes)), meter, el('b', null, `${pct} %`));
+      if (one.resetAt && pct > 0) row.append(el('small', null, t('renews {when}', { when: fmtReset(one.resetAt) })));
       provider.append(row);
     };
-    provider.append(el('h4', null, t('Your plan')), el('p', 'pop-note', t('Your plan lets you use this AI up to a limit, which renews every so often. When it reaches 100 %, it waits until it renews.')));
+    const title = el('h4', null, t('Your plan'));
+    title.title = t('Your plan lets you use this AI up to a limit, which renews every so often. When it reaches 100 %, it waits until it renews.');
+    provider.append(title);
     if (primary) line(primary);
     if (secondary) line(secondary);
   } else if (Number.isFinite(agent.officialPercent)) {
@@ -18188,8 +18195,14 @@ function openAgentPop(id, anchor, { back = null } = {}) {
 
   const timeout = Math.round((state.timeouts[id] ?? 180000) / 1000);
   const wait = timeout >= 120 ? t('{n} min', { n: Math.round(timeout / 60) }) : `${timeout}s`;
-  const meta = [session?.detail, t('If it takes longer than {time} to answer, MADRE stops waiting.', { time: wait }), agent.version ? t('version {version}', { version: agent.version }) : null].filter(Boolean);
-  pop.append(el('p', 'pop-meta', meta.join(' · ')));
+  // How it is connected, how long MADRE waits for it and its version, as three small chips.
+  const meta = el('div', 'pop-chips');
+  if (session?.detail) meta.append(el('span', null, session.detail));
+  const waits = el('span', null, t('waits {time}', { time: wait }));
+  waits.title = t('If it takes longer than {time} to answer, MADRE stops waiting.', { time: wait });
+  meta.append(waits);
+  if (agent.version) meta.append(el('span', null, agent.version));
+  pop.append(meta);
   pop.append(capabilityList(id));
   const go = el('button', 'pop-go', t('Connection and limits in Settings'));
   go.type = 'button';
@@ -19521,7 +19534,7 @@ function examRow(id, state, run, pass = null) {
   row.append(el('p', 'note about', EXAM_ABOUT[id]));
   if (last?.says) {
     const said = el('p', 'said', last.says);
-    const when = last.at ? ` · ${new Date(last.at).toLocaleString()}` : '';
+    const when = last.at ? ` · ${new Date(last.at).toLocaleString(language(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : '';
     const how = last.ran && last.rate !== undefined ? `${Math.round(last.rate * 100)}% · ${t('{n} CASES', { n: last.n })}${last.method ? t(' · BY {method}', { method: last.method.toUpperCase() }) : ''}${last.bar ? t(' · BAR {bar}', { bar: last.bar }) : ''}${when}` : when.replace(' · ', '');
     row.append(said);
     // The rate against the line it has to reach: the bar fills to what it scored, the mark
@@ -19937,7 +19950,7 @@ function drawMemory(host, data) {
   const embedNow = !mem.embedder ? t('off') : /^ollama/i.test(mem.embedder) ? t('with the AI on your computer') : /^gemini/i.test(mem.embedder) ? t('with Gemini') : mem.embedder;
   sxRow(recall, t('Search by meaning'), t('It finds a note even if you ask in other words: «how much do we charge?» finds «price: 450». Now: {what}.', { what: embedNow }), select([
     ['auto', t('Automatic · Local AI if running, else Gemini')],
-    ['ollama', `Ollama · ${t('local')}${mem.ollama.embedModel ? ` · ${mem.ollama.embedModel}` : ` · ${t('no model yet')}`}`],
+    ['ollama', mem.ollama.embedModel ? t('With the AI on your computer · free and private') : t('With the AI on your computer · its model is not there yet')],
     ['gemini', t('Gemini · needs your key')],
     ['off', t('Off · exact words only')],
   ], mem.embedProvider ?? data.config?.memory?.embedProvider ?? 'auto', (value, node) => save({ embedProvider: value }, t('search by meaning: {what}.', { what: node.options[node.selectedIndex].textContent.toLowerCase() })), t('Search by meaning')));
@@ -19956,7 +19969,15 @@ function drawMemory(host, data) {
   datasetRow.querySelector('.sx-words').append(datasetHint);
   // What it is, then the recipe in order (2026-10-14): one command per step, for a Mac with an
   // Apple chip or — tried, not promised — Linux with an NVIDIA card through MLX's CUDA package.
-  train.append(el('p', 'sx-hint sx-train-what', t('The training data are question-and-answer pairs taken from this project\'s conversations and notes, with private details hidden. With them a small model is adjusted on your computer, and @madre answers with it.')));
+  // How it works, in three lines (1.1, 2026-11-08), before the recipe: what goes in, where it happens,
+  // and what comes out — and that the lines below already carry this computer's own folders.
+  const how = el('ol', 'sx-train-how');
+  for (const line of [
+    t('MADRE gathers questions and answers from this project\'s conversations and notes, with private details hidden.'),
+    t('With them, a small AI on your computer learns how this project works. Nothing leaves your computer, and it costs nothing.'),
+    t('When it is ready, @madre answers with it in this project on its own. You try it before trusting it.'),
+  ]) how.append(el('li', null, line));
+  train.append(how, el('p', 'sx-hint sx-train-what', t('Each step is a line you copy into a terminal (the window where you type commands). The lines already carry this project\'s folders on your computer: copy them as they are.')));
   const recipe = el('details', 'sx-more');
   recipe.append(el('summary', null, t('Step by step')));
   // Windows trains inside WSL with its NVIDIA card (2026-10-28): the same recipe as Linux, run in
@@ -20037,6 +20058,8 @@ function drawMemory(host, data) {
     step(t('Turn it into a file Ollama reads (GGUF)'), t('The first time, it downloads llama.cpp\'s converter.'), `${venv} && cd ${quote(info.roomDir)} && git clone --depth 1 https://github.com/ggml-org/llama.cpp && pip install -r llama.cpp/requirements.txt && python3 llama.cpp/convert_hf_to_gguf.py fused --outfile madre.gguf --outtype ${quantized ? 'f16' : 'q8_0'}`);
     step(t('Register it in Ollama as {model}', { model: info.modelName }), quantized ? t('Ollama keeps it in 4 bits, the size the table counts on. @madre switches to it at the next recheck of Local AI.') : t('@madre switches to it at the next recheck of Local AI.'), `cd ${quote(info.roomDir)} && cp ${quote(`${info.recipeDir}Modelfile`)} . && ollama create ${info.modelName} -f Modelfile${quantized ? ' --quantize q4_K_M' : ''}`);
     step(t('Try it before trusting it'), t('Ask @madre ten things the project decided and five it never discussed. It should get the first right and say it never discussed the others; if it makes things up, remove it with «ollama rm {model}» and train with more pairs.', { model: info.modelName }));
+    // How it is part of MADRE from then on (1.1): nothing to switch on, and the way back out.
+    step(t('It is part of MADRE now'), t('@madre answers with {model} in this project without you doing anything; Settings › Local AI shows it in use. To go back to the usual model, delete it with «ollama rm {model}».', { model: info.modelName }));
     if (state.salas) drawExam();
   };
   // D-S18 · in Home, the exam the Coordinator's local model passes before it gives orders: the

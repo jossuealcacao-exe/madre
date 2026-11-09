@@ -595,13 +595,13 @@ export class Room {
       progress: this.#examProgress,
       last,
       can: {
-        coverage: { ok: Boolean(this.#memory) && cases.length > 0, why: !this.#memory ? 'the room has no memory' : cases.length ? null : 'no exchange here is long enough to test with yet', method: embedder ? 'meaning' : 'words' },
-        consistency: { ok: Boolean(this.#memory), why: this.#memory ? null : 'the room has no memory' },
+        coverage: { ok: Boolean(this.#memory) && cases.length > 0, why: !this.#memory ? t('the room has no memory') : cases.length ? null : t('no exchange here is long enough to test with yet'), method: embedder ? 'meaning' : 'words' },
+        consistency: { ok: Boolean(this.#memory), why: this.#memory ? null : t('the room has no memory') },
         match: {
           ok: Boolean(this.#memory) && localModel && Boolean(embedder) && cases.some((one) => !one.local),
-          why: !localModel ? 'the local model is not running: open MODULES → OLLAMA'
-            : !embedder ? 'this test needs embeddings, which are off'
-              : cases.some((one) => !one.local) ? null : 'nothing here was answered by an agent other than the local one',
+          why: !localModel ? t('the local model is not running: open MODULES → OLLAMA')
+            : !embedder ? t('this test needs embeddings, which are off')
+              : cases.some((one) => !one.local) ? null : t('nothing here was answered by an agent other than the local one'),
           sample: Math.min(MATCH_SAMPLE, cases.filter((one) => !one.local).length),
         },
       },

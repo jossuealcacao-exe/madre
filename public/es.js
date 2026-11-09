@@ -5454,7 +5454,6 @@ export const ES = {
   'version {version}': 'versión {version}',
   'Connection and limits in Settings': 'Conexión y límites en Ajustes',
   // Entrenar tu propia IA, en orden (2026-10-14).
-  "The training data are question-and-answer pairs taken from this project's conversations and notes, with private details hidden. With them a small model is adjusted on your computer, and @madre answers with it.": 'Los datos de entrenamiento son pares de pregunta y respuesta sacados de las conversaciones y notas de este proyecto, con los datos privados ocultos. Con ellos se ajusta un modelo pequeño en tu computadora, y @madre contesta con él.',
   'Step by step': 'Paso a paso',
   'Mac with Apple chip': 'Mac con chip Apple',
   'Linux with NVIDIA': 'Linux con NVIDIA',
@@ -7010,8 +7009,6 @@ export const ES = {
   "Answers here": "Respuestas aquí",
   "Its last answer": "Su última respuesta",
   "A token is a piece of a word: it is how AIs count what they read and write. A short answer is a few hundred.": "Un token es un pedazo de palabra: así cuentan las IAs lo que leen y escriben. Una respuesta corta son unos cientos.",
-  "Every {window}": "Cada {window}",
-  "{pct}% used · renews {when}": "{pct} % usado · se renueva {when}",
   "Your plan lets you use this AI up to a limit, which renews every so often. When it reaches 100 %, it waits until it renews.": "Tu plan te deja usar esta IA hasta un límite que se renueva cada cierto tiempo. Si llega al 100 %, toca esperar a que se renueve.",
   "If it takes longer than {time} to answer, MADRE stops waiting.": "Si tarda más de {time} en contestar, MADRE deja de esperarla.",
   "Read your project": "Leer tu proyecto",
@@ -7059,4 +7056,23 @@ export const ES = {
   "Your plan: {pct}% used": "Tu plan: {pct} % usado",
   " · renews {when}": " · se renueva {when}",
   "Click for its usage and what it can do": "Clic para ver su uso y lo que puede hacer",
+  // La ventana del agente, más gráfica (1.1).
+  "waits {time}": "espera {time}",
+  "renews {when}": "se renueva {when}",
+  // Entrenar tu propia IA, explicado (1.1).
+  "MADRE gathers questions and answers from this project's conversations and notes, with private details hidden.": "MADRE junta preguntas y respuestas de las conversaciones y notas de este proyecto, con los datos privados ocultos.",
+  "With them, a small AI on your computer learns how this project works. Nothing leaves your computer, and it costs nothing.": "Con ellas, una IA chica de tu computadora aprende cómo funciona este proyecto. Nada sale de tu computadora y no cuesta nada.",
+  "When it is ready, @madre answers with it in this project on its own. You try it before trusting it.": "Cuando está lista, @madre contesta con ella en este proyecto sin que hagas nada. La pruebas antes de confiar en ella.",
+  "Each step is a line you copy into a terminal (the window where you type commands). The lines already carry this project's folders on your computer: copy them as they are.": "Cada paso es una línea que copias en una terminal (la ventana donde se escriben comandos). Las líneas ya traen las carpetas de este proyecto en tu computadora: cópialas tal cual.",
+  "It is part of MADRE now": "Ya es parte de MADRE",
+  "@madre answers with {model} in this project without you doing anything; Settings › Local AI shows it in use. To go back to the usual model, delete it with «ollama rm {model}».": "@madre contesta con {model} en este proyecto sin que hagas nada; Ajustes › IA local lo muestra en uso. Para volver al modelo de siempre, bórralo con «ollama rm {model}».",
+  // Por qué una revisión de memoria no se puede ejecutar (1.1).
+  "the room has no memory": "este proyecto todavía no tiene memoria",
+  "no exchange here is long enough to test with yet": "todavía no hay aquí una conversación lo bastante larga para probar",
+  "the local model is not running: open MODULES → OLLAMA": "la IA local no está abierta: actívala en Ajustes › IA local",
+  "this test needs embeddings, which are off": "esta prueba necesita la búsqueda por significado, que está apagada",
+  "nothing here was answered by an agent other than the local one": "aquí todavía no ha contestado ninguna IA además de la local",
+  // Buscar por significado, en palabras (1.1).
+  "With the AI on your computer · free and private": "Con la IA de tu computadora · gratis y privado",
+  "With the AI on your computer · its model is not there yet": "Con la IA de tu computadora · todavía falta su modelo",
 };
