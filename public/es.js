@@ -6106,6 +6106,18 @@ export const ES = {
   'The skill says {found} and the Market said {said}, so MADRE did not install it.': 'La habilidad dice {found} y el Mercado decía {said}, así que MADRE no la instaló.',
   'Read what {name} tells your agents before installing it.': 'Lee qué le dice {name} a tus agentes antes de instalarla.',
   'MADRE could not read the Market.': 'MADRE no pudo leer el Mercado.',
+  // Compartir una habilidad de mano en mano (C-1).
+  'Share': 'Compartir',
+  'MADRE prepares its files for you to send; it sends nothing.': 'MADRE prepara sus archivos para que los mandes tú; no manda nada.',
+  'sent to you': 'te la pasaron',
+  '{name} arrived with your file.': '{name} llegó con tu archivo.',
+  'KEEP IT FOR EVERY PROJECT': 'GUÁRDALA PARA TODOS',
+  'ONLY IN THIS PROJECT': 'SOLO EN ESTE PROYECTO',
+  'Somebody sent you this: the author of MADRE did not read it, nothing will update it on its own and nobody can take it back. Read it before your agents do. It gives no permission — it tells them how to work, inside whatever mode you give them.': 'Esto te lo pasó alguien: el autor de MADRE no la leyó, nada la va a actualizar sola y nadie la puede retirar. Léela antes que tus agentes. No da permiso: les dice cómo trabajar, dentro del modo que tú les des.',
+  'It mentions programs, and they did not come with the file.': 'Menciona programas, y no vinieron con el archivo.',
+  '{name} is ready to send: one file, {file}. Whoever gets it drags it into their conversation.': '{name} está lista para mandar: un archivo, {file}. Quien la reciba lo arrastra a su conversación.',
+  '{name} is ready to send: {n} files, in {folder}. They travel together; one on its own would point at what is not there.': '{name} está lista para mandar: {n} archivos, en {folder}. Van juntos; uno solo señalaría lo que no está.',
+  'That file is named like a skill, but MADRE cannot read it as one.': 'Ese archivo se llama como una habilidad, pero MADRE no lo puede leer como una.',
   // Enviar tu habilidad al Mercado (H-8).
   'Send {name} to the Market': 'Manda {name} al Mercado',
   'MADRE checks it here, the author of MADRE reads it and signs it, and then anyone can find it.': 'MADRE la revisa aquí, el autor de MADRE la lee y la firma, y entonces cualquiera la encuentra.',

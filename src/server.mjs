@@ -134,7 +134,7 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
-import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
+import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, shareSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
 import { findSkills, importSkills } from './skills-import.mjs';
 import { ASKS as SKILL_ASKS, SKILL_LICENSES, SKILL_SHELVES, submissionDraft as skillDraft, writeSubmission as writeSkillSubmission } from './skill-check.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
@@ -3817,7 +3817,18 @@ export async function createPulseServer({
         const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const record = await here.room.registerAttachment(await storeAttachment(attachmentsRoot, { name, bytes }));
-        return sendJson(response, 201, { attachment: { id: record.id, name: record.name, fileName: record.fileName, size: record.size, contentType: record.contentType, url: `/api/files?root=attachments&path=${encodeURIComponent(record.fileName)}` } });
+        // A SKILL SOMEBODY SENT (C-1). The file a person drags in lands here, under the room, which
+        // is one of the two places MADRE accepts a skill from; so what is left is recognising it.
+        // Read from the bytes just stored: by its name (<id>.habilidad.md, as an agent writes one)
+        // or because a .md turns out to read as a skill — which is what arrives by e-mail.
+        let sent = null;
+        if (/\.md$/i.test(record.name) && bytes.length <= 1024 * 1024) {
+          try {
+            const read = readSkillText(bytes.toString('utf8'), { id: skillIdOf(record.name) });
+            sent = { id: read.id, name: read.name, when: read.when, version: read.version, body: read.body, unknown: read.unknown, declares: skillDeclares({ ...read, files: [], scripts: [] }), fileName: record.fileName };
+          } catch { sent = isSkillFile(record.name) ? { error: t('That file is named like a skill, but MADRE cannot read it as one.') } : null; }
+        }
+        return sendJson(response, 201, { attachment: { id: record.id, name: record.name, fileName: record.fileName, size: record.size, contentType: record.contentType, url: `/api/files?root=attachments&path=${encodeURIComponent(record.fileName)}` }, ...(sent ? { skill: sent } : {}) });
       }
       // An attachment of the conversation, saved into the project where the person says (L-2,
       // src/files.mjs keepAttachment): a PDF into conocimiento/, a patient's photo into its folder.
@@ -5160,6 +5171,17 @@ export async function createPulseServer({
         }));
         return sendJson(response, 200, { skills, failures, folders, project: Boolean(scopeRoom) });
       }
+      // GIVING ONE TO SOMEBODY (C-1): its files, without MADRE's own record of where it came from,
+      // in a folder the person can find. Nothing is sent anywhere: MADRE prepares, the person sends.
+      if (request.method === 'POST' && url.pathname === '/api/skills/share') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        try {
+          const ready = await shareSkill({ stateRoot: root, projectRoot: canonicalProjectRoot, id: String(payload.id ?? '') });
+          const shown = await openInBrowser(ready.folder, await environmentOnce().catch(() => null)).catch(() => false);
+          return sendJson(response, 200, { ...ready, shown });
+        } catch (error) { return sendJson(response, 404, { error: error.message }); }
+      }
       // SENDING ONE'S OWN SKILL TO THE MARKET (H-8). A skill is one file, so this is not a form full
       // of what MADRE already knows: only what nobody but the person can say, written into its own
       // header. Asked once for the draft, then again to write the folder they will send.
@@ -5198,8 +5220,11 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/skills/install-file') {
         const payload = await body(request).catch(() => ({}));
         const relative = String(payload.path ?? '').replace(/^\/+/, '');
-        if (!relative || relative.includes('..') || !isSkillFile(relative)) return sendJson(response, 400, { error: t('Give the project-relative path of a <id>.habilidad.md file.') });
-        const file = join(canonicalProjectRoot, relative);
+        // From the agent's draft inside the project, or from what the person dragged into the room
+        // (C-1): those are the only two places, and they are the same two a module comes from.
+        const sent = payload.root === 'attachments';
+        if (!relative || relative.includes('..') || (!sent && !isSkillFile(relative))) return sendJson(response, 400, { error: t('Give the project-relative path of a <id>.habilidad.md file.') });
+        const file = sent ? join(attachmentsRoot, relative) : join(canonicalProjectRoot, relative);
         try {
           const text = await readFile(file, 'utf8');
           const read = readSkillText(text, { id: skillIdOf(relative) });
@@ -5210,9 +5235,9 @@ export async function createPulseServer({
             files: [{ path: SKILL_FILES[0], text }],
             scope: payload.scope === 'project' ? 'project' : 'user',
             stateRoot: root, projectRoot: canonicalProjectRoot,
-            source: { kind: 'file', from: relative, id: read.id },
+            source: { kind: sent ? 'sent' : 'file', from: relative, id: read.id },
           });
-          await room.record('skill.installed', { id: done.id, name: done.name, origin: done.origin, from: relative, by: 'you' });
+          await room.record('skill.installed', { id: done.id, name: done.name, origin: done.origin, from: sent ? 'sent' : relative, by: 'you' });
           return sendJson(response, 200, { installed: done });
         } catch (error) { return sendJson(response, 422, { error: error.message }); }
       }

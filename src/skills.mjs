@@ -450,3 +450,43 @@ export function formatSkills(skills = [], { mode = 1 } = {}) {
   }
   return lines.join('\n');
 }
+
+// ---- SHARING ONE, HAND TO HAND (2026-11-08, C-1). The Market is the curated road: the author of
+// MADRE reads a skill, signs it, and every MADRE can get it and be told when it is taken back. This
+// is the other road, the one things actually travel on: somebody sends a colleague the file that
+// solved their afternoon.
+//
+// What is prepared is the skill as it is, without MADRE's own record of where it came from, in a
+// folder of its own so the person can find it. A skill of ONE file is written as `<id>.habilidad.md`
+// — the same name an agent writes and the room already recognises — so the other side only has to
+// drag it in. One that carries more says so: those files travel together or not at all, and nothing
+// here builds an archive, because MADRE has nothing that opens one.
+//
+// Decided by the author on 2026-11-08: SKILLS ONLY. A module hand to hand would be code running with
+// the permissions of whoever installed it, with nobody having read it.
+export const shareFolder = (stateRoot, id) => join(stateRoot, 'compartir', id);
+export async function shareSkill({ stateRoot, projectRoot, id }) {
+  const { loaded } = await loadSkills({ stateRoot, projectRoot });
+  const skill = loaded.find((one) => one.id === id);
+  if (!skill) throw new Error(t('No skill «{id}».', { id }));
+  const folder = shareFolder(stateRoot, id);
+  await rm(folder, { recursive: true, force: true }).catch(() => {});
+  await mkdir(folder, { recursive: true });
+  const carried = skill.files.filter((file) => file.path !== 'origen.json');
+  const alone = carried.length === 1 && SKILL_FILES.includes(carried[0].path);
+  const written = [];
+  for (const file of carried) {
+    // Alone, it travels under the name the other side knows; with company, under its own.
+    const name = alone ? `${skill.id}.habilidad.md` : file.path;
+    const to = join(folder, name);
+    await mkdir(dirname(to), { recursive: true });
+    await writeFile(to, await readFile(join(skill.dir, file.path)));
+    written.push(name);
+  }
+  return {
+    id: skill.id, folder, files: written, alone,
+    // What the other side will not get, said here and not discovered there.
+    scripts: skill.scripts,
+    file: alone ? join(folder, written[0]) : null,
+  };
+}

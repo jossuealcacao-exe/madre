@@ -165,6 +165,21 @@ puedes pedirlo en lenguaje normal estando en #2 o más; `/habilidad` solo hace e
 
 ## Compartirla
 
-Una habilidad es un archivo: se manda por correo o por donde quieras. Y el Mercado la reparte
-firmada por el autor de MADRE, con su versión, su autoría y su licencia; una versión nueva llega
-sola, salvo que traiga un programa que nadie había aceptado — esa espera a que la persona la lea.
+Hay dos caminos, y no son lo mismo.
+
+**De mano en mano.** En su fila, **«Compartir»**: MADRE prepara sus archivos y te los muestra, y tú
+los mandas por donde quieras. Quien los reciba **arrastra el archivo a su conversación** y MADRE le
+ofrece guardarlo, con el texto completo para leerlo antes. Una habilidad de un solo archivo viaja
+como `<id>.habilidad.md`, que es el nombre que el otro lado ya reconoce; una que lleva referencias
+o guiones viaja con todos sus archivos, porque uno solo señalaría lo que no está.
+
+Lo que llega así **no lo revisó nadie más que tú**, no se actualiza solo y nadie lo puede retirar.
+La tarjeta lo dice con esas palabras.
+
+**Por el Mercado.** «Enviar al Mercado»: el autor de MADRE la lee, la firma y la publica. Desde ahí
+llega a cualquiera con su versión, su autoría y su licencia; una versión nueva llega sola, salvo que
+traiga un programa que nadie había aceptado — esa espera a que la persona la lea —, y si sale mal se
+retira de todas las MADRE a la vez.
+
+Los módulos no se comparten de mano en mano: un módulo es código que corre en la computadora de
+quien lo instala, y ese camino solo existe para habilidades.
