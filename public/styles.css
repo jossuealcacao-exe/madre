@@ -10008,15 +10008,20 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 .toast.leaving:not([hidden]) { animation: toast-fold calc(300ms * var(--motion-scale)) cubic-bezier(.5, 0, .6, 1) both; }
 .toast.leaving:not([hidden])::before { animation: toast-fold-tint calc(300ms * var(--motion-scale)) ease-in both; }
 .toast.leaving:not([hidden]) > * { animation: toast-words-out calc(120ms * var(--motion-scale)) ease both; }
+/* The bloom ends with its clip opened 64 px round the box (2026-11-09): ending at the box's own edge
+   (inset 0), it kept clipping the notice's edge line and shadow for as long as it stayed, and every
+   shadow written for it never showed. */
 @keyframes toast-bloom {
   from { clip-path: inset(calc(50% - 5px) calc(50% - 5px) round 999px); transform: translateX(-50%) scale(.92); }
   32% { clip-path: inset(0 calc(50% - var(--toast-h, 38px) / 2) round 999px); }
-  78%, to { clip-path: inset(0 round 20px); transform: translateX(-50%); }
+  78% { clip-path: inset(0 round 20px); transform: translateX(-50%); }
+  to { clip-path: inset(-64px round 84px); transform: translateX(-50%); }
 }
 @keyframes toast-bloom-tint { from, 30% { opacity: 1; } 70%, to { opacity: 0; } }
 @keyframes toast-words { from { opacity: 0; } }
 @keyframes toast-fold {
-  from { clip-path: inset(0 round 20px); transform: translateX(-50%); }
+  from { clip-path: inset(-64px round 84px); transform: translateX(-50%); }
+  12% { clip-path: inset(0 round 20px); }
   55% { clip-path: inset(0 calc(50% - var(--toast-h, 38px) / 2) round 999px); opacity: 1; }
   85% { clip-path: inset(calc(50% - 5px) calc(50% - 5px) round 999px); opacity: 1; }
   to { clip-path: inset(calc(50% - 5px) calc(50% - 5px) round 999px); transform: translateX(-50%) scale(.92); opacity: 0; }
