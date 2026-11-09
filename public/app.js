@@ -13938,6 +13938,18 @@ async function addFiles(files) {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? t('Upload failed ({status}).', { status: response.status }));
       item.id = result.attachment.id; item.uploading = false;
+      // A card of MADRE's own, put in the conversation outside the ledger: the same shape every system
+// line has (tidySystemLine, scheduleFold), for something that happened to the person and not to the
+// room — a file they just dropped in.
+function addSystem(node) {
+  els.column.append(tidySystemLine(node));
+  scheduleFold(node);
+  if (pinnedToEnd) scrollToEnd();
+}
+
+// A SKILL SOMEBODY SENT YOU (C-1). It came in as an attachment because that is how a file
+      // reaches MADRE, and MADRE recognised it: offered here, never installed on its own.
+      if (result.skill) offerSentSkill(result.skill, item);
     } catch (error) {
       state.pending = state.pending.filter((other) => other !== item);
       toast(t('The attachment was rejected: {error}', { error: error.message }));
@@ -17386,6 +17398,8 @@ function skillRow(skill) {
   }, { tone: 'danger' });
   keys.append(gone);
   // Sending one's own: only for a skill that is the person's, never for one the Market signed.
+  const share = sxButton(t('Share'), () => void shareSkillNow(skill, share), { title: t('MADRE prepares its files for you to send; it sends nothing.') });
+  keys.append(share);
   if (!skill.market) keys.append(sxButton(t('Send to the Market'), () => openSkillSubmit(skill)));
   row.append(words, keys);
   // The word for every project, said only when this project has one of its own: otherwise it is
@@ -17470,6 +17484,59 @@ function openSkillImport() {
   dialog.showModal();
   list.append(el('p', 'settings-reading', t('Looking…')));
   void fetch('/api/skills/import').then((response) => response.json()).then((data) => draw(data.found ?? [])).catch(() => { list.replaceChildren(el('p', 'mods-submit-warn', t('MADRE could not read them.'))); });
+}
+
+// A SKILL SOMEBODY SENT YOU (C-1). The Market is the curated road: read and signed by the author of
+// MADRE, updated on its own, and taken back from everywhere if it turns out badly. This is the other
+// road, and the card says so plainly — because nobody read this one but you, and nothing will ever
+// update it or take it back.
+function offerSentSkill(sent, item) {
+  if (sent.error) { toast(sent.error); return; }
+  const node = el('div', 'system module-proposed');
+  claimHead(node, t('SKILL'), t('sent to you'));
+  const said = el('span', 'claim-body');
+  said.append(t('{name} arrived with your file.', { name: skillWords(sent.name) ?? sent.id }));
+  node.append(said);
+  if (sent.when) node.append(el('span', 'claim-note', `${t('It comes in when:')} ${skillWords(sent.when)}`));
+  const ask = (extra = {}) => fetch('/api/skills/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path: sent.fileName, root: 'attachments', ...extra }) }).then((response) => response.json());
+  const read = el('button', 'claim-act', t('READ IT'));
+  read.type = 'button';
+  read.addEventListener('click', () => openSkillText({ ...sent, dir: null, license: null, credit: sent.declares?.credit ?? null }));
+  const install = async (scope, key) => {
+    key.disabled = true;
+    try {
+      const payload = await ask({ scope });
+      if (payload.error) throw new Error(payload.error);
+      toast(t('Diagnostics › {name} is yours now, for {where}. It comes in when it fits; change that in MODULES.', { name: skillWords(payload.installed.name) ?? payload.installed.id, where: scope === 'project' ? t('this project') : t('every project') }));
+      void refreshSkills();
+      // Attached it was a file for an agent to read; kept, it is a skill, and the composer lets go.
+      state.pending = state.pending.filter((other) => other !== item);
+      renderPendingAttachments();
+    } catch (error) { toast(t('The skill was not installed: {error}', { error: error.message })); key.disabled = false; }
+  };
+  const everyRoom = el('button', 'claim-act', t('KEEP IT FOR EVERY PROJECT'));
+  everyRoom.type = 'button';
+  everyRoom.addEventListener('click', () => install('user', everyRoom));
+  const thisProject = el('button', 'claim-act', t('ONLY IN THIS PROJECT'));
+  thisProject.type = 'button';
+  thisProject.addEventListener('click', () => install('project', thisProject));
+  const acts = el('span', 'claim-acts');
+  acts.append(read, everyRoom, thisProject);
+  node.append(acts, el('span', 'claim-note', t('Somebody sent you this: the author of MADRE did not read it, nothing will update it on its own and nobody can take it back. Read it before your agents do. It gives no permission — it tells them how to work, inside whatever mode you give them.')));
+  if (sent.declares?.scripts?.length) node.append(el('span', 'claim-note replaces', t('It mentions programs, and they did not come with the file.')));
+  addSystem(node);
+}
+
+// Giving one away: MADRE prepares its files and shows you where they are. It sends nothing.
+async function shareSkillNow(skill, key) {
+  key.disabled = true;
+  const payload = await fetch('/api/skills/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: skill.id }) }).then((response) => response.json()).catch(() => ({ error: t('MADRE did not answer.') }));
+  key.disabled = false;
+  if (payload.error) { toast(payload.error); return; }
+  const what = payload.alone
+    ? t('{name} is ready to send: one file, {file}. Whoever gets it drags it into their conversation.', { name: skillWords(skill.name) ?? skill.id, file: payload.files[0] })
+    : t('{name} is ready to send: {n} files, in {folder}. They travel together; one on its own would point at what is not there.', { name: skillWords(skill.name) ?? skill.id, n: payload.files.length, folder: payload.folder });
+  toast(payload.shown ? what : `${what} ${t('Open that folder from your file browser.')}`);
 }
 
 // SENDING YOUR OWN SKILL (H-8). A skill is one file, so this asks only what nobody but the person
