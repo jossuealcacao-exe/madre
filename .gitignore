@@ -19,3 +19,7 @@ docs/private/
 
 # Built installers (scripts/windows-installer.mjs): published as release files, never committed
 /out/
+
+# The app (desktop/, Tauri): what Cargo builds and what Tauri generates
+/desktop/src-tauri/target/
+/desktop/src-tauri/gen/
