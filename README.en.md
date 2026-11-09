@@ -13,7 +13,7 @@
 
 # All your AIs in one chat.
 
-**MADRE is not another AI.** It is an app that runs on your computer and brings the AIs you already use (Codex, Claude Code, Gemini, Cursor and OpenCode) into one chat, inside your project. You write to them in your own words, each one reads what the others said, and you decide what they may change. What gets decided is kept.
+**MADRE is not another AI.** It is an app that runs on your computer and brings the AIs you already use (Codex, Claude Code, Gemini, Cursor, OpenCode and Grok) into one chat, inside your project. You write to them in your own words, each one reads what the others said, and you decide what they may change. What gets decided is kept.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/public/assets/news/1.1/en/chats.webp" alt="A project in MADRE 1.1: chats on the left and OpenCode checking a shop's cart" width="100%">
@@ -44,7 +44,7 @@ You need Node 22.5 or newer and at least one AI you are signed in to. There is n
   </tr>
 </table>
 
-Also: chats to one side like in chat apps, Windows through WSL2, and project maps that grow with what they know. The details are in the [CHANGELOG](CHANGELOG.en.md).
+Also: skills, to teach MADRE once how you work so all your AIs follow it; Grok among your AIs; chats to one side like in chat apps, Windows through WSL2, and project maps that grow with what they know. The details are in the [CHANGELOG](CHANGELOG.en.md).
 
 ## If something fails
 
