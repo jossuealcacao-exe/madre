@@ -2402,11 +2402,19 @@ const browserTab = () => browser.tabs.find((tab) => tab.id === browser.active) ?
 // lives in MODULES and the human can move it with this panel open; a permission cached when the
 // panel opened would keep refusing after they turned it on, and a switch that is not believed is
 // worse than no switch. Loopback needs no question and gets none.
+// Inside MADRE's app (desktop/src-tauri/src/browser.js and browser.rs, 2026-11-09) each tab is a real
+// web view of the app laid over the place this frame keeps: every site shows, each tab keeps its own
+// page, and what happens inside comes back through browserNativeSaid. The frame stays, empty, to
+// mark the place (and a phone's width). In a browser this is null and nothing below changes.
+const nativeBrowser = () => window.__madreNativeBrowser ?? null;
+
 async function browserAllows(url) {
   let parsed = null;
   try { parsed = new URL(url); } catch { return { ok: false, why: t('That is not an address.') }; }
   if (!/^https?:$/.test(parsed.protocol)) return { ok: false, why: t('Only http and https.') };
   if (['127.0.0.1', 'localhost', '[::1]', '::1'].includes(parsed.hostname)) return { ok: true, local: true };
+  // In the app the person goes where they choose: the web is theirs to open in their own panel.
+  if (nativeBrowser()) return { ok: true, local: false };
   try {
     const live = await fetch('/api/state').then((response) => response.json());
     state.ripleyWeb = Boolean(live?.ripleyWeb);
@@ -2454,6 +2462,17 @@ async function browserOpen(url, { tab = null } = {}) {
   if (!allowed.ok) { toast(allowed.why); return; }
   const target = tab ?? browserTab();
   if (!target) { browserNewTab(url); return; }
+  if (nativeBrowser()) {
+    target.url = url;
+    target.title = browserTitleFor(url);
+    if (target.history.at(-1) !== url) target.history.push(url);
+    if (target.id === browser.active) {
+      if (browser.where) browser.where.textContent = url.replace(/^https?:\/\//, '');
+      nativeBrowser().open(target.id, url);
+    }
+    browserRenderTabs();
+    return;
+  }
   // A page is entitled to refuse the glass, and most serious ones do. Asking first turns the
   // browser's bare "refused to connect" into MADRE's own sentence and a real tab — the same
   // answer the servers menu already gives for a local port that refuses.
@@ -2483,6 +2502,7 @@ function browserNewTab(url = 'about:blank') {
   browser.active = tab.id;
   browserMountFrame();
   if (url !== 'about:blank') { void browserOpen(url, { tab }); return; }
+  nativeBrowser()?.hide();
   if (browser.frame) browser.frame.src = 'about:blank';
   if (browser.where) browser.where.textContent = '';
   browserRenderTabs();
@@ -2496,6 +2516,11 @@ function browserSelect(id) {
   browserMountFrame();
   if (browser.where) browser.where.textContent = tab?.url && tab.url !== 'about:blank' ? tab.url.replace(/^https?:\/\//, '') : '';
   if (browser.back) browser.back.disabled = (tab?.history.length ?? 0) < 2;
+  if (nativeBrowser()) {
+    if (tab?.url && tab.url !== 'about:blank') nativeBrowser().select(id, tab.url); else nativeBrowser().hide();
+    browserRenderTabs();
+    return;
+  }
   // The one frame is re-navigated rather than a second one being born: a tab that is not on
   // screen costs an address and a title, and nothing else.
   if (browser.frame) browser.frame.src = tab?.url ?? 'about:blank';
@@ -2505,6 +2530,7 @@ function browserSelect(id) {
 function browserCloseTab(id) {
   const index = browser.tabs.findIndex((tab) => tab.id === id);
   if (index < 0) return;
+  nativeBrowser()?.close(id);
   browser.tabs.splice(index, 1);
   if (!browser.tabs.length) { browserHide(); return; }
   if (browser.active === id) { browser.active = null; browserSelect(browser.tabs[Math.max(0, index - 1)].id); }
@@ -2586,6 +2612,12 @@ function browserShow() {
   if (browser.dialog.hidden) void morph('dock', show); else show();
   browser.button?.setAttribute('aria-pressed', 'true');
   if (!browser.tabs.length) browserNewTab();
+  else if (nativeBrowser()) {
+    browserMountFrame();
+    const tab = browserTab();
+    if (tab?.url && tab.url !== 'about:blank') nativeBrowser().select(tab.id, tab.url); else nativeBrowser().hide();
+    browserRenderTabs();
+  }
   else { browserMountFrame(); const tab = browserTab(); if (browser.frame && tab) browser.frame.src = tab.url; browserRenderTabs(); }
 }
 
@@ -2594,6 +2626,7 @@ function browserShow() {
 function browserHide() {
   const body = browser.body;
   setPointing(false);
+  nativeBrowser()?.hide();
   const hide = () => {
     if (browser.dialog) browser.dialog.hidden = true;
     document.querySelector('.shell')?.classList.remove('with-browser');
@@ -3083,14 +3116,45 @@ document.addEventListener('click', (event) => {
   if (browser.portsMenu.contains(event.target) || browser.servers?.contains(event.target)) return;
   portsMenuShown(false);
 });
-browser.reload?.addEventListener('click', () => { const tab = browserTab(); if (browser.frame && tab) browser.frame.src = tab.url; });
+browser.reload?.addEventListener('click', () => {
+  const tab = browserTab();
+  if (nativeBrowser() && tab) { nativeBrowser().go(tab.id, 'reload'); return; }
+  if (browser.frame && tab) browser.frame.src = tab.url;
+});
 browser.back?.addEventListener('click', () => {
   const tab = browserTab();
+  if (nativeBrowser() && tab) { nativeBrowser().go(tab.id, 'back'); return; }
   if (!tab || tab.history.length < 2) return;
   tab.history.pop();
   const previous = tab.history.pop();
   if (previous) void browserOpen(previous, { tab });
 });
+
+// What a tab's real page did, told by the app (desktop/src-tauri/src/browser.rs): where it is now,
+// its title, whether it is loading and can go back; a link to a new window becomes a new tab. And
+// an address typed in the panel's bar (the app's field) opens in the tab in front.
+function browserNativeSaid(said = {}) {
+  if (said.newTab) { browserShow(); browserNewTab(said.newTab); return; }
+  const tab = browser.tabs.find((one) => one.id === said.tab);
+  if (!tab) return;
+  if (said.url && /^https?:/.test(said.url)) {
+    if (tab.url !== said.url) { tab.url = said.url; if (!said.title) tab.title = browserTitleFor(said.url); }
+    if (tab.history.at(-1) !== said.url) tab.history.push(said.url);
+  }
+  if (said.title) tab.title = String(said.title).slice(0, 80);
+  if (typeof said.loading === 'boolean') tab.loading = said.loading;
+  if (typeof said.back === 'boolean') tab.canBack = said.back;
+  if (typeof said.forward === 'boolean') tab.canForward = said.forward;
+  if (tab.id !== browser.active) { browserRenderTabs(); return; }
+  if (browser.where) browser.where.textContent = tab.url.replace(/^https?:\/\//, '');
+  if (browser.back && typeof tab.canBack === 'boolean') browser.back.disabled = !tab.canBack;
+  browser.reload?.classList.toggle('loading', Boolean(tab.loading));
+  browserRenderTabs();
+}
+window.__madreRoomBrowser = {
+  said: browserNativeSaid,
+  go: (url) => { browserShow(); const tab = browserTab(); if (!tab) browserNewTab(url); else void browserOpen(url, { tab }); },
+};
 
 function ripleyPathFromPreview(pathname) {
   const match = String(pathname ?? '').match(/^\/preview\/(project|attachments)\/(.*)$/);
