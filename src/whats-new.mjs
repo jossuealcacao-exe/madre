@@ -31,32 +31,24 @@ const FILE = 'whats-new.json';
 export const NEWS_ACTIONS = ['settings', 'errors', 'mother', 'intents', 'permissions', 'github', 'bar', 'modules', 'nostromo', 'room', 'looks', 'finder'];
 
 export const NOTES = {
-  // 1.1.3 (borrador del 2026-11-08, por aprobar): una bienvenida nueva, habilidades, Grok y los logos
-  // oficiales, una nota la primera vez en cada tecla y una ficha que solo tiene tu navegador.
+  // 1.1.3 (borrador del 2026-11-08, por aprobar): said as a person would to someone who comes back,
+  // with the three things that change their day, each with its own moving picture (`scene`, drawn by
+  // public/welcome-scene.js) instead of a screenshot.
   '1.1.3': {
+    title: { es: 'Qué bueno verte de nuevo', en: 'Good to see you again' },
     intro: {
-      es: 'MADRE 1.1.3 se siente más fácil desde el primer minuto: una bienvenida nueva, habilidades para que tus IAs trabajen a tu manera y Grok entre tus agentes.',
-      en: 'MADRE 1.1.3 feels easier from the first minute: a new welcome, skills so your AIs work your way, and Grok among your agents.',
+      es: 'Mientras no estabas, MADRE aprendió tres cosas que te ahorran tiempo desde hoy.',
+      en: 'While you were away, MADRE learned three things that save you time from today.',
     },
     items: [
       {
-        id: 'welcome',
-        icon: 'star',
-        title: { es: 'Una bienvenida como estrenar teléfono', en: 'A welcome like a new phone' },
-        body: {
-          es: 'Quien estrena MADRE ahora la deja lista en seis pasos: trae sus carpetas, reconoce las IAs que ya tiene y baja la IA de su computadora mientras sigue. Termina dentro de su proyecto, con el primer mensaje escrito.',
-          en: 'Whoever starts MADRE now has it ready in six steps: it brings their folders, recognises the AIs they already have and downloads the AI for their computer while they go on. It ends inside their project, with the first message written.',
-        },
-        where: { es: 'Ajustes de Inicio › Ver la bienvenida otra vez', en: 'Home settings › See the welcome again' },
-        action: null,
-      },
-      {
         id: 'skills',
         icon: 'chip',
-        title: { es: 'Habilidades: tus IAs trabajan a tu manera', en: 'Skills: your AIs work your way' },
+        scene: 'skills',
+        title: { es: 'Enséñale una vez cómo trabajas', en: 'Teach it once how you work' },
         body: {
-          es: 'Una habilidad es un texto con tu forma de trabajar, como cotizas o como escribes, que MADRE le pasa a la IA que conteste, sea cual sea. Trae las que ya tienes en Claude y Codex, consigue más en el Mercado o compártelas.',
-          en: 'A skill is a text with how you work, how you quote or how you write, that MADRE hands to whichever AI answers. Bring the ones you already have in Claude and Codex, get more in the Market, or share them.',
+          es: 'Con las habilidades, tu forma de cotizar, de escribir o de revisar queda escrita una vez y la usan todas tus IAs, sea Claude, Codex o Grok. Trae las que ya tienes, consigue más en el Mercado o compártelas.',
+          en: 'With skills, the way you quote, write or review is written once and all your AIs use it, be it Claude, Codex or Grok. Bring the ones you already have, get more in the Market, or share them.',
         },
         where: { es: 'Mercado › Habilidades', en: 'Market › Skills' },
         action: null,
@@ -64,10 +56,11 @@ export const NOTES = {
       {
         id: 'grok',
         icon: 'ufo',
-        title: { es: 'Grok se suma, y cada IA con su logo', en: 'Grok joins, and every AI with its logo' },
+        scene: 'newagent',
+        title: { es: 'Grok, ahora entre tus IAs', en: 'Grok, now among your AIs' },
         body: {
-          es: 'Grok, la IA de xAI, se conecta desde Ajustes › Agentes con tu cuenta de Grok. Codex, Claude, Gemini, OpenCode y Grok se ven con sus logos oficiales.',
-          en: 'Grok, xAI\'s AI, connects from Settings › Agents with your Grok account. Codex, Claude, Gemini, OpenCode and Grok show their official logos.',
+          es: 'Si pagas SuperGrok, ya lo usas en tus proyectos: se conecta desde Ajustes › Agentes con tu cuenta, y lee, escribe, busca en internet y hace imágenes.',
+          en: 'If you pay for SuperGrok, you can now use it in your projects: it connects from Settings › Agents with your account, and it reads, writes, looks things up on the internet and makes images.',
         },
         where: { es: 'Ajustes › Agentes', en: 'Settings › Agents' },
         action: 'settings',
@@ -75,23 +68,13 @@ export const NOTES = {
       {
         id: 'tips',
         icon: 'bell',
-        title: { es: 'Cada tecla te dice qué hace, una vez', en: 'Every key tells you what it does, once' },
+        scene: 'tips',
+        title: { es: 'MADRE te explica cada cosa', en: 'MADRE explains everything to you' },
         body: {
-          es: 'La primera vez que tocas algo importante, como Plan actual, el copiloto o tus IAs, sale una nota corta que lo explica. Y la ventana de cada IA te enseña con barras cuánto de tu plan llevas y qué puede hacer.',
-          en: 'The first time you press something important, such as Running now, the copilot or your AIs, a short note explains it. And each AI\'s card shows with bars how much of your plan you have used and what it can do.',
+          es: 'La primera vez que tocas algo importante, una nota corta te dice para qué sirve. Y cada IA te enseña con barras cuánto de tu plan llevas y qué puede hacer.',
+          en: 'The first time you press something important, a short note tells you what it is for. And each AI shows you with bars how much of your plan you have used and what it can do.',
         },
         where: { es: 'En toda MADRE', en: 'All over MADRE' },
-        action: null,
-      },
-      {
-        id: 'ficha',
-        icon: 'lock',
-        title: { es: 'Solo tu navegador entra a MADRE', en: 'Only your browser gets into MADRE' },
-        body: {
-          es: 'Ningún otro programa de tu computadora puede usar MADRE por ti: cada página lleva una ficha que solo tiene el navegador que MADRE abrió.',
-          en: 'No other program on your computer can use MADRE for you: every page carries a ticket only the browser MADRE opened has.',
-        },
-        where: { es: 'Sin hacer nada', en: 'With nothing to do' },
         action: null,
       },
     ],

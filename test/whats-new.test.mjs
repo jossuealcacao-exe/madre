@@ -95,6 +95,14 @@ test('whats new: from 1.0 a sheet is a board — each thing has its picture, and
     assert.equal(new Set(ids).size, ids.length, `${version} gives two things the same id`);
     for (const item of notes.items) {
       assert.match(item.id ?? '', /^[a-z]+$/, `${version} · "${item.title.en}" has no id`);
+      // A moving picture of its own (1.1.3): one of the stage's scenes (public/welcome-scene.js) in
+      // place of a screenshot.
+      if (item.scene) {
+        assert.ok(['skills', 'newagent', 'tips'].includes(item.scene), `${version} · "${item.id}" asks for a scene the stage does not draw: ${item.scene}`);
+        assert.equal(item.image, undefined, `${version} · "${item.id}" has a scene and a picture`);
+        assert.ok(item.action === null || NEWS_ACTIONS.includes(item.action), `${version} · "${item.id}" takes you somewhere the room does not know: ${item.action}`);
+        continue;
+      }
       // One picture, or one per language ({ es, en }, 1.1): each a webp in the version's folder,
       // listed by the server and present in public/ — a missing one is a hole in the board.
       for (const image of typeof item.image === 'string' ? [item.image] : [item.image?.es, item.image?.en]) {

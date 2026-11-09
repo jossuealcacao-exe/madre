@@ -2882,6 +2882,12 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .wn-card:active { box-shadow: var(--key-down); }
 .wn-card:focus-visible { box-shadow: var(--raise, var(--float-sm)), 0 0 0 2px color-mix(in srgb, var(--phosphor) 55%, transparent); }
 .wn-card-shot { margin-bottom: 4px; }
+/* A note's moving picture (1.1.3): the stage of the welcome, filling the frame, with no caption. */
+.wn-shot.scene { display: block; }
+.wn-shot.scene .wl-scene { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: inherit; overflow: hidden; background: #050605; box-shadow: none; }
+:root[data-scheme="light"] .wn-shot.scene .wl-scene { background: #eef0ea; }
+.wn-shot.scene .wl-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wn-shot.scene .wl-scene-cap { display: none; }
 .wn-card-title { padding: 0 4px; font-size: 14px; font-weight: 600; line-height: 1.3; }
 .wn-card-line { padding: 0 4px; font-size: 13px; line-height: 1.45; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 

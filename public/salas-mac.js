@@ -31,6 +31,7 @@ import { trazo, trazoDrawing } from './icons.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
+import { createScene } from './welcome-scene.js';
 
 // Nothing of MADRE starts before its license and privacy notice are accepted on this computer
 // (public/terms.js, src/terms.mjs): the page waits here.
@@ -3573,14 +3574,23 @@ async function homeNews(tries = 0) {
   const words = el('div', 'wn-headline');
   const logo = document.querySelector('.side-brand .brand-logo, #sm-back .brand-logo')?.cloneNode?.(true);
   if (logo) { logo.setAttribute('class', 'brand-logo wn-logo'); words.append(logo); }
-  words.append(el('span', 'wn-eyebrow', t("What's new")), el('h2', null, t('You now have {version}', { version: String(news.version).replace(/\.0$/, '') })));
+  // Its own words when the version has them (1.1.3: «Good to see you again»), with no label above.
+  words.append(el('h2', null, pick(notes.title) ?? t('You now have {version}', { version: String(news.version).replace(/\.0$/, '') })));
   if (notes.intro) words.append(el('p', 'wn-intro', pick(notes.intro)));
   head.append(words, closeKey(() => dialog.close()));
   const grid = el('div', 'wn-board');
+  const scenes = [];
   for (const item of notes.items ?? []) {
     const card = el('div', 'wn-card');
     const shot = el('span', 'wn-shot wn-card-shot');
-    if (item.image) {
+    // A moving picture of what it is (1.1.3, public/welcome-scene.js) in place of a screenshot.
+    if (item.scene) {
+      const scene = createScene();
+      scenes.push(scene);
+      shot.classList.add('scene');
+      shot.append(scene.node);
+      scene.show(item.scene);
+    } else if (item.image) {
       const image = el('img');
       image.alt = pick(item.title) ?? '';
       image.loading = 'lazy';
@@ -3606,7 +3616,7 @@ async function homeNews(tries = 0) {
   foot.append(start);
   sheet.append(head, body, foot);
   dialog.append(sheet);
-  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('close', () => { for (const scene of scenes) scene.stop(); dialog.remove(); });
   document.body.append(dialog);
   dialog.showModal();
   // Whoever comes from an older MADRE meets MADRE's opening first (2026-10-30), as a new person does in

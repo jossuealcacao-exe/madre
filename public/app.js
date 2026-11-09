@@ -37,6 +37,7 @@ import { trazo, trazoDrawing } from './icons.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
+import { createScene } from './welcome-scene.js';
 
 // Nothing of MADRE starts before its license and privacy notice are accepted on this computer
 // (public/terms.js, src/terms.mjs): the page waits here.
@@ -22716,8 +22717,18 @@ const NEWS_GO = {
 const firstSentence = (text) => String(text ?? '').match(/^.*?[.!?…](?=\s|$)/s)?.[0] ?? String(text ?? '');
 // A note's picture, with the colour of its place while it loads; one that does not come shows the
 // note's own 8-bit mark there instead.
+const newsScenes = new Set();
 function newsShot(item, className) {
   const shot = el('span', `wn-shot ${className}`);
+  // A moving picture of what it is (1.1.3, public/welcome-scene.js) in place of a screenshot.
+  if (item.scene) {
+    const scene = createScene();
+    newsScenes.add(scene);
+    shot.classList.add('scene');
+    shot.append(scene.node);
+    scene.show(item.scene);
+    return shot;
+  }
   const icon = pixelIcon(item.icon, 'pixel-icon wn-shot-icon');
   if (!item.image) { shot.classList.add('missing'); shot.append(icon); return shot; }
   const image = el('img');
@@ -22746,7 +22757,8 @@ function showWhatsNew(news, { after = null } = {}) {
   const words = el('div', 'wn-headline');
   const logo = document.querySelector('.bar .brand-logo, .brand .brand-logo')?.cloneNode?.(true);
   if (logo) { logo.setAttribute('class', 'brand-logo wn-logo'); words.append(logo); }
-  words.append(el('span', 'wn-eyebrow', t("What's new")), el('h2', null, t('You now have {version}', { version: shown })));
+  // Its own words when the version has them (1.1.3: «Good to see you again»), with no label above.
+  words.append(el('h2', null, notes.title ?? t('You now have {version}', { version: shown })));
   if (notes.intro) words.append(el('p', 'wn-intro', notes.intro));
   const keys = el('span', 'surface-modes wn-keys');
   const close = el('button', 'surface-mode close x-close x-only');
@@ -22869,6 +22881,8 @@ function showWhatsNew(news, { after = null } = {}) {
   document.body.append(dialog);
   drawBoard();
   dialog.addEventListener('close', () => {
+    for (const scene of newsScenes) scene.stop();
+    newsScenes.clear();
     dialog.remove();
     if (!board.went) after?.();
   });
