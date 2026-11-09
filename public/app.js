@@ -22967,6 +22967,8 @@ function drawRelease(section, info) {
   drawLegal(section);
 
   if (!info.available) return;
+  // MADRE.app updates itself (desktop/, its menu bar): no command to offer here.
+  if (info.install === 'app') return;
   const canRestart = info.install !== 'source';
   const fresh = sxBlock(section, t('MADRE {version} is ready', { version: info.latest }), canRestart
     ? t('Restart here: the project closes, updates and comes back in a few seconds. Nothing is lost. Or run the command yourself.')

@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { applyCommand, detectInstall, updateCommand } from '../src/updates.mjs';
 
 const MADRE = new URL('../bin/madre.mjs', import.meta.url).pathname;
 
@@ -38,4 +39,11 @@ test('inside the app, Home closes itself when the app\'s pipe closes', { timeout
     await rm(home, { recursive: true, force: true });
     await rm(state, { recursive: true, force: true });
   }
+});
+
+test('inside the app, MADRE knows its channel: it updates itself, never by npm or git from the page', () => {
+  assert.equal(detectInstall({ script: '/Applications/MADRE.app/Contents/Resources/madre/bin/madre.mjs', env: { MADRE_APP: '1' } }), 'app');
+  assert.equal(detectInstall({ script: '/Applications/MADRE.app/Contents/Resources/madre/bin/madre.mjs', env: {} }), 'source', 'the channel is the app\'s word, not a guess from the path');
+  assert.equal(updateCommand('app', '@jossuealcala/madre', '1.2.0'), null);
+  assert.equal(applyCommand({ install: 'app', name: '@jossuealcala/madre', version: '1.2.0', port: 4317, projectRoot: '/x' }), null);
 });

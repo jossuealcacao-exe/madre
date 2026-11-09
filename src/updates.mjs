@@ -43,8 +43,10 @@ export function compareVersions(a, b) {
 }
 
 // How this copy runs, from the path of the script Node started: npx cache, the project's own
-// node_modules, a global install, or the source tree.
-export function detectInstall({ script = process.argv[1] ?? '', projectRoot = process.cwd() } = {}) {
+// node_modules, a global install, or the source tree. Or inside MADRE.app (desktop/, Tauri), which
+// says so and updates itself from madre.run: never by npm or git from here.
+export function detectInstall({ script = process.argv[1] ?? '', projectRoot = process.cwd(), env = process.env } = {}) {
+  if (env.MADRE_APP === '1') return 'app';
   const path = String(script).replace(/\\/g, '/');
   if (/\/_npx\//.test(path)) return 'npx';
   if (projectRoot && path.startsWith(`${String(projectRoot).replace(/\\/g, '/').replace(/\/$/, '')}/node_modules/`)) return 'project';
@@ -64,6 +66,7 @@ export function updateCommand(install, name, version = 'latest') {
     case 'npx': return `npx ${name}@${version} start`;
     case 'project': return `npm install ${name}@${version}`;
     case 'global': return `npm install -g ${name}@${version}`;
+    case 'app': return null;
     default: return 'git pull';
   }
 }
