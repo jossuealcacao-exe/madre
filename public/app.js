@@ -17448,21 +17448,33 @@ function openSkillImport() {
       box.type = 'checkbox';
       box.disabled = !one.fits;
       box.addEventListener('change', () => { if (box.checked) picked.add(one.id); else picked.delete(one.id); said.textContent = ''; });
+      // Each part says what it is (2026-11-08: name, a paragraph, numbers and a warning ran together).
       const words = el('div', 'skill-import-words');
       const top = el('div', 'skill-top');
       top.append(el('b', 'skill-name', skillWords(one.name) ?? one.id), el('span', 'skill-tag', one.label));
       if (one.synced) top.append(el('span', 'skill-tag', t('from your account')));
       if (one.replaces) top.append(el('span', 'skill-tag warn', t('replaces the one you have')));
-      if (one.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: one.scripts.length })));
       words.append(top);
+      const note = (text) => el('span', 'skill-import-note', text);
       if (one.fits) {
-        words.append(el('span', 'sx-hint', skillWords(one.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
-        words.append(el('span', 'sx-hint', t('{chars} characters · {files} file(s)', { chars: one.chars.toLocaleString(), files: one.files })));
+        const when = el('div', 'skill-import-part');
+        const sentence = el('span', 'skill-import-when', skillWords(one.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.'));
+        when.append(el('span', 'skill-import-label', t('When it comes in')), sentence);
+        // A long sentence shows three lines; the rest is a press away, on the line itself.
+        if (String(one.when ?? '').length > 220) {
+          const more = el('button', 'skill-import-more', t('Read it all'));
+          more.type = 'button';
+          more.addEventListener('click', (event) => { event.preventDefault(); sentence.classList.add('whole'); more.remove(); });
+          when.append(more);
+        }
+        words.append(when);
+        words.append(el('span', 'skill-import-facts', t('Instructions of {chars} characters · {files} file(s)', { chars: one.chars.toLocaleString(), files: one.files })));
+        if (one.scripts?.length) words.append(note(t('It brings {n} program(s). MADRE never runs them; only an agent at #4 can.', { n: one.scripts.length })));
         // A skill that says it is proprietary may be kept and used; it may not be sent to the Market.
-        if (one.license && !/^(CC|MIT|Apache|AGPL|GPL|ISC|BSD|MPL)/i.test(one.license)) words.append(el('span', 'mods-submit-warn', t('Its license says: {license} — yours to use, not yours to share.', { license: one.license })));
+        if (one.license && !/^(CC|MIT|Apache|AGPL|GPL|ISC|BSD|MPL)/i.test(one.license)) words.append(note(t('Its license ({license}) lets you use it, not share it: it cannot go to the Market.', { license: String(one.license).split(/[.;]/)[0].trim() })));
       } else {
-        words.append(el('span', 'mods-submit-warn', one.why));
-        words.append(el('span', 'sx-hint', t('Ask an agent to shorten it with /habilidad, and bring that one over instead.')));
+        words.append(note(one.why));
+        words.append(el('span', 'skill-import-facts', t('Ask an agent to shorten it with /habilidad, and bring that one over instead.')));
       }
       row.append(box, words);
       list.append(row);

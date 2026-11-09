@@ -6290,7 +6290,9 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .turn-skill:hover { background: color-mix(in srgb, var(--phosphor) 22%, transparent); }
 
 /* HABILIDADES (H-3). A skill is a row, not a tile: what matters about it is a sentence and a page. */
-.skills-block .sx-rows { display: grid; gap: 0; }
+.skills-block .sx-rows { display: grid; gap: 0; padding: 0 16px 4px; }
+/* «None yet» under the block's words, on their margin (2026-11-08: it sat against the edge). */
+.skills-block .sx-rows > .settings-reading { margin: 0 0 14px; line-height: 1.5; }
 .skill-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: start; padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
 .skill-row:last-child { border-bottom: 0; }
 .skill-words { display: grid; gap: 4px; min-width: 0; }
@@ -6303,13 +6305,23 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .skill-all { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .is-off .skill-words { opacity: .6; }
 dialog.skill-text .skill-text-name { display: grid; gap: 2px; min-width: 0; }
-.skill-import-list { display: grid; gap: 0; }
-.skill-import { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); cursor: pointer; }
+.skill-import-list { display: grid; gap: 0; margin: 6px 0 14px; }
+.skill-import { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: start; padding: 18px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); cursor: pointer; }
 .skill-import:last-child { border-bottom: 0; }
 .skill-import.off { cursor: default; }
 .skill-import.off .skill-import-words { opacity: .75; }
-.skill-import input { margin-top: 3px; }
-.skill-import-words { display: grid; gap: 3px; min-width: 0; }
+.skill-import input { margin-top: 4px; }
+.skill-import-words { display: grid; gap: 10px; min-width: 0; }
+/* Each part of a row says what it is: when it comes in, what it brings, what to know. */
+.skill-import-part { display: grid; gap: 4px; }
+.skill-import-label { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--text-3, var(--text-2)); }
+.skill-import-when { font-size: 13px; line-height: 1.55; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.skill-import-when.whole { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.skill-import-more { justify-self: start; padding: 0; border: 0; background: none; color: var(--phosphor); font: 500 12.5px var(--read); cursor: pointer; }
+.skill-import-more:hover { text-decoration: underline; }
+.skill-import-facts { font-size: 12px; color: var(--text-3, var(--text-2)); }
+.skill-import-note { display: block; padding: 9px 12px; border-radius: 10px; background: color-mix(in srgb, #f2c94c 10%, transparent); color: var(--text); font-size: 12.5px; line-height: 1.5; }
+:root[data-scheme="light"] .skill-import-note { background: color-mix(in srgb, #f2c94c 18%, transparent); }
 
 /* The Market's Skills tab (H-8): rows and a page, never tiles — what matters is a sentence and a page. */
 .mk-skill-list { display: grid; gap: 0; margin-top: 10px; }
