@@ -11,7 +11,7 @@ import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CONDITIONS } from '../public/troubleshooting.js';
+import { CONDITIONS, diagnose } from '../public/troubleshooting.js';
 import { ES } from '../public/es.js';
 
 export const logsFolder = (env = process.env) => env.MADRE_LOGS_DIR || join(homedir(), 'madre-logs');
@@ -281,8 +281,68 @@ export async function syncDiagnostics({ dir = logsFolder(), groups = [], since =
   return { added, updated };
 }
 
+// THE SENTINEL'S REPORTS (2026-11-08). Each copy sends what MU/TH/UR could not explain to
+// madre.run/v1/reports (src/sentinel-errors.mjs), already without paths, names, emails or keys. They
+// sat there: nothing filed them, and madre-logs never had an S-. Now each one still new at madre.run,
+// and that this version's Diagnóstico does not know either, is filed once as S-n, «Investigar» until
+// somebody looks. One the catalogue now knows is not a fault anymore: its card tells the person what
+// to do. A few at a time, the most recent first, so a backlog does not bury the log in one sync.
+const SENTINEL_FILE_AT_ONCE = 10;
+function sentinelEntry(id, report) {
+  const day = (iso) => String(iso ?? '').slice(0, 10);
+  const first = String(report.error ?? '').split('\n').find((line) => line.trim()) ?? report.kind;
+  const [clase, tipo] = report.kind === 'crash' ? ['Fallo', 'Servidor y arranque'] : report.agent ? ['Fallo', 'Agentes'] : ['Fallo', 'Diagnóstico'];
+  const what = `${report.agent ? `@${report.agent} · ` : ''}${oneLine(first, 100)}`;
+  const agents = Array.isArray(report.agents) ? report.agents.join(', ') : '';
+  return [
+    '---', `id: ${id}`, `titulo: ${oneLine(what, 120)}`, `clase: ${clase}`, `tipo: ${tipo}`, 'nivel: Investigar', 'origen: Centinela', 'estado: abierto',
+    'responsable:', 'copias:', `version: ${report.madre ?? ''}`, `abierto: ${day(report.first_seen)}`, 'cerrado:', 'commit:', `fp: centinela:${report.fingerprint}`, '---', '',
+    '## Qué pasa', '', `Dado de alta solo desde el centinela: una falla que Diagnóstico no supo explicar en la copia de alguien (\`${report.kind}\`). **La clase y el tipo son una suposición**: revisarlos al investigarlo.`, '',
+    '```', String(report.error ?? '').slice(0, 2000), '```', '',
+    '## Evidencia', '',
+    `- Veces: ${report.total ?? '?'} · MADRE ${report.madre ?? '?'} · Node ${report.node ?? '?'} · ${report.platform ?? '?'}`,
+    `- Agentes de esa copia: ${agents || '?'}`,
+    `- Primera vez: ${report.first_seen ?? '?'} · última: ${report.last_seen ?? '?'}`,
+    `- Huella del centinela: \`${report.fingerprint}\` · estado en madre.run: ${report.status ?? '?'}`, '',
+    '## Causa', '', 'Pendiente.', '', '## Arreglo', '', 'Pendiente.', '', '## Cómo verificar', '',
+    'Que la falla tenga su ficha en Diagnóstico o no vuelva al centinela con la versión que la arregle.', '',
+  ].join('\n');
+}
+export async function syncSentinel({ dir = logsFolder(), reports = [], atOnce = SENTINEL_FILE_AT_ONCE } = {}) {
+  const folder = join(dir, 'errores');
+  const names = await readdir(folder).catch(() => null);
+  if (!names) return { added: [], updated: [] };
+  const filed = new Set();
+  let last = 0;
+  for (const name of names.filter((one) => one.endsWith('.md'))) {
+    const fields = readFields(await readFile(join(folder, name), 'utf8').catch(() => ''));
+    if (!fields?.id) continue;
+    const number = /^S-(\d+)$/.exec(fields.id)?.[1];
+    if (number) last = Math.max(last, Number(number));
+    for (const fp of String(fields.fp ?? '').split(/[\s,]+/).filter(Boolean)) filed.add(fp);
+  }
+  const added = [];
+  const fresh = [...reports]
+    .filter((report) => /^[a-f0-9]{12}$/.test(String(report?.fingerprint ?? '')) && !filed.has(`centinela:${report.fingerprint}`))
+    .filter((report) => !['known', 'fixed', 'ignored'].includes(report.status))
+    .filter((report) => !diagnose(String(report.error ?? ''), report.agent ?? null).length)
+    .sort((a, b) => String(b.last_seen ?? '').localeCompare(String(a.last_seen ?? '')));
+  for (const report of fresh.slice(0, atOnce)) {
+    // The next number free on disk at the moment of writing, as the diagnostics do.
+    let id = null;
+    for (let tries = 0; !id && tries < 50; tries += 1) {
+      last += 1;
+      id = `S-${last}`;
+      try { await writeFile(join(folder, `${id}.md`), sentinelEntry(id, report), { flag: 'wx' }); }
+      catch (error) { if (error.code !== 'EEXIST') throw error; id = null; }
+    }
+    if (id) added.push(id);
+  }
+  return { added, updated: [] };
+}
+
 // After a sync: INDICE.md written again and the change kept in the folder's own history.
-export async function keepSync({ dir = logsFolder(), added = [], updated = [], run = quiet } = {}) {
+export async function keepSync({ dir = logsFolder(), added = [], updated = [], run = quiet, label = 'Diagnóstico' } = {}) {
   if (!added.length && !updated.length) return false;
   await run(process.execPath, [join(dir, 'indice.mjs')]);
   const said = [added.length ? `alta automática de ${added.join(', ')}` : null, updated.length ? `copias al día en ${updated.join(', ')}` : null].filter(Boolean).join('; ');
@@ -292,6 +352,6 @@ export async function keepSync({ dir = logsFolder(), added = [], updated = [], r
   const paths = [];
   for (const path of ['INDICE.md', ...[...added, ...updated].map((id) => `errores/${id}.md`)]) if (await stat(join(dir, path)).catch(() => null)) paths.push(path);
   await run('git', ['-C', dir, 'add', '--', ...paths]);
-  await run('git', ['-C', dir, 'commit', '-q', '-m', `Diagnóstico: ${said}`, '--', ...paths]);
+  await run('git', ['-C', dir, 'commit', '-q', '-m', `${label}: ${said}`, '--', ...paths]);
   return true;
 }

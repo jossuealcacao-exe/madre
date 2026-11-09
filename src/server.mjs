@@ -656,6 +656,15 @@ export async function createPulseServer({
     widgetReadings.set('errors', { at: Date.now(), reading });
     return reading;
   }
+  // The sentinel's reports kept at madre.run (its /v1/reports, functions/v1 of the landing), read with
+  // the same token as the diagnostics, only by the author's copy run from source.
+  async function sentinelReading() {
+    const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+    if (!token) return null;
+    const answer = await reportFetch(process.env.PULSE_SENTINEL_READ_URL ?? 'https://madre.run/v1/reports', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+    const body = answer?.ok ? await answer.json().catch(() => null) : null;
+    return Array.isArray(body?.reports) ? body.reports : null;
+  }
   // THE AUTHOR'S NOTICES (Q-11, src/notices.mjs). Every copy asks madre.run for them on its own,
   // with or without the diagnostics, and shows the ones signed with the author's key that are for it.
   const NOTICES_KEY_FILE = process.env.MADRE_NOTICES_KEY_DIR ? join(process.env.MADRE_NOTICES_KEY_DIR, 'ed25519.pem') : join(homedir(), '.madre', 'avisos', 'ed25519.pem');
@@ -678,15 +687,17 @@ export async function createPulseServer({
     // as agents add and close errors. Only in the copy run from source, and only Home serves it.
     if (kind === 'madrelogs') {
       if (!FROM_SOURCE || !salasRoom) return null;
-      const { keepSync, readLogs, syncDiagnostics } = await import('./madre-logs.mjs');
+      const { keepSync, readLogs, syncDiagnostics, syncSentinel } = await import('./madre-logs.mjs');
       // The diagnostics filed on their own (src/madre-logs.mjs, syncDiagnostics): every ten minutes
       // while the widget is read, with the author's token, never waited for by the reading.
+      // And the sentinel's reports, the failures people's copies could not explain (2026-11-08).
       if (Date.now() - logsSyncedAt > 600000) {
         logsSyncedAt = Date.now();
         void (async () => {
           const reading = await errorsReading();
-          if (!Array.isArray(reading?.errors)) return;
-          await keepSync(await syncDiagnostics({ groups: reading.errors }));
+          if (Array.isArray(reading?.errors)) await keepSync(await syncDiagnostics({ groups: reading.errors }));
+          const reports = await sentinelReading();
+          if (Array.isArray(reports)) await keepSync({ ...(await syncSentinel({ reports })), label: 'Centinela' });
         })().catch((error) => console.error(`MADRE could not file the diagnostics in madre-logs: ${error.message}`));
       }
       return readLogs();

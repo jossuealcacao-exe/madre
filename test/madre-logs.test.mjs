@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DIAGNOSTICS_SINCE, guessClass, keepSync, readFields, readLogs, syncDiagnostics } from '../src/madre-logs.mjs';
+import { DIAGNOSTICS_SINCE, guessClass, keepSync, readFields, readLogs, syncDiagnostics, syncSentinel } from '../src/madre-logs.mjs';
 
 const entry = (fields) => `---\n${Object.entries(fields).map(([key, value]) => `${key}: ${value}`).join('\n')}\n---\n\n## Qué pasa\n\nalgo\n`;
 
@@ -105,6 +105,44 @@ test('madre-logs · each new group of the diagnostics is filed once, classified 
   assert.match(server, /if \(Date\.now\(\) - logsSyncedAt > 600000\) \{[\s\S]{0,400}await errorsReading\(\);[\s\S]{0,200}await keepSync\(await syncDiagnostics\(\{ groups: reading\.errors \}\)\);/);
   // One reading of madre.run's /api/telemetry for the errors widget and the filing, not one each.
   assert.equal(server.match(/api\/telemetry', \{ headers:/g)?.length, 1, 'madre.run\'s telemetry is read from more than one place');
+});
+
+// 2026-11-08: the sentinel's reports, the failures people's copies could not explain, sat at
+// madre.run and nothing filed them. Each new one Diagnóstico does not know is filed once as S-n.
+test('madre-logs · each new sentinel report the catalogue does not know is filed once as S-n, a few at a time', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'madre-logs-sentinel-'));
+  try {
+    await mkdir(join(dir, 'errores'));
+    await writeFile(join(dir, 'errores', 'S-1.md'), entry({ id: 'S-1', titulo: 'Ya archivado', clase: 'Fallo', tipo: 'Agentes', nivel: 'P2', origen: 'Centinela', estado: 'abierto', abierto: '2026-11-07', fp: 'centinela:aaaaaaaaaaaa' }));
+    await writeFile(join(dir, 'indice.mjs'), "import { readdirSync, writeFileSync } from 'node:fs';\nwriteFileSync(new URL('./INDICE.md', import.meta.url), `${readdirSync(new URL('./errores', import.meta.url)).length} errores\\n`);\n");
+    const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, stdio: 'ignore' });
+    git('init', '-q'); git('add', '.'); git('commit', '-qm', 'inicio');
+    const report = (fingerprint, error, more = {}) => ({ fingerprint, kind: 'unknown', agent: null, error, madre: '1.1.3', node: 'v24.1.0', platform: 'linux-x64', agents: ['codex@1'], first_seen: '2026-11-08T10:00:00Z', last_seen: '2026-11-08T11:00:00Z', total: 3, status: 'new', ...more });
+    const reports = [
+      report('aaaaaaaaaaaa', 'ya archivado'),
+      report('bbbbbbbbbbbb', 'TypeError: frobnicate is not a function', { agent: 'codex', last_seen: '2026-11-08T12:00:00Z' }),
+      report('cccccccccccc', 'RangeError: boom', { kind: 'crash' }),
+      report('dddddddddddd', 'ignorado por el autor', { status: 'ignored' }),
+      report('eeeeeeeeeeee', 'Error [ERR_ACCESS_DENIED]: Access to this API has been restricted'),
+      report('no es huella', 'x'),
+    ];
+    const first = await syncSentinel({ dir, reports });
+    assert.deepEqual(first, { added: ['S-2', 'S-3'], updated: [] }, 'a filed, ignored, known or malformed report was filed, or the newest did not come first');
+    const s2 = readFields(await readFile(join(dir, 'errores', 'S-2.md'), 'utf8'));
+    assert.deepEqual([s2.origen, s2.nivel, s2.estado, s2.clase, s2.tipo, s2.version, s2.fp, s2.abierto], ['Centinela', 'Investigar', 'abierto', 'Fallo', 'Agentes', '1.1.3', 'centinela:bbbbbbbbbbbb', '2026-11-08']);
+    assert.match(s2.titulo, /^@codex · TypeError: frobnicate/);
+    assert.equal(readFields(await readFile(join(dir, 'errores', 'S-3.md'), 'utf8')).tipo, 'Servidor y arranque');
+    // Read again: nothing new. And never more than a few at once.
+    assert.deepEqual(await syncSentinel({ dir, reports }), { added: [], updated: [] });
+    const many = Array.from({ length: 14 }, (_, at) => report(`f${String(at).padStart(11, '0')}`, `Error ${at}`));
+    assert.equal((await syncSentinel({ dir, reports: many })).added.length, 10);
+    assert.equal(await keepSync({ dir, ...first, label: 'Centinela' }), true);
+    assert.match(execFileSync('git', ['log', '-1', '--format=%s'], { cwd: dir, encoding: 'utf8' }), /^Centinela: alta automática de S-2, S-3/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /const reports = await sentinelReading\(\);\s*if \(Array\.isArray\(reports\)\) await keepSync\(\{ \.\.\.\(await syncSentinel\(\{ reports \}\)\), label: 'Centinela' \}\);/);
 });
 
 // 2026-11-05: Claude, Codex and Antigravity build MADRE at once. Whoever registers its work in
