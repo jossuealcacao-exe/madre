@@ -12975,3 +12975,23 @@ dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger):active
 }
 .madre-tip.shown { opacity: 1; }
 .madre-tip[hidden] { display: none; }
+
+/* WHAT A MESSAGE SHOWED CUT (2026-11-09). A reply's box clips what passes its left edge, and three
+   things sat on that edge or were made to end in an ellipsis:
+   · the memory's dots: the first one's ring was cut, so it sits a pixel in;
+   · a code word broken between two lines lost its left rounding on the second (clone gives each
+     piece its own padding and corners: «-endurecer» no longer reads «- / endurecer» cut);
+   · the line a reply answers (↳ …), cut to one line: it is 90 characters at most, so it wraps. */
+.mem-used .dots { padding: 1px 0 1px 1px; }
+.bubble :not(pre) > code { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.bubble code.whole { white-space: nowrap; }
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who .reply,
+#messages .col > .who .reply { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; max-width: none; line-height: 1.35; }
+
+/* THE RUN CARD'S PIECES, SOLID AND QUIET (2026-11-09): no line round a command, and its tones mixed
+   with the card's own ground (--plane-agent) instead of see-through ones. */
+#messages#messages .choice.run-request .run-line { box-shadow: none !important; background: color-mix(in srgb, var(--text) 5%, var(--plane-agent, var(--bg-2))) !important; }
+#messages#messages .choice.run-request .run-line:hover:not(:disabled) { box-shadow: none !important; background: color-mix(in srgb, var(--text) 8%, var(--plane-agent, var(--bg-2))) !important; }
+#messages#messages .choice.run-request .run-line.ran .choice-tag { background: color-mix(in srgb, var(--ok, var(--phosphor)) 14%, var(--plane-agent, var(--bg-2))) !important; }
+#messages#messages .choice.run-request .run-summary { background: color-mix(in srgb, var(--text) 6%, var(--plane-agent, var(--bg-2))); }
+#messages#messages .choice.run-request.returned .run-summary { background: color-mix(in srgb, var(--ok, var(--phosphor)) 14%, var(--plane-agent, var(--bg-2))); }

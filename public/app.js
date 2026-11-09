@@ -829,6 +829,9 @@ function renderInline(text, into) {
     const [token] = match;
     if (match[1]) {
       const code = el('code', null, token.slice(1, -1));
+      // A short code word moves whole to the next line instead of breaking in two («-titulos»,
+      // «6c40510» read «- / titulos», «6c4051 / 0», 2026-11-09). A long one (a path) still breaks.
+      if (token.length - 2 <= 24 && !/\s/.test(token)) code.classList.add('whole');
       const rel = FILE_PATH.test(token.slice(1, -1)) ? projectRelative(token.slice(1, -1).replace(/:\d+$/, '')) : null;
       FILE_PATH.lastIndex = 0;
       if (rel) { code.classList.add('file-link'); code.style.cursor = 'pointer'; code.addEventListener('click', () => openViewer({ root: 'project', path: rel })); }
@@ -12251,6 +12254,8 @@ function floatConversation(id) {
   if (window.__madreApp?.openConversation && id && id !== chats.active && !SPLIT_CHAT) { window.__madreApp.openConversation(id); return; }
   openConvWindow(id);
 }
+// And back: the app's window of a conversation asks the room to hold it beside, in its half.
+if (!SPLIT_CHAT) window.__madreRoom = { beside: (id) => { if (id && id !== chats.active && chats.list.some((chat) => chat.id === id)) openSplit(id); } };
 function openConvWindow(id, { box = null, animate = true } = {}) {
   if (SPLIT_CHAT || state.device || !id || id === chats.active) return;
   if (convWindows.has(id)) { bringWindowForward(convWindows.get(id).node); return; }
