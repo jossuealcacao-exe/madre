@@ -2077,6 +2077,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
    second line and walked the composer down the page; a sideways rail keeps the height fixed
    however many the room is carrying. */
 .openq { display: grid; justify-items: center; gap: 5px; margin: 0 0 8px; min-width: 0; }
+/* Its one column is as wide as the row and no wider (2026-11-09). Left to size itself, WebKit (Safari,
+   the app) grows it to the pills' whole length, wider than the conversation: «still open here»
+   then sat off centre and the pills ran over the conversation beside. */
+.openq { grid-template-columns: minmax(0, 1fr); }
 .openq-lead { font-family: var(--sans); font-size: 11.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-2); }
 .openq-rail { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 1px 2px; }
 .openq-rail::-webkit-scrollbar { display: none; }
