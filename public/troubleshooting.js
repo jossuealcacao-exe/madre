@@ -230,6 +230,44 @@ export const CONDITIONS = [
     fixes: same(['grok logout', 'grok login', 'grok models   # «You are logged in with grok.com.»']),
   },
   {
+    // 1.1.3: Gemini answers through its API with a key, without its CLI (a575180). Google's «model
+    // not found» came back in MADRE's own words, in both languages, and no card knew it.
+    id: 'gemini-model-unavailable',
+    code: 'MU-085',
+    agent: 'gemini',
+    severity: 'blocking',
+    title: 'This Gemini model is not available for your key',
+    match: /does not exist or is not available for this key|no existe o no está disponible para esta llave|is not found for API version|is not supported for generateContent/i,
+    diagnosis: 'Gemini answers through its API with your key, and Google says the model chosen in the box does not exist or this key cannot use it. It happens with a model Google retired, a preview your key has no access to, or a name written by hand.',
+    remedy: 'Choose another Gemini model in the box, or leave the default one. If you need that model, check in AI Studio that your key has access to it.',
+    fixes: same(['# the models your key opens: https://aistudio.google.com/app/apikey']),
+  },
+  {
+    // 1.1.3, the same adapter: through the API the whole briefing goes in one request.
+    id: 'gemini-message-too-long',
+    code: 'MU-086',
+    agent: 'gemini',
+    severity: 'blocking',
+    title: 'The message is too long for this Gemini model',
+    match: /longer than this Gemini model takes|más largo de lo que este modelo de Gemini recibe|exceeds the maximum number of tokens/i,
+    diagnosis: 'Through its API, Gemini receives everything in one go: your message, what you attached and the memory that came with it. This time it was more than the chosen model takes.',
+    remedy: 'Ask in smaller parts, attach less at once, or choose a Gemini model that takes more. A new chat also sends less of the conversation.',
+    fixes: same(['# how much each model takes: https://ai.google.dev/gemini-api/docs/models']),
+  },
+  {
+    // 1.1.3: a module you install runs in a process of its own, fenced by Node's permission model
+    // (b454bab). One written for the old way, that writes or starts a program itself, is stopped by
+    // Node with ERR_ACCESS_DENIED, which reached nobody as anything they could act on.
+    id: 'module-fenced',
+    code: 'MU-087',
+    severity: 'blocking',
+    title: 'A module tried something its fence does not allow',
+    match: /ERR_ACCESS_DENIED|Access to this API has been restricted/i,
+    diagnosis: 'Since 1.1.3, a module you install runs apart, with limited permissions: it can read its own file, but it cannot write your files or start other programs by itself. This module tried one of those and Node stopped it. Your project and MADRE are fine.',
+    remedy: 'Ask the module\'s author for a version made for MADRE 1.1.3, which asks MADRE for what it needs instead of doing it itself. Meanwhile, turn it off in Modules.',
+    fixes: same(['# Modules › the module › turn it off']),
+  },
+  {
     // Seen in the diagnostics of 1.1.0 (2026-10-31): Codex on a free ChatGPT account ran out and
     // the room called it an unknown failure.
     id: 'codex-usage-limit',
@@ -387,7 +425,7 @@ export const CONDITIONS = [
     title: 'Agent did not respond before the timeout',
     // MADRE writes this one itself, in the room's language, so it is matched in both: a room in
     // Spanish recorded «no contestó antes del tiempo límite» and filed it as unclassified.
-    match: /did not respond before the timeout|went silent for|no contestó antes del tiempo límite|se quedó callad/i,
+    match: /did not respond before the timeout|went silent for|no contestó antes del tiempo límite|no respondió antes del tiempo límite|se quedó callad/i,
     diagnosis: 'The agent was still reading files or reasoning when its time limit expired (by default 180 s for a turn that reads and 600 s for one that writes), or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree. Whatever a writing turn left before it stopped is listed under the failure, with UNDO.',
     remedy: 'Press Apply below, or type a new number in Settings: Default time limit in Project and turns, or Time limit on the agent in Agents. Each field saves the moment you leave it. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running project never sees a later export.',
     fixes: {

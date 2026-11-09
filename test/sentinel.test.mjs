@@ -248,6 +248,11 @@ test('the sentinel · what MADRE says in Spanish, and Codex\'s workspace routing
     ['gemini', 'Google rejected the Gemini credentials.', 'MU-008'],
     ['codex', 'workspace routing discovery failed', 'MU-083'],
     ['codex', 'workspace routing discovery timed out', 'MU-083'],
+    ['gemini', 'Google informó que el modelo de Gemini solicitado no existe o no está disponible para esta llave.', 'MU-085'],
+    ['gemini', 'Google reported that the requested Gemini model does not exist or is not available for this key.', 'MU-085'],
+    ['gemini', 'El mensaje es más largo de lo que este modelo de Gemini recibe de una vez.', 'MU-086'],
+    ['gemini', 'Gemini no respondió antes del tiempo límite (120 s).', 'MU-012'],
+    [null, 'Error [ERR_ACCESS_DENIED]: Access to this API has been restricted. Use --allow-fs-write to manage permissions.', 'MU-087'],
   ]) {
     assert.equal(await sentinel.observe(failed(target, error)), null, `${code} was filed as unknown`);
     assert.equal(told.at(-1).code, code, error);
