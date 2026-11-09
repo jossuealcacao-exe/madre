@@ -12540,21 +12540,12 @@ function tradePanes() {
 panes.swap?.addEventListener('click', () => tradePanes());
 if (!SPLIT_CHAT) paintPanes();
 
-/* ---------- easter egg: hold the scroll at the end of the record ---------- */
+/* ---------- easter egg: MOTHER reviews the next message ---------- */
 
-// A trackpad only reports while the fingers move, so "holding the scroll
-// down" arrives as bursts. We count distinct downward pushes at the end of
-// the record: at least three of them, spanning six seconds, with no more
-// than two seconds of silence between pushes and no push upward.
-const HOLD_MS = 4000;
-const HOLD_GAP_MS = 2000;
-const HOLD_MIN_PUSHES = 3;
-const BURST_MS = 150;
-let pushes = [];
-
-function atBottom() {
-  return scroller.height - scroller.top - scroller.view < 4;
-}
+// It used to arm itself when the scroll was held down at the end of the record: three pushes in
+// four seconds. A trackpad's own momentum at the end of a long answer is exactly that, so people
+// reading met «end of record… agent status under review» and a jump to the end without having done
+// anything (2026-11-08). Scrolling never arms it now: only resting the cursor on MU/TH/UR does.
 
 // The conversation is not cut where the composer begins: it runs on beneath it. The thread is told
 // how tall the strip under it is, so its last line can still come up above the box; a reader at
@@ -12622,7 +12613,6 @@ if (document.querySelector('.shell') && els.composer?.getBoundingClientRect) {
 function armExpendable() {
   if (state.expendable) return;
   state.expendable = true;
-  pushes = [];
   els.composer.classList.add('expendable');
   updateCrewLabel();
   updatePlaceholder();
@@ -12641,22 +12631,7 @@ function disarmExpendable() {
   updatePlaceholder();
 }
 
-function trackHold(downward, now = Date.now()) {
-  if (state.expendable) return false;
-  if (!downward || !atBottom()) { pushes = []; return false; }
-  const last = pushes.at(-1);
-  if (last !== undefined && now - last < BURST_MS) return false;       // same burst
-  if (last !== undefined && now - last > HOLD_GAP_MS) pushes = [];      // gave up, start over
-  pushes.push(now);
-  const span = pushes.at(-1) - pushes[0];
-  if (pushes.length >= HOLD_MIN_PUSHES && span >= HOLD_MS) {
-    armExpendable();
-    return true;
-  }
-  return false;
-}
-
-// Second way in: rest the cursor on MU/TH/UR for three seconds.
+// The other way in: rest the cursor on MU/TH/UR for three seconds.
 const HOVER_MS = 3000;
 let hoverTimer = null;
 function beginHover() {
@@ -12675,18 +12650,9 @@ document.querySelector('#mother-button')?.addEventListener('mouseenter', beginHo
 document.querySelector('#mother-button')?.addEventListener('mouseleave', endHover);
 document.querySelector('#mother-button')?.addEventListener('click', endHover);
 
-// Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
-globalThis.__pulse = { toast: (...args) => toast(...args), jobProgress: (event) => jobProgress(event), nostromoCard: (index = 0) => showNostromoCard(nostromo.nodes[index]), nostromoTick: (now) => nostromoTick(now), roomAsk: (...args) => roomAsk(...args), openWhatsNew: () => openWhatsNew(), whatsNew: (version = null) => openWhatsNew(version), showWhatsNew: (...args) => showWhatsNew(...args), whatsNewIfOwed: () => maybeShowWhatsNew(), openModuleGuide: () => openModuleGuide(), openViewer: (...args) => openViewer(...args), openNostromo: () => openNostromo(), floatModule: (...args) => floatModule(...args), loadVersion: (...args) => loadVersion(...args), trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, moduleGlance, renderModulesDev, runSlashCommand, syncModuleComposer, syncIntentOffer, openIntentsWindow, openSettings, settingsWindow: () => settingsWindow, openCore: (...args) => openCore(...args), get core() { return core; } };
+// Debug surface for tests and for the curious: window.__pulse.armExpendable()
+globalThis.__pulse = { toast: (...args) => toast(...args), jobProgress: (event) => jobProgress(event), nostromoCard: (index = 0) => showNostromoCard(nostromo.nodes[index]), nostromoTick: (now) => nostromoTick(now), roomAsk: (...args) => roomAsk(...args), openWhatsNew: () => openWhatsNew(), whatsNew: (version = null) => openWhatsNew(version), showWhatsNew: (...args) => showWhatsNew(...args), whatsNewIfOwed: () => maybeShowWhatsNew(), openModuleGuide: () => openModuleGuide(), openViewer: (...args) => openViewer(...args), openNostromo: () => openNostromo(), floatModule: (...args) => floatModule(...args), loadVersion: (...args) => loadVersion(...args), armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, moduleGlance, renderModulesDev, runSlashCommand, syncModuleComposer, syncIntentOffer, openIntentsWindow, openSettings, settingsWindow: () => settingsWindow, openCore: (...args) => openCore(...args), get core() { return core; } };
 
-els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
-let touchY = null;
-els.thread.addEventListener('touchstart', (event) => { touchY = event.touches[0]?.clientY ?? null; }, { passive: true });
-els.thread.addEventListener('touchmove', (event) => {
-  const y = event.touches[0]?.clientY ?? null;
-  if (touchY !== null && y !== null) trackHold(y < touchY);
-  touchY = y;
-}, { passive: true });
-els.thread.addEventListener('keydown', (event) => trackHold(event.key === 'ArrowDown' || event.key === 'End' || event.key === 'PageDown'));
 
 /* ---------- First steps: six things done once, ticked as they happen ----------
    The tour shows where things are; this list is what makes a person use them. A pill in the bar

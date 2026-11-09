@@ -307,8 +307,10 @@ test('the room UI boots against a real transcript without throwing', async () =>
   const statsText = popup.textContent;
   assert.ok(/\d+/.test(statsText));
 
-  // Easter egg: trackpad-style bursts at the end of the record.
-  const { trackHold, state: uiState } = globalThis.__pulse;
+  // Easter egg: MOTHER reviews the next message. Scrolling never arms it (2026-11-08): a trackpad's
+  // momentum at the end of the record did, without anyone asking.
+  const { armExpendable, state: uiState } = globalThis.__pulse;
+  assert.equal(globalThis.__pulse.trackHold, undefined, 'holding the scroll down can arm MOTHER again');
   // /module becomes visibly distinct while it is composed, then turns into a single-file SDK
   // request without stealing the agent the human already selected.
   const message = registry.get('message');
@@ -333,12 +335,9 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(uiState.mode, 1, 'the module test did not return the composer to EXCHANGE');
   const thread = registry.get('messages');
   thread.scrollHeight = 1000; thread.clientHeight = 400; thread.scrollTop = 600; // at bottom
-  const t0 = 1_000_000;
-  assert.equal(trackHold(true, t0), false);
-  assert.equal(trackHold(true, t0 + 50), false, 'same burst is ignored');
-  assert.equal(trackHold(true, t0 + 1500), false);
-  assert.equal(trackHold(true, t0 + 3000), false, 'three pushes but only 3 s');
-  assert.equal(trackHold(true, t0 + 4100), true, 'pushes every ~1.5 s spanning 4 s arm MOTHER');
+  for (const listener of thread.listeners.wheel ?? []) for (let i = 0; i < 12; i += 1) listener({ deltaY: 40 });
+  assert.equal(uiState.expendable, false, 'scrolling down at the end armed MOTHER');
+  armExpendable();
   assert.equal(uiState.expendable, true);
   // The page boots in the language MADRE speaks, which is Spanish; the crew label says so.
   assert.match(registry.get('crew-label').textContent, /Prescindible/);
@@ -416,13 +415,6 @@ test('the room UI boots against a real transcript without throwing', async () =>
   // The line in the box is the whole address: who writes, then who it goes to.
   assert.equal(registry.get('crew-label').textContent, 'Humano › @codex ›');
 
-  // Silence longer than two seconds starts over; scrolling up resets.
-  assert.equal(trackHold(true, t0 + 20_000), false);
-  assert.equal(trackHold(true, t0 + 23_000), false, 'gap > 2 s discards the earlier push');
-  assert.equal(trackHold(true, t0 + 24_000), false);
-  assert.equal(trackHold(false, t0 + 25_000), false, 'an upward push resets');
-  assert.equal(trackHold(true, t0 + 30_000), false);
-  assert.equal(uiState.expendable, false);
 });
 
 test('the bar is yours: a right-click opens it, − takes a key off, a tile puts one back, Esc closes it', async () => {
