@@ -94,7 +94,12 @@ test('welcome 1.1 · it ends inside a project with the first message written, ne
   const welcome = await pub('welcome.js');
   const home = await pub('salas-mac.js');
   const app = await pub('app.js');
-  assert.match(welcome, /void host\.openProject\?\.\(room, \{ draft: idea \}\)/);
+  // Straight in (1.1): the project wakes while the last step shows, and the welcome stays on screen,
+  // saying it is opening, until the project's page takes over; no stop on Home in between.
+  assert.match(welcome, /const warm = room && connected\.length \? \(host\.warmProject\?\.\(room\) \?\? Promise\.resolve\(true\)\) : null;/);
+  assert.match(welcome, /const answer = await host\.openProject\?\.\(room, \{ draft \}\);/);
+  assert.match(welcome, /button\('wl-idea', idea, \(\) => void enter\(idea, key\)\)/);
+  assert.match(home, /warmProject: \(room\) => \(room\?\.open \? Promise\.resolve\(true\) : fetch\('\/api\/salas\/start'/);
   assert.match(home, /openProject: \(room, \{ draft = null \} = \{\}\) => startRoom\(room, \{ enter: true, draft \}\),/);
   assert.match(home, /#escribe=\$\{encodeURIComponent\(draft\)\}/);
   assert.match(app, /if \(\/\^#escribe=\/\.test\(globalThis\.location\?\.hash \?\? ''\)\) \{/);

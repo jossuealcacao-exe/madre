@@ -5515,6 +5515,9 @@ const welcomeHost = {
   agentState: (agent, answer) => agentState(agent, answer),
   projects: () => (data ? projectsInOrder().all : []),
   openProject: (room, { draft = null } = {}) => startRoom(room, { enter: true, draft }),
+  // Started ahead, quietly (1.1): the welcome's last step wakes the project it will open, so «Open» goes
+  // straight in instead of waiting on Home. The promise says when it is up.
+  warmProject: (room) => (room?.open ? Promise.resolve(true) : fetch('/api/salas/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room: room.id }) }).then((response) => response.ok, () => false)),
   setLanguage: (code) => adoptLanguage(code),
   openLinks: () => openLinkSheet(),
   openMarket: () => void openHomeMarket('shop'),

@@ -7075,4 +7075,8 @@ export const ES = {
   // Buscar por significado, en palabras (1.1).
   "With the AI on your computer · free and private": "Con la IA de tu computadora · gratis y privado",
   "With the AI on your computer · its model is not there yet": "Con la IA de tu computadora · todavía falta su modelo",
+  // Abrir el proyecto y los proveedores de OpenCode (1.1).
+  "Opening {name}…": "Abriendo {name}…",
+  "Signed in with your {name} account": "Entró con tu cuenta de {name}",
+  "Connected with a {name} API key": "Conectada con una llave de API de {name}",
 };

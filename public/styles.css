@@ -8111,6 +8111,8 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
 .agent-pop .pop-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 .agent-pop .pop-chips span { padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); font: 450 11.5px var(--read, var(--sans)); color: var(--text-2); }
 .agent-pop .pop-chips span[title] { cursor: help; }
+.agent-pop .pop-chips .pop-provider-chip { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.agent-pop .pop-chips .pop-provider-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #34c759; }
 .agent-pop .pop-can ul { grid-template-columns: 1fr 1fr; gap: 5px 12px; }
 .agent-pop .pop-can li { font-size: 12px; }
 /* What it can do, as things it does (1.1): what it can, ticked in its colour; what it cannot, quieter. */

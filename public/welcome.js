@@ -1040,19 +1040,34 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       parts.push(arrived);
     }
     const learn = button('wl-btn ghost', t('Get to know MADRE'), () => { const after = then ?? host.chapters; finish(); after?.(); });
+    // Into the project without a stop on Home (1.1): it starts waking as this step shows, and the
+    // welcome stays on screen, saying it is opening, until the project's page takes over.
+    const warm = room && connected.length ? (host.warmProject?.(room) ?? Promise.resolve(true)) : null;
+    const enter = async (draft = null, key = null) => {
+      for (const one of actions.querySelectorAll('button')) one.disabled = true;
+      for (const one of content.querySelectorAll('.wl-idea')) one.disabled = true;
+      if (key) key.textContent = t('Opening {name}…', { name: room.name });
+      scene.say(t('Opening {name}…', { name: room.name }));
+      finished = true;
+      await save({ finished: true, done: 'ready', at: 'ready' });
+      await warm?.catch(() => null);
+      const answer = await host.openProject?.(room, { draft });
+      // It did not open: Home says why, on the project's card.
+      if (!answer?.ok) dialog.close();
+    };
     // Into the project when there is one and an agent to answer (2026-11-01): 90 of 147 copies never
     // opened a project. Since 1.1 with the first message already written (`#escribe=`): the person only
     // sends it. Without a project or an agent, Home as before, whose first-time cards walk them there.
     if (room && connected.length) {
       parts.push(el('p', 'wl-section', t('Ideas for {name}', { name: room.name })));
       const list = el('div', 'wl-ideas');
-      for (const idea of ideas) list.append(button('wl-idea', idea, () => { finish(); void host.openProject?.(room, { draft: idea }); }));
+      for (const idea of ideas) { const key = button('wl-idea', idea, () => void enter(idea, key)); list.append(key); }
       parts.push(list);
       content.replaceChildren(...parts);
       const home = button('wl-btn ghost', t('Go to Home'), () => finish());
-      footer({
+      const opening = footer({
         next: t('Open {name}', { name: room.name }),
-        onNext: () => { finish(); void host.openProject?.(room); },
+        onNext: () => enter(null, opening),
         extra: (() => { const keys = el('span', 'wl-keys'); keys.append(learn, home); return keys; })(),
       });
       return;

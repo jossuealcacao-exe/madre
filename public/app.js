@@ -18197,7 +18197,17 @@ function openAgentPop(id, anchor, { back = null } = {}) {
   const wait = timeout >= 120 ? t('{n} min', { n: Math.round(timeout / 60) }) : `${timeout}s`;
   // How it is connected, how long MADRE waits for it and its version, as three small chips.
   const meta = el('div', 'pop-chips');
-  if (session?.detail) meta.append(el('span', null, session.detail));
+  // An agent signed in through several providers (OpenCode) shows each as its own chip, by name, and
+  // says on it whether it entered with your account or with a key — not «OpenAI (oauth), …» in a line.
+  const providers = Array.isArray(session?.providers) ? session.providers : [];
+  if (providers.length) {
+    for (const one of providers.slice(0, 4)) {
+      const chip = el('span', 'pop-provider-chip', one.name);
+      chip.title = /oauth/i.test(one.type ?? '') ? t('Signed in with your {name} account', { name: one.name }) : t('Connected with a {name} API key', { name: one.name });
+      meta.append(chip);
+    }
+    if (providers.length > 4) meta.append(el('span', null, `+${providers.length - 4}`));
+  } else if (session?.detail) meta.append(el('span', null, session.detail));
   const waits = el('span', null, t('waits {time}', { time: wait }));
   waits.title = t('If it takes longer than {time} to answer, MADRE stops waiting.', { time: wait });
   meta.append(waits);
