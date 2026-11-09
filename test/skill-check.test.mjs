@@ -3,7 +3,7 @@
 // H-5 of docs/private/HABILIDADES-MERCADO.md: the check of a skill somebody sends.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SKILL_LICENSES, SKILL_SHELVES, checkSkillFolder, programReaches, refusedIn, saidIn, skillFaults } from '../src/skill-check.mjs';
@@ -154,5 +154,66 @@ test('skill-check · «madre check-skill» is what the repository\'s CI runs, an
   } finally {
     await rm(good, { recursive: true, force: true });
     await rm(bad, { recursive: true, force: true });
+  }
+});
+
+// ---- H-8: sending one's own, and the Market's tab.
+test('skill-check · sending one\'s own writes the answers into the skill\'s own header, and nothing else', async () => {
+  const { ASKS, submissionDraft, withEntry, writeSubmission, skillUploadUrl } = await import('../src/skill-check.mjs');
+  const { readSkill } = await import('../src/skills.mjs');
+  // Only what nobody but the person can say is asked for: the rest the skill already said.
+  assert.deepEqual(ASKS, ['line', 'summary', 'shelf', 'author', 'license', 'minMadre']);
+  const dir = await sent({ id: 'cotizaciones', name: 'Cotizaciones', when: '"Una cotización."', version: '1.0.0' }, BODY, { 'referencias/plantilla.md': '# Plantilla' });
+  const state = await mkdtemp(join(tmpdir(), 'madre-send-'));
+  try {
+    const draft = submissionDraft(await readSkill(dir), { madre: '1.1.2' });
+    assert.deepEqual([draft.id, draft.version, draft.shelf, draft.author, draft.license], ['cotizaciones', '1.0.0', null, null, null]);
+    assert.equal(draft.minMadre, '1.1.2', 'the MADRE in use is offered, so nobody has to know the number');
+    // The header gains what was answered and keeps what it said. The id, the version and the
+    // instructions are the author's and are never touched.
+    const entry = { line: { es: 'Cotiza igual', en: 'Quote the same' }, summary: { es: 'Cómo cotizas.' }, shelf: 'organize', author: { name: 'Ana Ruiz', github: '@anaruiz' }, license: 'CC-BY-4.0', minMadre: '1.1.2' };
+    const written = await writeSubmission({ stateRoot: state, dir, entry });
+    assert.equal(written.ok, true, written.problems.join(' · '));
+    assert.equal(written.upload, skillUploadUrl('cotizaciones'));
+    assert.deepEqual(written.files, ['HABILIDAD.md', 'referencias/plantilla.md'], 'what it carries goes with it');
+    const sentSkill = await readSkill(written.folder);
+    assert.deepEqual([sentSkill.shelf, sentSkill.license, sentSkill.author], ['organize', 'CC-BY-4.0', { name: 'Ana Ruiz', github: 'anaruiz' }], 'the @ of a GitHub user is dropped');
+    assert.deepEqual(sentSkill.line, { es: 'Cotiza igual', en: 'Quote the same' });
+    assert.deepEqual(sentSkill.summary, { es: 'Cómo cotizas.' }, 'one language is enough');
+    assert.deepEqual([sentSkill.id, sentSkill.version, sentSkill.body], ['cotizaciones', '1.0.0', BODY]);
+    // The original is untouched: what is sent is a copy.
+    assert.equal((await readSkill(dir)).shelf, null);
+    // A field answered blank is taken out of the header rather than left saying nothing.
+    assert.equal(withEntry(await readFile(join(written.folder, 'HABILIDAD.md'), 'utf8'), { shelf: '' }).includes('shelf:'), false);
+    // And a file that is not a skill says so instead of being written anywhere.
+    assert.throws(() => withEntry('sin cabecera', {}), /header/i);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+    await rm(state, { recursive: true, force: true });
+  }
+});
+
+test('skill-check · the Market shows skills in a tab of their own, never on a module\'s shelf', async () => {
+  const view = await readFile(new URL('../public/market-view.js', import.meta.url), 'utf8');
+  const market = await readFile(new URL('../public/market.js', import.meta.url), 'utf8');
+  // Its own list in the page, read from the catalog's own list.
+  assert.match(market, /export const marketSkills = \(\)/);
+  assert.match(market, /setMarketSkills\(answer\.skills\)/);
+  // A tab in Home and inside a project alike.
+  assert.match(view, /\['skills', t\('Skills'\)\]/);
+  assert.match(view, /view\.tab === 'skills' \? skillsPage\(view\.focus\)/);
+  // Read before it is kept, and kept on the very seal that was read.
+  assert.match(view, /\/api\/market\/skills\/install', \{ id: skill\.id, review: true \}/);
+  assert.match(view, /accept: payload\.seal/);
+  // And it says what only #4 could ever run.
+  assert.match(view, /#4 AIRLOCK/);
+  // The manual says what a skill is, in both languages, and promises no picture it does not have.
+  const { MANUAL } = await import('../public/manual-content.js');
+  for (const lang of ['es', 'en']) {
+    const section = MANUAL[lang].sections.find((one) => one.id === 'habilidades');
+    assert.ok(section, `${lang}: the manual does not say what a skill is`);
+    assert.match(section.expert, /permission|permiso/);
+    assert.match(section.tryIt, /\/habilidad/);
+    assert.equal(section.shot, undefined, 'its own picture is taken with the release, not borrowed from another screen');
   }
 });

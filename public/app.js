@@ -17385,6 +17385,8 @@ function skillRow(skill) {
     await refreshSkills();
   }, { tone: 'danger' });
   keys.append(gone);
+  // Sending one's own: only for a skill that is the person's, never for one the Market signed.
+  if (!skill.market) keys.append(sxButton(t('Send to the Market'), () => openSkillSubmit(skill)));
   row.append(words, keys);
   // The word for every project, said only when this project has one of its own: otherwise it is
   // the same word twice and the row reads like a puzzle.
@@ -17468,6 +17470,89 @@ function openSkillImport() {
   dialog.showModal();
   list.append(el('p', 'settings-reading', t('Looking…')));
   void fetch('/api/skills/import').then((response) => response.json()).then((data) => draw(data.found ?? [])).catch(() => { list.replaceChildren(el('p', 'mods-submit-warn', t('MADRE could not read them.'))); });
+}
+
+// SENDING YOUR OWN SKILL (H-8). A skill is one file, so this asks only what nobody but the person
+// can say — which shelf, their name, which license — and writes it into the skill's own header.
+// Everything else it already said about itself.
+function openSkillSubmit(skill) {
+  const dialog = el('dialog', 'module-guide skill-text');
+  const head = el('header', 'module-guide-head');
+  const named = el('div', 'skill-text-name');
+  named.append(el('span', 'custom-title', t('Send {name} to the Market', { name: skillName(skill) })), el('span', 'sx-hint', t('MADRE checks it here, the author of MADRE reads it and signs it, and then anyone can find it.')));
+  const close = el('button', 'module-guide-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', t('CLOSE'));
+  close.addEventListener('click', () => dialog.close());
+  head.append(named, close);
+  const body = el('div', 'module-guide-body');
+  dialog.append(head, body);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.showModal();
+  const ask = (payload = {}) => fetch('/api/skills/submission', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: skill.id, ...payload }) }).then((response) => response.json());
+  body.append(el('p', 'settings-reading', t('Looking…')));
+  void ask().then((first) => {
+    if (first.error) { body.replaceChildren(el('p', 'mods-submit-warn', first.error)); return; }
+    body.replaceChildren();
+    const draft = first.draft;
+    const pair = (value, { area = false } = {}) => {
+      const box = el('div', 'sx-field mods-pair');
+      const made = (lang, label) => { const node = el(area ? 'textarea' : 'input', 'sx-input'); node.value = (value && typeof value === 'object' ? value[lang] : lang === 'es' ? value : '') ?? ''; node.placeholder = label; node.setAttribute('aria-label', label); if (area) node.rows = 3; return node; };
+      const es = made('es', t('Spanish'));
+      const en = made('en', t('English'));
+      box.append(es, en);
+      // One language is enough: a skill written in Spanish does not have to invent an English line.
+      return { box, read: () => { const said = {}; if (es.value.trim()) said.es = es.value.trim(); if (en.value.trim()) said.en = en.value.trim(); return Object.keys(said).length ? said : null; } };
+    };
+    const line = pair(draft.line);
+    const summary = pair(draft.summary, { area: true });
+    const block = sxBlock(body, t('What the Market will show'), t('In Spanish, in English, or in one of the two: the Market shows whichever it has.'));
+    sxRow(block, t('In one line'), null, line.box, { stack: true });
+    sxRow(block, t('What it does and when to use it'), null, summary.box, { stack: true });
+    const shelf = sxSelect([['', t('Choose…')], ...first.shelves.map((id) => [id, t(MARKET_SHELVES.find((one) => one.id === id)?.title ?? id)])], draft.shelf ?? '', () => {}, t('Shelf'));
+    sxRow(block, t('Shelf'), t('Where it sits in the Market.'), shelf);
+    const who = el('div', 'sx-field mods-pair');
+    const author = el('input', 'sx-input'); author.value = draft.author?.name ?? ''; author.placeholder = t('Your name');
+    const github = el('input', 'sx-input'); github.value = draft.author?.github ?? ''; github.placeholder = t('Your GitHub user, if you have one');
+    who.append(author, github);
+    sxRow(block, t('Who made it'), t('Your name is what the Market shows. The GitHub user is only how the pull request is signed.'), who, { stack: true });
+    const license = sxSelect([['', t('Choose…')], ...first.licenses.map((id) => [id, id])], draft.license ?? '', () => {}, t('License of your text'));
+    sxRow(block, t('License of your text'), t('Under which others may read it, use it and change it.'), license);
+    const oldest = el('input', 'sx-input mono'); oldest.value = draft.minMadre ?? ''; oldest.placeholder = '1.1.2';
+    sxRow(block, t('Oldest MADRE it works with'), null, oldest);
+    if (draft.scripts?.length) block.rows.append(el('p', 'mods-submit-warn', t('It carries programs: {list}. Whoever reviews it reads every one of them, and so does whoever installs it.', { list: draft.scripts.join(', ') })));
+    const said = el('div', 'mods-submit-said');
+    const read = () => ({ line: line.read(), summary: summary.read(), shelf: shelf.value, author: author.value.trim() ? { name: author.value.trim(), github: github.value.trim() } : null, license: license.value, minMadre: oldest.value.trim() });
+    const show = (result) => {
+      said.replaceChildren();
+      if (result.problems?.length) {
+        const list = el('ul', 'mods-submit-problems');
+        for (const one of result.problems) list.append(el('li', null, one));
+        said.append(el('b', null, t('To fix first')), list);
+      }
+      if (!result.folder) return;
+      const ready = el('div', 'mods-submit-ready');
+      ready.append(el('b', null, t('Your skill is ready to send')), el('code', null, result.folder));
+      const steps = el('ol', 'mods-submit-steps');
+      for (const step of [t('Open GitHub: it asks you to sign in if you are not.'), t('Drag every file of that folder onto the page.'), t('Say in one line what your skill is for and press «Propose changes».'), t('The author of MADRE reads it; once signed, it is in the Market for everyone.')]) steps.append(el('li', null, step));
+      const go = el('a', 'sx-btn primary', t('Open GitHub'));
+      go.href = result.upload; go.target = '_blank'; go.rel = 'noopener';
+      const again = sxButton(t('Show the folder'), () => void ask({ entry: read(), write: true, reveal: true }));
+      const keys = el('div', 'mods-submit-keys');
+      keys.append(go, again);
+      ready.append(steps, keys);
+      said.append(ready);
+    };
+    const prepare = sxButton(t('Prepare'), async () => {
+      prepare.disabled = true;
+      const result = await ask({ entry: read(), write: true });
+      prepare.disabled = false;
+      if (result.error) { said.replaceChildren(el('p', 'mods-submit-warn', result.error)); return; }
+      show(result);
+    }, { tone: 'primary' });
+    body.append(prepare, said);
+  }).catch(() => { body.replaceChildren(el('p', 'mods-submit-warn', t('MADRE did not answer.'))); });
 }
 
 function skillsSection(board) {

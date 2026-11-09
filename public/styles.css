@@ -6206,6 +6206,30 @@ dialog.skill-text .skill-text-name { display: grid; gap: 2px; min-width: 0; }
 .skill-import.off .skill-import-words { opacity: .75; }
 .skill-import input { margin-top: 3px; }
 .skill-import-words { display: grid; gap: 3px; min-width: 0; }
+
+/* The Market's Skills tab (H-8): rows and a page, never tiles — what matters is a sentence and a page. */
+.mk-skill-list { display: grid; gap: 0; margin-top: 10px; }
+.mk-skill-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+.mk-skill-row:last-child { border-bottom: 0; }
+.mk-skill-words { display: grid; gap: 4px; min-width: 0; }
+.mk-skill-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mk-skill-top b { font-size: 15px; }
+.mk-skill-by, .mk-skill-meta span { font-size: 12px; color: var(--text-3); }
+.mk-skill-tag { padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--text-2); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.mk-skill-line { margin: 0; color: var(--text-2); font-size: 13px; line-height: 1.4; }
+.mk-skill-page { display: grid; gap: 14px; justify-items: start; }
+.mk-skill-head { display: grid; gap: 6px; }
+.mk-skill-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.mk-skill-read { display: grid; gap: 10px; width: 100%; }
+.mk-skill-body { margin: 0; padding: 16px 18px; border-radius: 14px; background: color-mix(in srgb, var(--text) 5%, transparent); font-family: var(--read); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mk-skill-when, .mk-skill-files, .mk-skill-have { margin: 0; color: var(--text-2); font-size: 12.5px; }
+.mk-skill-warn { margin: 0; color: var(--amber, #d9a90f); font-size: 12.5px; line-height: 1.45; }
+.mk-skill-said { margin: 0; color: var(--text-3); font-size: 12.5px; }
+.mk-empty { color: var(--text-3); }
+
+@media (max-width: 560px) {
+  .mk-skill-row { grid-template-columns: minmax(0, 1fr); }
+}
 .skill-when { margin: 0; color: var(--text-2); font-size: 12.5px; }
 .skill-body { margin: 0; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); font-family: var(--read); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 

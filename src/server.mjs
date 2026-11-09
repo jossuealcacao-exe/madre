@@ -136,6 +136,7 @@ import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
 import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
 import { findSkills, importSkills } from './skills-import.mjs';
+import { ASKS as SKILL_ASKS, SKILL_LICENSES, SKILL_SHELVES, submissionDraft as skillDraft, writeSubmission as writeSkillSubmission } from './skill-check.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
 import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedFromMarket, installedSkills, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket, updateSkillsFromMarket } from './market-remote.mjs';
@@ -5146,6 +5147,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/skills') {
         const config = await readConfig(root);
         const { loaded, failures, folders } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
+        const fromMarket = await installedSkills(root);
         const skills = loaded.map((skill) => ({
           id: skill.id, name: skill.name, when: skill.when, version: skill.version, minMadre: skill.minMadre,
           credit: skill.credit, license: skill.license, origin: skill.origin, dir: skill.dir, unknown: skill.unknown,
@@ -5153,8 +5155,27 @@ export async function createPulseServer({
           body: skill.body, declares: skillDeclares(skill),
           state: skillState(config, skill.id, scopeRoom),
           everywhere: skillState(config, skill.id, null),
+          // One the Market signed is not the person's to send: it is already there.
+          market: Boolean(fromMarket[skill.id]),
         }));
         return sendJson(response, 200, { skills, failures, folders, project: Boolean(scopeRoom) });
+      }
+      // SENDING ONE'S OWN SKILL TO THE MARKET (H-8). A skill is one file, so this is not a form full
+      // of what MADRE already knows: only what nobody but the person can say, written into its own
+      // header. Asked once for the draft, then again to write the folder they will send.
+      if (request.method === 'POST' && url.pathname === '/api/skills/submission') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const { loaded } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
+        const mine = loaded.find((one) => one.id === String(payload.id ?? ''));
+        if (!mine) return sendJson(response, 404, { error: t('No skill «{id}».', { id: payload.id }) });
+        try {
+          const draft = skillDraft(mine, { madre: PACKAGE.version });
+          if (!payload.write) return sendJson(response, 200, { draft, asks: SKILL_ASKS, shelves: SKILL_SHELVES, licenses: SKILL_LICENSES });
+          const written = await writeSkillSubmission({ stateRoot: root, dir: mine.dir, entry: payload.entry ?? {} });
+          const shown = payload.reveal === true ? await openInBrowser(written.folder, await environmentOnce().catch(() => null)).catch(() => false) : false;
+          return sendJson(response, 200, { draft, asks: SKILL_ASKS, shelves: SKILL_SHELVES, licenses: SKILL_LICENSES, ...written, shown });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
       }
       // THE SKILLS THIS COMPUTER ALREADY HAS (H-7): read where each CLI keeps them, with what would
       // happen to each one here. Nothing is brought over until the person says which.

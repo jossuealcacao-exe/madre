@@ -224,6 +224,20 @@ export function setMarketCatalog(catalog) {
   remote = catalog && Array.isArray(catalog.modules) ? { ...catalog, byId: new Map(catalog.modules.map((entry) => [entry.id, entry])) } : null;
 }
 export const remoteEntry = (id) => remote?.byId.get(id) ?? null;
+// THE SKILLS of the catalog (2026-11-08, H-8): a list of its own, never mixed with the modules —
+// a module adds buttons and pages, a skill tells the agents how the person works. Their words come
+// in both languages like everything else here.
+export const marketSkills = () => (Array.isArray(remote?.skills) ? remote.skills : []).map((entry) => ({
+  ...entry,
+  name: pick(entry.name) ?? entry.id,
+  line: pick(entry.line) ?? '',
+  summary: pick(entry.summary) ?? '',
+  changes: pick(entry.changes),
+}));
+// Which of them this computer got, as /api/market says: version and when.
+let skillsHere = {};
+export const setMarketSkills = (installed) => { skillsHere = installed && typeof installed === 'object' ? installed : {}; };
+export const skillHere = (id) => skillsHere[id] ?? null;
 // THE PAID MODULES (src/market-license.mjs): which ones this computer bought, as /api/market says
 // (never the keys), and whether one still has to be bought before it can be got.
 let bought = {};
@@ -270,6 +284,7 @@ export async function loadMarket({ toast = null, open = null } = {}) {
   if (!answer) return null;
   setMarketCatalog(answer.catalog);
   setMarketLicensed(answer.licensed);
+  setMarketSkills(answer.skills);
   if (!toast) return answer;
   const updated = answer.news ?? [];
   if (updated.length) {

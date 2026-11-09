@@ -288,6 +288,21 @@ export const MANUAL = {
         expert: 'Lo que obtienes en el Mercado de un proyecto es para ese proyecto. Los módulos de la comunidad dicen quién los hizo y su licencia; MADRE revisa su firma antes de instalarlos.',
       },
       {
+        id: 'habilidades',
+        part: 'more',
+        icon: 'market',
+        title: 'Habilidades: cómo trabajas tú',
+        lead: 'Una habilidad le dice a tus agentes cómo trabajas: tu plantilla de cotización, el orden de tus informes, qué preguntar antes de dar un precio. La escribes una vez y la siguen los seis — Codex, Claude, Gemini, OpenCode, Cursor y Grok — porque es MADRE la que les habla.',
+        tryIt: 'Escribe en la conversación: /habilidad cuando te pida una cotización, usa mi plantilla y pon el IVA aparte. El agente la escribe, tú la lees y la guardas.',
+        steps: [
+          'Escribe /habilidad y lo que quieres que hagan, en tus palabras. Hace falta el modo #2.',
+          'El agente la escribe y MADRE te la ofrece en la conversación. Pulsa «Léela» antes de guardarla: es una página, se lee en un minuto.',
+          'En Módulos → Habilidades eliges cuándo entra: cuando venga al caso, siempre encendida o apagada.',
+          'Si ya tienes habilidades de Claude o de Codex, pulsa «Trae las que ya tienes» y elige cuáles.',
+        ],
+        expert: 'Una habilidad no da permiso: no sube el modo del turno ni ensancha lo que un agente puede tocar. Si lleva programas, solo un agente puede correrlos y solo en #4; MADRE nunca corre uno. En la conversación ves una píldora con por qué entró. Y puedes mandarla al Mercado para que la use cualquiera: el autor de MADRE la lee y la firma.',
+      },
+      {
         id: 'continuidad',
         part: 'more',
         icon: 'loop',
@@ -725,6 +740,21 @@ export const MANUAL = {
           'Press Get or Install. Afterwards you turn it on or off in Modules, in the project\'s bar.',
         ],
         expert: 'What you get in a project\'s Market is for that project. Community modules say who made them and their license; MADRE checks their signature before installing them.',
+      },
+      {
+        id: 'habilidades',
+        part: 'more',
+        icon: 'market',
+        title: 'Skills: the way you work',
+        lead: 'A skill tells your agents how you work: your quote template, the order of your reports, what to ask before giving a price. You write it once and all six follow it — Codex, Claude, Gemini, OpenCode, Cursor and Grok — because MADRE is the one that talks to them.',
+        tryIt: 'Type in the conversation: /habilidad when I ask for a quote, use my template and put the tax apart. The agent writes it, you read it and keep it.',
+        steps: [
+          'Type /habilidad and what you want them to do, in your own words. It needs mode #2.',
+          'The agent writes it and MADRE offers it in the conversation. Press «Read it» before keeping it: it is one page, a minute to read.',
+          'In Modules → Skills you choose when it comes in: when it fits, always on, or off.',
+          'If you already have skills from Claude or Codex, press «Bring over what you already have» and pick.',
+        ],
+        expert: 'A skill gives no permission: it does not raise the mode of the turn and does not widen what an agent may touch. If it carries programs, only an agent can run them and only in #4; MADRE never runs one. The conversation shows a pill saying why it came in. And you can send it to the Market for anyone to use: the author of MADRE reads it and signs it.',
       },
       {
         id: 'continuidad',

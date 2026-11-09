@@ -18,8 +18,8 @@
 // one: an agent does, with the permission of its turn, so below #4 AIRLOCK every one of them is
 // inert. Each is still read for what it reaches for, because #4 exists.
 
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { t } from './i18n.mjs';
 import { MAX_BODY, MARKET_MAX_FILES, SKILL_FILES, pick, readSkill, runnable } from './skills.mjs';
 
@@ -193,4 +193,77 @@ export function skillMarkdown(result, skill = null) {
   }
   lines.push('', `_${t('Checked by MADRE (src/skill-check.mjs). A skill is words that reach an agent which may be holding CONTROL, so a person reads them before they are signed: no reading of text catches every instruction written to go around you.')}_`);
   return lines.join('\n');
+}
+
+// ---- SENDING ONE'S OWN (2026-11-08, H-8). A skill is one file, so sending it is not a form full of
+// facts MADRE already knows: it is the two or three things only the person can say — which shelf,
+// their name, which license — written into the skill's own header, beside what it already said.
+// Ready, the folder is copied where they can find it, with the page GitHub offers for adding files
+// without a terminal.
+export const MARKET_REPO = 'jossuealcacao-exe/madre-mercado';
+export const skillUploadUrl = (id) => `https://github.com/${MARKET_REPO}/upload/main/habilidades/${id}`;
+export const submissionFolder = (stateRoot, id) => join(stateRoot, 'market', 'submissions', 'habilidades', id);
+
+// What is still missing from its header, in the order a person fills it in. Only the fields nobody
+// but them can answer: everything else the skill already says about itself.
+export const ASKS = ['line', 'summary', 'shelf', 'author', 'license', 'minMadre'];
+export function submissionDraft(skill, { madre = null } = {}) {
+  const author = skill.author?.name ? skill.author : null;
+  return {
+    id: skill.id,
+    version: skill.version ?? '1.0.0',
+    line: skill.line ?? null,
+    summary: skill.summary ?? null,
+    shelf: SKILL_SHELVES.includes(skill.shelf) ? skill.shelf : null,
+    author: author ? { name: author.name, github: author.github ?? null } : null,
+    license: SKILL_LICENSES.includes(skill.license) ? skill.license : null,
+    minMadre: skill.minMadre ?? madre ?? null,
+    // What it carries, so the form can say plainly that programs are read before anything is signed.
+    scripts: skill.scripts ?? [],
+    files: (skill.files ?? []).length,
+  };
+}
+
+// The header of the skill as it will be sent: what it said, with what the person answered written in.
+// Only the fields of ASKS are ever touched — the instructions, the id and the version are theirs.
+export function withEntry(text, entry = {}) {
+  const match = String(text ?? '').match(/^(---\r?\n)([\s\S]*?)(\r?\n---\r?\n?)/);
+  if (!match) throw new Error(t('A skill starts with its header between two «---» lines: id, name and when it is for.'));
+  const lines = match[2].split(/\r?\n/);
+  const said = (key, value) => {
+    const at = lines.findIndex((line) => new RegExp(`^${key}\\s*:`).test(line));
+    if (value === null || value === undefined || value === '') { if (at >= 0) lines.splice(at, 1); return; }
+    const written = `${key}: ${value}`;
+    if (at >= 0) lines[at] = written; else lines.push(written);
+  };
+  const words = (value) => (value && typeof value === 'object'
+    ? `{ ${['es', 'en'].filter((lang) => value[lang]).map((lang) => `${lang}: ${JSON.stringify(String(value[lang]))}`).join(', ')} }`
+    : JSON.stringify(String(value ?? '')));
+  if (entry.line !== undefined) said('line', entry.line ? words(entry.line) : null);
+  if (entry.summary !== undefined) said('summary', entry.summary ? words(entry.summary) : null);
+  if (entry.shelf !== undefined) said('shelf', entry.shelf || null);
+  if (entry.license !== undefined) said('license', entry.license || null);
+  if (entry.minMadre !== undefined) said('minMadre', entry.minMadre || null);
+  if (entry.author !== undefined) {
+    const name = entry.author?.name?.trim();
+    said('author', name ? `{ name: ${JSON.stringify(name)}${entry.author.github ? `, github: ${JSON.stringify(String(entry.author.github).replace(/^@/, ''))}` : ''} }` : null);
+  }
+  return `${match[1]}${lines.join('\n')}${match[3]}${String(text).slice(match[0].length)}`;
+}
+
+// The folder a pull request adds, written where the person can find it: the skill as it will be
+// sent, checked once more the way the repository will check it.
+export async function writeSubmission({ stateRoot, dir, entry }) {
+  const skill = await readSkill(dir);
+  const folder = submissionFolder(stateRoot, skill.id);
+  await rm(folder, { recursive: true, force: true }).catch(() => {});
+  for (const file of skill.files) {
+    const from = join(skill.dir, file.path);
+    const to = join(folder, file.path);
+    await mkdir(dirname(to), { recursive: true });
+    if (SKILL_FILES.includes(file.path)) await writeFile(to, withEntry(await readFile(from, 'utf8'), entry));
+    else await copyFile(from, to);
+  }
+  const checked = await checkSkillFolder(folder);
+  return { folder, id: skill.id, files: skill.files.map((file) => file.path), upload: skillUploadUrl(skill.id), ...checked };
 }
