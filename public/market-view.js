@@ -701,6 +701,9 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (one) return skillPage(one);
     const head = el('header', 'mk-shelf-head');
     head.append(el('h2', null, t('Skills')), el('p', null, t('Ways of working, handed to whichever agent answers. The same one works for Codex, Claude, Gemini, OpenCode, Cursor and Grok, because MADRE is the one that writes the briefing.')));
+    // Bringing over the ones your agents already keep was only at the foot of Modules, where nobody
+    // looked for it (2026-11-08): the shelf of skills offers it too, where a project can take it.
+    if (host.importSkills) head.append(button('mk-get mk-skill-import', t('Bring over what you already have'), () => host.importSkills()));
     page.append(head);
     if (!all.length) {
       page.append(el('p', 'mk-empty', t('None in the Market yet. You can write your own: type /habilidad in the conversation.')));

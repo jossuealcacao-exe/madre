@@ -12100,6 +12100,8 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
 .mk.flat .mk-get.light { background: var(--mk-canvas); color: var(--madre-green); box-shadow: 0 0 0 .5px var(--mk-line); }
 .mk.flat .mk-get.big { height: 34px; padding: 0 20px; background: var(--madre-green); color: var(--madre-green-ink); font-size: 13.5px; }
 .mk.flat .mk-get.big:is(.quiet, .on) { background: var(--mk-fill); color: var(--text); }
+/* Bringing over the skills your agents already keep, under the shelf's words (2026-11-08). */
+.mk-skill-import { margin-top: 14px; }
 .mk.flat .mk-link { font: 500 13px var(--read); }
 
 /* Shelves: a title and its line, then the modules three rows deep in two columns, paged sideways

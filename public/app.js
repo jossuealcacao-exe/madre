@@ -8306,10 +8306,11 @@ function renderEventNode(event) {
 // its piece, and after ten seconds — later if the pointer is on it — it becomes a dot in the
 // colour of its kind, beside the dots around it; a click opens it again with everything it said.
 // What still asks for something stays as it is: a failure with its RETRY, a permission waiting, a
-// module to install, the changes a turn made with their UNDO, MU/TH/UR. History folds at once.
+// module to install, MU/TH/UR. History folds at once. The changes a turn made fold too (2026-11-08):
+// a card per turn was a wall between the answers, and its UNDO is one click away inside its dot.
 const NOTICE_FOLD_MS = 10000;
 // A limit warning folds too (2026-10-14): the agent's ring in the bar already says it, in red.
-const NOTICE_KEEP = '.fail, .mother-alert, .mother, .escalation, .lease.missing, .lease.refused, .module-proposed, .control.changed, .local-model, .memory.forgotten';
+const NOTICE_KEEP = '.fail, .mother-alert, .mother, .escalation, .lease.missing, .lease.refused, .module-proposed, .local-model, .memory.forgotten';
 // In the chat shell a failure folds too (2026-10-27), into a red dot, once nothing on it waits for
 // a press (noticeWaits): RETRY and the way out of a provider keep it open while they are live.
 // But not one that is the only answer to something the person asked (QA 1.1.0, NUE-13): reloaded,
@@ -8324,6 +8325,8 @@ function noticeTone(node) {
 // A notice folds only once it asks for nothing: any button still live keeps it open. STOP ALL on
 // an alert is the exception — the brake lives in the bar too.
 function noticeWaits(node) {
+  // The changes a turn made ask for nothing: UNDO and the files stay inside the dot.
+  if (node.matches('.control.changed')) return false;
   return [...node.querySelectorAll('button')].some((button) => !button.disabled && !button.hidden && !button.classList.contains('cmd'));
 }
 function foldableNotice(node) {
@@ -14857,7 +14860,14 @@ function renderTerminalCard(event) {
     if (yes) termOpen.add(id); else termOpen.delete(id);
   };
   open(termOpen.has(id));
-  head.addEventListener('click', () => open(!node.classList.contains('open')));
+  // Opening is reading (2026-11-08): the thread stops following the end, or a card near the end grew
+  // upward as the end was kept in view. It opens down, and comes into view if it has to.
+  head.addEventListener('click', () => {
+    const now = !node.classList.contains('open');
+    if (now) setPinned(false);
+    open(now);
+    if (now) setTimeout(() => { ourScroll(900); node.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, 260);
+  });
   // A module's page (a report to print) sits on the same row as its title, a small key at its end:
   // under it, it turned the pill into a bulging oval (2026-10-20).
   if (page && fromModule) {
@@ -18354,6 +18364,7 @@ function openRoomMarket(focus = null) {
       toast: (words) => toast(words),
       installHere: async (item) => { openModules(); await refreshModules(); renderModules(); openModuleSheet(item.id); },
       changed: async () => { await refreshModules(); if (modules.dialog.open) renderModules(); barModulesChanged(); },
+      importSkills: () => openSkillImport(),
     },
   });
 }
