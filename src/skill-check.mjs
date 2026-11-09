@@ -21,7 +21,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { t } from './i18n.mjs';
-import { MAX_BODY, MAX_FILES, SKILL_FILES, pick, readSkill, runnable } from './skills.mjs';
+import { MAX_BODY, MARKET_MAX_FILES, SKILL_FILES, pick, readSkill, runnable } from './skills.mjs';
 
 // The shelves of the Market a skill may sit on (public/market.js, MARKET_SHELVES).
 export const SKILL_SHELVES = ['no-terminal', 'create', 'organize', 'save', 'connect'];
@@ -115,7 +115,8 @@ export function skillFaults(skill) {
   if (!SKILL_LICENSES.includes(skill.license)) say('license', t('license: the one your text carries, one of {list}.', { list: SKILL_LICENSES.join(', ') }));
   if (!skill.body?.trim()) say('body', t('Under the header go the instructions themselves.'));
   else if (skill.body.length > MAX_BODY) say('body', t('The instructions are too long ({has} characters, at most {max}). What does not fit goes in referencias/.', { has: skill.body.length, max: MAX_BODY }));
-  if (skill.files?.length > MAX_FILES) say('files', t('A skill carries at most {max} files.', { max: MAX_FILES }));
+  // The Market's bound, not the disk's: there each file is a signed download of its own.
+  if (skill.files?.length > MARKET_MAX_FILES) say('files', t('A skill sent to the Market carries at most {max} files.', { max: MARKET_MAX_FILES }));
   if (skill.unknown?.length) say('header', t('Fields MADRE does not know: {list}', { list: skill.unknown.join(', ') }));
   return wrong;
 }

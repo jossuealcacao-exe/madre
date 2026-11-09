@@ -6199,6 +6199,13 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .skill-all { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .is-off .skill-words { opacity: .6; }
 dialog.skill-text .skill-text-name { display: grid; gap: 2px; min-width: 0; }
+.skill-import-list { display: grid; gap: 0; }
+.skill-import { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); cursor: pointer; }
+.skill-import:last-child { border-bottom: 0; }
+.skill-import.off { cursor: default; }
+.skill-import.off .skill-import-words { opacity: .75; }
+.skill-import input { margin-top: 3px; }
+.skill-import-words { display: grid; gap: 3px; min-width: 0; }
 .skill-when { margin: 0; color: var(--text-2); font-size: 12.5px; }
 .skill-body { margin: 0; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); font-family: var(--read); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 

@@ -85,8 +85,13 @@ cotizaciones/
   guiones/              programas que un agente puede correr, y solo en #4
 ```
 
-Hasta 40 archivos y 512 KB en total. Nada de enlaces simbólicos, nada de rutas que se salgan de su
-carpeta, nada de archivos ocultos.
+Hasta 200 archivos y 4 MB en total en tu computadora. **Para mandarla al Mercado**, hasta 40
+archivos: allá cada uno es una descarga firmada aparte. Nada de enlaces simbólicos, nada de rutas
+que se salgan de su carpeta, nada de archivos ocultos.
+
+Y el `when` cabe hasta 1 000 caracteres: no viaja en el aviso de cada turno, solo se usa para
+decidir si la habilidad entra, así que no hay razón para cortarlo — y cortarlo pierde justo la mitad
+que importa, el «y NO cuando…» del final.
 
 ## Los guiones: quién los corre y cuándo
 
@@ -113,6 +118,20 @@ Es la otra mitad del contrato, y conviene que la sepas al escribirla:
 
 Dicho de otro modo: una habilidad es un consejo dentro del turno. Escríbela como le hablarías a
 alguien que entra a trabajar contigo, no como si pudiera darse permisos.
+
+## Si ya tienes habilidades de Claude o de Codex
+
+MÓDULOS → **Habilidades** → «Trae las que ya tienes». MADRE lee donde las guarda cada CLI
+(`~/.claude/skills/`, `~/.codex/skills/`, y las de este proyecto en `.claude/skills/`), te las
+muestra todas y tú eliges. Leerlas no cambia nada; lo que traigas se copia y el original se queda
+donde está.
+
+Una que no entre lo dice con el número («27 973 caracteres, y caben 8 000»), porque los CLI no le
+ponen tope a esa página y MADRE sí. MADRE **no la acorta sola**: cambiar lo que se le dice a un
+agente sin que nadie lo pida no es un favor. Pídele a un agente que la acorte con `/habilidad`.
+
+Lo que traigas conserva su licencia. Una que diga «Proprietary» es tuya para usarla y **no para
+compartirla**: el Mercado la rechaza sola.
 
 ## Cómo se escribe bien
 

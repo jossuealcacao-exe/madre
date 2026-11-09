@@ -17397,11 +17397,85 @@ function skillRow(skill) {
   return row;
 }
 
+// BRING OVER WHAT YOU ALREADY HAVE (H-7). MADRE keeps every agent's own skills out of a turn on
+// purpose, so somebody arriving from Claude lost what they had written. This is the door back.
+// Nothing is brought on its own: each one says what would happen to it, and the person picks.
+function openSkillImport() {
+  const dialog = el('dialog', 'module-guide skill-text');
+  const head = el('header', 'module-guide-head');
+  const named = el('div', 'skill-text-name');
+  named.append(el('span', 'custom-title', t('Bring over what you already have')), el('span', 'sx-hint', t('The skills your agents keep on this computer')));
+  const close = el('button', 'module-guide-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', t('CLOSE'));
+  close.addEventListener('click', () => dialog.close());
+  head.append(named, close);
+  const body = el('div', 'module-guide-body');
+  body.append(el('p', 'sx-intro', t('Inside MADRE your agents never read their own skills: that is how one way of working can be the same for all of them. Here you bring the ones you want into MADRE, and from then on every agent follows them.')));
+  const list = el('div', 'skill-import-list');
+  body.append(list, el('p', 'sx-hint', t('Reading them changes nothing. What you bring is copied into MADRE; the original stays where it is.')));
+  const bring = sxButton(t('Bring the ones I ticked'), null, { tone: 'primary' });
+  const said = el('p', 'sx-hint');
+  body.append(bring, said);
+  const picked = new Set();
+  const draw = (found) => {
+    list.replaceChildren();
+    if (!found.length) { list.append(el('p', 'settings-reading', t('No agent on this computer keeps skills of its own.'))); bring.hidden = true; return; }
+    for (const one of found) {
+      const row = el('label', `skill-import ${one.fits ? 'fits' : 'off'}`);
+      const box = el('input');
+      box.type = 'checkbox';
+      box.disabled = !one.fits;
+      box.addEventListener('change', () => { if (box.checked) picked.add(one.id); else picked.delete(one.id); said.textContent = ''; });
+      const words = el('div', 'skill-import-words');
+      const top = el('div', 'skill-top');
+      top.append(el('b', 'skill-name', skillWords(one.name) ?? one.id), el('span', 'skill-tag', one.label));
+      if (one.synced) top.append(el('span', 'skill-tag', t('from your account')));
+      if (one.replaces) top.append(el('span', 'skill-tag warn', t('replaces the one you have')));
+      if (one.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: one.scripts.length })));
+      words.append(top);
+      if (one.fits) {
+        words.append(el('span', 'sx-hint', skillWords(one.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
+        words.append(el('span', 'sx-hint', t('{chars} characters · {files} file(s)', { chars: one.chars.toLocaleString(), files: one.files })));
+        // A skill that says it is proprietary may be kept and used; it may not be sent to the Market.
+        if (one.license && !/^(CC|MIT|Apache|AGPL|GPL|ISC|BSD|MPL)/i.test(one.license)) words.append(el('span', 'mods-submit-warn', t('Its license says: {license} — yours to use, not yours to share.', { license: one.license })));
+      } else {
+        words.append(el('span', 'mods-submit-warn', one.why));
+        words.append(el('span', 'sx-hint', t('Ask an agent to shorten it with /habilidad, and bring that one over instead.')));
+      }
+      row.append(box, words);
+      list.append(row);
+    }
+  };
+  bring.addEventListener('click', async () => {
+    if (!picked.size) { said.textContent = t('Tick at least one.'); return; }
+    bring.disabled = true;
+    const payload = await fetch('/api/skills/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: [...picked] }) }).then((response) => response.json()).catch(() => ({ error: 'network' }));
+    bring.disabled = false;
+    if (payload.error) { said.textContent = t('They could not be brought over: {error}', { error: payload.error }); return; }
+    said.textContent = payload.brought.length
+      ? t('{n} brought in. They come in when they fit; change that in MODULES.', { n: payload.brought.length })
+      : t('None could come. Each one says why.');
+    for (const one of payload.left ?? []) said.textContent += ` · ${one.id}: ${one.why}`;
+    picked.clear();
+    await refreshSkills();
+    void fetch('/api/skills/import').then((response) => response.json()).then((data) => draw(data.found ?? [])).catch(() => {});
+  });
+  dialog.append(head, body);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+  dialog.showModal();
+  list.append(el('p', 'settings-reading', t('Looking…')));
+  void fetch('/api/skills/import').then((response) => response.json()).then((data) => draw(data.found ?? [])).catch(() => { list.replaceChildren(el('p', 'mods-submit-warn', t('MADRE could not read them.'))); });
+}
+
 function skillsSection(board) {
   const skills = modules.skills ?? [];
   const failures = modules.skillFailures ?? [];
-  if (!skills.length && !failures.length) return;
-  const block = sxBlock(board, t('Skills'), t('Ways of working you keep, handed to whichever agent answers. They tell your agents how you work; they never give them permission.'), { className: 'skills-block' });
+  const aside = sxButton(t('Bring over what you already have'), () => openSkillImport());
+  const block = sxBlock(board, t('Skills'), t('Ways of working you keep, handed to whichever agent answers. They tell your agents how you work; they never give them permission.'), { className: 'skills-block', aside });
+  if (!skills.length) block.rows.append(el('p', 'settings-reading', t('None yet. Write one with /habilidad in the conversation, or bring over the ones your agents already keep.')));
   for (const skill of skills) block.rows.append(skillRow(skill));
   for (const one of failures) block.rows.append(el('p', 'mods-submit-warn', t('{dir} was not read: {error}', { dir: one.dir, error: one.error })));
 }

@@ -43,10 +43,20 @@ const SEMVER = /^\d+\.\d+\.\d+$/;
 // The body is in every turn this skill enters, so it is the one thing with a tight cap: about two
 // thousand tokens. A skill with more to say puts it in referencias/ and points at it.
 export const MAX_BODY = 8000;
-export const MAX_WHEN = 400;
+// `when` never travels in the prompt — only the body does — so its only cost is the matching, and a
+// truncated trigger loses exactly the half that matters: the «and NOT when…» at the end. Measured
+// against the skills on a real computer (H-7, 2026-11-08), where Claude's run to about 900.
+export const MAX_WHEN = 1000;
 export const MAX_NAME = 60;
-export const MAX_FILES = 40;
-export const MAX_BYTES = 512 * 1024;
+// What a skill may weigh ON THIS DISK, which is a different question from what may travel through
+// the Market (src/market-remote.mjs keeps its own, tighter bound: one signed download each). The
+// real ones measured on 2026-11-08 reach 61 files and 1158 KB — Claude's xlsx, pptx and docx carry
+// their own libraries — and refusing those on a number nobody had measured would have been a guess
+// dressed as a rule.
+export const MAX_FILES = 200;
+export const MAX_BYTES = 4 * 1024 * 1024;
+// And what may be SENT to the Market: there each file is a download of its own, signed and pinned.
+export const MARKET_MAX_FILES = 40;
 // What an agent could run, and therefore what only #4 could ever reach. Read from the name, and
 // from the executable bit for anything else.
 const RUNNABLE = /\.(?:sh|bash|zsh|py|rb|pl|mjs|cjs|js|ts)$/i;

@@ -299,7 +299,13 @@ test('skills · from the Market: signed, pinned file by file, read before it is 
   const base = `http://127.0.0.1:${server.address().port}/mercado`;
   const { root, stateRoot, projectRoot } = await houses();
   const page = (version, body = 'Usa la plantilla.') => header({ id: 'cotizaciones', name: '{ es: "Cotizaciones", en: "Quotes" }', when: 'El usuario pide una cotización.', version }, body);
-  const publish = ({ version = '1.0.0', script = null, revoked = [], tamper = false, issued = new Date().toISOString() } = {}) => {
+  // Every catalog says when it was made, in order and never «now»: a catalog older than the one the
+  // computer keeps is refused on purpose (market-remote.mjs), so mixing «now» with written dates
+  // made this depend on the time of day. It did: green at 23:42 UTC, red at 00:05.
+  let issuedAt = 0;
+  const publish = ({ version = '1.0.0', script = null, revoked = [], tamper = false, issued = null } = {}) => {
+    issuedAt += 1;
+    issued ??= new Date(Date.UTC(2026, 10, 8, 10, issuedAt)).toISOString();
     const files = [{ path: 'HABILIDAD.md', text: page(version) }, { path: 'referencias/plantilla.md', text: '# Plantilla' }];
     if (script) files.push({ path: `guiones/${script}`, text: 'print(1)' });
     const listed = files.map((file) => {
@@ -334,16 +340,16 @@ test('skills · from the Market: signed, pinned file by file, read before it is 
     assert.deepEqual((await loadSkills({ stateRoot, projectRoot })).loaded.map((skill) => skill.id), ['cotizaciones']);
     assert.equal((await installedSkills(stateRoot)).cotizaciones.version, '1.0.0');
     // A file that is not the one the catalog signed is not installed, however well signed the catalog.
-    publish({ version: '1.0.1', tamper: true, issued: '2026-11-09T00:00:00Z' });
+    publish({ version: '1.0.1', tamper: true });
     const bad = await refreshCatalog({ stateRoot, env, publicKey: PUBLIC, force: true });
     await assert.rejects(installSkillFromMarket({ ...tools, id: 'cotizaciones', catalog: bad.catalog, review: true }), /not the one the Market signed/i);
     // A newer version with no program of its own updates on its own.
-    publish({ version: '1.0.2', issued: '2026-11-10T00:00:00Z' });
+    publish({ version: '1.0.2' });
     const next = await refreshCatalog({ stateRoot, env, publicKey: PUBLIC, force: true });
     const moved = await updateSkillsFromMarket({ ...tools, catalog: next.catalog });
     assert.deepEqual(moved.updated.map((one) => [one.id, one.from, one.to]), [['cotizaciones', '1.0.0', '1.0.2']]);
     // One that brings a program the person never accepted WAITS, and is said once.
-    publish({ version: '1.0.3', script: 'precios.py', issued: '2026-11-11T00:00:00Z' });
+    publish({ version: '1.0.3', script: 'precios.py' });
     const armed = await refreshCatalog({ stateRoot, env, publicKey: PUBLIC, force: true });
     const waiting = await updateSkillsFromMarket({ ...tools, catalog: armed.catalog });
     assert.deepEqual(waiting.updated, []);
@@ -353,7 +359,7 @@ test('skills · from the Market: signed, pinned file by file, read before it is 
     assert.deepEqual((await updateSkillsFromMarket({ ...tools, catalog: armed.catalog })).held, []);
     assert.deepEqual(widensSkill({ scripts: ['a.py'] }, { scripts: ['a.py'] }), [], 'the same programs ask for nothing new');
     // Taken back: it is removed from this computer and forgotten, so no next catalog brings it back.
-    publish({ version: '1.0.2', revoked: [{ id: 'cotizaciones', why: { es: 'Decía algo que no era.' } }], issued: '2026-11-12T00:00:00Z' });
+    publish({ version: '1.0.2', revoked: [{ id: 'cotizaciones', why: { es: 'Decía algo que no era.' } }] });
     const pulled = await refreshCatalog({ stateRoot, env, publicKey: PUBLIC, force: true });
     const gone = await updateSkillsFromMarket({ ...tools, catalog: pulled.catalog });
     assert.deepEqual(gone.removed.map((one) => one.id), ['cotizaciones']);

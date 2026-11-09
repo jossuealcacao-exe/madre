@@ -26,7 +26,7 @@ import { join } from 'node:path';
 import { t } from './i18n.mjs';
 import { MARKET_PUBLIC_KEY } from './market-key.mjs';
 import { mayInstall } from './market-license.mjs';
-import { MAX_FILES as MAX_SKILL_FILES, SKILL_FILES, installSkill, declaredBy as skillDeclares, readSkillText, removeSkill, runnable, safePath } from './skills.mjs';
+import { MARKET_MAX_FILES as MAX_SKILL_FILES, SKILL_FILES, installSkill, declaredBy as skillDeclares, readSkillText, removeSkill, runnable, safePath } from './skills.mjs';
 
 export const MARKET_URL = 'https://madre.run/mercado/catalogo.json';
 const MAX_CATALOG = 1024 * 1024;

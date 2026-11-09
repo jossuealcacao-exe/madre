@@ -135,6 +135,7 @@ import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
 import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
+import { findSkills, importSkills } from './skills-import.mjs';
 import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { currentNotices, noticeSeen, noticesUrl, readFeed, readNotice, refreshNotices, signNotice, signRetire } from './notices.mjs';
 import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedFromMarket, installedSkills, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket, updateSkillsFromMarket } from './market-remote.mjs';
@@ -5154,6 +5155,21 @@ export async function createPulseServer({
           everywhere: skillState(config, skill.id, null),
         }));
         return sendJson(response, 200, { skills, failures, folders, project: Boolean(scopeRoom) });
+      }
+      // THE SKILLS THIS COMPUTER ALREADY HAS (H-7): read where each CLI keeps them, with what would
+      // happen to each one here. Nothing is brought over until the person says which.
+      if (request.method === 'GET' && url.pathname === '/api/skills/import') {
+        const found = await findSkills({ projectRoot: canonicalProjectRoot, stateRoot: root });
+        return sendJson(response, 200, { found });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/skills/import') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const ids = (Array.isArray(payload.ids) ? payload.ids : []).slice(0, 50).map((id) => String(id));
+        if (!ids.length) return sendJson(response, 400, { error: t('Name which ones to bring over.') });
+        const done = await importSkills({ ids, stateRoot: root, projectRoot: canonicalProjectRoot, scope: payload.scope === 'project' ? 'project' : 'user' });
+        for (const one of done.brought) await room.record('skill.installed', { id: one.id, name: one.name, origin: payload.scope === 'project' ? 'project' : 'user', from: one.who, by: 'you' });
+        return sendJson(response, 200, done);
       }
       // A skill an agent wrote in its draft folder (H-6): read it, say what it tells the agents, and
       // install it only when the person said so. The file is the agent's proposal; installing is
