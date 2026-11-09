@@ -13001,3 +13001,28 @@ dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger):active
    It wraps under the mark, centred, the lamp beside its first word. */
 .settings-quick-tile.agent { min-width: 0; }
 .settings-quick-tile.agent .state { max-width: 100%; white-space: normal; text-align: center; line-height: 1.3; overflow-wrap: anywhere; }
+
+/* EVERY SEARCH FIELD SINKS THE SAME WAY (2026-11-09): the conversations' and the files', as
+   Settings' does (.settings-search): a quiet well with a faint inner shadow, deeper while it has
+   the cursor. The conversations' had a border and a flat grey, the files' had lost its well. */
+html.chat-shell .chats-search input,
+html.chat-shell .tree-search .tree-find {
+  border: 0 !important; border-radius: 10px !important; outline: none !important;
+  background: color-mix(in srgb, var(--text) 6%, transparent) !important;
+  box-shadow: inset 0 1px 2px rgba(20, 30, 20, .1) !important;
+  transition: box-shadow var(--motion-fast, 150ms) var(--ease-out, ease-out), background-color var(--motion-fast, 150ms) var(--ease-out, ease-out);
+}
+html.chat-shell .chats-search input { height: 32px; padding: 0 11px; font: 450 13px var(--read); color: var(--text); }
+html.chat-shell .chats-search input:focus,
+html.chat-shell .tree-search .tree-find:focus-within {
+  background: color-mix(in srgb, var(--text) 4%, transparent) !important;
+  box-shadow: inset 0 2px 5px rgba(20, 30, 20, .12), inset 0 1px 1.5px rgba(20, 30, 20, .1) !important;
+}
+html.chat-shell[data-scheme="dark"] .chats-search input,
+html.chat-shell[data-scheme="dark"] .tree-search .tree-find { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3) !important; }
+html.chat-shell[data-scheme="dark"] .chats-search input:focus,
+html.chat-shell[data-scheme="dark"] .tree-search .tree-find:focus-within { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .35), inset 0 1px 1.5px rgba(0, 0, 0, .3) !important; }
+
+/* ONE «FILES» (2026-11-09): the panel's tab says it; the list's head keeps its keys without saying
+   it again (the empty viewer no longer says it either, app.js showCodeHome). */
+html.chat-shell .code-files-head > span:first-child { font-size: 0; }

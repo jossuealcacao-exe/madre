@@ -1745,7 +1745,8 @@ async function openCodeFile(path, { line = null } = {}) {
 // Nothing open yet: where to start, in a sentence and two ways.
 function showCodeHome() {
   void leaveEditor({ stash: true });
-  paintViewerPath(chatShellOn() ? t('Files') : t('Code'));
+  // Nothing open: the panel's own tab already says «Files»; the path says nothing until a file is open.
+  paintViewerPath(chatShellOn() ? '' : t('Code'));
   viewerUI.path = null;
   Object.assign(viewerMode, { kind: null, text: '', src: '', preview: false, editable: false });
   viewer.open.removeAttribute('href');
@@ -23794,7 +23795,8 @@ const PLUS_ICON = trazo('add');
 const MARKET_ICON = trazo('market-key');
 const FLOAT_TOOL_ICON = trazo('window');
 // Named as their keys on the bar: Files holds the code (adoptFinder).
-const TOOL_NAMES = { viewer: () => t('Files'), tree: () => t('Files'), browser: () => t('Your servers') };
+// In the app the panel is a whole browser (desktop/src-tauri/src/browser.rs), not only this project's servers.
+const TOOL_NAMES = { viewer: () => t('Files'), tree: () => t('Files'), browser: () => (nativeBrowser() ? t('Browser') : t('Your servers')) };
 
 function shellKey(icon, label, run, className = 'shell-key') {
   const key = el('button', className);
