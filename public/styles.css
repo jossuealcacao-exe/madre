@@ -13036,7 +13036,7 @@ html.chat-shell .code-files-head > span:first-child { font-size: 0; }
    chat shell's and drew half a pixel and a white halo, which on the white canvas left the notice
    flat. A faint line and a soft, light shadow under it: it floats, it does not shout. */
 :is(html.chat-shell, html.home-shell)[data-scheme="light"] .toast:not([hidden]) {
-  /* A notice over a card of the same light (a run card, the canvas) still read flat: a clearer
-     line and a deeper, still soft, shadow give it its own plane. */
-  box-shadow: 0 0 0 1px rgba(20, 30, 20, .11), 0 1px 3px rgba(20, 30, 20, .08), 0 10px 28px -6px rgba(20, 30, 20, .24), 0 26px 56px -20px rgba(20, 30, 20, .22) !important;
+  /* The contrast comes from its edge, not from a big shadow (the author's choice, 2026-11-09, option
+     A made quiet): a clear one-pixel line all round, and a short, low shadow just under it. */
+  box-shadow: 0 0 0 1px rgba(20, 30, 20, .15), 0 1px 2px rgba(20, 30, 20, .07), 0 4px 12px -4px rgba(20, 30, 20, .12) !important;
 }
