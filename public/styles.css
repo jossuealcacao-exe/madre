@@ -12995,3 +12995,9 @@ dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger):active
 #messages#messages .choice.run-request .run-line.ran .choice-tag { background: color-mix(in srgb, var(--ok, var(--phosphor)) 14%, var(--plane-agent, var(--bg-2))) !important; }
 #messages#messages .choice.run-request .run-summary { background: color-mix(in srgb, var(--text) 6%, var(--plane-agent, var(--bg-2))); }
 #messages#messages .choice.run-request.returned .run-summary { background: color-mix(in srgb, var(--ok, var(--phosphor)) 14%, var(--plane-agent, var(--bg-2))); }
+
+/* SETTINGS' AGENTS, THREE TO A ROW IN A NARROW CARD (2026-11-09): with Settings in two columns the
+   Agents card is about 250 px, a tile about 83, and «● signed in» on one line ran into the next tile.
+   It wraps under the mark, centred, the lamp beside its first word. */
+.settings-quick-tile.agent { min-width: 0; }
+.settings-quick-tile.agent .state { max-width: 100%; white-space: normal; text-align: center; line-height: 1.3; overflow-wrap: anywhere; }
