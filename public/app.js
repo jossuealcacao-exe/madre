@@ -22750,6 +22750,9 @@ function showWhatsNew(news, { after = null } = {}) {
   const dialog = el('dialog', 'whats-new');
   dialog.setAttribute('aria-label', t("What's new in MADRE {version}", { version: news.version }));
   const sheet = el('div', 'wn-sheet');
+  // The sheet takes the focus, not the first card: a card already marked looked chosen for you
+  // (2026-11-08). Tab reaches each thing from here.
+  sheet.tabIndex = -1;
 
   // The head: the mark, the version you now have, what it is about, and the window's ×.
   const head = el('header', 'wn-head');
@@ -22890,7 +22893,7 @@ function showWhatsNew(news, { after = null } = {}) {
   setTimeout(() => {
     dialog.showModal();
     if (!news.preview) void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
-    cards[0]?.focus?.({ preventScroll: true });
+    sheet.focus({ preventScroll: true });
     body.scrollTop = 0;
   }, after ? 700 : 0);
   return dialog;

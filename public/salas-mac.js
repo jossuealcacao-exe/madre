@@ -3570,6 +3570,9 @@ async function homeNews(tries = 0) {
   const dialog = el('dialog', 'whats-new home-news');
   dialog.setAttribute('aria-label', t("What's new in MADRE {version}", { version: news.version }));
   const sheet = el('div', 'wn-sheet');
+  // The sheet takes the focus, not «Start»: a key already marked looked chosen for you (2026-11-08).
+  // Tab reaches each thing from here.
+  sheet.tabIndex = -1;
   const head = el('header', 'wn-head');
   const words = el('div', 'wn-headline');
   const logo = document.querySelector('.side-brand .brand-logo, #sm-back .brand-logo')?.cloneNode?.(true);
@@ -3621,8 +3624,8 @@ async function homeNews(tries = 0) {
   // Whoever comes from an older MADRE meets MADRE's opening first (2026-10-30), as a new person does in
   // the welcome (loader.js, playOpening), and the board comes after it — unless this page just played it
   // (public/terms.js, after the new license was accepted).
-  if (openingPlayed()) start.focus({ preventScroll: true });
-  else void playOpening(dialog, { skipLabel: t('Skip') }).then(() => start.focus({ preventScroll: true }));
+  if (openingPlayed()) sheet.focus({ preventScroll: true });
+  else void playOpening(dialog, { skipLabel: t('Skip') }).then(() => sheet.focus({ preventScroll: true }));
   // Seen once shown, as in a project: a board left open and the page closed is not owed again.
   void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
 }
