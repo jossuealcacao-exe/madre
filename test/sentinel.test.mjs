@@ -253,6 +253,17 @@ test('the sentinel · what MADRE says in Spanish, and Codex\'s workspace routing
     ['gemini', 'El mensaje es más largo de lo que este modelo de Gemini recibe de una vez.', 'MU-086'],
     ['gemini', 'Gemini no respondió antes del tiempo límite (120 s).', 'MU-012'],
     [null, 'Error [ERR_ACCESS_DENIED]: Access to this API has been restricted. Use --allow-fs-write to manage permissions.', 'MU-087'],
+    ['codex', 'Your access token could not be refreshed because your refresh token was already used. Please log out and sign in again.', 'MU-008'],
+    ['cursor', 'Cursor se cerró con el código 1. Última salida: Error: Authentication required. Please run \'agent login\' first, or set CURSOR_API_KEY environment variable.', 'MU-008'],
+    ['gemini', '[API Error: This model models/gemini-2.5-pro is no longer available to new users. Please update your code to use models/gemini-3.1-pro-preview', 'MU-085'],
+    ['opencode', 'APIError: Bad Gateway', 'MU-088'],
+    ['opencode', 'APIError: 0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy.', 'MU-089'],
+    ['opencode', 'APIError: No endpoints found that support tool use. Try disabling "glob".', 'MU-090'],
+    ['codex', 'Codex exited with code 1. Last output: Error: failed to initialize in-process app-server client: Operation not permitted (os error 1)', 'MU-091'],
+    ['grok', 'Grok se cerró con el código 1. Última salida: error: this sandbox could not enforce its deny list on Linux: bwrap exec failed: No such file or directory (os error 2). Install bubblewrap with `apt install -y bubblewrap`.', 'MU-092'],
+    ['opencode', 'OpenCode terminó sin errores pero sin respuesta.', 'MU-093'],
+    ['opencode', 'El modelo de OpenCode solo pensó y no escribió una respuesta.', 'MU-093'],
+    ['gemini', 'Gemini terminó sin errores pero sin respuesta. Última salida: Ripgrep is not available. Falling back to GrepTool.', 'MU-093'],
   ]) {
     assert.equal(await sentinel.observe(failed(target, error)), null, `${code} was filed as unknown`);
     assert.equal(told.at(-1).code, code, error);

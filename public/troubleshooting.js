@@ -237,7 +237,7 @@ export const CONDITIONS = [
     agent: 'gemini',
     severity: 'blocking',
     title: 'This Gemini model is not available for your key',
-    match: /does not exist or is not available for this key|no existe o no está disponible para esta llave|is not found for API version|is not supported for generateContent/i,
+    match: /does not exist or is not available for this key|no existe o no está disponible para esta llave|is not found for API version|is not supported for generateContent|is no longer available to new users/i,
     diagnosis: 'Gemini answers through its API with your key, and Google says the model chosen in the box does not exist or this key cannot use it. It happens with a model Google retired, a preview your key has no access to, or a name written by hand.',
     remedy: 'Choose another Gemini model in the box, or leave the default one. If you need that model, check in AI Studio that your key has access to it.',
     fixes: same(['# the models your key opens: https://aistudio.google.com/app/apikey']),
@@ -266,6 +266,81 @@ export const CONDITIONS = [
     diagnosis: 'Since 1.1.3, a module you install runs apart, with limited permissions: it can read its own file, but it cannot write your files or start other programs by itself. This module tried one of those and Node stopped it. Your project and MADRE are fine.',
     remedy: 'Ask the module\'s author for a version made for MADRE 1.1.3, which asks MADRE for what it needs instead of doing it itself. Meanwhile, turn it off in Modules.',
     fixes: same(['# Modules › the module › turn it off']),
+  },
+  {
+    // The sentinel's first reading (S-2, 2026-11-09): OpenCode's provider answered 502.
+    id: 'provider-bad-gateway',
+    code: 'MU-088',
+    severity: 'transient',
+    title: 'The AI\'s provider did not answer (Bad Gateway)',
+    match: /APIError: Bad Gateway|\bBad Gateway\b|HTTP 502\b/i,
+    diagnosis: 'The server of the company behind this AI answered with a 502: it could not reach its own model in that moment. It is on their side, not in MADRE or in the project.',
+    remedy: 'Try again in a moment. If it keeps happening, choose another model or ask another agent meanwhile.',
+    fixes: same(['# try again in a moment, or choose another model in the box']),
+  },
+  {
+    // S-5: OpenCode through OpenRouter, with privacy settings that leave no provider for the model.
+    id: 'opencode-provider-policy',
+    code: 'MU-089',
+    agent: 'opencode',
+    severity: 'blocking',
+    title: 'No provider of this model fits your data policy',
+    match: /guardrail restrictions and data policy|No endpoints found matching your data policy/i,
+    diagnosis: 'OpenCode asks OpenRouter for this model, and OpenRouter has no provider of it that fits the privacy settings of your account (for example, providers that may train on your prompts are excluded). Nothing in MADRE or the project is wrong.',
+    remedy: 'Choose another model in the box, or allow more providers in OpenRouter\'s privacy settings.',
+    fixes: same(['# OpenRouter › Settings › Privacy: https://openrouter.ai/settings/privacy']),
+  },
+  {
+    // S-15: a model whose providers do not take tools; MADRE's OpenCode works with tools.
+    id: 'opencode-model-no-tools',
+    code: 'MU-090',
+    agent: 'opencode',
+    severity: 'blocking',
+    title: 'This model does not take tools, and OpenCode needs them',
+    match: /No endpoints found that support tool use/i,
+    diagnosis: 'Inside MADRE, OpenCode reads the project with tools (reading files, searching). The model chosen has no provider that accepts tools, so the turn cannot start.',
+    remedy: 'Choose another model in the box: most current models take tools.',
+    fixes: same(['# the box › OpenCode\'s sphere › choose another model']),
+  },
+  {
+    // S-20 (1.1.1): Codex could not start the helper it runs inside itself.
+    id: 'codex-app-server',
+    code: 'MU-091',
+    agent: 'codex',
+    severity: 'blocking',
+    title: 'Codex could not start its own helper',
+    match: /failed to initialize in-process app-server client/i,
+    diagnosis: 'Before answering, Codex starts a helper inside itself, and the system did not let it («Operation not permitted»). It usually comes from a Codex half updated, or from a Codex folder its user cannot write.',
+    remedy: 'Update Codex and try again. If it keeps happening, sign Codex in again.',
+    fixes: same(['npm install -g @openai/codex@latest', 'codex --version', '# if it keeps happening:', 'codex logout', 'codex login']),
+  },
+  {
+    // S-4 (1.1.3): Grok on Linux enforces what it may not touch with bubblewrap, and refuses to start
+    // without it.
+    id: 'grok-needs-bubblewrap',
+    code: 'MU-092',
+    agent: 'grok',
+    severity: 'blocking',
+    title: 'Grok needs bubblewrap on Linux',
+    match: /bwrap exec failed|Install bubblewrap|could not enforce its deny list/i,
+    diagnosis: 'On Linux, Grok keeps itself away from what it must not touch with a small program called bubblewrap, and it refuses to start when it is missing. It is a package of the system, nothing in the project.',
+    remedy: 'Install bubblewrap and send the message again.',
+    fixes: {
+      darwin: ['# only Linux needs it; on a Mac this is not the cause'],
+      linux: ['sudo apt install -y bubblewrap', 'bwrap --version'],
+    },
+  },
+  {
+    // D-32, S-1 (OpenCode, 1.1.3) and S-10 (Gemini): a clean exit with nothing written. Since this
+    // version OpenCode's line also says why, when it can tell (src/adapters/opencode.mjs).
+    id: 'empty-answer',
+    code: 'MU-093',
+    severity: 'transient',
+    title: 'The AI ended without writing an answer',
+    match: /exited cleanly without an answer|terminó sin errores pero sin respuesta|only thought and wrote no answer|solo pensó y no escribió|stopped before writing an answer|se detuvo antes de escribir|ran out of room before writing|se quedó sin espacio antes de escribir/i,
+    diagnosis: 'The AI finished its turn without an error but also without a word: its model only thought, used its tools and stopped, or ran out of room. Free models do it more often. Nothing in MADRE or the project is wrong.',
+    remedy: 'Send the message again. If it repeats, choose another model or ask another agent.',
+    fixes: same(['# send it again, or choose another model in the box']),
   },
   {
     // Seen in the diagnostics of 1.1.0 (2026-10-31): Codex on a free ChatGPT account ran out and
@@ -380,7 +455,7 @@ export const CONDITIONS = [
     // «Update your environment»: Gemini chosen to use an API key with none set, code 41 too (1.1.2, D-7).
     // Gemini's refusal in MADRE's words, in both languages (1.1.2 diagnostics: 4 copies filed «Google
     // rechazó las credenciales de Gemini» as unknown, and no card matched the English either).
-    match: /not logged in|Grok is not signed in|Grok no tiene sesión|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again|rejected the Gemini credentials|rechazó las credenciales de Gemini/i,
+    match: /not logged in|Grok is not signed in|Grok no tiene sesión|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again|rejected the Gemini credentials|rechazó las credenciales de Gemini|refresh token was already used|Please log out and sign in again|Authentication required/i,
     diagnosis: 'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.',
     remedy: 'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.',
     fixes: same(['npx @jossuealcala/madre setup', '# or directly:', 'codex login', 'claude auth login', 'opencode auth login', 'gemini   # then /auth']),

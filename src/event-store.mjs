@@ -148,6 +148,9 @@ export class EventStore {
           await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
           throw error;
         }
+        // The room's own folder was gone (D-34, 1.1.3: «mkdir '….lock'» ENOENT, two copies): the
+        // record comes back in a folder made again, instead of every later write failing.
+        if (error.code === 'ENOENT') { await mkdir(dirname(this.#lockDirectory), { recursive: true }); continue; }
         if (error.code !== 'EEXIST') throw error;
         try {
           const owner = JSON.parse(await readFile(ownerFile, 'utf8'));

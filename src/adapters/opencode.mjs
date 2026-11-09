@@ -176,6 +176,10 @@ export function parseOpenCodeOutput(output, { root = null } = {}) {
   const steps = [[]];
   let usage = null;
   let error = null;
+  // Why an answer came back empty, when the events tell (D-32, S-1): only reasoning, or the last step
+  // ended on tool calls or on the model's length.
+  let thought = false;
+  let finish = null;
   for (const line of output.split('\n').filter(Boolean)) {
     try {
       const event = JSON.parse(line);
@@ -187,6 +191,8 @@ export function parseOpenCodeOutput(output, { root = null } = {}) {
       if (event.type === 'text' && typeof event.part?.text === 'string') {
         steps.at(-1).push(event.part.text);
       }
+      if (event.type === 'reasoning' && String(event.part?.text ?? '').trim()) thought = true;
+      if (event.type === 'step_finish' && event.part?.reason) finish = event.part.reason;
       if (event.type === 'step_finish' && event.part?.tokens) {
         const tokens = event.part.tokens;
         usage = {
@@ -205,7 +211,13 @@ export function parseOpenCodeOutput(output, { root = null } = {}) {
   }
   // What its subagents did (src/adapters/subagents.mjs): each `task` call, said once it is over.
   const subagents = openCodeSubagents(jsonLines(output), { root });
-  return { text: answerOfSteps(steps), usage, ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
+  const text = answerOfSteps(steps);
+  if (!text && !error) {
+    if (finish === 'tool-calls') error = t('OpenCode used its tools and stopped before writing an answer.');
+    else if (finish === 'length') error = t('OpenCode\'s model ran out of room before writing an answer.');
+    else if (thought) error = t('OpenCode\'s model only thought and wrote no answer.');
+  }
+  return { text, usage, ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
 }
 
 // What in OpenCode's error log ends a turn that will never answer. Only a limit that does not pass

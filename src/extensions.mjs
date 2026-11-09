@@ -42,7 +42,11 @@ const redrawn = (text) => { const at = text.lastIndexOf(REDRAW); return at < 0 ?
 
 export function runInstaller({ command, args, projectRoot, onLine, timeoutMs = 600000, heartbeatMs = 8000, env = process.env, stdin = 'ignore', onChild = null, flushIdleMs = 0, ci = true, quietNote = 'installer is quiet (npm install or git status can take a while)' }) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', ...(ci ? { CI: '1' } : {}) }, stdio: [stdin, 'pipe', 'pipe'], shell: process.platform === 'win32', windowsHide: true });
+    // A program that cannot be run at all (ENOEXEC, a file with no interpreter) makes spawn throw at
+    // once, inside this promise: it was an unhandledRejection and the install never answered (S-7).
+    let child;
+    try { child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', ...(ci ? { CI: '1' } : {}) }, stdio: [stdin, 'pipe', 'pipe'], shell: process.platform === 'win32', windowsHide: true }); }
+    catch (error) { resolve({ code: 1, error: error.code === 'ENOEXEC' ? `${command} cannot be run on this computer (${error.code}): it is not a program for this system, or it has no interpreter line` : error.message }); return; }
     const started = Date.now();
     let lastOutput = started;
     let buffer = '';

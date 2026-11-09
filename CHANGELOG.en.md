@@ -6,6 +6,7 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.4 · Unreleased
 
+- **What people's copies said.** Diagnostics now recognises and explains: Codex asking to sign in again because its token was already used, Cursor without a session, a Gemini model retired for new accounts, an AI's provider answering «Bad Gateway», OpenRouter with no provider that fits your data policy or no models that take tools, Codex unable to start its helper, and Grok on Linux without `bubblewrap`. When an AI ends without writing anything, MADRE says so with its card, and for OpenCode also why: the model only thought, kept using tools or ran out of room. An installer that cannot run says why instead of never answering, and if a project's folder disappears while it is open, its conversation keeps being saved.
 - **Writing a module without guessing.** The SDK guide gives the whole shape of routes, of a card's link and of status, and the `hello` example uses them, working, so your AI no longer has to ask you to search MADRE's code. A route written as an expression starting with `^` is no longer refused when the module is installed, and a module you install answers only at its own addresses (`/api/x/<id>/`), never MADRE's.
 - **Undo no longer leaves behind what an AI creates as its turn begins.** On Linux, a file written in the first milliseconds of the turn, in a folder git ignores, could fall out of the list of what was created and of Undo.
 
