@@ -372,8 +372,9 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     logo.setAttribute('aria-hidden', 'true');
     logo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
     words.append(logo, el('span', 'wn-eyebrow'), title);
-    const close = key('tour-close', null, () => windowNode.close());
-    close.innerHTML = CLOSE_ICON; // trusted: our own SVG string
+    // The ✕ every window of MADRE has (1.1): it turns and goes red under the pointer.
+    const close = key('tour-close x-close x-only', null, () => windowNode.close());
+    close.innerHTML = `<span class="x-icon">${CLOSE_ICON}</span>`; // trusted: our own SVG string
     close.setAttribute('aria-label', t('Close'));
     head.append(words, close);
     const body = el('div', 'tour-body');
@@ -528,8 +529,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
       const title = el('h2', null, t('Gestures and shortcuts'));
       title.id = 'tour-gestures-title';
       words.append(title);
-      const close = key('tour-close', null, () => sheetNode.close());
-      close.innerHTML = CLOSE_ICON; // trusted: our own SVG string
+      const close = key('tour-close x-close x-only', null, () => sheetNode.close());
+      close.innerHTML = `<span class="x-icon">${CLOSE_ICON}</span>`; // trusted: our own SVG string
       close.setAttribute('aria-label', t('Close'));
       head.append(words, close);
       const body = el('div', 'tour-gesture-body');

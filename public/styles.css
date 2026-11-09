@@ -8736,6 +8736,9 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-close { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); cursor: pointer; }
 .tour-close svg { width: var(--ico-sm); height: var(--ico-sm); }
 .tour-close:hover { color: var(--text); background: color-mix(in srgb, var(--text) 12%, transparent); }
+/* As every ✕ of MADRE (1.1): it keeps its own shape and size, and under the pointer it turns and goes red. */
+.tour-close.x-close.x-only { width: 30px; height: 30px; padding: 0; border-radius: 50%; }
+.tour-close .x-icon svg { width: var(--ico-sm); height: var(--ico-sm); }
 .tour-body { display: grid; grid-template-columns: 210px minmax(0, 1fr); flex: 1 1 auto; min-height: 0; border-top: 1px solid color-mix(in srgb, var(--text) 9%, transparent); }
 .tour-window .tour-nav { display: grid; align-content: start; gap: 2px; margin: 0; padding: 10px 8px; list-style: none; overflow-y: auto; border-right: 1px solid color-mix(in srgb, var(--text) 9%, transparent); }
 .tour-window .tour-nav li { display: block; margin: 0; padding: 0; }
@@ -10929,8 +10932,10 @@ html.chat-shell .tree.split:not(.chats) .tree-title { display: none; }
 /* The welcome stands on the canvas, as those apps greet you: no card around it. */
 html.chat-shell .thread-inner > .empty { background: none !important; box-shadow: none !important; border: 0 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 /* What MADRE says in the conversation: a flat card with a hairline, never a floating one. */
+/* The notes between the messages (1.1, 2026-11-08): solid and flat, a ground of their own with no
+   frame, so they read as one block and not as an outline. */
 html.chat-shell .thread-inner > .system, html.chat-shell .thread-inner .row .system {
-  background: var(--cs-side) !important; box-shadow: none !important; border: 1px solid var(--cs-line) !important;
+  background: color-mix(in srgb, var(--text) 5.5%, var(--cs-canvas, var(--panel))) !important; box-shadow: none !important; border: 0 !important;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-radius: 14px;
 }
 /* A notice open on its own, in the same shape it has inside its group of dots (2026-11-06, the author:
@@ -12358,6 +12363,8 @@ html.chat-shell .tour-logo .brand-logo { height: 14px; }
 html.chat-shell .tour-head h2 { font: 600 20px/1.25 var(--read); letter-spacing: -.01em; }
 html.chat-shell .tour-head .wn-eyebrow { font: 450 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell .tour-close { border-radius: 9px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line); }
+html.chat-shell .tour-close.x-close.x-only { border-radius: 9px; }
+html.chat-shell .tour-close.x-close.x-only:is(:hover, :focus-visible) { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--cs-canvas)); }
 html.chat-shell .tour-close:hover { background: var(--cs-hover); }
 html.chat-shell .tour-body { border-top-color: var(--cs-line); }
 html.chat-shell .tour-window .tour-nav { padding: 12px 10px; background: var(--cs-side); border-right-color: var(--cs-line); }
@@ -12737,6 +12744,12 @@ dialog.terms-gate.intro .terms-card { opacity: 0; }
 .madre-notice-link { align-self: flex-start; font-size: 12.5px; color: var(--notice); }
 .madre-notice-done { flex: 0 0 auto; align-self: center; font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--notice) 50%, transparent); background: transparent; color: var(--text, inherit); cursor: pointer; }
 .madre-notice-done:hover { background: color-mix(in srgb, var(--notice) 12%, transparent); }
+/* Solid and flat (1.1, 2026-11-08): no frame and no stripe on its side; the notice's colour as its
+   ground, deep enough to read as one block, and its key a filled one. */
+.madre-notice { border: 0; background: color-mix(in srgb, var(--notice) 16%, var(--panel, var(--bg-2, #1d1f1d))); box-shadow: none; }
+.madre-notice-done { border: 0; background: color-mix(in srgb, var(--notice) 26%, transparent); font-weight: 500; }
+.madre-notice-done:hover { background: color-mix(in srgb, var(--notice) 36%, transparent); }
+:root[data-scheme="light"] .madre-notice { background: color-mix(in srgb, var(--notice) 12%, #ffffff); }
 .sm-notices { margin: 0 0 14px; }
 .chat-notices { margin: 8px auto 0; width: min(760px, calc(100% - 32px)); flex: 0 0 auto; }
 @media (max-width: 560px) { .madre-notice { flex-direction: column; gap: 10px; } .madre-notice-done { align-self: flex-start; } }
