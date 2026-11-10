@@ -13045,3 +13045,26 @@ html.chat-shell .code-files-head > span:first-child { font-size: 0; }
      A made quiet): a clear one-pixel line all round, and a short, low shadow just under it. */
   box-shadow: 0 0 0 1px rgba(20, 30, 20, .15), 0 1px 2px rgba(20, 30, 20, .07), 0 4px 12px -4px rgba(20, 30, 20, .12) !important;
 }
+
+/* A REPLY ONE AGENT HANDS ANOTHER, WITHOUT A FRAME (2026-11-09): the soft ground of the sidebar is
+   enough to tell it from a reply to you; its line round it made it read as a notice. */
+html.chat-shell #messages#messages .row.delegated .bubble { box-shadow: none !important; }
+/* The viewer holds the focus when a file opens (app.js, showViewerDialog): no ring for that. */
+#viewer:focus { outline: none; }
+
+/* THE EDITOR'S ASK CARD IN ORDER (2026-11-09): each part named, the same quiet title over each, a
+   hairline between the parts, and «Ask my own question» set apart at the foot. */
+.ask-group-title.ask-section { padding: 10px 10px 6px; }
+#ask-card .ask-crew + .ask-section, .ask-card .ask-crew + .ask-section, .ask-actions + .ask-group, .ask-crew + .ask-group { margin-top: 6px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); padding-top: 4px; }
+.ask-actions { padding: 0 6px; }
+.ask-own { margin-top: 8px; }
+
+/* THE SIDEBAR SLIDES, WITH THE ROOM (2026-11-09). In the chat shell it is a full-height column at
+   the window's edge: it comes in from the edge and goes back to it whole, in the same time and curve
+   as the room gliding to make way (app.js, layoutPanels: 420 ms, --ease-glide), instead of fading
+   in place while the room moved on its own clock. */
+@keyframes side-slide-in { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes side-slide-out { from { transform: none; } to { transform: translateX(-100%); } }
+html.chat-shell .tree.chats.entering { animation: side-slide-in calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)) both; }
+html.chat-shell .tree.chats.leaving { animation: side-slide-out calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)) forwards; }
+@media (prefers-reduced-motion: reduce) { html.chat-shell .tree.chats:is(.entering, .leaving) { animation: none; } }

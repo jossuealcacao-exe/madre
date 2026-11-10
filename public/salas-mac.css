@@ -2486,3 +2486,10 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 .sm-link[open] > .sm-link-summary .sm-link-chevron { transform: rotate(225deg) translate(-2px, 0); }
 .sm-link[open] > .sm-link-summary { border-bottom: 1px solid var(--cs-line, var(--line)); border-radius: 0; }
 .sm-link-body { display: grid; gap: 14px; padding: 14px 18px 16px; }
+
+/* Home's sidebar on the room's clock (2026-11-09): the same time and curve as a project's (app.js,
+   layoutPanels: 420 ms, --ease-glide), so going from one to the other feels like one motion. */
+html.home-shell .sm-side { transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)), visibility 0s linear calc(420ms * var(--motion-scale, 1)); }
+html.home-shell.home-side .sm-side { transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)); }
+html.home-shell body.salas-mac { transition: padding-left calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)); }
+@media (prefers-reduced-motion: reduce) { html.home-shell :is(.sm-side, body.salas-mac) { transition: none !important; } }

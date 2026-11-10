@@ -1199,6 +1199,9 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
   const ask = (prompt) => { const id = chosen; askCardClose = null; closeAskCard(); onAsk(id, prompt); };
 
   askCard.append(el('div', 'ask-card-head', head));
+  // In order of what is decided (2026-11-09): who answers, what to do at once, what to ask; and
+  // asking it in your own words at the foot, on its own.
+  askCard.append(el('div', 'ask-group-title ask-section', t('WHO ANSWERS')));
   const crew = el('div', 'ask-crew');
   crew.setAttribute('role', 'radiogroup');
   crew.setAttribute('aria-label', t('Agent'));
@@ -1217,6 +1220,7 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
   askCard.append(crew);
   // What is done most with code, one press each: the verb on the chip, the whole request behind it.
   if (actions.length) {
+    askCard.append(el('div', 'ask-group-title ask-section', t('QUICK ACTIONS')));
     const row = el('div', 'ask-actions');
     for (const [label, prompt] of actions) {
       const chip = el('button', 'ask-action', t(label));
@@ -1777,7 +1781,7 @@ function showCodeHome() {
     home.append(list);
   }
   viewer.body.replaceChildren(home);
-  if (!viewer.dialog.open) viewer.dialog.showModal();
+  if (!viewer.dialog.open) showViewerDialog();
   syncCode();
 }
 
@@ -2958,7 +2962,31 @@ function pointRegion(mark, box) {
 async function pointCapture(port) {
   const layer = pointing.layer;
   const mark = pointing.mark;
-  if (!layer || !mark || !navigator.mediaDevices?.getDisplayMedia) return null;
+  if (!layer || !mark) return null;
+  // In the app the page is a real web view (desktop/src-tauri/src/browser.rs) and the app has its
+  // picture already, taken when the pointing layer came over it: the part is cut from that, with
+  // no tab to share.
+  if (nativeBrowser()?.snapshot) {
+    try {
+      const src = await nativeBrowser().snapshot(browserTab()?.id);
+      if (!src) return null;
+      const picture = new Image();
+      picture.src = src;
+      await picture.decode();
+      const box = layer.getBoundingClientRect();
+      const view = (browser.frame ?? layer).getBoundingClientRect();
+      const part = pointRegion(mark, box);
+      const sx = picture.naturalWidth / view.width;
+      const sy = picture.naturalHeight / view.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(part.width * sx));
+      canvas.height = Math.max(1, Math.round(part.height * sy));
+      canvas.getContext('2d')?.drawImage(picture, (box.left + part.left - view.left) * sx, (box.top + part.top - view.top) * sy, part.width * sx, part.height * sy, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      return blob ? new File([blob], `madre-${port ?? 'page'}-${Date.now()}.png`, { type: 'image/png' }) : null;
+    } catch { return null; }
+  }
+  if (!navigator.mediaDevices?.getDisplayMedia) return null;
   layer.classList.add('capturing');
   let stream = null;
   try {
@@ -3289,6 +3317,17 @@ function syncViewerMode() {
 }
 viewerMode.button?.addEventListener('click', async () => { if (!await leaveEditor()) return; viewerMode.preview = !viewerMode.preview; syncViewerMode(); syncEditButton(); if (viewerMode.preview) showViewerPreview(); else showViewerSource(); });
 
+// The viewer opened as a dialog takes the focus to its first key, and that was «Open raw ↗»: it
+// showed as chosen, ringed in blue, every time a file opened (2026-11-09). The focus stays on the
+// viewer itself instead; Tab still reaches every key.
+function showViewerDialog() {
+  viewer.dialog.showModal();
+  if (document.activeElement === viewer.open) {
+    if (!viewer.dialog.hasAttribute('tabindex')) viewer.dialog.setAttribute('tabindex', '-1');
+    viewer.dialog.focus({ preventScroll: true });
+  }
+}
+
 // The file's name the way a path reads at a glance: the folders quiet, the file itself clear.
 function paintViewerPath(text) {
   const said = String(text ?? '');
@@ -3319,7 +3358,7 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
   viewerMode.editable = false;
   syncViewerMode();
   syncEditButton();
-  if (!viewer.dialog.open) viewer.dialog.showModal();
+  if (!viewer.dialog.open) showViewerDialog();
   
   try {
     const response = await fetch(src);
@@ -10354,6 +10393,9 @@ function isSplit(surface) { return modeOf(surface) === 'split'; }
 
 // What is centred on the column, and glides with it when something docks or leaves.
 const COLUMN_PARTS = '.shell > .thread .thread-inner, .shell > .composer, .shell > .onboarding, .shell > .safety, .shell > .colophon';
+// The bar glides with them (2026-11-09): left out, it jumped the sidebar's whole width at once while
+// the conversation under it glided. It runs the room's width, so it glides by its left edge.
+const EDGE_PARTS = '.shell > .bar';
 // On screen, not merely un-hidden: below their widths the stylesheet takes both panels away, and
 // a panel counted as open there floated an invisible card and veiled the thread behind nothing.
 const panelShown = (surface) => {
@@ -10628,7 +10670,7 @@ function layoutPanels() {
   // text re-wrapping under it. Not while a grip is held (the hand is the animation then), and not
   // on the first layout, when nothing was on screen to glide from.
   const glide = moved && shellBox.dataset.railsSet && !shellBox.classList.contains('resizing-panel') && !reducedMotion();
-  const parts = glide ? [...document.querySelectorAll(COLUMN_PARTS)].filter((node) => node.getClientRects().length) : [];
+  const parts = glide ? [...document.querySelectorAll(`${COLUMN_PARTS}, ${EDGE_PARTS}`)].filter((node) => node.getClientRects().length) : [];
   const before = parts.map((node) => node.getBoundingClientRect());
   if (moved) {
     // The composer's own width transition (CREATE, ASH) would run a second movement on top.
@@ -10643,7 +10685,8 @@ function layoutPanels() {
   parts.forEach((node, index) => {
     const was = before[index];
     const now = node.getBoundingClientRect();
-    const dx = (was.left + was.width / 2) - (now.left + now.width / 2);
+    const byEdge = node.matches(EDGE_PARTS);
+    const dx = byEdge ? was.left - now.left : (was.left + was.width / 2) - (now.left + now.width / 2);
     if (Math.abs(dx) < 1 || typeof node.animate !== 'function') return;
     // A second layout in the same moment (the browser docking, then the grid making room for it)
     // replaces the glide in flight instead of stacking a second one on it.
@@ -10764,7 +10807,9 @@ function showPanel(key, open) {
   if (reducedMotion()) { node.hidden = true; layoutPanels(); return; }
   node.classList.add('leaving');
   layoutPanels();
-  panelLeaving.set(node, setTimeout(() => { node.hidden = true; node.classList.remove('leaving'); layoutPanels(); }, motion(220)));
+  // The chat shell's sidebar slides all the way out with the room's glide (styles.css, side-out).
+  const leaving = key === 'chats' && chatShellOn() ? 420 : 220;
+  panelLeaving.set(node, setTimeout(() => { node.hidden = true; node.classList.remove('leaving'); layoutPanels(); }, motion(leaving)));
 }
 // The surface shown last is the one in front, and the first offered the room.
 function noteShown(surface) {

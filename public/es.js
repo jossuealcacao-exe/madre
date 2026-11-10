@@ -1249,6 +1249,8 @@ export const ES = {
   'hiding of home paths': 'el ocultamiento de tu carpeta de usuario en las rutas',
   // Asking about something on the screen: the questions it raises.
   'SUGGESTED FOR THIS': 'Sugeridas para esto',
+  'WHO ANSWERS': 'Quién responde',
+  'QUICK ACTIONS': 'Acciones rápidas',
   'FROM THE MEMORY': 'De la memoria',
   'Does this keep to the decision: «{note}»?': '¿Esto respeta la decisión: «{note}»?',
   'Does this follow the preference: «{note}»?': '¿Esto sigue la preferencia: «{note}»?',
