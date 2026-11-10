@@ -2452,7 +2452,7 @@ dialog.intents-window { width: 760px; height: 640px; }
 .tree.chats { transform-origin: left top; }
 .chats .tree-close { display: inline-grid; place-items: center; padding: 4px; transition: color var(--motion) var(--ease-out), background-color var(--motion) var(--ease-out); }
 .chats .tree-close svg { display: block; width: var(--ico-sm); height: var(--ico-sm); }
-.chats .tree-close:hover svg { transform: rotate(90deg); }
+/* Closing keeps its color and its weight on hover, without turning the X (2026-11-09). */
 .chats-new-button { transition: color var(--motion) var(--ease-out), background-color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out); }
 .chats-new-button:hover { border-style: solid; }
 .chats-new-button svg { width: var(--ico-sm); height: var(--ico-sm); }
@@ -3331,7 +3331,6 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .x-icon path { stroke-width: var(--icon-w, var(--icon-stroke, 1.6)); transition: stroke-width var(--motion, calc(200ms * var(--motion-scale))) var(--ease-out, ease); }
 .x-close { --icon-w: var(--icon-stroke, 1.6); }
 .x-close:hover, .x-close:focus-visible { --icon-w: var(--icon-stroke-hover, 1.8); }
-.x-close:hover .x-icon, .x-close:focus-visible .x-icon { transform: rotate(90deg); }
 .x-close:not(.x-only) .x-icon { margin-left: 2px; }
 .x-close.x-only { display: inline-grid; place-items: center; padding: 4px; border-radius: 6px; line-height: 0; transition: color var(--motion, calc(200ms * var(--motion-scale))) var(--ease-out, ease), background-color var(--motion, calc(200ms * var(--motion-scale))) var(--ease-out, ease); }
 .x-close.x-only:not(.chat-drop):hover, .x-close.x-only:not(.chat-drop):focus-visible { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
@@ -13146,3 +13145,12 @@ html.chat-shell[data-scheme="dark"] .shell > .composer > :is(.free-offer, .inten
 /* The files' keys in one row with their search (app.js, adoptFinder): the same size and look each. */
 html.chat-shell .code-files.finder .code-files-head[hidden] { display: none; }
 html.chat-shell .code-files.finder .tree-search > :is(.tree-new, .tree-refresh, .code-files-fold) { flex: none; width: 30px; height: 30px; margin: 0; display: grid; place-items: center; }
+/* The files' row as keys (app.js, adoptFinder, 2026-11-09): Search, New and Refresh at the left, the
+   fold always at the far right. Search pressed: its field opens in the same look where the key was,
+   and New and Refresh step to its right. */
+html.chat-shell .code-files.finder .tree-search.folded-search > .tree-find { display: none; }
+html.chat-shell .code-files.finder .tree-search.folded-search.searching > .tree-find { display: flex; flex: 1; min-width: 0; }
+html.chat-shell .code-files.finder .tree-search.folded-search.searching > .tree-search-key { display: none; }
+html.chat-shell .code-files.finder .tree-search.folded-search > :is(.tree-search-key, .tree-new, .tree-refresh, .code-files-fold) { flex: none; width: 30px; height: 30px; margin: 0; display: grid; place-items: center; }
+html.chat-shell .code-files.finder .tree-search.folded-search > .tree-search-key svg { width: 16px; height: 16px; }
+html.chat-shell .code-files.finder .tree-search.folded-search > .code-files-fold { margin-left: auto; }

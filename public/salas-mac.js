@@ -6660,40 +6660,37 @@ function glideAside(change) {
     node.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: SIDE_GLIDE * (Number(getComputedStyle(root).getPropertyValue('--motion-scale')) || 1), easing: 'cubic-bezier(.22, 1, .36, 1)' });
   });
 }
-// Its inner edge is its handle, as a project's sidebar has (app.js, panelGrip; 2026-11-09): pulled,
-// the sidebar and the page beside it take the width at once; kept for Home, twice on it to reset.
-const SIDE_W_KEY = 'pulse.homeSideWidth';
-const SIDE_W = { min: 200, max: 420 };
+// Its inner edge is its handle, as a project's sidebar has (app.js, sideGrip; 2026-11-09): pulled
+// toward the window's edge, past a third of its width, it puts the sidebar away when let go. It
+// neither grows nor shrinks: one width, as in a project.
 function gripHomeSide(side) {
-  try { const kept = Number(localStorage.getItem(SIDE_W_KEY)); if (kept >= SIDE_W.min && kept <= SIDE_W.max) root.style.setProperty('--side-w', `${kept}px`); } catch { /* no storage */ }
+  // A width pulled wider before this is not kept.
+  try { localStorage.removeItem('pulse.homeSideWidth'); } catch { /* no storage */ }
   const grip = el('div', 'sm-side-grip');
   grip.setAttribute('role', 'separator');
   grip.setAttribute('aria-orientation', 'vertical');
-  grip.setAttribute('aria-label', t('Resize the sidebar'));
+  grip.setAttribute('aria-label', t('Hide the sidebar'));
   grip.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || window.matchMedia(SHELL_NARROW).matches) return;
     event.preventDefault();
     try { grip.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
     root.classList.add('side-resizing');
-    let frame = 0;
-    let width = side.getBoundingClientRect().width;
+    const width = side.getBoundingClientRect().width;
+    let closing = false;
     const move = (moving) => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        width = Math.round(Math.max(SIDE_W.min, Math.min(SIDE_W.max, moving.clientX)));
-        root.style.setProperty('--side-w', `${width}px`);
-      });
+      closing = moving.clientX < width * 2 / 3;
+      side.classList.toggle('closing-by-edge', closing);
     };
     const done = () => {
       grip.removeEventListener('pointermove', move);
       root.classList.remove('side-resizing');
-      try { localStorage.setItem(SIDE_W_KEY, String(width)); } catch { /* as long as the page lasts */ }
+      side.classList.remove('closing-by-edge');
+      if (closing) setSide(false);
     };
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', done, { once: true });
     grip.addEventListener('pointercancel', done, { once: true });
   });
-  grip.addEventListener('dblclick', () => { root.style.removeProperty('--side-w'); try { localStorage.removeItem(SIDE_W_KEY); } catch { /* no storage */ } });
   side.append(grip);
 }
 function setSide(open, { keep = true } = {}) {

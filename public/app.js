@@ -1210,6 +1210,8 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
     pick.classList.add('ask-agent');
     pick.setAttribute('role', 'radio');
     pick.setAttribute('aria-label', agent.label);
+    // Its name on hover, in MADRE's own tip (public/tips.js): only the faces showed (2026-11-09).
+    pick.dataset.tip = agent.label;
     pick.setAttribute('aria-checked', String(agent.id === chosen));
     pick.tabIndex = 0;
     const choose = () => { chosen = agent.id; for (const one of crew.children) one.setAttribute('aria-checked', String(one === pick)); };
@@ -1995,6 +1997,18 @@ function adoptFinder() {
   const fold = head?.querySelector('.code-files-fold');
   parts[0].append(...[refresh, fold].filter(Boolean));
   if (head) head.hidden = true;
+  // Search as a key, beside New and Refresh at the left (2026-11-09): pressed, the field opens in its
+  // place, in the same look, and the other two step to its right; folding stays at the far right.
+  // It closes again when it is left empty.
+  const row = parts[0];
+  const searchKey = el('button', 'surface-gear tree-search-key');
+  searchKey.type = 'button';
+  searchKey.title = t('Search files');
+  searchKey.innerHTML = row.querySelector('.tree-find svg')?.outerHTML ?? ''; // trusted: the page's own drawing
+  row.prepend(searchKey);
+  row.classList.add('folded-search');
+  searchKey.addEventListener('click', () => { row.classList.add('searching'); finder.q?.focus(); });
+  finder.q?.addEventListener('blur', () => { if (!finder.q.value) row.classList.remove('searching'); });
   code.explorer.append(...parts);
   code.explorer.classList.add('finder');
   // The open files ride in the head, beside Read and Edit: one row less over the code.
@@ -10523,8 +10537,11 @@ const SIDE_MIN = 300;
 const SIDE_CLOSE_PAST = 110;
 const sideWidths = (() => { try { return JSON.parse(localStorage.getItem('pulse.sides') ?? '{}') ?? {}; } catch { return {}; } })();
 function rememberSides() { try { localStorage.setItem('pulse.sides', JSON.stringify(sideWidths)); } catch { /* no storage */ } }
+// The conversations' sidebar in the chat shell keeps one width: its edge only puts it away (sideGrip,
+// 2026-11-09). A width pulled wider before is not kept.
+const sideFixed = (surface) => surface.key === 'chats' && chatShellOn();
 function sideWidthFor(surface) {
-  const saved = Number(sideWidths[surface.key]);
+  const saved = sideFixed(surface) ? NaN : Number(sideWidths[surface.key]);
   if (Number.isFinite(saved) && saved >= SIDE_MIN) return saved;
   const vw = window.innerWidth;
   if (surface.key === 'chats') return Math.max(SIDE_MIN, Math.min(420, vw * .24));
@@ -10830,6 +10847,14 @@ function sideGrip(surface) {
         // From its own outer edge, which is the window's only for the one docked against it.
         const box = sideBoxes[surface.key] ?? { x: surface.side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP, w: 0 };
         const wanted = Math.round(surface.side === 'left' ? moving.clientX - box.x : box.x + box.w - moving.clientX);
+        // The conversations' sidebar only goes away by its edge: it neither grows nor shrinks
+        // (2026-11-09: the person saw it stretch wide and did not want it). Past a third of its
+        // width toward the edge, it says it will close.
+        if (sideFixed(surface)) {
+          closing = wanted < (box.w || sideWidthFor(surface)) * 2 / 3;
+          node.classList.toggle('closing-by-edge', closing);
+          return;
+        }
         closing = wanted < SIDE_MIN - SIDE_CLOSE_PAST;
         node.classList.toggle('closing-by-edge', closing);
         sideWidths[surface.key] = Math.max(SIDE_MIN, wanted);
@@ -10857,7 +10882,7 @@ function sideGrip(surface) {
     grip.addEventListener('pointercancel', done);
     grip.addEventListener('lostpointercapture', done);
   });
-  grip.addEventListener('dblclick', () => { delete sideWidths[surface.key]; rememberSides(); layoutPanels(); });
+  grip.addEventListener('dblclick', () => { if (sideFixed(surface)) return; delete sideWidths[surface.key]; rememberSides(); layoutPanels(); });
 }
 
 // Shown at once, so the panel's own arrival plays; put away the way it came, and only then hidden.

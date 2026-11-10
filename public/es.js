@@ -3210,7 +3210,6 @@ export const ES = {
 
   // Los paneles junto a la conversación.
   'Resize the conversations panel': 'Cambiar el ancho del panel de chats',
-  'Resize the sidebar': 'Cambiar el ancho de la barra lateral',
   'Resize the files panel': 'Cambiar el ancho del panel de archivos',
 
   // Conversaciones como ventanas.
