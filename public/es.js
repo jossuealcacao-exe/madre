@@ -1250,6 +1250,8 @@ export const ES = {
   // Asking about something on the screen: the questions it raises.
   'SUGGESTED FOR THIS': 'Sugeridas para esto',
   'WHO ANSWERS': 'Quién responde',
+  'Drop here to open it beside': 'Suéltala aquí para abrirla al lado',
+  'Open beside (⌘-click, or drag it onto the conversation)': 'Abrir al lado (⌘ + clic, o arrástrala sobre la conversación)',
   'QUICK ACTIONS': 'Acciones rápidas',
   'FROM THE MEMORY': 'De la memoria',
   'Does this keep to the decision: «{note}»?': '¿Esto respeta la decisión: «{note}»?',

@@ -11885,7 +11885,23 @@ function renderChats() {
     open.append(glyph, name);
     open.append(el('span', 'when', whenWords(chat.updatedAt)));
     open.title = `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`;
-    open.addEventListener('click', () => { if (chat.id !== chats.active) void openChat(chat.id); });
+    open.addEventListener('click', (event) => {
+      if (chat.id === chats.active) return;
+      // ⌘-click (Ctrl-click) opens it beside, the way a browser opens a link in another tab.
+      if ((event.metaKey || event.ctrlKey) && !SPLIT_CHAT && split.box) { toggleBeside(chat.id); return; }
+      void openChat(chat.id);
+    });
+    // Or drag it onto the conversation: the room's right half says where it lands (besideDrag).
+    if (!SPLIT_CHAT && split.box && chat.id !== chats.active) {
+      row.draggable = true;
+      row.addEventListener('dragstart', (event) => {
+        if (!event.dataTransfer) return;
+        event.dataTransfer.setData(CHAT_DRAG, chat.id);
+        event.dataTransfer.effectAllowed = 'copy';
+        requestAnimationFrame(() => besideDrag(true));
+      });
+      row.addEventListener('dragend', () => besideDrag(false));
+    }
     const drop = closeMark('button', 'chat-drop');
     drop.title = t('Delete this conversation. Its transcript goes; what the archive learned from it stays.');
     drop.addEventListener('click', async (event) => {
@@ -11917,6 +11933,7 @@ function renderChats() {
       half.type = 'button';
       half.innerHTML = SPLIT_ICON; // trusted: our own SVG string
       half.setAttribute('aria-label', beside ? t('Close the split') : t('Open this conversation in the other half of the window'));
+      half.title = beside ? t('Close the split') : t('Open beside (⌘-click, or drag it onto the conversation)');
       half.setAttribute('aria-pressed', String(beside));
       half.addEventListener('click', (event) => { event.stopPropagation(); if (beside) closeSplit(); else openSplit(chat.id); });
       const win = el('button', `chat-window${floating ? ' on' : ''}${full ? ' full' : ''}`);
@@ -12329,6 +12346,44 @@ const CONV_MIN_W = 360;
 const CONV_MIN_H = 320;
 function besideCount() { return (split.chat ? 1 : 0) + convWindows.size; }
 // A conversation already beside the open one may change how it is shown; a new one needs room.
+// A conversation beside this one, from the list (2026-11-09): ⌘-click on it, or dragged onto the
+// conversation, where the room's right half lights up as the place it lands. Pressed again (⌘-click
+// on the one already beside), it goes.
+const CHAT_DRAG = 'application/x-madre-chat';
+let besideZone = null;
+function toggleBeside(id) {
+  if (!id || id === chats.active) return;
+  if (id === split.chat) { closeSplit(); return; }
+  if ((window.innerWidth ?? Infinity) < SPLIT_MIN_PX) { toast(t('Diagnostics › the window is too narrow for two conversations. Widen it and try again.')); return; }
+  if (!canOpenBeside(id)) { besideFull(); return; }
+  openSplit(id);
+}
+function besideDrag(on) {
+  document.documentElement.classList.toggle('chat-dragging', on);
+  if (!on) { besideZone?.remove(); besideZone = null; return; }
+  const room = (threadBox ?? document.querySelector('.shell'))?.getBoundingClientRect();
+  if (!room || room.width < 200) return;
+  if (!besideZone) {
+    besideZone = el('div', 'beside-drop');
+    besideZone.append(el('span', 'beside-drop-word', t('Drop here to open it beside')));
+    besideZone.addEventListener('dragover', (event) => {
+      if (!event.dataTransfer?.types.includes(CHAT_DRAG)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      besideZone.classList.add('over');
+    });
+    besideZone.addEventListener('dragleave', () => besideZone?.classList.remove('over'));
+    besideZone.addEventListener('drop', (event) => {
+      const id = event.dataTransfer?.getData(CHAT_DRAG);
+      event.preventDefault();
+      besideDrag(false);
+      toggleBeside(id);
+    });
+  }
+  const half = room.width / 2;
+  Object.assign(besideZone.style, { left: `${room.left + half + 6}px`, top: `${room.top + 10}px`, width: `${half - 16}px`, height: `${room.height - 20}px` });
+  document.body.append(besideZone);
+}
 function canOpenBeside(id) { return id === split.chat || convWindows.has(id) || besideCount() < MAX_BESIDE; }
 function besideFull() {
   toast(t('Diagnostics › two conversations are already open beside this one. Close one to open another: past three at once they crowd each other, and each keeps its own line open to the project.'));

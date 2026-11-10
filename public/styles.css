@@ -13068,3 +13068,14 @@ html.chat-shell #messages#messages .row.delegated .bubble { box-shadow: none !im
 html.chat-shell .tree.chats.entering { animation: side-slide-in calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)) both; }
 html.chat-shell .tree.chats.leaving { animation: side-slide-out calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)) forwards; }
 @media (prefers-reduced-motion: reduce) { html.chat-shell .tree.chats:is(.entering, .leaving) { animation: none; } }
+
+/* WHERE A DRAGGED CONVERSATION LANDS (2026-11-09, app.js besideDrag): the room's right half, lit
+   softly while a conversation from the list is dragged, stronger when it is over it. */
+.beside-drop { position: fixed; z-index: 60; display: grid; place-items: center; border-radius: 16px; border: 1.5px dashed color-mix(in srgb, var(--phosphor) 55%, transparent);
+  background: color-mix(in srgb, var(--phosphor) 7%, transparent); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  animation: beside-drop-in calc(180ms * var(--motion-scale, 1)) var(--ease-glide, ease-out); transition: background-color 120ms ease, border-color 120ms ease; }
+.beside-drop.over { background: color-mix(in srgb, var(--phosphor) 15%, transparent); border-style: solid; border-color: color-mix(in srgb, var(--phosphor) 75%, transparent); }
+.beside-drop-word { padding: 8px 14px; border-radius: 999px; background: var(--cs-canvas, var(--bg)); box-shadow: 0 0 0 1px rgba(20, 30, 20, .1), 0 4px 12px -4px rgba(20, 30, 20, .18);
+  font: 500 13px var(--read); color: var(--text); pointer-events: none; }
+@keyframes beside-drop-in { from { opacity: 0; transform: scale(.985); } }
+@media (prefers-reduced-motion: reduce) { .beside-drop { animation: none; } }
