@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from '../src/updates.mjs';
+import { canReplace, compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from '../src/updates.mjs';
 
 test('updates: versions compare as releases, the launch mode picks the command, the registry is read once a day', async () => {
   assert.equal(compareVersions('0.3.0', '0.3.1'), -1);
@@ -177,4 +177,21 @@ test('updates: a start from an update to the first MADRE with a ficha opens the 
   assert.equal(opensBrowser({ asked: false, env: {}, hadFicha: false }), false, 'a restart or a project opened by Home stays without the browser');
   assert.equal(opensBrowser({ asked: false, env: { PULSE_UPDATE_RESTART: '1' }, hadFicha: false }), true, 'from 1.1.2: the tab has no cookie, the browser gets one');
   assert.equal(opensBrowser({ asked: false, env: { PULSE_UPDATE_RESTART: '1' }, hadFicha: true }), false, 'from 1.1.3 on: the tab already has it');
+});
+
+// Q-22 (2026-11-10): a copy installed with sudo lives in a folder of root's; `npm install -g` without
+// sudo fails there after MADRE has closed. It is asked before, and the room stays open.
+test('updates: a global copy in a folder it cannot write is not updated from the pill (Q-22)', async () => {
+  const { chmod, mkdir } = await import('node:fs/promises');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-replace-'));
+  try {
+    const root = join(dir, 'node_modules', '@jossuealcala', 'madre');
+    await mkdir(root, { recursive: true });
+    assert.equal(await canReplace(root), true);
+    await chmod(join(dir, 'node_modules', '@jossuealcala'), 0o555);
+    if (process.getuid?.() !== 0) assert.equal(await canReplace(root), false, 'the folder npm would write is not this person\'s');
+  } finally {
+    await chmod(join(dir, 'node_modules', '@jossuealcala'), 0o755).catch(() => null);
+    await rm(dir, { recursive: true, force: true });
+  }
 });

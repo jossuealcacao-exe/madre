@@ -85,7 +85,7 @@ import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from '
 import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
-import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from './updates.mjs';
+import { canReplace, checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from './updates.mjs';
 import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAppInvite, appInvite } from './app-invite.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
@@ -4532,6 +4532,10 @@ export async function createPulseServer({
         // Only a version semver would write reaches a shell, and the restart never runs without the
         // download first (src/updates.mjs): an unchecked one used to skip the download and run.
         if (!command || !fetching) return sendJson(response, 412, { error: t('The version the registry gave ({version}) is not one MADRE installs.', { version: String(info.latest).slice(0, 40) }) });
+        // Installed with sudo (Q-22): npm -g cannot replace it from here, so the room says how and stays open.
+        if (install === 'global' && !(await canReplace(await realpath(join(sourceDirectory, '..')).catch(() => join(sourceDirectory, '..'))))) {
+          return sendJson(response, 412, { error: t('MADRE was installed with administrator permission, so it cannot update itself. In a terminal, run: {command}', { command: `sudo npm install -g ${PACKAGE.name}@${info.latest}` }) });
+        }
         if (room.activeTurns().length || room.activePlans().length) return sendJson(response, 409, { error: t('Agents are still working. STOPALL or wait, then update.') });
         {
           // npm is a .cmd on Windows and needs a shell there; every argument here is fixed or checked above.

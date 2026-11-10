@@ -6,8 +6,8 @@
 // MADRE never updates itself: the room is in use and the process belongs to the human. It
 // shows the exact command for how this copy was launched.
 
-import { realpathSync } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { constants, realpathSync } from 'node:fs';
+import { access, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 export const REGISTRY = 'https://registry.npmjs.org';
@@ -99,6 +99,13 @@ export function applyCommand({ install, name, version, port, projectRoot }) {
     case 'global': return `npm install -g ${spec} --no-fund --no-audit && exec ${bin} ${start}`;
     default: return null;   // source: the human pulls
   }
+}
+
+// Whether npm -g can put the new version where this one is (Q-22, 2026-11-10): a copy installed with
+// sudo lives in a folder of root's, and `npm install -g` without sudo failed there after MADRE had
+// already closed. Asked before closing anything.
+export async function canReplace(packageRoot) {
+  try { await access(dirname(packageRoot), constants.W_OK); return true; } catch { return false; }
 }
 
 // TAKING ITS OWN PLACE (Q-23, 2026-11-10). Restarting or updating used to start a new MADRE and end

@@ -7298,4 +7298,6 @@ export const ES = {
   "MADRE now comes as an app": "MADRE ya viene como app",
   "It opens from the Dock, with a terminal inside and a notice when an AI finishes. Your projects and chats are waiting there, as you left them.": "Se abre desde el Dock, trae una terminal adentro y te avisa cuando una IA termina. Tus proyectos y chats te esperan ahí, como los dejaste.",
   "Download the app": "Descargar la app",
+  // Actualizar una copia instalada con sudo (Q-22).
+  "MADRE was installed with administrator permission, so it cannot update itself. In a terminal, run: {command}": "MADRE se instaló con permiso de administrador, así que no puede actualizarse sola. En una terminal, escribe: {command}",
 };
