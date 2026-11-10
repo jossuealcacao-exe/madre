@@ -1269,6 +1269,8 @@ export const ES = {
   'What it did so far': 'Lo que ha hecho hasta ahora',
   '+{n} earlier': '+{n} antes',
   'WHO ANSWERS': 'Quién responde',
+  'Ask without the place pointed at': 'Preguntar sin el lugar señalado',
+  'area {w}×{h}': 'área {w}×{h}',
   'Drop here to open it beside': 'Suéltala aquí para abrirla al lado',
   'Open beside (⌘-click, or drag it onto the conversation)': 'Abrir al lado (⌘ + clic, o arrástrala sobre la conversación)',
   'QUICK ACTIONS': 'Acciones rápidas',

@@ -13098,3 +13098,32 @@ html.chat-shell .browser-start-list > * + * { border-top: 1px solid var(--cs-lin
 @keyframes work-step-in { from { opacity: 0; transform: translateY(2px); } }
 @media (prefers-reduced-motion: reduce) { .work-step { animation: none; } }
 #messages .row.thinking > .work-steps { grid-column: 2; min-width: 0; }
+
+/* ROOM FOR A WORKING AGENT'S GLOW (2026-11-09): the conversation clips what leaves its sides, and an
+   agent's mark sits on its left edge, so its breathing ring was cut. The box starts 24 px further
+   left and keeps that as inner room: everything stays where it was, and the ring has its space. */
+.shell > .thread .thread-inner { box-sizing: border-box; width: calc(var(--column) + 24px); margin-left: calc(var(--column-left) - 24px); padding-left: 24px; }
+.via-phone .shell > .thread .thread-inner { width: auto; margin-left: 12px; padding-left: 0; }
+/* Where it was pointed (Apuntar, 2026-11-09): one short card above the field, never the field's own
+   first line, so a narrow composer (the terminal open, the panel beside) wraps only what is typed.
+   Its words are the server and the spot; the whole line is in its title and goes with the message. */
+.point-quote {
+  grid-column: 1 / -1; min-width: 0;
+  display: flex; align-items: center; gap: 7px; justify-self: start; max-width: 100%;
+  margin: 2px 0 2px -12px; padding: 4px 6px 4px 10px; border-radius: 10px;
+  background: color-mix(in srgb, var(--phosphor) 10%, transparent);
+  font-size: 12.5px; line-height: 1.4; color: var(--text-2);
+}
+.point-quote[hidden] { display: none; }
+.point-quote b { flex: none; color: var(--phosphor); font-weight: 600; }
+.point-quote .said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; }
+.point-quote .drop { flex: none; width: 18px; height: 18px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; }
+.point-quote .drop:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); }
+/* The place a sent message points at, as short as it was in the composer (its whole line in its title). */
+.bubble > .point-said { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 6px; margin: 0 0 6px; padding: 2px 9px 2px 7px; border-radius: 8px; background: color-mix(in srgb, var(--phosphor) 12%, transparent); font: 500 12px/1.6 var(--mono); color: var(--text-2); }
+.bubble > .point-said b { color: var(--phosphor); font-weight: 600; }
+.bubble > .point-said span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.chat-shell .composer .point-quote { margin-left: 0; }
+/* A short room (a low window, or the app's terminal open beneath it): the line under the box gives
+   its height to the conversation, which kept only a few lines between the bar and the questions. */
+.shell.room-short > :is(.safety, .colophon) { display: none !important; }

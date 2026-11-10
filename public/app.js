@@ -3041,7 +3041,13 @@ async function pointSend(agentId, prompt) {
   if (lastAsk?.point) current = current.replace(lastAsk.point, '');
   if (lastAsk?.prompt) current = current.replace(lastAsk.prompt, ' ');
   current = current.replace(/\s{2,}/g, ' ').trim();
-  els.input.value = `${line}\n${[prompt, current].filter(Boolean).join(' ')}`;
+  // Where it was pointed goes above the field as one short card (2026-11-09), not as the field's
+  // first line: written in the field it wrapped, its highlight broken across lines, in any narrow
+  // composer. It still travels as the message's first line, as before (the submit, state.point).
+  const brief = [port ? `:${port}` : url, mark.kind === 'dot' ? t('point at ({x}, {y})', { x: mark.x, y: mark.y }) : t('area {w}×{h}', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) })].join(' · ');
+  state.point = { line, brief };
+  renderPointQuote();
+  els.input.value = [prompt, current].filter(Boolean).join(' ');
   // A new spot replaces the last one's picture too, while it still waits in the composer.
   if (lastAsk?.capture) { state.pending = state.pending.filter((item) => item.name !== lastAsk.capture); renderPendingAttachments(); }
   lastAsk = { prompt, point: line, capture: capture?.name ?? null };
@@ -5534,7 +5540,18 @@ function renderUserMessage(event) {
   if (event.payload.copilot) who.append(el('span', 'badge copilot', t('COPILOT')));
   col.append(who);
   // Sent to several at once, the names at its start are already said after the arrow.
-  const bubble = el('div', 'bubble', batch ? withoutCrew(text) : text);
+  const written = batch ? withoutCrew(text) : text;
+  // A place pointed at (Apuntar) opens the message with a long line for the agent: the server and
+  // its command, the address, the view's width, the spot, the capture. The person sees it short, as
+  // the card it was in the composer; the whole line stays in its title (2026-11-09).
+  const pointed = written.match(/^⌖ (\S+)[^\n]*? · ((?:area|área|point|punto) [^·\n]*)[^\n]*(?:\n|$)/);
+  const bubble = el('div', 'bubble', pointed ? written.slice(pointed[0].length) : written);
+  if (pointed) {
+    const card = el('span', 'point-said');
+    card.append(el('b', null, '⌖'), el('span', null, `${pointed[1]} · ${pointed[2].trim().replace(/^(ar[e]a|área)( \S+) (?:at|en) \(.*\)$/, '$1$2')}`));
+    card.title = pointed[0].trim();
+    bubble.prepend(card);
+  }
   if (batch) { togetherShown.set(batch, node); state.userMessages.set(messageId, { ...state.userMessages.get(messageId), text: withoutCrew(text) }); }
   if (attachments.length) bubble.append(fileTiles(attachments));
   col.append(bubble);
@@ -5587,7 +5604,7 @@ function renderAssistantMessage(event) {
     if (ash?.active) who.append(el('span', 'badge ash', t('Token saver')));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
-      const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
+      const reply = el('span', 'reply', `↳ ${briefQuestion(question.text)}`);
       reply.title = question.text;
       who.append(reply);
     }
@@ -5767,11 +5784,40 @@ function plainQuote(text) {
   return said.length > REPLY_CLIP ? `${said.slice(0, REPLY_CLIP - 1)}…` : said;
 }
 
+// The line a reply answers, said short (2026-11-09): a place pointed at («⌖ :5180 (Python) / · view
+// 799 px · area 713×456 at (18, 92) · capture attached») reads as its server, then what was asked.
+function briefQuestion(text) {
+  let said = String(text ?? '');
+  const point = said.match(/^⌖ (\S+)[^\n]*\n?/);
+  if (point) said = `⌖ ${point[1]} · ${said.slice(point[0].length)}`;
+  return said.length > 90 ? `${said.slice(0, 90)}…` : said;
+}
+
 // No message number (Q-14, 2026-11-06): «↩ @codex #4: …» read as #4 FULL ACCESS beside the modes
 // #0–#4. The quoted words say which answer it is.
 function quoteHead(reply) {
   if (!reply) return '';
   return `↩ @${reply.sender}: “${reply.text}”\n`;
+}
+
+function renderPointQuote() {
+  if (!els.replyQuote?.before) return;
+  let box = document.getElementById?.('point-quote');
+  if (!box) {
+    box = el('div', 'point-quote');
+    box.id = 'point-quote';
+    els.replyQuote.before(box);
+  }
+  box.hidden = !state.point;
+  if (!state.point) { box.replaceChildren(); autosize(); return; }
+  const drop = closeMark('button', 'drop');
+  drop.title = t('Ask without the place pointed at');
+  drop.setAttribute('aria-label', t('Ask without the place pointed at'));
+  drop.addEventListener('click', () => { state.point = null; renderPointQuote(); els.input.focus(); });
+  const said = el('span', 'said', state.point.brief);
+  said.title = state.point.line;
+  box.replaceChildren(el('b', null, '⌖'), said, drop);
+  autosize();
 }
 
 function renderReplyQuote() {
@@ -12780,6 +12826,9 @@ if (!SPLIT_CHAT) paintPanes();
 function measureDock() {
   const shell = document.querySelector('.shell');
   if (!shell?.style?.setProperty || !els.composer?.getBoundingClientRect) return;
+  // A short room (a low window, or the app's terminal open beneath it, 2026-11-09): the line under
+  // the box gives its height to the conversation (styles.css, .room-short).
+  if (!pageScrolls()) shell.classList.toggle('room-short', shell.getBoundingClientRect().height < 640);
   const box = els.composer.getBoundingClientRect();
   // What is still open stands over the box, outside it (styles.css, «WHAT IS STILL OPEN STANDS ON THE
   // CANVAS»): the strip begins where those questions begin, or the last answer's foot lay under them
@@ -12832,6 +12881,8 @@ if (document.querySelector('.shell') && els.composer?.getBoundingClientRect) {
     watch.observe(els.composer);
     // The open questions float outside the box, so the box does not grow with them: watched apart.
     if (els.openq) watch.observe(els.openq);
+    // The room's own height changes too, with no change to the box: the terminal opening under it.
+    watch.observe(document.querySelector('.shell'));
   }
   if (els.openq && typeof MutationObserver === 'function') new MutationObserver(() => measureDock()).observe(els.openq, { attributes: true, attributeFilter: ['hidden'] });
   window.addEventListener?.('resize', () => measureDock());
@@ -14401,6 +14452,7 @@ els.composer.addEventListener('submit', async (event) => {
       return;
     } else setMode(wanted);
   }
+  if (state.point && !text.startsWith('/')) outgoing = `${state.point.line}\n${outgoing}`;
   if (quoting && !text.startsWith('/')) outgoing = `${quoteHead(quoting)}${outgoing}`;
   if (text.startsWith('/')) {
     els.input.disabled = true;
@@ -14502,6 +14554,7 @@ els.composer.addEventListener('submit', async (event) => {
       els.input.value = '';
       state.replyTo = null;
       renderReplyQuote();
+      if (state.point) { state.point = null; renderPointQuote(); }
       offerModule(outgoing);
       state.pending = [];
       renderPendingAttachments();
