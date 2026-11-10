@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { canReplace, compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from '../src/updates.mjs';
+import { canReplace, compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand, fetchCommand, nextProcess, opensBrowser, roomsBehind, takesItsPlace } from '../src/updates.mjs';
 
 test('updates: versions compare as releases, the launch mode picks the command, the registry is read once a day', async () => {
   assert.equal(compareVersions('0.3.0', '0.3.1'), -1);
@@ -194,4 +194,42 @@ test('updates: a global copy in a folder it cannot write is not updated from the
     await chmod(join(dir, 'node_modules', '@jossuealcala'), 0o755).catch(() => null);
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+// L-13 (Carlos's server, 2026-11-10): Carlos updated a project; Home and the other projects stayed on
+// 1.1.2, and the 1.1.3 ficha left him outside. The start that comes from an update brings the rest.
+test('updates: the rooms an update still has to bring along are the other open ones on an older MADRE (L-13)', () => {
+  const open = (version) => ({ port: 4318, pid: 1, version });
+  const rooms = [
+    { id: 'here', open: open('1.1.2') },
+    { id: 'home', open: open('1.1.2') },
+    { id: 'same', open: open('1.1.4') },
+    { id: 'newer', open: open('1.2.0') },
+    { id: 'unsaid', open: open(null) },
+    { id: 'asleep', open: null },
+  ];
+  assert.deepEqual(roomsBehind(rooms, { here: 'here', version: '1.1.4' }).map((one) => one.id), ['home', 'unsaid']);
+});
+
+test('updates: back from an update, the room brings the others along, and the pill waits for what runs anywhere (L-13)', async () => {
+  const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
+  // Only the start an update makes does it, and without making the start wait.
+  assert.match(server, /if \(process\.env\.PULSE_UPDATE_RESTART === '1'\) void bringOthersAlong\(\)/);
+  const along = server.slice(server.indexOf('async function bringAlong('), server.indexOf('async function busyElsewhere('));
+  // Asked, never signalled; nothing running is cut off; it comes back on the port it had.
+  assert.match(along, /if \(running\.unreachable \|\| running\.now\?\.length\) return false;/);
+  assert.ok(along.indexOf("'/api/activity'") < along.indexOf("'/api/room/close'"), 'what runs is asked before the room is closed');
+  assert.match(along, /startRoom\(\{ projectRoot: one\.root, roomDir: join\(root, 'rooms', one\.id\), port: one\.open\.port, home \}\)/);
+  assert.doesNotMatch(along, /process\.kill/);
+  // Home as a service: its launcher says the new version before systemd starts it again.
+  assert.ok(along.indexOf('refreshLauncher(') < along.indexOf("'/api/room/close'") && along.indexOf("'/api/room/close'") < along.indexOf("['--user', 'start', UNIT_NAME]"));
+  // The pill: nothing running in another project either, since the update restarts all of them.
+  const apply = server.slice(server.indexOf("url.pathname === '/api/updates/apply'"));
+  assert.ok(apply.indexOf('busyElsewhere()') > 0 && apply.indexOf('busyElsewhere()') < apply.indexOf("room.record('room.updating'"));
+});
+
+test('updates: a new ficha only where a browser can be opened to take it (L-13)', async () => {
+  const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
+  assert.match(server, /const canOpen = Boolean\(openBrowser\) && browserWays\(await environmentOnce\(\)\.catch\(\(\) => null\)\)\.length > 0;/);
+  assert.match(server, /renewFicha: canOpen \}/);
 });

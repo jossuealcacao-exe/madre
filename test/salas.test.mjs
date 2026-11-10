@@ -60,6 +60,17 @@ test('salas · a room is woken the way madre start opens it: the same script, no
   assert.match(String(startRoom), /bin = MADRE_BIN/);
 });
 
+test('salas · an update brings a room back on the port it had, and Home as madre lobby does (L-13)', () => {
+  const calls = [];
+  const fake = (file, args, options) => { calls.push({ args, options }); return { pid: 1, unref() {} }; };
+  startRoom({ projectRoot: '/p/Skinhealth', roomDir: '/nonexistent', env: {}, spawnImpl: fake, bin: '/pkg/bin/madre.mjs', port: 4318 });
+  startRoom({ projectRoot: '/h/.pulse/salas', roomDir: '/nonexistent', env: {}, spawnImpl: fake, bin: '/pkg/bin/madre.mjs', port: 4317, home: true });
+  startRoom({ projectRoot: '/p/x', roomDir: '/nonexistent', env: {}, spawnImpl: fake, bin: '/pkg/bin/madre.mjs', port: '4320; rm -rf ~' });
+  assert.deepEqual(calls[0].args, ['/pkg/bin/madre.mjs', 'start', '--project', '/p/Skinhealth', '--port', '4318', '--no-open']);
+  assert.deepEqual(calls[1].args, ['/pkg/bin/madre.mjs', 'lobby', '--port', '4317', '--no-open']);
+  assert.deepEqual(calls[2].args, ['/pkg/bin/madre.mjs', 'start', '--project', '/p/x', '--no-open'], 'only a port number becomes an argument');
+});
+
 test('salas · two rooms saving settings at once keep both changes (S-001)', async () => {
   const state = await scratch('madre-salas-config-');
   await Promise.all(Array.from({ length: 12 }, (_, i) => updateConfig(state, { modules: { [`m${i}`]: { enabled: true } } })));

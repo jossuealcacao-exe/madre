@@ -517,14 +517,18 @@ export async function knownRooms(stateRoot) {
 
 // Opens a room for a project, as `madre start --project <root> --no-open` would. What it says on
 // the way up lands in start.log beside its record: if it never comes up, that file says why.
-export function startRoom({ projectRoot, roomDir, env = process.env, spawnImpl = spawn, bin = MADRE_BIN }) {
+// An update bringing the rest of MADRE along (L-13) opens each on the port it had, and Home too
+// (`home`, as `madre lobby` does); a port that got taken meanwhile is an error, not another number.
+export function startRoom({ projectRoot, roomDir, env = process.env, spawnImpl = spawn, bin = MADRE_BIN, port = null, home = false }) {
   let log = 'ignore';
   try { log = openPrivateLog(join(roomDir, 'start.log')); } catch { /* no witness, still start */ }
   // The new room is its own: what this room set for itself on the way up is not handed on.
   const own = { ...env };
   for (const name of ['PULSE_UPDATE_RESTART', 'PULSE_OUTBOUND_LOG']) delete own[name];
   try {
-    const child = spawnImpl(process.execPath, [bin, 'start', '--project', projectRoot, '--no-open'], {
+    const what = home ? ['lobby'] : ['start', '--project', projectRoot];
+    const where = Number.isInteger(port) && port > 0 && port < 65536 ? ['--port', String(port)] : [];
+    const child = spawnImpl(process.execPath, [bin, ...what, ...where, '--no-open'], {
       cwd: projectRoot,
       detached: process.platform !== 'win32',
       windowsHide: true,

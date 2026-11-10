@@ -130,6 +130,12 @@ export function nextProcess({ file, args = [], log = null, terminal = false }) {
 // finds no ficha on file opens the browser at the address that carries it.
 export const opensBrowser = ({ asked = false, env = process.env, hadFicha = true } = {}) => Boolean(asked) || (env.PULSE_UPDATE_RESTART === '1' && !hadFicha);
 
+// L-13 (Carlos's server, 2026-11-10): an update restarted only the room it was pressed in, and Home
+// and the other projects stayed on the older MADRE. The rooms an update still has to bring to this
+// version: every other open one that says an older version, or none (a mark written before rooms
+// said theirs).
+export const roomsBehind = (rooms, { here, version }) => rooms.filter((one) => one.open && one.id !== here && (!isVersion(one.open.version) || compareVersions(one.open.version, version) < 0));
+
 // Where a person reads what a version brought. The product's own house, in the language the room
 // is speaking — a release page on a code host is written for people who already work there, and
 // whoever pressed this button only wanted to know what changed. The repository stays the fallback
