@@ -40,6 +40,7 @@ import { ENV_SECRETS } from '../checkpoint.mjs';
 import { grokImagesDir } from '../lease.mjs';
 import { t } from '../i18n.mjs';
 import { runReadonlyProcess } from './process.mjs';
+import { grokSteps } from './steps.mjs';
 import { jsonLines } from './subagents.mjs';
 
 // What a reading turn may use: the three tools that read. Everything else Grok offers by default
@@ -194,13 +195,14 @@ export function parseGrokOutput(output) {
 }
 
 // While it runs: what it has written so far.
-export function grokProgress(output) {
+export function grokProgress(output, { root = null } = {}) {
   let chars = 0;
-  for (const event of jsonLines(output)) {
+  const events = jsonLines(output);
+  for (const event of events) {
     if (event?.type !== 'assistant' || event.parent_tool_use_id) continue;
     for (const part of event.message?.content ?? []) if (part?.type === 'text') chars += String(part.text ?? '').length;
   }
-  return { chars };
+  return { chars, steps: grokSteps(events, { root }) };
 }
 
 // `grok models` says whether there is a session, and lists the account's models (2026-11-06):
@@ -268,7 +270,7 @@ export async function invokeGrok({ executable, projectRoot, prompt, timeoutMs = 
     await writeFile(promptFile, String(prompt ?? ''), { mode: 0o600 });
     await chmod(promptFile, 0o600).catch(() => {});
     const result = await runReadonlyProcess({
-      onProgress: onProgress ? (out) => onProgress(grokProgress(out)) : null,
+      onProgress: onProgress ? (out) => onProgress(grokProgress(out, { root: projectRoot })) : null,
       executable,
       args: buildGrokArgs({ projectRoot, promptFile, ...(model ? { model } : {}), effort, lease, scopes }),
       cwd: projectRoot,

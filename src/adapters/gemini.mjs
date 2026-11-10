@@ -6,6 +6,7 @@ import { t } from '../i18n.mjs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runReadonlyProcess } from './process.mjs';
+import { geminiSteps } from './steps.mjs';
 
 // Where each rule stands. The higher one wins, and Gemini CLI refuses a policy whose priorities
 // go past 999 ("priority must be <= 999 to prevent tier overflow"): a refused policy loads no rule
@@ -329,6 +330,7 @@ export async function invokeGemini({
   fallbackModel = process.env.PULSE_GEMINI_FALLBACK_MODEL ?? 'gemini-3-flash-preview',
   failFastMs = 15000,
   run = runReadonlyProcess,
+  onProgress = null,
 }) {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
@@ -365,6 +367,8 @@ export async function invokeGemini({
           signal,
           label: 'Gemini',
           parse: parseGeminiOutput,
+          // What it has written so far, and each tool it calls (src/adapters/steps.mjs).
+          onProgress: onProgress ? (out) => onProgress({ chars: parseGeminiOutput(out).text.length, steps: geminiSteps(out, { root: projectRoot }) }) : null,
         });
       } catch (error) {
         const produced = parseGeminiOutput(error.partialOutput ?? '').text;

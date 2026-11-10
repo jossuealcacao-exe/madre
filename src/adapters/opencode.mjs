@@ -3,6 +3,7 @@
 import { ENV_TEMPLATES } from '../checkpoint.mjs';
 import { t } from '../i18n.mjs';
 import { runReadonlyProcess } from './process.mjs';
+import { openCodeSteps } from './steps.mjs';
 import { jsonLines, openCodeSubagents } from './subagents.mjs';
 
 const readonlyConfig = {
@@ -234,7 +235,7 @@ export function watchOpenCodeErrors(stderr) {
 export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
     // The answer written so far and its subagents, not the length of the protocol around them.
-    onProgress: onProgress ? (out) => { const said = parseOpenCodeOutput(out, { root: projectRoot }); onProgress({ chars: said.text.length, subagents: said.subagents ?? [] }); } : null,
+    onProgress: onProgress ? (out) => { const said = parseOpenCodeOutput(out, { root: projectRoot }); onProgress({ chars: said.text.length, subagents: said.subagents ?? [], steps: openCodeSteps(out, { root: projectRoot }) }); } : null,
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt, attachments, effort, ...(model ? { model } : {}) }),
     cwd: projectRoot,

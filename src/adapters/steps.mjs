@@ -11,6 +11,12 @@
 // Nothing is guessed: a CLI that does not say its steps gives none, and the room keeps its phrases.
 //   · Claude says each tool it uses, with its input (stream-json, tool_use).
 //   · Codex says each command, file change, search and tool as it starts (exec --json, item.started).
+//   · Grok writes Claude's stream with tools of its own names (read_file, list_dir, grep…).
+//   · Gemini says each tool as it calls it (stream-json, tool_use: tool_name, parameters).
+//   · Cursor says each tool as it starts (stream-json, tool_call/started: readToolCall.args…).
+//   · OpenCode says each tool once it is done (--format json, tool_use: part.tool, state.input).
+// Their names and fields were read from each CLI on 2026-11-09: Grok 1.0.77 and OpenCode in a real
+// turn, Gemini and Cursor in the code they install (gemini-cli bundle; cursor-agent 2026.10.18).
 // What the room shows still goes through its privacy guard first (src/room.mjs).
 
 export const STEPS_KEPT = 40;
@@ -50,6 +56,36 @@ const CLAUDE = {
   TodoWrite: () => ({ kind: 'plan', what: null }),
 };
 
+// Any other CLI's tool, by its name: the same few kinds whichever agent says them. A tool that
+// hands work to a subagent is the subagent's to show (subagents.mjs), not a step here.
+const SUBAGENT_TOOLS = new Set(['Agent', 'Task', 'task', 'invoke_agent', 'taskToolCall']);
+const pathOf = (input) => input?.file_path ?? input?.filePath ?? input?.target_file ?? input?.path ?? input?.absolute_path ?? input?.dir_path ?? input?.target_directory ?? input?.notebook_path ?? null;
+const KINDS = [
+  [/^(read|read_file|read_many_files|readToolCall|list|ls|list_dir|list_directory|lsToolCall)$/i, 'read'],
+  [/^(grep|glob|grep_search|search_file_content|codesearch|grepToolCall|globToolCall|semSearchToolCall)$/i, 'search'],
+  [/^(edit|replace|search_replace|multiedit|patch|apply_patch|editToolCall|deleteToolCall)$/i, 'edit'],
+  [/^(write|write_file|create_file)$/i, 'write'],
+  [/^(bash|shell|run_shell_command|run_terminal_cmd|run_terminal_command|shellToolCall)$/i, 'run'],
+  [/^(websearch|web_search|google_web_search|webSearchToolCall)$/i, 'web'],
+  [/^(webfetch|web_fetch|fetch|webFetchToolCall)$/i, 'fetch'],
+  [/^(todowrite|todoread|write_todos|updateTodosToolCall|createPlanToolCall)$/i, 'plan'],
+];
+export function toolStep(name, input, { root = null } = {}) {
+  const tool = String(name ?? '');
+  if (!tool || SUBAGENT_TOOLS.has(tool)) return null;
+  const kind = KINDS.find(([pattern]) => pattern.test(tool))?.[1] ?? 'tool';
+  if (kind === 'read' || kind === 'edit' || kind === 'write') {
+    const path = pathOf(input) ?? (Array.isArray(input?.paths) ? input.paths[0] : null) ?? (Array.isArray(input?.include) ? input.include[0] : null);
+    return { kind, what: clip(fromProject(path, root)) };
+  }
+  if (kind === 'search') return { kind, what: clip(input?.pattern ?? input?.query ?? input?.globPattern ?? input?.searchTerm) };
+  if (kind === 'run') return { kind, what: clip(input?.command, 70) };
+  if (kind === 'web') return { kind, what: clip(input?.query ?? input?.searchTerm) };
+  if (kind === 'fetch') return { kind, what: input?.url ? host(input.url) : (String(input?.prompt ?? '').match(/https?:\/\/\S+/) ? host(String(input.prompt).match(/https?:\/\/\S+/)[0]) : null) };
+  if (kind === 'plan') return { kind, what: null };
+  return { kind, what: clip(tool.replace(/^mcp__[^_]+__/, '').replace(/ToolCall$/, '')) };
+}
+
 // Claude, from its stream (one JSON object per line, already parsed). A subagent's own steps
 // (parent_tool_use_id) are the subagent's, shown with it, not here.
 export function claudeSteps(events, { root = null } = {}) {
@@ -58,9 +94,10 @@ export function claudeSteps(events, { root = null } = {}) {
     if (event?.type !== 'assistant' || event.parent_tool_use_id) continue;
     for (const part of event.message?.content ?? []) {
       if (part?.type === 'thinking' || part?.type === 'redacted_thinking') { push(steps, { kind: 'think', what: null }); continue; }
-      if (part?.type !== 'tool_use' || part.name === 'Agent' || part.name === 'Task') continue;
+      if (part?.type !== 'tool_use' || SUBAGENT_TOOLS.has(part.name)) continue;
       const read = CLAUDE[part.name];
-      push(steps, read ? read(part.input, root) : { kind: 'tool', what: clip(String(part.name ?? '').replace(/^mcp__[^_]+__/, '')) });
+      const step = read ? read(part.input, root) : toolStep(part.name, part.input, { root });
+      if (step) push(steps, step);
     }
   }
   return steps.slice(-STEPS_KEPT);
@@ -91,4 +128,49 @@ export function codexSteps(output, { root = null } = {}) {
     push(steps, step);
   }
   return steps.slice(-STEPS_KEPT).map(({ kind, what }) => ({ kind, what }));
+}
+
+// Grok writes Claude's stream line for line (adapters/grok.mjs), its tools under names of its own.
+export const grokSteps = claudeSteps;
+
+const jsonEvents = (output) => String(output ?? '').split('\n').filter((line) => line.startsWith('{')).flatMap((line) => { try { return [JSON.parse(line)]; } catch { return []; } });
+
+// Gemini, from its stream-json: { type: 'tool_use', tool_name, parameters } as it calls each one.
+export function geminiSteps(output, { root = null } = {}) {
+  const steps = [];
+  for (const event of jsonEvents(output)) {
+    if (event?.type !== 'tool_use') continue;
+    const step = toolStep(event.tool_name, event.parameters, { root });
+    if (step) push(steps, step);
+  }
+  return steps.slice(-STEPS_KEPT);
+}
+
+// Cursor, from its stream-json: { type: 'tool_call', subtype: 'started', tool_call: { readToolCall:
+// { args: { path } } } }, one kind of call per key; its thinking comes as { type: 'thinking' }.
+export function cursorSteps(output, { root = null } = {}) {
+  const steps = [];
+  for (const event of jsonEvents(output)) {
+    if (event?.type === 'thinking') { push(steps, { kind: 'think', what: null }); continue; }
+    if (event?.type !== 'tool_call' || event.subtype !== 'started' || !event.tool_call || typeof event.tool_call !== 'object') continue;
+    const [name, call] = Object.entries(event.tool_call)[0] ?? [];
+    const step = name === 'mcpToolCall'
+      ? { kind: 'tool', what: clip(call?.args?.toolName ?? call?.args?.name ?? 'MCP') }
+      : toolStep(name, call?.args, { root });
+    if (step) push(steps, step);
+  }
+  return steps.slice(-STEPS_KEPT);
+}
+
+// OpenCode, from its --format json: { type: 'tool_use', part: { tool, state: { input } } }, said once
+// the tool is done; its reasoning as { type: 'reasoning' }.
+export function openCodeSteps(output, { root = null } = {}) {
+  const steps = [];
+  for (const event of jsonEvents(output)) {
+    if (event?.type === 'reasoning' && String(event.part?.text ?? '').trim()) { push(steps, { kind: 'think', what: null }); continue; }
+    if (event?.type !== 'tool_use') continue;
+    const step = toolStep(event.part?.tool, event.part?.state?.input, { root });
+    if (step) push(steps, step);
+  }
+  return steps.slice(-STEPS_KEPT);
 }

@@ -26,6 +26,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ENV_SECRETS } from '../checkpoint.mjs';
 import { runReadonlyProcess } from './process.mjs';
+import { cursorSteps } from './steps.mjs';
 
 // What the turn's own configuration allows: reading, and nothing else.
 export const READONLY_CONFIG = {
@@ -122,7 +123,7 @@ export async function invokeCursor({ executable, projectRoot, prompt, timeoutMs 
   try {
     await writeFile(join(configDir, 'cli-config.json'), `${JSON.stringify(cursorConfigFor(lease), null, 2)}\n`);
     const run = (named) => runReadonlyProcess({
-      onProgress: onProgress ? (out) => onProgress({ chars: out.length }) : null,
+      onProgress: onProgress ? (out) => onProgress({ chars: out.length, steps: cursorSteps(out, { root: projectRoot }) }) : null,
       executable,
       args: buildCursorArgs({ projectRoot, prompt, lease, ...(named ? { model: named } : {}) }),
       cwd: projectRoot,
