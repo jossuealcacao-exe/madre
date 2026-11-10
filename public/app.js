@@ -2412,7 +2412,7 @@ const browserTab = () => browser.tabs.find((tab) => tab.id === browser.active) ?
 // lives in MODULES and the human can move it with this panel open; a permission cached when the
 // panel opened would keep refusing after they turned it on, and a switch that is not believed is
 // worse than no switch. Loopback needs no question and gets none.
-// Inside MADRE's app (desktop/src-tauri/src/browser.js and browser.rs, 2026-11-09) each tab is a real
+// Inside MADRE's app (its browser, 2026-11-09) each tab is a real
 // web view of the app laid over the place this frame keeps: every site shows, each tab keeps its own
 // page, and what happens inside comes back through browserNativeSaid. The frame stays, empty, to
 // mark the place (and a phone's width). In a browser this is null and nothing below changes.
@@ -2968,7 +2968,7 @@ async function pointCapture(port) {
   const layer = pointing.layer;
   const mark = pointing.mark;
   if (!layer || !mark) return null;
-  // In the app the page is a real web view (desktop/src-tauri/src/browser.rs) and the app has its
+  // In the app the page is a real web view (its browser) and the app has its
   // picture already, taken when the pointing layer came over it: the part is cut from that, with
   // no tab to share.
   if (nativeBrowser()?.snapshot) {
@@ -3170,7 +3170,7 @@ browser.back?.addEventListener('click', () => {
   if (previous) void browserOpen(previous, { tab });
 });
 
-// What a tab's real page did, told by the app (desktop/src-tauri/src/browser.rs): where it is now,
+// What a tab's real page did, told by the app (its browser): where it is now,
 // its title, whether it is loading and can go back; a link to a new window becomes a new tab. And
 // an address typed in the panel's bar (the app's field) opens in the tab in front.
 function browserNativeSaid(said = {}) {
@@ -12496,9 +12496,8 @@ function placeConvWindow(win, box) {
   applyWindowBox(win.node, win.box);
 }
 
-// A conversation «in a window», asked for by the person. Inside MADRE's app (desktop/, 2026-11-09)
-// that is a real window of the app, with the conversation's own page (desktop/src-tauri/src/
-// windows.js); in a browser, a window over the room, as always.
+// A conversation «in a window», asked for by the person. Inside MADRE's app (2026-11-09)
+// that is a real window of the app, with the conversation's own page; in a browser, a window over the room, as always.
 function floatConversation(id) {
   if (window.__madreApp?.openConversation && id && id !== chats.active && !SPLIT_CHAT) { window.__madreApp.openConversation(id); return; }
   openConvWindow(id);
@@ -23251,7 +23250,7 @@ function drawRelease(section, info) {
   drawLegal(section);
 
   if (!info.available) return;
-  // MADRE.app updates itself (desktop/, its menu bar): no command to offer here.
+  // MADRE.app updates itself (its menu bar): no command to offer here.
   if (info.install === 'app') return;
   const canRestart = info.install !== 'source';
   const fresh = sxBlock(section, t('MADRE {version} is ready', { version: info.latest }), canRestart
@@ -24002,7 +24001,7 @@ const PLUS_ICON = trazo('add');
 const MARKET_ICON = trazo('market-key');
 const FLOAT_TOOL_ICON = trazo('window');
 // Named as their keys on the bar: Files holds the code (adoptFinder).
-// In the app the panel is a whole browser (desktop/src-tauri/src/browser.rs), not only this project's servers.
+// In the app the panel is a whole browser (its browser), not only this project's servers.
 const TOOL_NAMES = { viewer: () => t('Files'), tree: () => t('Files'), browser: () => (nativeBrowser() ? t('Browser') : t('Your servers')) };
 
 function shellKey(icon, label, run, className = 'shell-key') {

@@ -5649,7 +5649,7 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
       server.close(() => process.exit(0));
     });
   }
-  // Inside the app (desktop/, Tauri), the app holds this process's stdin open and never writes to it:
+  // Inside the app (MADRE.app, Tauri), the app holds this process's stdin open and never writes to it:
   // when the app dies — Force Quit, a crash — the pipe closes, and Home closes as it does for a signal,
   // projects first, instead of staying behind with nobody to see it (2026-11-09).
   if (process.env.MADRE_APP === '1' && salasRoom) {

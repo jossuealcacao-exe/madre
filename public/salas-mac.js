@@ -6306,7 +6306,7 @@ function fillRelease(host) {
     // Home restarts with it, as a project does (app.js, drawRelease): the whole page waits on the
     // curtain with MADRE's loader through the version arriving, Home closed, and Home back.
     if (info.install === 'app') {
-      // MADRE.app updates itself (desktop/, its menu bar › Buscar actualizaciones): nothing to run here.
+      // MADRE.app updates itself (its menu bar › Buscar actualizaciones): nothing to run here.
     } else if (info.install !== 'source') {
       const fresh = sxBlock(host, t('Restart Home with {version}', { version: info.latest }), t('Home closes, installs it and comes back on this same address in a few seconds. The open projects keep their version until you restart them.'));
       const said = el('p', 'sx-hint');

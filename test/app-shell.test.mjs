@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
-// MADRE inside the app (desktop/, Tauri, 2026-11-09): the app holds Home's stdin open, and when the
+// MADRE inside the app (MADRE.app, Tauri, 2026-11-09): the app holds Home's stdin open, and when the
 // app dies without saying so (Force Quit, a crash) the pipe closes. Home closes itself then, instead
 // of staying behind with nobody to see it.
 import test from 'node:test';

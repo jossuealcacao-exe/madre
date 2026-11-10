@@ -661,7 +661,7 @@ test('chat shell: Files holds the code, and the keys that open beside the conver
   assert.match(app, /if \(id === 'finder' && chatShellOn\(\)\) continue;/);
   assert.match(app, /stored\.map\(\(id\) => \(id === 'finder' \? 'code' : id\)\)/);
   assert.doesNotMatch(app, /replaceWith\(folder\.cloneNode\(true\)\)/);
-  // In the app the browser panel is a whole browser and says so (desktop/, nativeBrowser).
+  // In the app the browser panel is a whole browser and says so (nativeBrowser).
   assert.match(app, /const TOOL_NAMES = \{ viewer: \(\) => t\('Files'\), tree: \(\) => t\('Files'\), browser: \(\) => \(nativeBrowser\(\) \? t\('Browser'\) : t\('Your servers'\)\) \};/);
   // The Finder's own tree (search, new file, its menu) stands where Code kept its list.
   assert.match(app, /const parts = \['#tree-search', '#tree-clip', '#tree-body', '#tree-menu'\]\.map/);
