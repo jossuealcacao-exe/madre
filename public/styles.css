@@ -13201,3 +13201,28 @@ html.chat-shell .code-files.finder .tree-search.folded-search > .code-files-fold
 .empty-start-icon { flex: none; display: grid; place-items: center; width: 18px; height: 19px; color: var(--phosphor); }
 .empty-start-icon svg { width: 16px; height: 16px; }
 .empty-start-text { min-width: 0; }
+
+/* THE OPEN QUESTIONS, QUIETER (2026-11-10, the author: «the glow of "still open here" is too much»).
+   The line over them carried a halo of the canvas 10px wide, and the pills a glass that blurred and
+   saturated whatever passed behind: over a green message both read as a glow. Now solid pills of the
+   room's own ground with a hairline, no halo, no glass. */
+html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-shadow: none; }
+#composer#composer :is(.openq-ask, .openq-lead, .openq-close) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background-color: var(--cs-canvas, var(--bg));
+  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent);
+}
+#composer#composer .openq-ask:is(:hover, :focus-visible) { background-color: color-mix(in srgb, var(--text) 6%, var(--cs-canvas, var(--bg))); }
+
+/* A command that ran says itself whole (2026-11-10): its line breaks instead of ending in «…». */
+#messages .command-card.terminal .term-line { white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; text-overflow: clip; }
+
+/* WHAT AN AGENT WRITES AS CODE, READABLE IN LIGHT (2026-11-10): the agent's colour as it is, on a
+   tint of itself, was 3.5:1 (a block's green on its grey). The colour keeps its hue and is darkened
+   enough to read; the ground is a lighter tint. Dark already reads (15:1). */
+:root[data-scheme="light"] #messages :is(.bubble code, .codeblock pre) { color: color-mix(in srgb, var(--agent, var(--phosphor)) 58%, #0b0d0b); }
+:root[data-scheme="light"] #messages .bubble :not(pre) > code { background: color-mix(in srgb, var(--agent, var(--phosphor)) 9%, #ffffff); }
+:root[data-scheme="light"] #messages .codeblock .lang { color: #4a514a; }
+:root[data-scheme="light"] .user .bubble code { color: inherit; }
+/* And in dark, the code inside a sentence: the agent's colour lifted toward white (4.4:1 before). */
+:root[data-scheme="dark"] #messages .bubble :not(pre) > code { color: color-mix(in srgb, var(--agent, var(--phosphor)) 62%, #ffffff); }
