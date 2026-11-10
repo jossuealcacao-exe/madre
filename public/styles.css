@@ -13154,3 +13154,24 @@ html.chat-shell .code-files.finder .tree-search.folded-search.searching > .tree-
 html.chat-shell .code-files.finder .tree-search.folded-search > :is(.tree-search-key, .tree-new, .tree-refresh, .code-files-fold) { flex: none; width: 30px; height: 30px; margin: 0; display: grid; place-items: center; }
 html.chat-shell .code-files.finder .tree-search.folded-search > .tree-search-key svg { width: 16px; height: 16px; }
 html.chat-shell .code-files.finder .tree-search.folded-search > .code-files-fold { margin-left: auto; }
+
+/* SEVERAL MARKS (Apuntar, 2026-11-09, app.js pointRedraw): from the second mark on, each one shows
+   its number where it points, and beside it a short note of its own and the key to take it back.
+   One mark alone stays the dot or the area it always was. */
+.point-tag { position: absolute; z-index: 3; display: none; align-items: center; gap: 6px; transform: translate(-13px, -13px); cursor: default; }
+.point-layer.many .point-tag { display: inline-flex; }
+.point-layer.many .point-dot { opacity: 0; }
+.point-num { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--phosphor); color: var(--phosphor-ink, #fff); font: 700 12.5px/1 var(--read); box-shadow: 0 0 0 2.5px #fff, 0 4px 12px -3px rgba(0, 0, 0, .45); }
+.point-note { width: 168px; height: 28px; padding: 0 10px; border: 0; border-radius: 9px; background: var(--panel); color: var(--text); font: 450 12.5px var(--read); box-shadow: 0 0 0 1px var(--line-2), 0 8px 20px -10px rgba(0, 0, 0, .45); outline: none; }
+.point-note:focus { box-shadow: 0 0 0 1.5px var(--phosphor), 0 8px 20px -10px rgba(0, 0, 0, .45); }
+.point-note::placeholder { color: var(--text-3); }
+.point-drop { flex: none; width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: var(--panel); color: var(--text-3); box-shadow: 0 0 0 1px var(--line-2); opacity: 0; transition: opacity var(--motion-fast) var(--ease-out); cursor: pointer; }
+.point-tag:is(:hover, :focus-within) .point-drop { opacity: 1; }
+.point-drop:hover { color: var(--danger); }
+.point-drop svg { width: 12px; height: 12px; }
+/* The picture draws its own numbers (app.js, drawPins): the page's own stay out of it. */
+.point-layer.capturing .point-tag { visibility: hidden; }
+/* A sent message with several marks: each mark's line, numbered as on its picture. */
+.bubble > .point-said-list { margin: -2px 0 8px; padding-left: 22px; font: 450 12px/1.55 var(--mono); color: var(--text-2); }
+.bubble > .point-said-list li { overflow-wrap: anywhere; }
+.point-tag.flip { flex-direction: row-reverse; transform: translate(calc(-100% + 13px), -13px); }

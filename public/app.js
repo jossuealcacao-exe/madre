@@ -2846,19 +2846,103 @@ function pointFit() {
   const frame = browser.frame.getBoundingClientRect();
   Object.assign(pointing.layer.style, { left: `${frame.left - stage.left}px`, top: `${frame.top - stage.top}px`, width: `${frame.width}px`, height: `${frame.height}px` });
 }
+// SEVERAL MARKS, ONE QUESTION (2026-11-09): up to ten places on the page, each numbered on the page
+// and, from the second on, with a short note of its own; one message carries them all with one
+// picture where the numbers are drawn, so the agent answers in one turn what ten would have cost.
+const POINT_MAX = 10;
+const markArea = (mark) => (mark.kind === 'area' ? { x: Math.min(mark.x1, mark.x2), y: Math.min(mark.y1, mark.y2), w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) } : null);
+// Where a mark's number stands: on the spot, or at the area's corner.
+const markPin = (mark) => { const area = markArea(mark); return area ? { x: area.x, y: area.y } : { x: mark.x, y: mark.y }; };
+function pointMarks() { return pointing.marks ?? (pointing.marks = []); }
 function pointClear() {
   closeAskCard();
-  pointing.mark?.node?.remove();
-  pointing.card?.remove();
+  for (const mark of pointMarks()) { mark.node?.remove(); mark.tag?.remove(); }
+  pointing.marks = [];
   pointing.mark = null;
+  pointing.card?.remove();
   pointing.card = null;
+}
+// The numbers, and the notes once there is more than one mark: a single mark is the question itself.
+function pointRedraw() {
+  const marks = pointMarks();
+  marks.forEach((mark, index) => {
+    mark.number = index + 1;
+    if (!mark.tag) {
+      const tag = el('div', 'point-tag');
+      const number = el('b', 'point-num');
+      const note = el('input', 'point-note');
+      note.type = 'text';
+      note.maxLength = 120;
+      note.spellcheck = true;
+      note.placeholder = t('note (optional)');
+      note.setAttribute('aria-label', t('Note for this mark'));
+      note.value = mark.note ?? '';
+      note.addEventListener('input', () => { mark.note = note.value; });
+      note.addEventListener('keydown', (event) => { event.stopPropagation(); if (event.key === 'Enter' || event.key === 'Escape') note.blur(); });
+      const drop = closeMark('button', 'point-drop', t('Remove this mark'));
+      drop.type = 'button';
+      drop.addEventListener('click', (event) => { event.stopPropagation(); pointRemove(mark); });
+      tag.append(number, note, drop);
+      pointing.layer?.append(tag);
+      mark.tag = tag;
+    }
+    const pin = markPin(mark);
+    Object.assign(mark.tag.style, { left: `${pin.x}px`, top: `${pin.y}px` });
+    // Near the page's right edge its note goes to the left of its number, never cut by the edge.
+    mark.tag.classList.toggle('flip', pin.x + 236 > (pointing.layer?.clientWidth ?? Infinity));
+    mark.tag.querySelector('.point-num').textContent = String(mark.number);
+  });
+  pointing.layer?.classList.toggle('many', marks.length > 1);
+  pointing.mark = marks.at(-1) ?? null;
+  if (pointing.hint) pointing.hint.textContent = marks.length
+    ? t('{n} of {max} marks · press elsewhere to add one', { n: marks.length, max: POINT_MAX })
+    : pointing.tool === 'dot' ? t('Click on the page where you want to point') : t('Drag over the part you mean');
+}
+function pointRemove(mark) {
+  mark.node?.remove();
+  mark.tag?.remove();
+  pointing.marks = pointMarks().filter((one) => one !== mark);
+  pointRedraw();
+  if (pointMarks().length) pointAsk(); else closeAskCard();
+}
+// A new mark that falls on one already there is that one: its note is where to say more.
+function pointSame(mark) {
+  const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 14;
+  const inside = (spot, area) => spot.x >= area.x && spot.x <= area.x + area.w && spot.y >= area.y && spot.y <= area.y + area.h;
+  const area = markArea(mark);
+  return pointMarks().find((one) => {
+    const theirs = markArea(one);
+    if (!area && !theirs) return near(mark, one);
+    if (!area) return inside(mark, theirs);
+    if (!theirs) return false;
+    const w = Math.max(0, Math.min(area.x + area.w, theirs.x + theirs.w) - Math.max(area.x, theirs.x));
+    const h = Math.max(0, Math.min(area.y + area.h, theirs.y + theirs.h) - Math.max(area.y, theirs.y));
+    return w * h > 0.6 * Math.min(area.w * area.h, theirs.w * theirs.h);
+  }) ?? null;
+}
+function pointAdd(mark) {
+  const same = pointSame(mark);
+  if (same) {
+    mark.node?.remove();
+    pointing.mark = same;
+    same.tag?.querySelector('.point-note')?.focus();
+    pointAsk();
+    return;
+  }
+  if (pointMarks().length >= POINT_MAX) {
+    mark.node?.remove();
+    toast(t('Up to {max} marks in one question.', { max: POINT_MAX }), { tone: 'note' });
+    return;
+  }
+  pointMarks().push(mark);
+  pointRedraw();
+  pointAsk();
 }
 function pointTool(id) {
   pointing.tool = id;
-  pointClear();
   for (const button of pointing.layer?.querySelectorAll('.point-tool') ?? []) button.setAttribute('aria-pressed', String(button.dataset.tool === id));
   pointing.layer?.classList.toggle('area', id === 'area');
-  if (pointing.hint) pointing.hint.textContent = id === 'dot' ? t('Click on the page where you want to point') : t('Drag over the part you mean');
+  pointRedraw();
 }
 function setPointing(on) {
   if (on === pointing.on) return;
@@ -2873,7 +2957,7 @@ function setPointing(on) {
     closeAskCard();
     pointing.observer?.disconnect();
     pointing.layer?.remove();
-    Object.assign(pointing, { layer: null, hint: null, mark: null, card: null, observer: null });
+    Object.assign(pointing, { layer: null, hint: null, mark: null, marks: [], card: null, observer: null });
     return;
   }
   const layer = el('div', 'point-layer');
@@ -2897,6 +2981,7 @@ function setPointing(on) {
   browser.stage.append(layer);
   pointing.layer = layer;
   pointing.hint = hint;
+  pointing.marks = [];
   pointTool(pointing.tool);
   pointFit();
   pointing.observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => pointFit()) : null;
@@ -2904,9 +2989,9 @@ function setPointing(on) {
   layer.addEventListener('pointerdown', pointDown);
 }
 function pointDown(event) {
-  if (event.button !== 0 || event.target.closest('.point-tools, .point-card')) return;
+  if (event.button !== 0 || event.target.closest('.point-tools, .point-card, .point-tag')) return;
   event.preventDefault();
-  pointClear();
+  closeAskCard();
   const layer = pointing.layer;
   const box = layer.getBoundingClientRect();
   const at = (moving) => ({ x: Math.round(Math.max(0, Math.min(box.width, moving.clientX - box.left))), y: Math.round(Math.max(0, Math.min(box.height, moving.clientY - box.top))) });
@@ -2916,49 +3001,46 @@ function pointDown(event) {
     node.style.left = `${x}px`;
     node.style.top = `${y}px`;
     layer.append(node);
-    pointing.mark = { kind: 'dot', node, x, y };
-    pointAsk();
+    pointAdd({ kind: 'dot', node, x, y });
   };
   if (pointing.tool === 'dot') { dot(start.x, start.y); return; }
   const node = el('div', 'point-area');
   layer.append(node);
-  pointing.mark = { kind: 'area', node, x1: start.x, y1: start.y, x2: start.x, y2: start.y };
+  const mark = { kind: 'area', node, x1: start.x, y1: start.y, x2: start.x, y2: start.y };
   const draw = () => {
-    const mark = pointing.mark;
     Object.assign(node.style, { left: `${Math.min(mark.x1, mark.x2)}px`, top: `${Math.min(mark.y1, mark.y2)}px`, width: `${Math.abs(mark.x2 - mark.x1)}px`, height: `${Math.abs(mark.y2 - mark.y1)}px` });
   };
   draw();
   try { layer.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
-  const move = (moving) => { const now = at(moving); pointing.mark.x2 = now.x; pointing.mark.y2 = now.y; draw(); };
+  const move = (moving) => { const now = at(moving); mark.x2 = now.x; mark.y2 = now.y; draw(); };
   const up = () => {
     layer.removeEventListener('pointermove', move);
     layer.removeEventListener('pointerup', up);
     layer.removeEventListener('pointercancel', up);
-    const mark = pointing.mark;
-    if (!mark) return;
     // A drag too short to be an area was a press: it marks the spot.
     if (Math.abs(mark.x2 - mark.x1) < 8 && Math.abs(mark.y2 - mark.y1) < 8) { node.remove(); dot(mark.x1, mark.y1); return; }
-    pointAsk();
+    pointAdd(mark);
   };
   layer.addEventListener('pointermove', move);
   layer.addEventListener('pointerup', up);
   layer.addEventListener('pointercancel', up);
 }
-// Beside the mark, the room's card for asking about something on the screen: who should look,
-// the questions the place raises, and one's own.
+// Beside the newest mark, the room's card for asking about something on the screen: who should
+// look, the questions the place raises, and one's own. With several marks it asks about all of them.
 function pointAsk() {
   const mark = pointing.mark;
   const layer = pointing.layer;
   if (!mark || !layer) return;
   const box = layer.getBoundingClientRect();
-  const area = mark.kind === 'area' ? { x: Math.min(mark.x1, mark.x2), y: Math.min(mark.y1, mark.y2), w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) } : null;
+  const area = markArea(mark);
   const anchor = area
     ? { left: box.left + area.x, top: box.top + area.y, bottom: box.top + area.y + area.h }
     : { left: box.left + mark.x - 7, top: box.top + mark.y - 7, bottom: box.top + mark.y + 7 };
+  const count = pointMarks().length;
   const url = browserTab()?.url ?? '';
   openAskCard({
     anchor,
-    head: area ? t('AREA · {w} × {h} PX', { w: area.w, h: area.h }) : t('POINT · X {x} · Y {y}', { x: mark.x, y: mark.y }),
+    head: count > 1 ? t('{n} MARKS', { n: count }) : area ? t('AREA · {w} × {h} PX', { w: area.w, h: area.h }) : t('POINT · X {x} · Y {y}', { x: mark.x, y: mark.y }),
     suggestions: pageSuggestions({ kind: mark.kind, width: Math.round(box.width) }),
     about: url,
     onAsk: (agentId, prompt) => { void pointSend(agentId, prompt); },
@@ -2978,10 +3060,47 @@ function pointRegion(mark, box) {
 // toolbox, and the capture stops at once. Declined, or a browser without the means, and the
 // question goes without it. The browser's own crop (Region Capture) is not used: in Chrome it
 // handed back the part as a white frame, while the tab's frame carries the page.
+// With several marks the picture is the part that holds them all, and each one's number is drawn
+// on it where the page shows it: one picture for the agent to read, not one per mark.
+function pointPart(marks, box) {
+  const parts = marks.map((mark) => pointRegion(mark, box));
+  const left = Math.min(...parts.map((one) => one.left));
+  const top = Math.min(...parts.map((one) => one.top));
+  const right = Math.max(...parts.map((one) => one.left + one.width));
+  const bottom = Math.max(...parts.map((one) => one.top + one.height));
+  return { left, top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+}
+function drawPins(context, marks, part, sx, sy) {
+  if (!context || marks.length < 2) return;
+  const tone = getComputedStyle(document.documentElement).getPropertyValue('--phosphor').trim() || '#16a34a';
+  const scale = Math.max(1, (sx + sy) / 2);
+  for (const mark of marks) {
+    const area = markArea(mark);
+    context.lineWidth = 2 * scale;
+    context.strokeStyle = tone;
+    if (area) { context.setLineDash([6 * scale, 4 * scale]); context.strokeRect((area.x - part.left) * sx, (area.y - part.top) * sy, area.w * sx, area.h * sy); context.setLineDash([]); }
+    const pin = markPin(mark);
+    const x = (pin.x - part.left) * sx;
+    const y = (pin.y - part.top) * sy;
+    const r = 11 * scale;
+    context.beginPath();
+    context.arc(x, y, r, 0, Math.PI * 2);
+    context.fillStyle = tone;
+    context.fill();
+    context.lineWidth = 2.5 * scale;
+    context.strokeStyle = '#ffffff';
+    context.stroke();
+    context.fillStyle = '#ffffff';
+    context.font = `700 ${Math.round(12 * scale)}px -apple-system, system-ui, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(String(mark.number ?? ''), x, y + 0.5 * scale);
+  }
+}
 async function pointCapture(port) {
   const layer = pointing.layer;
-  const mark = pointing.mark;
-  if (!layer || !mark) return null;
+  const marks = pointMarks();
+  if (!layer || !marks.length) return null;
   // In the app the page is a real web view (its browser) and the app has its
   // picture already, taken when the pointing layer came over it: the part is cut from that, with
   // no tab to share.
@@ -2994,13 +3113,15 @@ async function pointCapture(port) {
       await picture.decode();
       const box = layer.getBoundingClientRect();
       const view = (browser.frame ?? layer).getBoundingClientRect();
-      const part = pointRegion(mark, box);
+      const part = pointPart(marks, box);
       const sx = picture.naturalWidth / view.width;
       const sy = picture.naturalHeight / view.height;
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(part.width * sx));
       canvas.height = Math.max(1, Math.round(part.height * sy));
-      canvas.getContext('2d')?.drawImage(picture, (box.left + part.left - view.left) * sx, (box.top + part.top - view.top) * sy, part.width * sx, part.height * sy, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext('2d');
+      context?.drawImage(picture, (box.left + part.left - view.left) * sx, (box.top + part.top - view.top) * sy, part.width * sx, part.height * sy, 0, 0, canvas.width, canvas.height);
+      drawPins(context, marks, part, sx, sy);
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       return blob ? new File([blob], `madre-${port ?? 'page'}-${Date.now()}.png`, { type: 'image/png' }) : null;
     } catch { return null; }
@@ -3022,14 +3143,16 @@ async function pointCapture(port) {
     await new Promise((resolve) => setTimeout(resolve, 160));
     // Measured once the browser has asked: its sharing bar may have moved the page.
     const box = layer.getBoundingClientRect();
-    const part = pointRegion(mark, box);
+    const part = pointPart(marks, box);
     const sx = video.videoWidth / window.innerWidth;
     const sy = video.videoHeight / window.innerHeight;
     if (!sx || !sy) return null;
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(part.width * sx));
     canvas.height = Math.max(1, Math.round(part.height * sy));
-    canvas.getContext('2d')?.drawImage(video, (box.left + part.left) * sx, (box.top + part.top) * sy, part.width * sx, part.height * sy, 0, 0, canvas.width, canvas.height);
+    const context = canvas.getContext('2d');
+    context?.drawImage(video, (box.left + part.left) * sx, (box.top + part.top) * sy, part.width * sx, part.height * sy, 0, 0, canvas.width, canvas.height);
+    drawPins(context, marks, part, sx, sy);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
     return blob ? new File([blob], `madre-${port ?? 'page'}-${Date.now()}.png`, { type: 'image/png' }) : null;
   } catch { return null; }
@@ -3040,8 +3163,12 @@ async function pointCapture(port) {
 }
 // In the composer, one line that says where, drawn as a chip — the server and its process, the
 // address, the view's width, the mark — the question under it, and the picture attached.
+const pointWhere = (mark) => (mark.kind === 'dot'
+  ? t('point at ({x}, {y})', { x: mark.x, y: mark.y })
+  : t('area {w}×{h} at ({x}, {y})', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1), x: Math.min(mark.x1, mark.x2), y: Math.min(mark.y1, mark.y2) }));
 async function pointSend(agentId, prompt) {
-  const mark = pointing.mark;
+  const marks = [...pointMarks()];
+  const mark = marks.at(-1);
   const layer = pointing.layer;
   if (!mark || !layer) return;
   const width = Math.round(layer.getBoundingClientRect().width);
@@ -3052,10 +3179,17 @@ async function pointSend(agentId, prompt) {
   try { const parsed = new URL(url); path = `${parsed.pathname}${parsed.search}`; } catch { /* the address as it was opened */ }
   const name = port ? `:${port}${server?.command ? ` (${server.command})` : ''}` : url;
   const capture = await pointCapture(port);
-  const where = mark.kind === 'dot'
-    ? t('point at ({x}, {y})', { x: mark.x, y: mark.y })
-    : t('area {w}×{h} at ({x}, {y})', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1), x: Math.min(mark.x1, mark.x2), y: Math.min(mark.y1, mark.y2) });
-  const line = `⌖ ${name} ${path} · ${t('view {width} px', { width })} · ${where}${capture ? ` · ${t('capture attached')}` : ''}`;
+  // One mark: the line says where. Several: what they share once (the server, the address, the
+  // view), then one numbered line each with its note, and the ask to answer each number, which is
+  // what lets one turn carry them all (2026-11-09).
+  const many = marks.length > 1;
+  const where = many ? t('{n} marks', { n: marks.length }) : pointWhere(mark);
+  const said = capture ? ` · ${many ? t('capture attached, numbered') : t('capture attached')}` : '';
+  const line = many
+    ? [`⌖ ${name} ${path} · ${t('view {width} px', { width })} · ${where}${said}`,
+      ...marks.map((one, index) => `${index + 1}. ${pointWhere(one)}${one.note?.trim() ? ` — ${one.note.trim().replace(/\s+/g, ' ')}` : ''}`),
+      t('Answer each number.')].join('\n')
+    : `⌖ ${name} ${path} · ${t('view {width} px', { width })} · ${where}${said}`;
   let current = els.input.value;
   if (lastAsk?.point) current = current.replace(lastAsk.point, '');
   if (lastAsk?.prompt) current = current.replace(lastAsk.prompt, ' ');
@@ -3063,7 +3197,7 @@ async function pointSend(agentId, prompt) {
   // Where it was pointed goes above the field as one short card (2026-11-09), not as the field's
   // first line: written in the field it wrapped, its highlight broken across lines, in any narrow
   // composer. It still travels as the message's first line, as before (the submit, state.point).
-  const brief = [port ? `:${port}` : url, mark.kind === 'dot' ? t('point at ({x}, {y})', { x: mark.x, y: mark.y }) : t('area {w}×{h}', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) })].join(' · ');
+  const brief = [port ? `:${port}` : url, many ? t('{n} marks', { n: marks.length }) : mark.kind === 'dot' ? t('point at ({x}, {y})', { x: mark.x, y: mark.y }) : t('area {w}×{h}', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) })].join(' · ');
   state.point = { line, brief };
   renderPointQuote();
   els.input.value = [prompt, current].filter(Boolean).join(' ');
@@ -3081,8 +3215,9 @@ async function pointSend(agentId, prompt) {
 browser.point?.addEventListener('click', () => setPointing(!pointing.on));
 document.addEventListener?.('keydown', (event) => {
   if (!pointing.on || event.key !== 'Escape') return;
-  // Esc takes back the mark and its card first; with nothing marked, it puts the tool away.
-  if (pointing.mark) pointClear(); else setPointing(false);
+  // Esc takes back the newest mark first, one at a time; with nothing marked, it puts the tool away.
+  const last = pointMarks().at(-1);
+  if (last) pointRemove(last); else setPointing(false);
 });
 
 // What the sentinel saw happen to one of the project's servers.
@@ -5563,12 +5698,18 @@ function renderUserMessage(event) {
   // A place pointed at (Apuntar) opens the message with a long line for the agent: the server and
   // its command, the address, the view's width, the spot, the capture. The person sees it short, as
   // the card it was in the composer; the whole line stays in its title (2026-11-09).
-  const pointed = written.match(/^⌖ (\S+)[^\n]*? · ((?:area|área|point|punto) [^·\n]*)[^\n]*(?:\n|$)/);
-  const bubble = el('div', 'bubble', pointed ? written.slice(pointed[0].length) : written);
+  const pointed = parsePointed(written);
+  const bubble = el('div', 'bubble', pointed ? pointed.rest : written);
   if (pointed) {
     const card = el('span', 'point-said');
-    card.append(el('b', null, '⌖'), el('span', null, `${pointed[1]} · ${pointed[2].trim().replace(/^(ar[e]a|área)( \S+) (?:at|en) \(.*\)$/, '$1$2')}`));
-    card.title = pointed[0].trim();
+    card.append(el('b', null, '⌖'), el('span', null, `${pointed.server} · ${pointed.summary}`));
+    card.title = pointed.line;
+    // Several marks: each one, numbered as on the picture, in a short list under the card.
+    if (pointed.items.length) {
+      const list = el('ol', 'point-said-list');
+      for (const item of pointed.items) list.append(el('li', null, item));
+      bubble.prepend(list);
+    }
     bubble.prepend(card);
   }
   if (batch) { togetherShown.set(batch, node); state.userMessages.set(messageId, { ...state.userMessages.get(messageId), text: withoutCrew(text) }); }
@@ -5807,9 +5948,31 @@ function plainQuote(text) {
 // 799 px · area 713×456 at (18, 92) · capture attached») reads as its server, then what was asked.
 function briefQuestion(text) {
   let said = String(text ?? '');
-  const point = said.match(/^⌖ (\S+)[^\n]*\n?/);
-  if (point) said = `⌖ ${point[1]} · ${said.slice(point[0].length)}`;
+  const point = parsePointed(said);
+  if (point) said = `⌖ ${point.server}${point.items.length ? ` · ${point.summary}` : ''} · ${point.rest.trim()}`;
   return said.length > 90 ? `${said.slice(0, 90)}…` : said;
+}
+
+// A message that opens with where it points (Apuntar), read back: the server, a short summary (the
+// spot or the area, or how many marks), each mark's line when there are several, the lines that said
+// all that, and what was asked. Null for any other message.
+const ANSWER_EACH = new Set(['Answer each number.']);
+function parsePointed(text) {
+  const said = String(text ?? '');
+  const head = said.match(/^⌖ (\S+)[^\n]*/);
+  if (!head) return null;
+  ANSWER_EACH.add(t('Answer each number.'));
+  const lines = said.split('\n');
+  let at = 1;
+  const items = [];
+  while (at < lines.length && /^\d{1,2}\. \S/.test(lines[at])) { items.push(lines[at].replace(/^\d{1,2}\. /, '')); at += 1; }
+  if (items.length && ANSWER_EACH.has(lines[at]?.trim())) at += 1;
+  const one = head[0].match(/ · ((?:area|área|point|punto) [^·]*)/);
+  const summary = items.length
+    ? t('{n} marks', { n: items.length })
+    : one ? one[1].trim().replace(/^(area|área)( \S+) (?:at|en) \(.*\)$/, '$1$2') : null;
+  if (!summary) return null;
+  return { server: head[1], summary, items, line: lines.slice(0, at).join('\n'), rest: lines.slice(at).join('\n').replace(/^\n+/, '') };
 }
 
 // No message number (Q-14, 2026-11-06): «↩ @codex #4: …» read as #4 FULL ACCESS beside the modes

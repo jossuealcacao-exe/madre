@@ -490,7 +490,13 @@ test('servers: point and ask hands the agent only what the room knows, and the q
   assert.match(css, /\.chats-new-button, \.ask-own \{\n  border: 1px solid var\(--phosphor\); background: var\(--phosphor\); color: var\(--phosphor-ink\);/);
   assert.match(css, /:is\(\.chats-new-button, \.ask-own\):active \{ transform: translateY\(1px\);/);
   // One line that says where, drawn as a chip, the question under it, and the room's own card.
-  assert.match(tool, /const line = `⌖ \$\{name\} \$\{path\} · \$\{t\('view \{width\} px', \{ width \}\)\} · \$\{where\}/);
+  assert.match(tool, /: `⌖ \$\{name\} \$\{path\} · \$\{t\('view \{width\} px', \{ width \}\)\} · \$\{where\}\$\{said\}`;/);
+  // Several marks (2026-11-09): up to ten, one numbered line each after what they share, and the
+  // ask to answer each number; one picture with the numbers drawn on it.
+  assert.match(tool, /const POINT_MAX = 10;/);
+  assert.match(tool, /\.\.\.marks\.map\(\(one, index\) => `\$\{index \+ 1\}\. \$\{pointWhere\(one\)\}/);
+  assert.match(tool, /t\('Answer each number\.'\)\]\.join\('\\n'\)/);
+  assert.equal(tool.match(/drawPins\(context, marks, part, sx, sy\);/g).length, 2, 'both pictures draw the numbers');
   assert.match(tool, /openAskCard\(\{/);
   // The card is the editor's too, and it rides in the top layer so the modal viewer never covers it;
   // what the archive remembers is asked only once its designation was given.
@@ -502,8 +508,8 @@ test('servers: point and ask hands the agent only what the room knows, and the q
   // Sending stays the human's: the question is put in the composer with the agent chosen.
   assert.ok(!/requestSubmit|\.submit\(\)/.test(tool), 'pointing sends on its own');
   assert.match(tool, /if \(agentId && state\.agents\.get\(agentId\)\?\.ready\) \{ els\.target\.value = agentId; renderPicker\(\); \}/);
-  // Esc takes back the mark and its card first, and only then puts the tool away.
-  assert.ok(app.includes('if (pointing.mark) pointClear(); else setPointing(false);'));
+  // Esc takes back the newest mark first, one at a time, and only then puts the tool away.
+  assert.ok(app.includes('if (last) pointRemove(last); else setPointing(false);'));
   // Leaving the page or the tab, or closing the browser, ends it.
   for (const where of ['function browserSelect(id) {\n  setPointing(false);', 'async function browserOpen(url, { tab = null } = {}) {\n  setPointing(false);']) assert.ok(app.includes(where), `${where.split('(')[0]} leaves the tool on`);
   // The state exists before the browser's functions that end it.
