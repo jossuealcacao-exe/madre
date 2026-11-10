@@ -2439,9 +2439,6 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 @media (max-width: 720px) { .sm-notice-form, .sm-notice-preview { grid-template-columns: 1fr; } }
 .sm-notice-form > .sm-notice-field:first-child { grid-column: 1 / -1; max-width: 260px; }
 .sm-hero .sm-notices { width: 100%; align-self: stretch; }
-/* The author's notices and the invitation to the app (src/app-invite.mjs) read as one stack: 8px
-   between them, as between two notices, instead of the hero's gap plus the notices' margin. */
-.sm-hero .sm-notices:not([hidden]):has(+ .sm-notices:not([hidden])) { margin-bottom: -8px; }
 
 /* Secondary keys, quieter (7 Nov): Home's white keys wear the same faint shade as the project's
    (styles.css, --key-soft); the green ones keep theirs. */
@@ -2506,3 +2503,29 @@ html.home-shell .sm-side:hover > .sm-side-grip::after, html.home-shell.side-resi
 html.home-shell.side-resizing, html.home-shell.side-resizing * { cursor: col-resize !important; user-select: none; }
 html.home-shell.side-resizing :is(.sm-side, body.salas-mac) { transition: none !important; }
 @media (max-width: 960px) { html.home-shell .sm-side-grip { display: none; } }
+
+/* THE CHOICE OF THE APP (2026-11-10, salas-mac.js offerApp): after an update, on a Mac, in the
+   browser. The app's own icon rises over a soft ground in the brand's green; under it two cards, the
+   browser and the app, side by side, the app's lit a little. */
+dialog.sm-app-choice { --sm-sheet-w: 580px; }
+dialog.sm-app-choice > .sm-sheet-body { padding: 0 28px 26px; text-align: center; }
+.sm-app-hero { position: relative; display: grid; place-items: center; height: 176px; margin: 0 -28px 20px; overflow: hidden; background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--phosphor) 20%, transparent), transparent 72%); }
+.sm-app-glow { position: absolute; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--phosphor) 26%, transparent), transparent 66%); }
+.sm-app-icon { position: relative; width: 108px; height: 108px; border-radius: 25px; box-shadow: 0 22px 44px -18px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(0, 0, 0, .14); animation: sm-app-rise 720ms var(--ease-out, cubic-bezier(.2, .8, .2, 1)) both; }
+@keyframes sm-app-rise { from { transform: translateY(16px) scale(.92); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sm-app-icon { animation: none; } }
+dialog.sm-app-choice h3 { margin: 0 0 8px; font-size: 23px; font-weight: 700; letter-spacing: -.02em; }
+.sm-app-lead { max-width: 450px; margin: 0 auto 22px; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.sm-app-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+@media (max-width: 600px) { .sm-app-options { grid-template-columns: 1fr; } }
+.sm-app-option { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 16px 16px 17px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: background-color calc(160ms * var(--motion-scale, 1)) ease, transform calc(160ms * var(--motion-scale, 1)) ease; }
+.sm-app-option:hover { background: color-mix(in srgb, var(--text) 8%, transparent); transform: translateY(-1px); }
+.sm-app-option.take { background: color-mix(in srgb, var(--phosphor) 13%, transparent); }
+.sm-app-option.take:hover { background: color-mix(in srgb, var(--phosphor) 19%, transparent); }
+.sm-app-option:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor) 60%, transparent); outline-offset: 2px; }
+.sm-app-option-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text-2); }
+.sm-app-option.take .sm-app-option-icon { background: color-mix(in srgb, var(--phosphor) 22%, transparent); color: var(--phosphor); }
+:root[data-scheme="light"] .sm-app-option.take .sm-app-option-icon { color: color-mix(in srgb, var(--phosphor) 70%, #000000); }
+.sm-app-option-icon svg { width: 18px; height: 18px; }
+.sm-app-option-words b { display: block; margin: 1px 0 5px; font-size: 14.5px; font-weight: 650; }
+.sm-app-option-lines { display: grid; gap: 2px; color: var(--text-2); font-size: 12.5px; line-height: 1.45; }

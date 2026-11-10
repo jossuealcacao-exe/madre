@@ -7328,11 +7328,15 @@ export const ES = {
   "I want to put my ideas in order in a document: ": "Quiero ordenar mis ideas en un documento: ",
   "I want to start an app: ": "Quiero empezar una app: ",
   "What could you do for me in an empty folder? Give me three ideas.": "¿Qué podrías hacer por mí en una carpeta vacía? Dame tres ideas.",
-  // La invitación a la app de Mac, en Inicio (src/app-invite.mjs).
-  "MADRE for Mac": "MADRE para Mac",
-  "MADRE now comes as an app": "MADRE ya viene como app",
-  "It opens from the Dock, with a terminal inside and a notice when an AI finishes. Your projects and chats are waiting there, as you left them.": "Se abre desde el Dock, trae una terminal adentro y te avisa cuando una IA termina. Tus proyectos y chats te esperan ahí, como los dejaste.",
-  "Download the app": "Descargar la app",
+  // Elegir la app de Mac al actualizar, en Inicio (src/app-invite.mjs, salas-mac.js offerApp).
+  "MADRE now comes as an app for Mac": "MADRE ya viene como app para Mac",
+  "You just updated MADRE. Keep using it here in the browser, or download the app: the same projects, chats and memory, in a window of its own.": "Acabas de actualizar MADRE. Sigue usándola aquí en el navegador o descarga la app: los mismos proyectos, chats y memoria, en su propia ventana.",
+  "Stay in the browser": "Seguir en el navegador",
+  "Everything stays as it is.": "Todo se queda como está.",
+  "You can download the app later from madre.run.": "Puedes bajar la app después desde madre.run.",
+  "Download MADRE for Mac": "Descargar MADRE para Mac",
+  "It opens from the Dock, like any app.": "Se abre desde el Dock, como cualquier app.",
+  "A terminal inside, and a notice when an AI finishes.": "Trae una terminal adentro y te avisa cuando una IA termina.",
   // Actualizar una copia instalada con sudo (Q-22).
   "MADRE was installed with administrator permission, so it cannot update itself. In a terminal, run: {command}": "MADRE se instaló con permiso de administrador, así que no puede actualizarse sola. En una terminal, escribe: {command}",
 };

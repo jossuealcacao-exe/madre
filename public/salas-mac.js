@@ -7044,36 +7044,54 @@ const noticesHost = el('div', 'sm-notices');
 noticesHost.hidden = true;
 document.querySelector('.sm-hero')?.append(noticesHost);
 const askNoticesAgain = mountNotices(noticesHost);
-// THE INVITATION TO THE APP (2026-11-10, src/app-invite.mjs): whoever updated MADRE on a Mac and uses
-// it in the browser sees a strip beside the author's notices, once per version: «Download the app» or
-// «Not now». The server decides whether it is due; the page only draws it.
-const appHost = el('div', 'sm-notices madre-notices');
-appHost.hidden = true;
-document.querySelector('.sm-hero')?.append(appHost);
+// THE CHOICE OF THE APP (2026-11-10, src/app-invite.mjs, asked by the author): whoever updated MADRE on
+// a Mac and uses it in the browser is asked once per version, in a window of its own, whether to stay
+// in the browser or to download MADRE for Mac. The server decides whether it is due; the page only
+// draws it, and never over the welcome, the news or another window.
 const tellApp = (answer) => fetch('/api/invite/app', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ answer }) }).catch(() => null);
-void (async () => {
-  const said = await fetch('/api/invite/app', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
-  if (!said?.show || !said.url) return;
-  const card = el('section', 'madre-notice is-info sm-app-invite');
-  card.setAttribute('role', 'status');
-  const close = (answer) => { void tellApp(answer); card.remove(); appHost.hidden = true; };
-  const words = el('div', 'madre-notice-words');
-  words.append(
-    el('small', 'madre-notice-kind', t('MADRE for Mac')),
-    el('b', 'madre-notice-title', t('MADRE now comes as an app')),
-    el('p', 'madre-notice-body', t('It opens from the Dock, with a terminal inside and a notice when an AI finishes. Your projects and chats are waiting there, as you left them.')),
-  );
-  const link = el('a', 'madre-notice-link', t('Download the app'));
-  link.href = said.url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.addEventListener('click', () => close('open'));
-  words.append(link);
-  const later = el('button', 'madre-notice-done', t('Not now'));
-  later.type = 'button';
-  later.addEventListener('click', () => close('later'));
-  card.append(words, later);
-  appHost.append(card);
-  appHost.hidden = false;
+async function offerApp(said, tries = 0) {
+  if (welcomeOpen() || document.querySelector('dialog[open]')) { if (tries < 120) setTimeout(() => void offerApp(said, tries + 1), 2500); return; }
+  const dialog = el('dialog', 'sm-sheet sm-app-choice');
+  dialog.setAttribute('aria-labelledby', 'sm-app-choice-title');
+  const inner = el('div', 'sm-sheet-body');
+  let answered = false;
+  const answer = (words) => { if (answered) return; answered = true; void tellApp(words); };
+  // The app's own icon over a soft ground in the brand's green, as a Dock would hold it.
+  const hero = el('div', 'sm-app-hero');
+  const icon = el('img', 'sm-app-icon');
+  icon.src = '/assets/brand/madre-app.svg';
+  icon.alt = '';
+  hero.append(el('span', 'sm-app-glow'), icon);
+  const title = el('h3', null, t('MADRE now comes as an app for Mac'));
+  title.id = 'sm-app-choice-title';
+  const lead = el('p', 'sm-app-lead', t('You just updated MADRE. Keep using it here in the browser, or download the app: the same projects, chats and memory, in a window of its own.'));
+  const options = el('div', 'sm-app-options');
+  const option = (kind, drawing, head, lines, act) => {
+    const card = el('button', `sm-app-option ${kind}`);
+    card.type = 'button';
+    const mark = el('span', 'sm-app-option-icon');
+    mark.innerHTML = trazo(drawing); // trusted: our own SVG string
+    const words = el('span', 'sm-app-option-words');
+    words.append(el('b', null, head));
+    const list = el('span', 'sm-app-option-lines');
+    for (const line of lines) list.append(el('span', null, line));
+    words.append(list);
+    card.append(mark, words);
+    card.addEventListener('click', act);
+    return card;
+  };
+  const stay = option('stay', 'globe', t('Stay in the browser'), [t('Everything stays as it is.'), t('You can download the app later from madre.run.')], () => { answer('later'); dialog.close(); });
+  const take = option('take', 'download', t('Download MADRE for Mac'), [t('It opens from the Dock, like any app.'), t('A terminal inside, and a notice when an AI finishes.')], () => {
+    answer('open');
+    window.open(said.url, '_blank', 'noopener');
+    dialog.close();
+  });
+  options.append(stay, take);
+  inner.append(hero, title, lead, options);
+  dialog.append(inner);
+  dialog.addEventListener('close', () => { answer('later'); dialog.remove(); });
+  document.body.append(dialog);
+  dialog.showModal();
   void tellApp('shown');
-})();
+}
+void fetch('/api/invite/app', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((said) => { if (said?.show && said.url) setTimeout(() => void offerApp(said), 900); }).catch(() => null);

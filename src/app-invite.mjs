@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // THE INVITATION TO THE APP (2026-11-10, asked by the author): whoever updates MADRE on a Mac and uses
-// it in the browser is told, once per version and without getting in the way, that MADRE also comes
-// as an app — a strip on Home, never a window. Someone new meets the app at madre.run, where they
+// it in the browser is asked, once per version, whether to stay in the browser or download MADRE for
+// Mac — a window on Home after the update (public/salas-mac.js, offerApp; it was a strip until the
+// author asked for the choice, 2026-11-10). Someone new meets the app at madre.run, where they
 // download it; nothing here speaks to them.
 //
 // Not inside the app, not on Linux or Windows (there is no app for them yet), not to whoever already
@@ -65,7 +66,7 @@ export async function appInvite({ root, novelty, version, platform, env, fetchIm
   return available ? { show: true, url: APP_PAGE } : { show: false };
 }
 
-// «Download» or «Not now» spends it for this version; «shown» only counts.
+// «Download» or «Stay in the browser» spends it for this version; «shown» only counts.
 export async function answerAppInvite(root, { answer, version }) {
   if (!APP_INVITE_ANSWERS.includes(answer)) return { error: 'answer' };
   if (answer !== 'shown') await keep(root, { answered: version });

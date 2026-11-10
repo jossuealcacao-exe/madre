@@ -4467,7 +4467,7 @@ export async function createPulseServer({
       // The invitation to a first project (src/whats-new.mjs): due on Home to a copy that came from an
       // older MADRE and has no project, once per version. Never on a phone. Its answers are counted
       // with the anonymous diagnostics, and «shown» is what spends it.
-      // The invitation to the app (src/app-invite.mjs): a strip on Home for whoever updated MADRE on a
+      // The choice of the app (src/app-invite.mjs): a window on Home for whoever updated MADRE on a
       // Mac and uses it in the browser, once per version, once the app can be downloaded. Never on a
       // phone. Its answers are counted with the anonymous diagnostics.
       if (url.pathname === '/api/invite/app') {
