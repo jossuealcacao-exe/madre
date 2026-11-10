@@ -1836,6 +1836,8 @@ export const ES = {
     'npm todavía no entrega {version}; una versión recién publicada puede tardar unos minutos. El proyecto sigue abierto: vuelve a intentarlo en un momento.',
   'Agents are still working. STOPALL or wait, then update.':
     'Los agentes siguen trabajando. Dale DETENER TODO o espera, y luego actualiza.',
+  'Something is still running in {list}. Updating restarts all of MADRE: wait for it to finish or stop it, then update.':
+    'Algo sigue trabajando en {list}. Actualizar reinicia toda MADRE: espera a que termine o detenlo, y luego actualiza.',
   'The Security module did not respond.': 'El módulo de Seguridad no respondió.',
   'No such conversation.': 'No existe ese chat.',
   'That file is empty.': 'Ese archivo está vacío.',
@@ -4845,6 +4847,10 @@ export const ES = {
   'Too many wrong confirmations. Wait a minute and try again.': 'Demasiadas confirmaciones equivocadas. Espera un minuto e inténtalo de nuevo.',
   'This request does not carry MADRE\'s ficha. Open MADRE from its shortcut or from the address it wrote in the terminal.': 'Esta petición no lleva la ficha de MADRE. Abre MADRE desde su atajo o desde la dirección que escribió en la terminal.',
   'This tab needs to be opened from MADRE': 'Esta pestaña se abre desde MADRE',
+  'Reaching this computer through an SSH tunnel? On that computer, run npx @jossuealcala/madre and open here the address it writes (the one that ends in ?ficha=…).':
+    '¿Llegas a esta computadora por un túnel SSH? En ella, escribe npx @jossuealcala/madre y abre aquí la dirección que escribe (la que termina en ?ficha=…).',
+  'Your tunnel brings port {theirs} to {yours} on your side: in that address, change {theirs} to {yours}.':
+    'Tu túnel lleva el puerto {theirs} al {yours} de tu lado: en esa dirección, cambia {theirs} por {yours}.',
   'MADRE only answers to the browser it opened itself, so that no other program on this computer can read your projects or act in them.': 'MADRE solo le contesta al navegador que ella misma abrió, para que ningún otro programa de esta computadora pueda leer tus proyectos ni actuar en ellos.',
   'Open it again from its shortcut, or with npx @jossuealcala/madre, or paste the full address MADRE wrote in the terminal (the one that ends in ?ficha=…).': 'Ábrela otra vez desde su atajo o con npx @jossuealcala/madre, o pega la dirección completa que MADRE escribió en la terminal (la que termina en ?ficha=…).',
   'Type your current phrase to change how modes are confirmed.': 'Escribe tu frase actual para cambiar cómo desbloqueas los modos.',
@@ -7322,4 +7328,11 @@ export const ES = {
   "I want to put my ideas in order in a document: ": "Quiero ordenar mis ideas en un documento: ",
   "I want to start an app: ": "Quiero empezar una app: ",
   "What could you do for me in an empty folder? Give me three ideas.": "¿Qué podrías hacer por mí en una carpeta vacía? Dame tres ideas.",
+  // La invitación a la app de Mac, en Inicio (src/app-invite.mjs).
+  "MADRE for Mac": "MADRE para Mac",
+  "MADRE now comes as an app": "MADRE ya viene como app",
+  "It opens from the Dock, with a terminal inside and a notice when an AI finishes. Your projects and chats are waiting there, as you left them.": "Se abre desde el Dock, trae una terminal adentro y te avisa cuando una IA termina. Tus proyectos y chats te esperan ahí, como los dejaste.",
+  "Download the app": "Descargar la app",
+  // Actualizar una copia instalada con sudo (Q-22).
+  "MADRE was installed with administrator permission, so it cannot update itself. In a terminal, run: {command}": "MADRE se instaló con permiso de administrador, así que no puede actualizarse sola. En una terminal, escribe: {command}",
 };

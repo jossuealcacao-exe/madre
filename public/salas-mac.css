@@ -2439,6 +2439,9 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
 @media (max-width: 720px) { .sm-notice-form, .sm-notice-preview { grid-template-columns: 1fr; } }
 .sm-notice-form > .sm-notice-field:first-child { grid-column: 1 / -1; max-width: 260px; }
 .sm-hero .sm-notices { width: 100%; align-self: stretch; }
+/* The author's notices and the invitation to the app (src/app-invite.mjs) read as one stack: 8px
+   between them, as between two notices, instead of the hero's gap plus the notices' margin. */
+.sm-hero .sm-notices:not([hidden]):has(+ .sm-notices:not([hidden])) { margin-bottom: -8px; }
 
 /* Secondary keys, quieter (7 Nov): Home's white keys wear the same faint shade as the project's
    (styles.css, --key-soft); the green ones keep theirs. */

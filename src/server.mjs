@@ -2,7 +2,7 @@
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import http from 'node:http';
 import { readFile, realpath, writeFile, mkdir, mkdtemp, cp, rename, access, rm, stat } from 'node:fs/promises';
-import { existsSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, rmSync } from 'node:fs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { probePort, framable } from './ports.mjs';
 import { ControlDesk } from './room/control.mjs';
@@ -25,7 +25,7 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, patientFetch, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
 import { recallForTurn } from './modules/enlaces.mjs';
 import { hardwareOnce, MODEL_TIERS } from './modules/local-models.mjs';
-import { browserAdvice, environmentOnce, openBrowser as openInBrowser } from './environment.mjs';
+import { browserAdvice, browserWays, environmentOnce, openBrowser as openInBrowser } from './environment.mjs';
 import { installTrouble, loginTrouble } from './setup-trouble.mjs';
 import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule, adoptBuiltinUpdates, packagedVersions } from './modules/index.mjs';
 import { understandsSdk } from './modules/sdk.mjs';
@@ -85,8 +85,9 @@ import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from '
 import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
-import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand } from './updates.mjs';
+import { canReplace, checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand, nextProcess, opensBrowser, roomsBehind, takesItsPlace } from './updates.mjs';
 import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
+import { answerAppInvite, appInvite } from './app-invite.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
 import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
@@ -148,12 +149,12 @@ import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from 
 import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
-import { disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
+import { UNIT_NAME, disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
 import { readAt } from './checkpoint.mjs';
-import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, ensureFicha, fichaCookie, fichaHeaders, fichaReader, openPrivateLog, previewKey, sameFicha, withFicha } from './ficha.mjs';
+import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, defaultStateRoot, ensureFicha, fichaCookie, fichaHeaders, fichaReader, openPrivateLog, previewKey, readFicha, sameFicha, withFicha } from './ficha.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -422,6 +423,51 @@ export async function createPulseServer({
     }
     return { closed: others.length - left.length, stuck: left.map((one) => one.name) };
   }
+  // UPDATING ALL OF MADRE (L-13, Carlos's server, 2026-11-10). An update restarted only the room it
+  // was pressed in: Carlos updated a project, Home and the other projects stayed on the older MADRE,
+  // and with the ficha of the new one in between he was left outside. The start that comes from an
+  // update now brings every other open room on an older MADRE to this one: asked to close the way
+  // Home closes one, and opened again by this copy's own script on the port it had. The older one is
+  // only asked to close, so this works from any version before it. A room with something running is
+  // left for the next round (every minute, for an hour). Home as a service of this Linux comes back
+  // through systemd, its launcher saying the new version first. A copy installed inside a project
+  // is not the MADRE of the others, and is left alone.
+  async function bringOthersAlong({ rounds = 60, everyMs = 60000 } = {}) {
+    if (install !== 'npx' && install !== 'global') return;
+    const here = basename(roomDir);
+    for (let round = 0; round < rounds; round += 1) {
+      const behind = roomsBehind(await knownRooms(root), { here, version: PACKAGE.version });
+      if (!behind.length) return;
+      for (const one of behind) await bringAlong(one).catch(() => false);
+      if (round < rounds - 1) await new Promise((resolve) => setTimeout(resolve, everyMs));
+    }
+  }
+  async function bringAlong(one) {
+    const home = one.id === salasRoomId(root);
+    if (!one.root) return false;
+    const running = await askRoom(one.open.port, '/api/activity', { stateRoot: root, timeoutMs: 3000 });
+    if (running.unreachable || running.now?.length) return false;
+    const service = home && process.platform === 'linux' ? await serviceState().catch(() => null) : null;
+    if (service?.active) await refreshLauncher({ stateRoot: root, launcher: launcherScript({ install, name: PACKAGE.name, version: PACKAGE.version, port: one.open.port, env: process.env }) }).catch(() => false);
+    await askRoom(one.open.port, '/api/room/close', { stateRoot: root, method: 'POST', body: {}, timeoutMs: 3000 }).catch(() => null);
+    let gone = false;
+    for (let tries = 0; tries < 60 && !gone; tries += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      gone = !(await knownRooms(root)).find((room) => room.id === one.id)?.open;
+    }
+    if (!gone) return false;
+    if (service?.active) await execFileAsync('systemctl', ['--user', 'start', UNIT_NAME], { timeout: 15000 }).catch(() => null);
+    else startRoom({ projectRoot: one.root, roomDir: join(root, 'rooms', one.id), port: one.open.port, home });
+    await room.record('room.update.along', { name: one.name, from: one.open.version, to: PACKAGE.version }).catch(() => null);
+    return Boolean(await roomComesUp(root, one.id));
+  }
+  // What is running in the other open rooms, by name: an update now restarts all of MADRE (L-13).
+  async function busyElsewhere() {
+    const here = basename(roomDir);
+    const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
+    const answers = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/activity', { stateRoot: root, timeoutMs: 3000 })));
+    return others.filter((_, index) => answers[index].now?.length).map((one) => one.name);
+  }
   // RESTARTING MADRE (2026-10-28): this process goes and a new one takes its place — the same
   // command, the same project, on the same port so every page open on it finds it again, and
   // without opening the browser a second time. Its listener is closed first, so the port is free
@@ -433,10 +479,13 @@ export async function createPulseServer({
     if (!args.includes('--no-open')) next.push('--no-open');
     setTimeout(() => {
       server.close(() => {
-        let log = 'ignore';
-        try { log = openPrivateLog(join(roomDir, 'restart.log')); } catch { /* no witness, still restart */ }
         const env = { ...process.env, PULSE_RESTARTED: '1' };
         delete env.PULSE_UPDATE_RESTART;
+        // On Linux the new one takes this process's place (Q-23, src/updates.mjs takesItsPlace): it
+        // comes back here only when it could not.
+        becomeNext({ file: process.execPath, args: [...process.execArgv, ...next], env, cwd: process.cwd(), log: join(roomDir, 'restart.log') });
+        let log = 'ignore';
+        try { log = openPrivateLog(join(roomDir, 'restart.log')); } catch { /* no witness, still restart */ }
         // Inside the app the new process keeps the app's pipe (the watch below): given none, it read
         // the app as gone the moment it started and closed, and MADRE did not come back (2026-11-10).
         const watched = process.env.MADRE_APP === '1' && salasRoom;
@@ -446,6 +495,21 @@ export async function createPulseServer({
       });
       for (const client of clients.keys()) { try { client.end(); } catch { /* gone */ } }
     }, 300);
+  }
+  // This process becomes the next MADRE, same PID (Q-23): on Linux with a Node that can. When it
+  // cannot, it returns and the caller starts a new one as before. Its log is made private first; the
+  // shell only adds to it.
+  function becomeNext({ file, args, env, cwd, log }) {
+    if (!takesItsPlace()) return;
+    const terminal = Boolean(process.stdout.isTTY);
+    if (!terminal) { try { closeSync(openPrivateLog(log)); } catch { /* the shell makes it */ } }
+    const [program, argv] = nextProcess({ file, args, log, terminal });
+    try {
+      process.chdir(cwd);
+      process.execve(program, argv, Object.fromEntries(Object.entries(env).filter(([, value]) => typeof value === 'string')));
+    } catch (error) {
+      console.error(`MADRE: could not take its own place (${error.message}); starting a new process instead.`);
+    }
   }
   // How many memories of each kind, and how many travel into turns. Counted, never read out.
   function memoryCensus() {
@@ -2503,21 +2567,27 @@ export async function createPulseServer({
     }
     if (request.method === 'GET' && FICHA_PAGES.has(url.pathname)) {
       response.writeHead(401, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', [FICHA_HEADER]: FICHA_NEEDED, ...PAGE_GUARDS });
-      response.end(fichaPage());
+      response.end(fichaPage(request));
       return true;
     }
     response.writeHead(401, { 'content-type': 'application/json; charset=utf-8', [FICHA_HEADER]: FICHA_NEEDED });
     response.end(JSON.stringify({ error: t('This request does not carry MADRE\'s ficha. Open MADRE from its shortcut or from the address it wrote in the terminal.'), ficha: FICHA_NEEDED }));
     return true;
   }
-  // What a tab without the ficha shows: where to open MADRE from, nothing of the project.
-  const fichaPage = () => {
+  // What a tab without the ficha shows: where to open MADRE from, nothing of the project. Through an
+  // SSH tunnel (L-13) MADRE cannot open that browser, so the page says how to get the address; and
+  // when the tunnel uses another number on the person's side, which one to change.
+  const fichaPage = (request) => {
+    const seen = Number(String(request?.headers?.host ?? '').match(/:(\d+)$/)?.[1]) || null;
+    const mine = request?.socket?.localPort ?? null;
     const escape = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<!doctype html><html lang="${roomLanguage()}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MADRE</title>`
       + '<body style="font:16px/1.5 system-ui,sans-serif;background:#0b0c0b;color:#e8eae6;margin:0;display:grid;place-items:center;min-height:100vh"><main style="max-width:34rem;padding:32px">'
       + `<h1 style="font-size:22px;margin:0 0 12px">${escape(t('This tab needs to be opened from MADRE'))}</h1>`
       + `<p>${escape(t('MADRE only answers to the browser it opened itself, so that no other program on this computer can read your projects or act in them.'))}</p>`
       + `<p>${escape(t('Open it again from its shortcut, or with npx @jossuealcala/madre, or paste the full address MADRE wrote in the terminal (the one that ends in ?ficha=…).'))}</p>`
+      + `<p>${escape(t('Reaching this computer through an SSH tunnel? On that computer, run npx @jossuealcala/madre and open here the address it writes (the one that ends in ?ficha=…).'))}</p>`
+      + (seen && mine && seen !== mine ? `<p>${escape(t('Your tunnel brings port {theirs} to {yours} on your side: in that address, change {theirs} to {yours}.', { theirs: mine, yours: seen }))}</p>` : '')
       + '</main></body></html>';
   };
 
@@ -4397,6 +4467,21 @@ export async function createPulseServer({
       // The invitation to a first project (src/whats-new.mjs): due on Home to a copy that came from an
       // older MADRE and has no project, once per version. Never on a phone. Its answers are counted
       // with the anonymous diagnostics, and «shown» is what spends it.
+      // The invitation to the app (src/app-invite.mjs): a strip on Home for whoever updated MADRE on a
+      // Mac and uses it in the browser, once per version, once the app can be downloaded. Never on a
+      // phone. Its answers are counted with the anonymous diagnostics.
+      if (url.pathname === '/api/invite/app') {
+        if (viaPhone || !salasRoom) return sendJson(response, 200, { show: false });
+        if (request.method === 'GET') return sendJson(response, 200, await appInvite({ root, novelty, version: PACKAGE.version }));
+        if (request.method === 'POST') {
+          const payload = await body(request).catch(() => ({}));
+          const said = await answerAppInvite(root, { answer: payload.answer, version: PACKAGE.version });
+          if (said.error) return sendJson(response, 422, { error: 'answer' });
+          diagnostics.count(`invite.app.${payload.answer}`);
+          return sendJson(response, 200, said);
+        }
+        return sendJson(response, 405, { error: 'method' });
+      }
       if (url.pathname === '/api/invite/project') {
         if (viaPhone) return sendJson(response, 200, { show: false });
         if (request.method === 'GET') {
@@ -4501,7 +4586,14 @@ export async function createPulseServer({
         // Only a version semver would write reaches a shell, and the restart never runs without the
         // download first (src/updates.mjs): an unchecked one used to skip the download and run.
         if (!command || !fetching) return sendJson(response, 412, { error: t('The version the registry gave ({version}) is not one MADRE installs.', { version: String(info.latest).slice(0, 40) }) });
+        // Installed with sudo (Q-22): npm -g cannot replace it from here, so the room says how and stays open.
+        if (install === 'global' && !(await canReplace(await realpath(join(sourceDirectory, '..')).catch(() => join(sourceDirectory, '..'))))) {
+          return sendJson(response, 412, { error: t('MADRE was installed with administrator permission, so it cannot update itself. In a terminal, run: {command}', { command: `sudo npm install -g ${PACKAGE.name}@${info.latest}` }) });
+        }
         if (room.activeTurns().length || room.activePlans().length) return sendJson(response, 409, { error: t('Agents are still working. STOPALL or wait, then update.') });
+        // The update brings every open project and Home along (L-13): none of them may be cut off.
+        const busy = await busyElsewhere().catch(() => []);
+        if (busy.length) return sendJson(response, 409, { error: t('Something is still running in {list}. Updating restarts all of MADRE: wait for it to finish or stop it, then update.', { list: busy.join(', ') }), busy });
         {
           // npm is a .cmd on Windows and needs a shell there; every argument here is fixed or checked above.
           const fetched = await new Promise((resolve) => execFile(fetching.command, fetching.args, { cwd: root, timeout: 180000, shell: process.platform === 'win32', windowsHide: true, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => resolve(error ? (String(stderr || error.message).split('\n').map((line) => line.trim()).find((line) => line && !/complete log|^npm (error|ERR!)(\s+code\b.*)?\s*$/i.test(line)) ?? error.message) : null)));
@@ -4514,6 +4606,9 @@ export async function createPulseServer({
         sendJson(response, 202, { restarting: true, from: info.current, to: info.latest, command });
         setTimeout(() => {
           server.close(() => {
+            // On Linux the new version takes this process's place (Q-23, src/updates.mjs takesItsPlace):
+            // it comes back here only when it could not.
+            becomeNext({ file: '/bin/sh', args: ['-c', command], env: { ...process.env, PULSE_UPDATE_RESTART: '1' }, cwd: canonicalProjectRoot, log: join(roomDir, 'update.log') });
             // Each system has its own shell: the command is one line either way.
             const shell = process.platform === 'win32' ? { file: process.env.COMSPEC ?? 'cmd.exe', args: ['/d', '/s', '/c', command] } : { file: '/bin/sh', args: ['-c', command] };
             // What the new copy says on the way up lands beside the ledger: if it never comes back,
@@ -5613,11 +5708,16 @@ export async function createPulseServer({
   server.on('close', () => { for (const timer of [...aliveTimers, ...hereTimers]) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });
-  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen };
+  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen, bringOthersAlong };
 }
 
-export async function startPulse({ port, projectRoot, openBrowser, openPath = '' }) {
-  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources(), ficha: true, renewFicha: Boolean(openBrowser) });
+export async function startPulse({ port, projectRoot, openBrowser: asked, openPath = '' }) {
+  // A start from an update to the first MADRE with a ficha opens the browser with it (Q-21).
+  const openBrowser = opensBrowser({ asked, hadFicha: Boolean(await readFicha(defaultStateRoot())) });
+  // A new ficha only where a browser can be opened to take it (L-13): over SSH, or on a Linux with no
+  // screen, Home made one nobody received, and the tabs open through a tunnel lost theirs.
+  const canOpen = Boolean(openBrowser) && browserWays(await environmentOnce().catch(() => null)).length > 0;
+  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen, bringOthersAlong } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources(), ficha: true, renewFicha: canOpen });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);
@@ -5626,6 +5726,8 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   // The room is taken from here on, and says so on disk for anyone who tries to open it again.
   await markOpen(address.port);
   void afterOpen().catch(() => null);
+  // Back from an update: the rest of MADRE comes to this version too (L-13). Not waited for.
+  if (process.env.PULSE_UPDATE_RESTART === '1') void bringOthersAlong().catch(() => null);
   // From here this room offers to host the phone's bridge, when there is a phone to reach it.
   phone.start();
   const url = `http://127.0.0.1:${address.port}`;
