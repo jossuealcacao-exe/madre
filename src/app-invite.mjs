@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
-// THE INVITATION TO THE APP (2026-11-10, asked by the author): whoever updates MADRE on a Mac and uses
-// it in the browser is asked, once per version, whether to stay in the browser or download MADRE for
-// Mac — a window on Home after the update (public/salas-mac.js, offerApp; it was a strip until the
-// author asked for the choice, 2026-11-10). Someone new meets the app at madre.run, where they
-// download it; nothing here speaks to them.
+// THE INVITATION TO THE APP (2026-11-10, asked by the author): whoever updates MADRE and uses
+// it in the browser is asked, once per version, whether to stay in the browser or download the app for
+// their computer — a window on Home after the update (public/salas-mac.js, offerApp; it was a strip
+// until the author asked for the choice, 2026-11-10). Someone new meets the app at madre.run, where
+// they download it; nothing here speaks to them.
 //
-// Not inside the app, not on Linux or Windows (there is no app for them yet), not to whoever already
-// has MADRE.app in Applications, and not before the app can be downloaded: it is due only once
-// madre.run/app/latest.json — what the app's own updater reads — names a version. That file is asked
-// for only when everything else says yes, at most once a day, and nothing goes with the request.
+// Not inside the app, not to whoever already has MADRE.app in Applications, and not before the app can
+// be downloaded for that desktop: madre.run/app/latest.json — what the app's own updater reads — has
+// to list it (a Mac only, today). That file is asked for only when everything else says yes, at most
+// once a day, and nothing goes with the request.
 
 import { existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -35,36 +35,51 @@ async function keep(root, change) {
   await writeFile(join(root, FILE), `${JSON.stringify({ ...(await readKept(root)), ...change }, null, 2)}\n`);
 }
 
-// Whether the app can be downloaded: what madre.run/app/latest.json said, kept for a day. A failed
-// read is kept too, so a computer without internet does not ask on every visit.
-export async function appAvailable({ root, fetchImpl = globalThis.fetch, url = process.env.PULSE_APP_MANIFEST_URL ?? APP_MANIFEST, now = Date.now() }) {
+// Which desktop the person is at (2026-11-10): a Mac, Windows — also when MADRE runs in WSL, since the
+// person is at Windows and the app they would download is Windows' — or Linux.
+export const DESKTOPS = ['mac', 'windows', 'linux'];
+export const desktopOf = ({ platform = process.platform, wsl = false } = {}) => (platform === 'darwin' ? 'mac' : platform === 'win32' || wsl ? 'windows' : platform === 'linux' ? 'linux' : null);
+// How the app's updater names each desktop in latest.json (`darwin-aarch64`, `windows-x86_64`…).
+const MANIFEST_PREFIX = { mac: 'darwin-', windows: 'windows-', linux: 'linux-' };
+
+// The desktops the app can be downloaded for: what madre.run/app/latest.json says, kept for a day. A
+// manifest with a version and no list of platforms is a Mac's (the first app, 2026-11). A failed read
+// is kept too, so a computer without internet does not ask on every visit.
+export async function appDesktops({ root, fetchImpl = globalThis.fetch, url = process.env.PULSE_APP_MANIFEST_URL ?? APP_MANIFEST, now = Date.now() }) {
   const kept = await readKept(root);
-  if (kept.checkedAt && now - kept.checkedAt < DAY_MS) return Boolean(kept.available);
-  let available = false;
+  if (kept.checkedAt && now - kept.checkedAt < DAY_MS && Array.isArray(kept.desktops)) return kept.desktops;
+  let desktops = [];
   try {
     const response = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
-    available = response.ok && isVersion((await response.json().catch(() => null))?.version);
-  } catch { /* not reachable: not available today */ }
-  await keep(root, { available, checkedAt: now }).catch(() => null);
-  return available;
+    const manifest = response.ok ? await response.json().catch(() => null) : null;
+    if (isVersion(manifest?.version)) {
+      const keys = manifest.platforms && typeof manifest.platforms === 'object' ? Object.keys(manifest.platforms) : null;
+      desktops = keys ? DESKTOPS.filter((desktop) => keys.some((key) => key.startsWith(MANIFEST_PREFIX[desktop]))) : ['mac'];
+    }
+  } catch { /* not reachable: nothing to download today */ }
+  await keep(root, { desktops, checkedAt: now }).catch(() => null);
+  return desktops;
 }
 
-// Everything but the download, without touching the network: a Mac, outside the app, an update,
-// no MADRE.app here, and not yet answered in this version.
-export function appInviteDue({ platform = process.platform, env = process.env, novelty, version, answeredFor = null, installed = false }) {
-  if (platform !== 'darwin' || env.MADRE_APP === '1') return false;
+// Everything but the download, without touching the network: a desktop, outside the app, an update,
+// no app installed here, and not yet answered in this version.
+export function appInviteDue({ desktop, env = process.env, novelty, version, answeredFor = null, installed = false }) {
+  if (!desktop || env.MADRE_APP === '1') return false;
   if (!cameFromOlder(novelty, version)) return false;
   if (installed) return false;
   return answeredFor !== version;
 }
 
-// What Home asks: whether to show the strip now, and where its link goes.
-export async function appInvite({ root, novelty, version, platform, env, fetchImpl, installed = appInstalled() }) {
+// What Home asks: whether to show the choice now, for which desktop, and where its link goes. Only
+// for a desktop the app is published for: Windows and Linux see nothing until theirs is.
+export async function appInvite({ root, novelty, version, platform, wsl = false, env, fetchImpl, installed }) {
+  const desktop = desktopOf({ platform, wsl });
   const kept = await readKept(root);
-  if (!appInviteDue({ platform, env, novelty, version, answeredFor: kept.answered ?? null, installed })) return { show: false };
-  const available = await appAvailable({ root, fetchImpl });
-  // The page can be another for a test on this Mac (PULSE_APP_PAGE_URL), as the manifest can.
-  return available ? { show: true, url: env?.PULSE_APP_PAGE_URL ?? process.env.PULSE_APP_PAGE_URL ?? APP_PAGE } : { show: false };
+  const here = installed ?? (desktop === 'mac' && appInstalled());
+  if (!appInviteDue({ desktop, env, novelty, version, answeredFor: kept.answered ?? null, installed: here })) return { show: false, desktop };
+  const desktops = await appDesktops({ root, fetchImpl });
+  // The page can be another for a test on this computer (PULSE_APP_PAGE_URL), as the manifest can.
+  return desktops.includes(desktop) ? { show: true, desktop, url: env?.PULSE_APP_PAGE_URL ?? process.env.PULSE_APP_PAGE_URL ?? APP_PAGE } : { show: false, desktop };
 }
 
 // «Download» or «Stay in the browser» spends it for this version; «shown» only counts.

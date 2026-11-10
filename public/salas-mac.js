@@ -7044,45 +7044,70 @@ const noticesHost = el('div', 'sm-notices');
 noticesHost.hidden = true;
 document.querySelector('.sm-hero')?.append(noticesHost);
 const askNoticesAgain = mountNotices(noticesHost);
-// THE CHOICE OF THE APP (2026-11-10, src/app-invite.mjs, asked by the author): whoever updated MADRE on
-// a Mac and uses it in the browser is asked once per version, in a window of its own, whether to stay
-// in the browser or to download MADRE for Mac. The server decides whether it is due; the page only
-// draws it, and never over the welcome, the news or another window.
+// THE CHOICE OF THE APP (2026-11-10, src/app-invite.mjs, asked by the author): whoever updated MADRE and
+// uses it in the browser is asked once per version, in a window of its own, whether to stay in the
+// browser or to download the app for their computer — once there is one for it. The server decides
+// whether it is due and for which desktop; the page draws it, never over the welcome, the news or
+// another window. It speaks to the person: their computer by name (Mac, PC, Linux) and their own
+// projects, the ones they opened last. `?vista-app=mac|windows|linux` on Home shows it for that
+// desktop, to look at it: nothing is answered or counted.
 const tellApp = (answer) => fetch('/api/invite/app', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ answer }) }).catch(() => null);
-async function offerApp(said, tries = 0) {
-  if (welcomeOpen() || document.querySelector('dialog[open]')) { if (tries < 120) setTimeout(() => void offerApp(said, tries + 1), 2500); return; }
+const APP_WORDS = {
+  mac: { title: () => t('MADRE can live on your Mac now'), take: () => t('Download it for my Mac'), open: () => t('You open it from the Dock, without opening the terminal.') },
+  windows: { title: () => t('MADRE can live on your PC now'), take: () => t('Download it for my PC'), open: () => t('You open it from the Start menu, without opening the terminal.') },
+  linux: { title: () => t('MADRE can live on your Linux now'), take: () => t('Download it for my Linux'), open: () => t('You open it from your applications, without opening the terminal.') },
+};
+// «mi-tienda», «mi-tienda and recetas», «mi-tienda, recetas and 3 more».
+function namesOf(names, count) {
+  if (!names.length) return '';
+  if (names.length === 1 && count <= 1) return names[0];
+  const shown = names.slice(0, 2);
+  const more = count - shown.length;
+  if (more <= 0) return t('{a} and {b}', { a: shown[0], b: shown[1] });
+  return t('{list} and {n} more', { list: shown.join(', '), n: more });
+}
+async function offerApp(said, { preview = false } = {}, tries = 0) {
+  if (welcomeOpen() || document.querySelector('dialog[open]')) { if (tries < 120) setTimeout(() => void offerApp(said, { preview }, tries + 1), 2500); return; }
+  const desktop = APP_WORDS[said.desktop] ? said.desktop : 'mac';
+  const words = APP_WORDS[desktop];
   const dialog = el('dialog', 'sm-sheet sm-app-choice');
   dialog.setAttribute('aria-labelledby', 'sm-app-choice-title');
   const inner = el('div', 'sm-sheet-body');
-  let answered = false;
-  const answer = (words) => { if (answered) return; answered = true; void tellApp(words); };
-  // The moving picture the news use (news-scenes.js, «macapp»): MADRE leaves the browser and becomes
-  // the app — its lights, its icon in the Dock, an AI's notice.
+  let answered = preview;
+  const answer = (word) => { if (answered) return; answered = true; void tellApp(word); };
+  // The moving picture the news use (news-scenes.js, «desktopapp»): MADRE leaves the browser and
+  // becomes an app of this very computer — its keys, its place among the apps, an AI's notice.
   const hero = el('div', 'sm-app-hero');
-  const scene = createNewsScene('macapp');
+  const scene = createNewsScene('desktopapp', { os: desktop });
   hero.append(scene.node);
-  const title = el('h3', null, t('MADRE now comes as an app for Mac'));
+  const title = el('h3', null, words.title());
   title.id = 'sm-app-choice-title';
-  const lead = el('p', 'sm-app-lead', t('You just updated MADRE. Keep using it here in the browser, or download the app: the same projects, chats and memory, in a window of its own.'));
+  const names = namesOf(said.projects ?? [], said.count ?? 0);
+  const one = (said.count ?? 0) === 1;
+  const lead = el('p', 'sm-app-lead', !names
+    ? t('You are on the new version. From today you can open MADRE like any other app, and everything it remembers comes with you.')
+    : one
+      ? t('You are on the new version. From today you can open MADRE like any other app: {project} comes with you as it is, with its chats and everything MADRE remembers.', { project: names })
+      : t('You are on the new version. From today you can open MADRE like any other app: {projects} come with you as they are, with their chats and everything MADRE remembers.', { projects: names }));
   const options = el('div', 'sm-app-options');
   const option = (kind, drawing, head, lines, act) => {
     const card = el('button', `sm-app-option ${kind}`);
     card.type = 'button';
     const mark = el('span', 'sm-app-option-icon');
     mark.innerHTML = trazo(drawing); // trusted: our own SVG string
-    const words = el('span', 'sm-app-option-words');
-    words.append(el('b', null, head));
+    const box = el('span', 'sm-app-option-words');
+    box.append(el('b', null, head));
     const list = el('span', 'sm-app-option-lines');
     for (const line of lines) list.append(el('span', null, line));
-    words.append(list);
-    card.append(mark, words);
+    box.append(list);
+    card.append(mark, box);
     card.addEventListener('click', act);
     return card;
   };
-  const stay = option('stay', 'globe', t('Stay in the browser'), [t('Everything stays as it is.'), t('You can download the app later from madre.run.')], () => { answer('later'); dialog.close(); });
-  const take = option('take', 'download', t('Download MADRE for Mac'), [t('It opens from the Dock, like any app.'), t('A terminal inside, and a notice when an AI finishes.')], () => {
+  const stay = option('stay', 'globe', t('I will stay here'), [t('Nothing changes for you.'), t('If you want it some other day, it is at madre.run.')], () => { answer('later'); dialog.close(); });
+  const take = option('take', 'download', words.take(), [words.open(), t('It lets you know when an AI finishes, even if you are doing something else.')], () => {
     answer('open');
-    window.open(said.url, '_blank', 'noopener');
+    if (!preview) window.open(said.url, '_blank', 'noopener');
     dialog.close();
   });
   options.append(stay, take);
@@ -7094,6 +7119,13 @@ async function offerApp(said, tries = 0) {
   // Neither card is chosen for the person: the window holds the focus, and Tab reaches the cards.
   dialog.tabIndex = -1;
   dialog.focus({ preventScroll: true });
-  void tellApp('shown');
+  if (!preview) void tellApp('shown');
 }
-void fetch('/api/invite/app', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((said) => { if (said?.show && said.url) setTimeout(() => void offerApp(said), 900); }).catch(() => null);
+{
+  let look = null;
+  try { look = new URLSearchParams(location.search).get('vista-app'); } catch { /* no address to read */ }
+  void fetch('/api/invite/app', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((said) => {
+    if (APP_WORDS[look]) setTimeout(() => void offerApp({ ...(said ?? {}), desktop: look }, { preview: true }), 900);
+    else if (said?.show && said.url) setTimeout(() => void offerApp(said), 900);
+  }).catch(() => null);
+}

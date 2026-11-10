@@ -4467,12 +4467,19 @@ export async function createPulseServer({
       // The invitation to a first project (src/whats-new.mjs): due on Home to a copy that came from an
       // older MADRE and has no project, once per version. Never on a phone. Its answers are counted
       // with the anonymous diagnostics, and «shown» is what spends it.
-      // The choice of the app (src/app-invite.mjs): a window on Home for whoever updated MADRE on a
-      // Mac and uses it in the browser, once per version, once the app can be downloaded. Never on a
+      // The choice of the app (src/app-invite.mjs): a window on Home for whoever updated MADRE and uses
+      // it in the browser, once per version, once the app can be downloaded for their desktop. Never on a
       // phone. Its answers are counted with the anonymous diagnostics.
       if (url.pathname === '/api/invite/app') {
         if (viaPhone || !salasRoom) return sendJson(response, 200, { show: false });
-        if (request.method === 'GET') return sendJson(response, 200, await appInvite({ root, novelty, version: PACKAGE.version }));
+        if (request.method === 'GET') {
+          const place = await environmentOnce().catch(() => null);
+          const said = await appInvite({ root, novelty, version: PACKAGE.version, wsl: Boolean(place?.wsl) });
+          // The person's own projects, the ones opened last, so the window can speak of them by name.
+          const projects = (await knownRooms(root)).filter((one) => one.id !== salasRoomId(root))
+            .sort((a, b) => String(b.lastOpened ?? '').localeCompare(String(a.lastOpened ?? ''))).map((one) => one.name);
+          return sendJson(response, 200, { ...said, projects: projects.slice(0, 3), count: projects.length });
+        }
         if (request.method === 'POST') {
           const payload = await body(request).catch(() => ({}));
           const said = await answerAppInvite(root, { answer: payload.answer, version: PACKAGE.version });

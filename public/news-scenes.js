@@ -30,7 +30,7 @@ const WORDS = {
   hintLine: { es: 'Lo que hace cada IA, en vivo.', en: 'What each AI is doing, live.' },
   hours: { es: '5 h', en: '5 h' },
   week: { es: '7 días', en: '7 days' },
-  // The app for Mac (2026-11-10, the choice after an update on Home).
+  // The app (2026-11-10, the choice after an update on Home).
   tab: { es: 'MADRE', en: 'MADRE' },
   address: { es: '127.0.0.1:4317', en: '127.0.0.1:4317' },
   finished: { es: 'Claude terminó', en: 'Claude finished' },
@@ -134,45 +134,56 @@ const SCENES = {
   },
 };
 
-// «MADRE for Mac» (2026-11-10): MADRE in a browser window loses the browser around it and becomes an
-// app — its lights, its icon dropping into the Dock with a bounce, and the notice an AI sends when it
-// finishes. Used by the choice Home offers after an update (salas-mac.js, offerApp).
-SCENES.macapp = (stage) => {
+// «MADRE as an app» (2026-11-10): MADRE in a browser window loses the browser around it and becomes an
+// app of the person's own computer, then drops into where that computer keeps its apps, and an AI's
+// notice arrives where that computer shows them. Each desktop as it is (`os`):
+//   mac      the three lights on the left, the Dock at the bottom, notices top right;
+//   windows  minimise, maximise and close on the right, the taskbar along the bottom, notices bottom
+//            right, over it;
+//   linux    one close key on the right, a bar along the top, the dock on the left, notices top centre.
+// Used by the choice Home offers after an update (salas-mac.js, offerApp).
+SCENES.desktopapp = (stage, { os = 'mac' } = {}) => {
+  stage.classList.add(`os-${os}`);
   const win = node('div', 'ns-aw');
   const chrome = node('div', 'ns-aw-chrome');
   const tab = node('span', 'ns-aw-tab');
   tab.append(node('i', 'ns-aw-fav'), node('span', null, pick(WORDS.tab)));
   chrome.append(tab, node('span', 'ns-aw-url', pick(WORDS.address)));
-  const lights = node('div', 'ns-aw-lights');
-  for (let i = 0; i < 3; i += 1) lights.append(node('i'));
+  // The window's own keys: the Mac's lights, or Windows' and Linux's keys on the right.
+  const keys = node('div', `ns-aw-keys ${os}`);
+  const count = os === 'mac' ? 3 : os === 'windows' ? 3 : 1;
+  for (let i = 0; i < count; i += 1) keys.append(node('i'));
   const body = node('div', 'ns-aw-body');
   const side = node('div', 'ns-aw-side');
   for (let i = 0; i < 4; i += 1) side.append(node('i'));
   const chat = node('div', 'ns-aw-chat');
   chat.append(node('i', 'ns-aw-msg mine'), node('i', 'ns-aw-msg'), node('i', 'ns-aw-msg short'), node('i', 'ns-aw-box'));
   body.append(side, chat);
-  win.append(chrome, lights, body);
-  const dock = node('div', 'ns-aw-dock');
-  for (const name of ['folder', 'globe', 'chat']) dock.append(icon(name, 'ns-aw-app'));
+  win.append(chrome, keys, body);
+  // Where that computer keeps its apps: the Dock, the taskbar, the dock on the side.
+  const shelf = node('div', `ns-aw-dock ${os}`);
+  const apps = os === 'windows' ? ['search', 'folder', 'globe'] : ['folder', 'globe', 'chat'];
+  for (const name of apps) shelf.append(icon(name, 'ns-aw-app'));
   const madre = node('img', 'ns-aw-madre');
   madre.src = '/assets/brand/madre-app.svg';
   madre.alt = '';
-  dock.append(madre);
+  shelf.append(madre);
+  if (os === 'linux') { const top = node('div', 'ns-aw-topbar'); top.append(node('span', null, '10:24')); stage.append(top); }
   const toast = node('div', 'ns-aw-toast');
   const words = node('span', 'ns-aw-toast-words');
   words.append(node('b', null, pick(WORDS.finished)), node('span', null, pick(WORDS.finishedLine)));
   toast.append(face('claude'), words);
-  stage.append(win, dock, toast);
+  stage.append(win, shelf, toast);
   return [300, 1400, 2500, 3500];
 };
 
 export const NEWS_SCENES = Object.keys(SCENES);
 
-// One stage. `stop()` clears its timers when the sheet closes.
-export function createNewsScene(id) {
+// One stage. `stop()` clears its timers when the sheet closes. `options` go to the scene (`os`).
+export function createNewsScene(id, options = {}) {
   const stage = node('div', `ns ns-${id}`);
   stage.setAttribute('aria-hidden', 'true');
-  const beats = SCENES[id]?.(stage) ?? [];
+  const beats = SCENES[id]?.(stage, options) ?? [];
   const timers = new Set();
   const later = (ms, fn) => { const timer = setTimeout(() => { timers.delete(timer); fn(); }, ms); timers.add(timer); };
   const still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
