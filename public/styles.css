@@ -13226,3 +13226,42 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 :root[data-scheme="light"] .user .bubble code { color: inherit; }
 /* And in dark, the code inside a sentence: the agent's colour lifted toward white (4.4:1 before). */
 :root[data-scheme="dark"] #messages .bubble :not(pre) > code { color: color-mix(in srgb, var(--agent, var(--phosphor)) 62%, #ffffff); }
+
+/* «MADRE for Mac» (2026-11-10, news-scenes.js, SCENES.macapp): a browser window becomes the app. Beats:
+   b1 the window comes in, a browser's; b2 its tab and address fold away and the lights come; b3 the
+   Dock rises and MADRE drops into it with a bounce; b4 an AI's notice slides in. */
+.ns-macapp { --ns-aw-w: 19em; }
+.ns-aw { position: absolute; left: 50%; top: 1.1em; width: var(--ns-aw-w); border-radius: .8em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(12px); overflow: hidden; opacity: 0; transform: translateX(-50%) translateY(.8em) scale(.97); transition: opacity .5s var(--ns-glide), transform .8s var(--ns-glide), box-shadow .8s var(--ns-glide); }
+.ns-macapp.b1 .ns-aw { opacity: 1; transform: translateX(-50%); }
+.ns-macapp.b2 .ns-aw { box-shadow: 0 1em 2.4em rgba(0, 0, 0, .3), inset 0 0 0 1px var(--ns-edge); }
+.ns-aw-chrome { display: flex; align-items: center; gap: .5em; height: 2.1em; padding: 0 .6em; border-bottom: 1px solid var(--ns-edge); font-size: .78em; color: var(--ns-text-2); transition: height .6s var(--ns-glide), opacity .35s var(--ns-glide), padding .6s var(--ns-glide), border-color .6s var(--ns-glide); }
+.ns-macapp.b2 .ns-aw-chrome { height: 0; padding-block: 0; opacity: 0; border-color: transparent; }
+.ns-aw-tab { display: flex; align-items: center; gap: .35em; padding: .2em .6em; border-radius: .5em; background: var(--ns-glass-2); color: var(--ns-text); white-space: nowrap; }
+.ns-aw-fav { width: .55em; height: .55em; border-radius: 50%; background: var(--ns-accent); }
+.ns-aw-url { flex: 1; padding: .2em .6em; border-radius: .5em; background: var(--ns-glass-2); white-space: nowrap; overflow: hidden; }
+.ns-aw-lights { position: absolute; left: .7em; top: .62em; display: flex; gap: .32em; opacity: 0; transform: scale(.6); transition: opacity .4s var(--ns-glide) .25s, transform .5s var(--ns-spring) .25s; }
+.ns-macapp.b2 .ns-aw-lights { opacity: 1; transform: none; }
+.ns-aw-lights i { width: .55em; height: .55em; border-radius: 50%; background: #ff5f57; }
+.ns-aw-lights i:nth-child(2) { background: #febc2e; }
+.ns-aw-lights i:nth-child(3) { background: #28c840; }
+.ns-aw-body { box-sizing: border-box; display: grid; grid-template-columns: 4.6em 1fr; height: 7.4em; transition: padding .6s var(--ns-glide), height .6s var(--ns-glide); }
+.ns-macapp.b2 .ns-aw-body { height: 9.1em; padding-top: 1.7em; }
+.ns-aw-side { display: grid; align-content: start; gap: .45em; padding: .7em .6em; border-right: 1px solid var(--ns-edge); }
+.ns-aw-side i { display: block; height: .38em; border-radius: 1em; background: var(--ns-glass-2); }
+.ns-aw-side i:first-child { width: 70%; background: color-mix(in srgb, var(--ns-accent) 40%, transparent); }
+.ns-aw-chat { position: relative; display: grid; align-content: start; gap: .4em; padding: .7em .8em; }
+.ns-aw-msg { display: block; justify-self: start; width: 78%; height: .9em; border-radius: .5em; background: var(--ns-glass-2); }
+.ns-aw-msg.mine { justify-self: end; width: 46%; background: color-mix(in srgb, var(--ns-accent) 26%, transparent); }
+.ns-aw-msg.short { width: 52%; }
+.ns-aw-box { position: absolute; left: .8em; right: .8em; bottom: .6em; display: block; height: 1.15em; border-radius: .6em; box-shadow: inset 0 0 0 1px var(--ns-edge); }
+.ns-aw-dock { position: absolute; left: 50%; bottom: .55em; display: flex; align-items: end; gap: .38em; padding: .32em .4em; border-radius: .8em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(14px); opacity: 0; transform: translateX(-50%) translateY(140%); transition: opacity .4s var(--ns-glide), transform .7s var(--ns-glide); }
+.ns-macapp.b3 .ns-aw-dock { opacity: 1; transform: translateX(-50%); }
+.ns-aw-app { display: grid; place-items: center; width: 1.9em; height: 1.9em; padding: .4em; border-radius: .48em; background: var(--ns-glass-2); color: var(--ns-text-2); }
+.ns-aw-madre { width: 0; height: 1.9em; border-radius: .48em; opacity: 0; transform: translateY(-1.6em) scale(.6); transition: width .5s var(--ns-glide) .25s, opacity .3s var(--ns-glide) .3s, transform .7s var(--ns-spring) .3s; }
+.ns-macapp.b3 .ns-aw-madre { width: 1.9em; opacity: 1; transform: none; animation: ns-aw-hop .9s var(--ns-glide) 1.05s; }
+@keyframes ns-aw-hop { 30% { transform: translateY(-.55em); } 55% { transform: none; } 75% { transform: translateY(-.22em); } }
+.ns-aw-toast { position: absolute; right: .8em; top: .8em; display: flex; align-items: center; gap: .5em; padding: .5em .8em .5em .55em; white-space: nowrap; border-radius: .8em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(16px); font-size: .82em; opacity: 0; transform: translateX(120%); transition: opacity .4s var(--ns-glide), transform .7s var(--ns-spring); }
+.ns-macapp.b4 .ns-aw-toast { opacity: 1; transform: none; }
+.ns-aw-toast .ns-face { width: 1.8em; height: 1.8em; }
+.ns-aw-toast-words { display: grid; gap: .05em; line-height: 1.2; }
+.ns-aw-toast-words span { color: var(--ns-text-2); font-size: .9em; }

@@ -30,6 +30,11 @@ const WORDS = {
   hintLine: { es: 'Lo que hace cada IA, en vivo.', en: 'What each AI is doing, live.' },
   hours: { es: '5 h', en: '5 h' },
   week: { es: '7 días', en: '7 days' },
+  // The app for Mac (2026-11-10, the choice after an update on Home).
+  tab: { es: 'MADRE', en: 'MADRE' },
+  address: { es: '127.0.0.1:4317', en: '127.0.0.1:4317' },
+  finished: { es: 'Claude terminó', en: 'Claude finished' },
+  finishedLine: { es: 'Tu página ya está lista.', en: 'Your page is ready.' },
 };
 
 const node = (tag, cls, text) => {
@@ -127,6 +132,38 @@ const SCENES = {
     stage.append(win, pointer);
     return [500, 1500, 1800, 3700];
   },
+};
+
+// «MADRE for Mac» (2026-11-10): MADRE in a browser window loses the browser around it and becomes an
+// app — its lights, its icon dropping into the Dock with a bounce, and the notice an AI sends when it
+// finishes. Used by the choice Home offers after an update (salas-mac.js, offerApp).
+SCENES.macapp = (stage) => {
+  const win = node('div', 'ns-aw');
+  const chrome = node('div', 'ns-aw-chrome');
+  const tab = node('span', 'ns-aw-tab');
+  tab.append(node('i', 'ns-aw-fav'), node('span', null, pick(WORDS.tab)));
+  chrome.append(tab, node('span', 'ns-aw-url', pick(WORDS.address)));
+  const lights = node('div', 'ns-aw-lights');
+  for (let i = 0; i < 3; i += 1) lights.append(node('i'));
+  const body = node('div', 'ns-aw-body');
+  const side = node('div', 'ns-aw-side');
+  for (let i = 0; i < 4; i += 1) side.append(node('i'));
+  const chat = node('div', 'ns-aw-chat');
+  chat.append(node('i', 'ns-aw-msg mine'), node('i', 'ns-aw-msg'), node('i', 'ns-aw-msg short'), node('i', 'ns-aw-box'));
+  body.append(side, chat);
+  win.append(chrome, lights, body);
+  const dock = node('div', 'ns-aw-dock');
+  for (const name of ['folder', 'globe', 'chat']) dock.append(icon(name, 'ns-aw-app'));
+  const madre = node('img', 'ns-aw-madre');
+  madre.src = '/assets/brand/madre-app.svg';
+  madre.alt = '';
+  dock.append(madre);
+  const toast = node('div', 'ns-aw-toast');
+  const words = node('span', 'ns-aw-toast-words');
+  words.append(node('b', null, pick(WORDS.finished)), node('span', null, pick(WORDS.finishedLine)));
+  toast.append(face('claude'), words);
+  stage.append(win, dock, toast);
+  return [300, 1400, 2500, 3500];
 };
 
 export const NEWS_SCENES = Object.keys(SCENES);

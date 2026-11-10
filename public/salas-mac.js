@@ -7056,12 +7056,11 @@ async function offerApp(said, tries = 0) {
   const inner = el('div', 'sm-sheet-body');
   let answered = false;
   const answer = (words) => { if (answered) return; answered = true; void tellApp(words); };
-  // The app's own icon over a soft ground in the brand's green, as a Dock would hold it.
+  // The moving picture the news use (news-scenes.js, «macapp»): MADRE leaves the browser and becomes
+  // the app — its lights, its icon in the Dock, an AI's notice.
   const hero = el('div', 'sm-app-hero');
-  const icon = el('img', 'sm-app-icon');
-  icon.src = '/assets/brand/madre-app.svg';
-  icon.alt = '';
-  hero.append(el('span', 'sm-app-glow'), icon);
+  const scene = createNewsScene('macapp');
+  hero.append(scene.node);
   const title = el('h3', null, t('MADRE now comes as an app for Mac'));
   title.id = 'sm-app-choice-title';
   const lead = el('p', 'sm-app-lead', t('You just updated MADRE. Keep using it here in the browser, or download the app: the same projects, chats and memory, in a window of its own.'));
@@ -7089,7 +7088,7 @@ async function offerApp(said, tries = 0) {
   options.append(stay, take);
   inner.append(hero, title, lead, options);
   dialog.append(inner);
-  dialog.addEventListener('close', () => { answer('later'); dialog.remove(); });
+  dialog.addEventListener('close', () => { answer('later'); scene.stop(); dialog.remove(); });
   document.body.append(dialog);
   dialog.showModal();
   // Neither card is chosen for the person: the window holds the focus, and Tab reaches the cards.

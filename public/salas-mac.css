@@ -2505,15 +2505,12 @@ html.home-shell.side-resizing :is(.sm-side, body.salas-mac) { transition: none !
 @media (max-width: 960px) { html.home-shell .sm-side-grip { display: none; } }
 
 /* THE CHOICE OF THE APP (2026-11-10, salas-mac.js offerApp): after an update, on a Mac, in the
-   browser. The app's own icon rises over a soft ground in the brand's green; under it two cards, the
-   browser and the app, side by side, the app's lit a little. */
+   browser. On top the news' moving picture of MADRE becoming the app (news-scenes.js, «macapp»);
+   under it two cards, the browser and the app, side by side, the app's lit a little. */
 dialog.sm-app-choice { --sm-sheet-w: 580px; }
 dialog.sm-app-choice > .sm-sheet-body { padding: 0 28px 26px; border-width: 0; text-align: center; }
-.sm-app-hero { position: relative; display: grid; place-items: center; height: 176px; margin: 0 -28px 6px; overflow: hidden; background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--phosphor) 20%, transparent), transparent 72%); }
-.sm-app-glow { position: absolute; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--phosphor) 26%, transparent), transparent 66%); }
-.sm-app-icon { position: relative; width: 108px; height: 108px; border-radius: 25px; box-shadow: 0 22px 44px -18px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(0, 0, 0, .14); animation: sm-app-rise 720ms var(--ease-out, cubic-bezier(.2, .8, .2, 1)) both; }
-@keyframes sm-app-rise { from { transform: translateY(16px) scale(.92); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .sm-app-icon { animation: none; } }
+.sm-app-hero { position: relative; height: 214px; margin: 0 -28px 22px; container-type: inline-size; }
+.sm-app-hero .ns { font-size: 12.5px; border-radius: 0; }
 dialog.sm-app-choice h3 { margin: 0 0 8px; font-size: 23px; font-weight: 700; letter-spacing: -.02em; }
 .sm-app-lead { max-width: 450px; margin: 0 auto 22px; color: var(--text-2); font-size: 14px; line-height: 1.55; }
 .sm-app-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
