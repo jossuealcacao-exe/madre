@@ -87,6 +87,7 @@ import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from './updates.mjs';
 import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
+import { answerAppInvite, appInvite } from './app-invite.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
 import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
@@ -4412,6 +4413,21 @@ export async function createPulseServer({
       // The invitation to a first project (src/whats-new.mjs): due on Home to a copy that came from an
       // older MADRE and has no project, once per version. Never on a phone. Its answers are counted
       // with the anonymous diagnostics, and «shown» is what spends it.
+      // The invitation to the app (src/app-invite.mjs): a strip on Home for whoever updated MADRE on a
+      // Mac and uses it in the browser, once per version, once the app can be downloaded. Never on a
+      // phone. Its answers are counted with the anonymous diagnostics.
+      if (url.pathname === '/api/invite/app') {
+        if (viaPhone || !salasRoom) return sendJson(response, 200, { show: false });
+        if (request.method === 'GET') return sendJson(response, 200, await appInvite({ root, novelty, version: PACKAGE.version }));
+        if (request.method === 'POST') {
+          const payload = await body(request).catch(() => ({}));
+          const said = await answerAppInvite(root, { answer: payload.answer, version: PACKAGE.version });
+          if (said.error) return sendJson(response, 422, { error: 'answer' });
+          diagnostics.count(`invite.app.${payload.answer}`);
+          return sendJson(response, 200, said);
+        }
+        return sendJson(response, 405, { error: 'method' });
+      }
       if (url.pathname === '/api/invite/project') {
         if (viaPhone) return sendJson(response, 200, { show: false });
         if (request.method === 'GET') {

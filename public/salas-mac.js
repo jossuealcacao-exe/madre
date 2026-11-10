@@ -7047,3 +7047,36 @@ const noticesHost = el('div', 'sm-notices');
 noticesHost.hidden = true;
 document.querySelector('.sm-hero')?.append(noticesHost);
 const askNoticesAgain = mountNotices(noticesHost);
+// THE INVITATION TO THE APP (2026-11-10, src/app-invite.mjs): whoever updated MADRE on a Mac and uses
+// it in the browser sees a strip beside the author's notices, once per version: «Download the app» or
+// «Not now». The server decides whether it is due; the page only draws it.
+const appHost = el('div', 'sm-notices madre-notices');
+appHost.hidden = true;
+document.querySelector('.sm-hero')?.append(appHost);
+const tellApp = (answer) => fetch('/api/invite/app', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ answer }) }).catch(() => null);
+void (async () => {
+  const said = await fetch('/api/invite/app', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!said?.show || !said.url) return;
+  const card = el('section', 'madre-notice is-info sm-app-invite');
+  card.setAttribute('role', 'status');
+  const close = (answer) => { void tellApp(answer); card.remove(); appHost.hidden = true; };
+  const words = el('div', 'madre-notice-words');
+  words.append(
+    el('small', 'madre-notice-kind', t('MADRE for Mac')),
+    el('b', 'madre-notice-title', t('MADRE now comes as an app')),
+    el('p', 'madre-notice-body', t('It opens from the Dock, with a terminal inside and a notice when an AI finishes. Your projects and chats are waiting there, as you left them.')),
+  );
+  const link = el('a', 'madre-notice-link', t('Download the app'));
+  link.href = said.url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.addEventListener('click', () => close('open'));
+  words.append(link);
+  const later = el('button', 'madre-notice-done', t('Not now'));
+  later.type = 'button';
+  later.addEventListener('click', () => close('later'));
+  card.append(words, later);
+  appHost.append(card);
+  appHost.hidden = false;
+  void tellApp('shown');
+})();

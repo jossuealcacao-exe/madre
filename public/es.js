@@ -7293,4 +7293,9 @@ export const ES = {
   "Opening {name}…": "Abriendo {name}…",
   "Signed in with your {name} account": "Entró con tu cuenta de {name}",
   "Connected with a {name} API key": "Conectada con una llave de API de {name}",
+  // La invitación a la app de Mac, en Inicio (src/app-invite.mjs).
+  "MADRE for Mac": "MADRE para Mac",
+  "MADRE now comes as an app": "MADRE ya viene como app",
+  "It opens from the Dock, with a terminal inside and a notice when an AI finishes. Your projects and chats are waiting there, as you left them.": "Se abre desde el Dock, trae una terminal adentro y te avisa cuando una IA termina. Tus proyectos y chats te esperan ahí, como los dejaste.",
+  "Download the app": "Descargar la app",
 };
