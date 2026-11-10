@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand, fetchCommand } from '../src/updates.mjs';
+import { compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from '../src/updates.mjs';
 
 test('updates: versions compare as releases, the launch mode picks the command, the registry is read once a day', async () => {
   assert.equal(compareVersions('0.3.0', '0.3.1'), -1);
@@ -114,4 +114,67 @@ test('updates: a cache with something that is not a version is not believed (SRV
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+// Q-22 (2026-11-10): `madre` from npm -g is a link (/usr/local/bin/madre, ~/.local/bin/madre in the
+// Windows installer's WSL, nvm's bin) and Node starts it by that path. Read without following it, a
+// global copy was taken for one run from source, and its update answered «pull the repository».
+test('updates: a global copy started through the link npm -g leaves is global, not source (Q-22)', async () => {
+  const { mkdir, symlink, writeFile } = await import('node:fs/promises');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-global-'));
+  try {
+    const bin = join(dir, 'lib', 'node_modules', '@jossuealcala', 'madre', 'bin');
+    await mkdir(bin, { recursive: true });
+    await writeFile(join(bin, 'madre.cjs'), '');
+    await mkdir(join(dir, 'bin'));
+    await symlink(join(bin, 'madre.cjs'), join(dir, 'bin', 'madre'));
+    assert.equal(detectInstall({ script: join(dir, 'bin', 'madre'), projectRoot: '/somewhere/else' }), 'global');
+    // npx's link in its own cache still reads as npx, and a link that leads nowhere is read as written.
+    const npx = join(dir, '_npx', 'abc', 'node_modules');
+    await mkdir(join(npx, '.bin'), { recursive: true });
+    await mkdir(join(npx, '@jossuealcala', 'madre', 'bin'), { recursive: true });
+    await writeFile(join(npx, '@jossuealcala', 'madre', 'bin', 'madre.cjs'), '');
+    await symlink(join(npx, '@jossuealcala', 'madre', 'bin', 'madre.cjs'), join(npx, '.bin', 'madre'));
+    assert.equal(detectInstall({ script: join(npx, '.bin', 'madre'), projectRoot: '/somewhere/else' }), 'npx');
+    assert.equal(detectInstall({ script: join(dir, 'missing', 'madre'), projectRoot: '/somewhere/else' }), 'source');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// Q-23 (2026-11-10): on Linux a restart or an update takes this process's place, same PID, so wsl.exe,
+// the terminal or systemd keep waiting on MADRE instead of seeing it end.
+test('updates: on Linux the next MADRE takes this process\'s place, and says where it said before (Q-23)', async () => {
+  const execve = () => {};
+  assert.equal(takesItsPlace({ platform: 'linux', execve }), true);
+  assert.equal(takesItsPlace({ platform: 'darwin', execve }), false, 'macOS as before');
+  assert.equal(takesItsPlace({ platform: 'win32', execve }), false);
+  assert.equal(takesItsPlace({ platform: 'linux', execve: undefined }), false, 'a Node before 22.15 as before');
+  // A terminal keeps showing what MADRE says; anything else writes it to the log, as before.
+  assert.deepEqual(nextProcess({ file: '/usr/bin/node', args: ['bin/madre.mjs', 'start'], log: '/r/restart.log', terminal: true }), ['/usr/bin/node', ['/usr/bin/node', 'bin/madre.mjs', 'start']]);
+  const [program, argv] = nextProcess({ file: '/bin/sh', args: ['-c', "exec npx -y 'x@1.0.0' start"], log: "/r/it's here/update.log" });
+  assert.equal(program, '/bin/sh');
+  assert.deepEqual(argv.slice(3), ['madre', "/r/it's here/update.log", '/bin/sh', '-c', "exec npx -y 'x@1.0.0' start"], 'the log and the command travel as arguments, never inside the script');
+  // And it really does: same PID, output in the log, arguments untouched.
+  if (process.platform === 'win32') return;
+  const { execFile } = await import('node:child_process');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-next-'));
+  try {
+    const log = join(dir, 'up date.log');
+    const [file, args] = nextProcess({ file: '/bin/sh', args: ['-c', 'echo "$$ $0"', "a b'c"], log });
+    const script = `const pid = process.pid; console.log(pid); process.execve(${JSON.stringify(file)}, ${JSON.stringify(args)}, process.env);`;
+    const said = await new Promise((resolve, reject) => execFile(process.execPath, ['-e', script], (error, stdout) => (error ? reject(error) : resolve(stdout.trim()))));
+    if (said === '' || /execve is not a function/.test(said)) return;
+    const [pid, line] = [said, (await readFile(log, 'utf8')).trim()];
+    assert.equal(line, `${pid} a b'c`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('updates: a start from an update to the first MADRE with a ficha opens the browser (Q-21)', () => {
+  assert.equal(opensBrowser({ asked: true, env: {}, hadFicha: true }), true);
+  assert.equal(opensBrowser({ asked: false, env: {}, hadFicha: false }), false, 'a restart or a project opened by Home stays without the browser');
+  assert.equal(opensBrowser({ asked: false, env: { PULSE_UPDATE_RESTART: '1' }, hadFicha: false }), true, 'from 1.1.2: the tab has no cookie, the browser gets one');
+  assert.equal(opensBrowser({ asked: false, env: { PULSE_UPDATE_RESTART: '1' }, hadFicha: true }), false, 'from 1.1.3 on: the tab already has it');
 });

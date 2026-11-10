@@ -6,6 +6,7 @@
 // MADRE never updates itself: the room is in use and the process belongs to the human. It
 // shows the exact command for how this copy was launched.
 
+import { realpathSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -47,7 +48,11 @@ export function compareVersions(a, b) {
 // says so and updates itself from madre.run: never by npm or git from here.
 export function detectInstall({ script = process.argv[1] ?? '', projectRoot = process.cwd(), env = process.env } = {}) {
   if (env.MADRE_APP === '1') return 'app';
-  const path = String(script).replace(/\\/g, '/');
+  // Followed to where it leads (Q-22): npm -g leaves `madre` as a link in a bin folder, and Node
+  // keeps that path; read as written, a global copy looked like one run from source.
+  let real = String(script);
+  try { real = realpathSync(real); } catch { /* read as written */ }
+  const path = real.replace(/\\/g, '/');
   if (/\/_npx\//.test(path)) return 'npx';
   if (projectRoot && path.startsWith(`${String(projectRoot).replace(/\\/g, '/').replace(/\/$/, '')}/node_modules/`)) return 'project';
   if (/\/node_modules\//.test(path)) return 'global';
@@ -95,6 +100,28 @@ export function applyCommand({ install, name, version, port, projectRoot }) {
     default: return null;   // source: the human pulls
   }
 }
+
+// TAKING ITS OWN PLACE (Q-23, 2026-11-10). Restarting or updating used to start a new MADRE and end
+// this process. Whoever waits on this process saw MADRE end: the terminal gave its prompt back, and
+// in WSL the Windows shortcut's wsl.exe ended with it, after which WSL put the distribution away
+// (~15 s), with the new MADRE — and a half-done npm install — inside. On Linux the new one now takes
+// this process's place (process.execve, Node 22.15 and later), with the same PID; elsewhere, or on
+// an older Node, as before.
+export const takesItsPlace = ({ platform, execve } = { platform: process.platform, execve: process.execve }) => platform === 'linux' && typeof execve === 'function';
+
+// What takes its place: `file args…`, as is when a terminal shows what MADRE says (the new address
+// with its ficha too), else through /bin/sh with everything it says going to `log`, the witness a
+// restart or an update always had (restart.log, update.log). Returns [program, argv] for execve.
+export function nextProcess({ file, args = [], log = null, terminal = false }) {
+  if (terminal || !log) return [file, [file, ...args]];
+  return ['/bin/sh', ['/bin/sh', '-c', 'exec >>"$1" 2>&1; shift; exec "$@"', 'madre', log, file, ...args]];
+}
+
+// Q-21 (2026-11-10): MADRE before 1.1.3 had no ficha, so a tab open on it has no cookie, and the start
+// an update makes (PULSE_UPDATE_RESTART, without the browser) left that tab on «This tab needs to be
+// opened from MADRE» with nobody to give it the address. The start that comes from an update and
+// finds no ficha on file opens the browser at the address that carries it.
+export const opensBrowser = ({ asked = false, env = process.env, hadFicha = true } = {}) => Boolean(asked) || (env.PULSE_UPDATE_RESTART === '1' && !hadFicha);
 
 // Where a person reads what a version brought. The product's own house, in the language the room
 // is speaking — a release page on a code host is written for people who already work there, and

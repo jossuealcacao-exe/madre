@@ -2,7 +2,7 @@
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import http from 'node:http';
 import { readFile, realpath, writeFile, mkdir, mkdtemp, cp, rename, access, rm, stat } from 'node:fs/promises';
-import { existsSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, rmSync } from 'node:fs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { probePort, framable } from './ports.mjs';
 import { ControlDesk } from './room/control.mjs';
@@ -85,7 +85,7 @@ import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from '
 import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
-import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand } from './updates.mjs';
+import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand, nextProcess, opensBrowser, takesItsPlace } from './updates.mjs';
 import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
 import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
@@ -153,7 +153,7 @@ import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
 import { readAt } from './checkpoint.mjs';
-import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, ensureFicha, fichaCookie, fichaHeaders, fichaReader, openPrivateLog, previewKey, sameFicha, withFicha } from './ficha.mjs';
+import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, defaultStateRoot, ensureFicha, fichaCookie, fichaHeaders, fichaReader, openPrivateLog, previewKey, readFicha, sameFicha, withFicha } from './ficha.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -433,16 +433,34 @@ export async function createPulseServer({
     if (!args.includes('--no-open')) next.push('--no-open');
     setTimeout(() => {
       server.close(() => {
-        let log = 'ignore';
-        try { log = openPrivateLog(join(roomDir, 'restart.log')); } catch { /* no witness, still restart */ }
         const env = { ...process.env, PULSE_RESTARTED: '1' };
         delete env.PULSE_UPDATE_RESTART;
+        // On Linux the new one takes this process's place (Q-23, src/updates.mjs takesItsPlace): it
+        // comes back here only when it could not.
+        becomeNext({ file: process.execPath, args: [...process.execArgv, ...next], env, cwd: process.cwd(), log: join(roomDir, 'restart.log') });
+        let log = 'ignore';
+        try { log = openPrivateLog(join(roomDir, 'restart.log')); } catch { /* no witness, still restart */ }
         const child = spawn(process.execPath, [...process.execArgv, ...next], { cwd: process.cwd(), detached: process.platform !== 'win32', windowsHide: true, stdio: ['ignore', log, log], env });
         child.unref();
         setTimeout(() => process.exit(0), 200);
       });
       for (const client of clients.keys()) { try { client.end(); } catch { /* gone */ } }
     }, 300);
+  }
+  // This process becomes the next MADRE, same PID (Q-23): on Linux with a Node that can. When it
+  // cannot, it returns and the caller starts a new one as before. Its log is made private first; the
+  // shell only adds to it.
+  function becomeNext({ file, args, env, cwd, log }) {
+    if (!takesItsPlace()) return;
+    const terminal = Boolean(process.stdout.isTTY);
+    if (!terminal) { try { closeSync(openPrivateLog(log)); } catch { /* the shell makes it */ } }
+    const [program, argv] = nextProcess({ file, args, log, terminal });
+    try {
+      process.chdir(cwd);
+      process.execve(program, argv, Object.fromEntries(Object.entries(env).filter(([, value]) => typeof value === 'string')));
+    } catch (error) {
+      console.error(`MADRE: could not take its own place (${error.message}); starting a new process instead.`);
+    }
   }
   // How many memories of each kind, and how many travel into turns. Counted, never read out.
   function memoryCensus() {
@@ -4511,6 +4529,9 @@ export async function createPulseServer({
         sendJson(response, 202, { restarting: true, from: info.current, to: info.latest, command });
         setTimeout(() => {
           server.close(() => {
+            // On Linux the new version takes this process's place (Q-23, src/updates.mjs takesItsPlace):
+            // it comes back here only when it could not.
+            becomeNext({ file: '/bin/sh', args: ['-c', command], env: { ...process.env, PULSE_UPDATE_RESTART: '1' }, cwd: canonicalProjectRoot, log: join(roomDir, 'update.log') });
             // Each system has its own shell: the command is one line either way.
             const shell = process.platform === 'win32' ? { file: process.env.COMSPEC ?? 'cmd.exe', args: ['/d', '/s', '/c', command] } : { file: '/bin/sh', args: ['-c', command] };
             // What the new copy says on the way up lands beside the ledger: if it never comes back,
@@ -5613,7 +5634,9 @@ export async function createPulseServer({
   return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen };
 }
 
-export async function startPulse({ port, projectRoot, openBrowser, openPath = '' }) {
+export async function startPulse({ port, projectRoot, openBrowser: asked, openPath = '' }) {
+  // A start from an update to the first MADRE with a ficha opens the browser with it (Q-21).
+  const openBrowser = opensBrowser({ asked, hadFicha: Boolean(await readFicha(defaultStateRoot())) });
   const { server, agents, markOpen, phone, salasRoom, closeOtherRooms, currentFicha, afterOpen } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources(), ficha: true, renewFicha: Boolean(openBrowser) });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
