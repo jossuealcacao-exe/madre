@@ -5413,12 +5413,11 @@ function signInTerminalWay(agent) {
 
 function removeEmpty() {
   els.column.querySelector('.empty')?.remove();
-  // The suggestion goes with the blank page; @madre's card stays where it was, on its own.
+  // The suggestion goes with the blank page.
   const pair = els.column.querySelector('.empty-pair');
   if (pair) { pair.querySelector('.empty-suggest')?.remove(); pair.replaceWith(...pair.children); }
 }
-// A new project's two cards side by side under its blank page (2026-11-10, asked by the author):
-// Continuity on the left, @madre on this computer on the right; one under the other when narrow.
+// A new project's suggestion as a card of its own under its blank page (2026-11-10).
 function welcomePair() {
   const welcome = els.column.querySelector('.empty');
   if (!welcome) return null;
@@ -6515,8 +6514,6 @@ function renderModuleInstalledOrRemoved(event) {
 // lived in a panel somebody had to go back to. So it is offered, and answered, here.
 // @madre's trial compares its answers with the crew's: with none yet, its button waits (QA 1.1.0,
 // NUE-16), and the card's own line says why.
-let crewAnswers = 0;
-const madreTrials = new Set();
 function renderLocalModel(payload, { asked = false } = {}) {
   const node = el('div', 'system local-model');
   // One line, held together: the card is a grid, and loose words in a grid each take a row.
@@ -6562,15 +6559,24 @@ function renderLocalModel(payload, { asked = false } = {}) {
     action.append(check(t('CHECK AGAIN')));
     if (checked?.at) action.append(el('span', 'note', t('MEASURED {when}', { when: agoWords(checked.at).toUpperCase() })));
   } else {
-    // Said plainly (2026-10-11): what @madre is, why it is worth trying before it is given work,
-    // what the trial does, and what it needs to have anything to compare.
+    // Offered in the conversation once agents answered enough here to compare with (2026-11-10,
+    // src/server.mjs offerLocalTry). The first page of a project no longer announces it: there it
+    // could only be a key greyed out. «Remind me later» puts it off a few days.
+    if (!payload.offer) return null;
     line.textContent = payload.remote
-      ? t('@madre is MADRE\'s own model, and it runs on another computer of your network. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.')
-      : t('@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.');
-    const trial = check(t('TRY IT ON THIS PROJECT'));
-    if (!crewAnswers) { trial.disabled = true; madreTrials.add(trial); }
-    action.append(trial);
-    node.append(line, el('p', 'says small', t('It needs a few conversations with your agents in this project first: without them there is nothing to compare.')), action);
+      ? t('@madre, the AI on another computer of your network, can now help in this project. Before you give it work, try it: it answers again up to 12 questions your agents already answered here, and MADRE compares the answers. It takes a few minutes and spends nothing.')
+      : t('@madre, the AI on this computer, can now help in this project. Before you give it work, try it: it answers again up to 12 questions your agents already answered here, and MADRE compares the answers. It takes a few minutes and spends nothing.');
+    action.append(check(t('TRY IT ON THIS PROJECT')));
+    const later = el('button', null, t('Remind me later'));
+    later.type = 'button';
+    later.addEventListener('click', async () => {
+      later.disabled = true;
+      await fetch('/api/local/later', { method: 'POST' }).catch(() => null);
+      node.remove();
+      toast(t('MADRE will offer it again in a few days.'));
+    });
+    action.append(later);
+    node.append(line, action);
     return node;
   }
   node.append(line, action);
@@ -8546,8 +8552,6 @@ function renderEventNode(event) {
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
       if (event.payload.role === 'user' && event.payload.sender === 'you') markChoiceAnswered(event.payload.text);
       if (event.payload.role !== 'user') attachCrossReads(event.payload.messageId, node);
-      // A first answer from the crew gives @madre's trial something to compare (NUE-16).
-      if (event.payload.role !== 'user' && event.payload.sender !== 'madre') { crewAnswers += 1; for (const button of madreTrials) button.disabled = false; }
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
       // The first thing said names a conversation; the tab and the list learn the name from the room.
       if (event.payload.role === 'user' && !replaying) setTimeout(() => void loadChats(), 600);
@@ -8747,8 +8751,6 @@ function renderEventNode(event) {
   if (event.type.startsWith('message.') || event.type === 'command.output' || event.type === 'run.requested') removeEmpty();
   const stickToBottom = !drawingRecord && pinnedToEnd;
   els.column.append(tidySystemLine(node));
-  // @madre's card on a blank page sits beside the suggestion, not under it.
-  if (node.matches('.local-model') && !els.column.querySelector('.empty-pair .local-model')) welcomePair()?.append(node);
   scheduleFold(node);
   if (!drawingRecord) followTurn(event, node, stickToBottom);
 }
@@ -13971,13 +13973,14 @@ function paintIntentTry(box, said) {
   const level = effortLabel(said.effort);
   box.replaceChildren();
   box.classList.remove('up');
-  box.append(el('span', 'free-what', `${t('Looks like {what}', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation') })} · ${t('{level} might be enough · try it on this one and MADRE will notice', { level: level.toUpperCase() })}`));
-  box.append(el('span', 'intent-basis trial', t('Trial')));
+  // Said as a person would (2026-11-10, the author: «clearer, we build for people»).
+  box.append(el('span', 'free-what', t('This looks like {what}. It may not need so much thinking: try {level} effort on this message only. It answers sooner and spends less.', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation'), level: level.toLowerCase() })));
+  box.append(el('span', 'intent-basis trial', t('Only this message')));
   const later = el('button', 'free-later', t('Not now'));
   later.type = 'button';
   // Declined, it still went out with this message: counted as a try shown and not taken.
   later.addEventListener('click', () => { declineTry(said); hideIntentOffer(); els.input.focus(); });
-  const go = el('button', 'free-go', t('Try {level} on this one', { level: level.toLowerCase() }));
+  const go = el('button', 'free-go', t('Try {level} effort', { level: level.toLowerCase() }));
   go.type = 'button';
   go.addEventListener('click', () => {
     state.effortOnce = { agent: said.agent, model: said.model ?? null, intent: said.intent, effort: said.effort, from: said.from ?? null };
@@ -13994,13 +13997,13 @@ function paintIntentTry(box, said) {
 
 // The try taken, until the message leaves: which rung this one goes at and what happens next.
 function paintIntentTried(box, once) {
-  const level = effortLabel(once.effort).toUpperCase();
+  const level = effortLabel(once.effort).toLowerCase();
   box.replaceChildren();
   box.classList.remove('up');
   box.append(el('span', 'free-what', once.from
-    ? t('This one goes at {level} · if it falls short, MADRE will notice and go back to {from}', { level, from: effortLabel(once.from).toUpperCase() })
-    : t('This one goes at {level} · if it falls short, MADRE will notice and go back to the agent\'s default level', { level })));
-  box.append(el('span', 'intent-basis trial', t('Trial')));
+    ? t('This message goes with {level} effort. If the answer falls short, MADRE goes back to {from} on the next one.', { level, from: effortLabel(once.from).toLowerCase() })
+    : t('This message goes with {level} effort. If the answer falls short, MADRE goes back to the agent\'s usual effort on the next one.', { level })));
+  box.append(el('span', 'intent-basis trial', t('Only this message')));
   const undo = el('button', 'free-later', t('Undo'));
   undo.type = 'button';
   undo.addEventListener('click', () => {
@@ -14040,7 +14043,7 @@ function paintIntentAdvice(box, said) {
   box.append(el('span', 'free-what', intentReason(said)));
   if (said.basis === 'measured') box.append(el('span', 'intent-basis', askWords(t('MEASURED'))));
   if (said.basis === 'observed') box.append(el('span', 'intent-basis observed', t('From your use')));
-  if (said.basis === 'tried') box.append(el('span', 'intent-basis trial', t('Trial')));
+  if (said.basis === 'tried') box.append(el('span', 'intent-basis trial', t('Tried before')));
   const level = said.effort ? effortLabel(said.effort).toUpperCase() : null;
   const words = said.basis === 'tried'
     ? (level ? t('Back to {level}', { level }) : t('Back to the CLI default'))

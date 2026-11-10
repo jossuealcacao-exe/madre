@@ -11,11 +11,13 @@ test('local model: running is not ready, and the room says which of the two it h
   // The line that already announced @madre now carries whether it has been measured against THIS
   // project, because that is the line a person actually reads.
   assert.match(app, /case 'local\.present': \{/);
-  // Said plainly (2026-10-11): what @madre is, what the trial does, and what it needs.
-  assert.match(app, /try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers\./);
-  assert.match(app, /It needs a few conversations with your agents in this project first: without them there is nothing to compare\./);
-  // And one button, which runs the test that already exists.
+  // Said plainly: what @madre is and what the trial does. Since 2026-11-10 it is offered only once
+  // there is something to compare with, with «Try it» and «Remind me later».
+  assert.match(app, /try it: it answers again up to 12 questions your agents already answered here, and MADRE compares the answers\./);
+  assert.match(app, /if \(!payload\.offer\) return null;/);
   assert.match(app, /TRY IT ON THIS PROJECT/);
+  assert.match(app, /t\('Remind me later'\)/);
+  assert.match(app, /fetch\('\/api\/local\/later', \{ method: 'POST' \}\)/);
   assert.match(app, /body: JSON\.stringify\(\{ which: 'match' \}\)/);
   assert.match(app, /it spends nothing, and the answer lands here/);
 
@@ -40,11 +42,14 @@ test('local model: the slow test tells the room, and only when it really ran', a
   assert.ok(branch.includes('if (result.ran)'), 'a test that did not run would still speak');
 
   const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
-  // Said once per model, and said at all: the crew line fires only when the crew CHANGES, so a
-  // room whose Ollama was already up when it opened would never have heard it.
-  assert.match(server, /memory\.metaGet\('local\.announced'\) !== fifth\.version/);
-  assert.match(server, /memory\.metaSet\('local\.announced', fifth\.version\);/);
-  assert.match(server, /await room\.record\('local\.present', \{/);
+  // Offered when agents answered enough here to compare with, after a turn and when Ollama is
+  // wired; put off or unanswered, again after a few days; never once the project was measured.
+  assert.match(server, /if \(exams\.match\?\.ran\) return;/);
+  assert.match(server, /if \(\(await target\.answeredByAgents\(\)\.catch\(\(\) => 0\)\) < LOCAL_TRY_MIN\) return;/);
+  assert.match(server, /now - offered < LOCAL_TRY_AGAIN_MS/);
+  assert.match(server, /await target\.record\('local\.present', \{/);
+  assert.match(server, /if \(event\.type === 'agent\.completed' && event\.payload\?\.agent !== MADRE_AGENT_ID\) void offerLocalTry\(target\)/);
+  assert.match(server, /url\.pathname === '\/api\/local\/later'/);
 });
 
 test('local model: MU/TH/UR can explain the difference between running and being of use', async () => {

@@ -93,6 +93,10 @@ import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, c
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
+// @madre is offered a test once agents answered this many real questions in a conversation, and
+// offered again after these days while it has not been measured (offerLocalTry).
+const LOCAL_TRY_MIN = 6;
+const LOCAL_TRY_AGAIN_MS = 3 * 24 * 60 * 60 * 1000;
 import { moduleUpdate } from './modules/updates.mjs';
 import { ACTIVITY_SOON_MS, recentInProject } from './activity.mjs';
 import { readReminders } from './modules/reminders.mjs';
@@ -1049,6 +1053,28 @@ export async function createPulseServer({
     const base = fit.recommended.train ?? MODEL_TIERS[1];
     return { roomDir, recipeDir: fileURLToPath(new URL('../docs/training/', import.meta.url)), modelName: `madre-${slug}`, baseModel: base.base, memoryGb: fit.hardware?.memoryGb ?? Math.round(totalmem() / 1024 ** 3), fit };
   }
+  // TRYING @madre ON THIS PROJECT (2026-11-10, asked by the author). It used to be announced on a
+  // project's first page, with its one key greyed out: there was nothing to compare it with yet. Now
+  // it is offered in the conversation once agents have answered enough real questions here
+  // (LOCAL_TRY_MIN), with «Try it» and «Remind me later»; unanswered or put off, it comes back after
+  // a few days (LOCAL_TRY_AGAIN_MS), until the project has been measured.
+  async function offerLocalTry(target, { now = Date.now() } = {}) {
+    if (!target || !memory || !localWiring.madre) return;
+    let exams = {};
+    try { exams = JSON.parse(memory.metaGet('exams') ?? '{}'); } catch { exams = {}; }
+    if (exams.match?.ran) return;
+    const offered = Date.parse(memory.metaGet('local.offered') ?? '');
+    if (Number.isFinite(offered) && now - offered < LOCAL_TRY_AGAIN_MS) return;
+    if ((await target.answeredByAgents().catch(() => 0)) < LOCAL_TRY_MIN) return;
+    memory.metaSet('local.offered', new Date(now).toISOString());
+    const model = agents.find((agent) => agent.id === MADRE_AGENT_ID)?.version ?? null;
+    await target.record('local.present', {
+      model,
+      offer: true,
+      // Ollama on another computer of the network (NUE-07): the card does not say «on this Mac».
+      ...(ollama.host && !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?\/?$/i.test(String(ollama.host)) ? { remote: true } : {}),
+    });
+  }
   async function wireOllama({ probe: doProbe = true } = {}) {
     if (doProbe) { ollama = await ollamaProbe(); ollama.autoModel = ollama.chatModel; }
     // A model trained on this room (docs/training) is named madre-<project>: @madre uses it when it exists.
@@ -1088,17 +1114,7 @@ export async function createPulseServer({
       // the second thing is the one a person needs told. Said once per model, in the room, with
       // the one button that settles it — the crew line above fires only when the crew CHANGES,
       // and a room whose Ollama was already up when it opened would never have heard it.
-      if (fifth.ready && memory && memory.metaGet('local.announced') !== fifth.version) {
-        let checked = null;
-        try { checked = JSON.parse(memory.metaGet('exams') ?? '{}').match ?? null; } catch { checked = null; }
-        memory.metaSet('local.announced', fifth.version);
-        await room.record('local.present', {
-          model: fifth.version,
-          // Ollama on another computer of the network (NUE-07): the card does not say «on this Mac».
-          ...(ollama.host && !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?\/?$/i.test(String(ollama.host)) ? { remote: true } : {}),
-          checked: checked?.ran ? { passed: Boolean(checked.passed), matched: checked.matched ?? 0, n: checked.n ?? 0, at: checked.at ?? null } : null,
-        });
-      }
+      await offerLocalTry(room);
     }
     return { ...ollama, settings, project, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist), agent: fifth.ready };
   }
@@ -1823,6 +1839,8 @@ export async function createPulseServer({
       // What OpenCode answered with, and what failed for which provider (src/opencode-health.mjs):
       // the next failure offers a model that works instead of a sentence in English.
       if (event.type === 'agent.completed' && event.payload?.agent === 'opencode') void noteOpenCodeTurn(root, { ok: true, model: event.payload.ranOn ?? null }).catch(() => null);
+      // A turn answered by an agent may be the one that makes @madre worth trying here.
+      if (event.type === 'agent.completed' && event.payload?.agent !== MADRE_AGENT_ID) void offerLocalTry(target).catch(() => null);
       if (event.type === 'message.failed' && event.payload?.target === 'opencode') void noteOpenCodeTurn(root, { ok: false, model: event.payload.ranOn ?? null, error: event.payload.error }).catch(() => null);
       const listening = MODULES.filter((module) => typeof module.onEvent === 'function');
       if (!listening.length) return;
@@ -4803,6 +4821,11 @@ export async function createPulseServer({
         if (payload.stop) return sendJson(response, 200, room.stopExam());
         const result = await room.runExam(String(payload.which ?? ''), { findings: eyecat.findings() });
         return sendJson(response, result?.error ? 409 : 200, { ...result, exams: await room.exams() });
+      }
+      // «Remind me later» on @madre's test: asked again in a few days (offerLocalTry).
+      if (request.method === 'POST' && url.pathname === '/api/local/later') {
+        if (memory) memory.metaSet('local.offered', new Date().toISOString());
+        return sendJson(response, 200, { ok: true, again: LOCAL_TRY_AGAIN_MS });
       }
       // Somebody's own module, handed to MADRE from the panel. It goes through the same door as
       // everything else: checked in a fenced scratch copy, then installed for isolated calls.

@@ -48,11 +48,6 @@ export const ES = {
   '{level} was enough in {n} of your turns': '{level} alcanzó en {n} de tus respuestas',
   'From your use': 'De tu uso',
   // Probar un nivel más bajo en un solo mensaje.
-  '{level} might be enough · try it on this one and MADRE will notice': 'podría bastar {level} · pruébalo en esta pregunta y MADRE lo tendrá en cuenta',
-  'Trial': 'Prueba',
-  'Try {level} on this one': 'Probar {level} en esta pregunta',
-  'This one goes at {level} · if it falls short, MADRE will notice and go back to {from}': 'Esta pregunta va con {level} · si no alcanza, MADRE lo notará y volverá a {from}',
-  'This one goes at {level} · if it falls short, MADRE will notice and go back to the agent\'s default level': 'Esta pregunta va con {level} · si no alcanza, MADRE lo notará y volverá al nivel predeterminado del agente',
   'Undo': 'Deshacer',
   '{level} fell short last time': '{level} no alcanzó la última vez',
   'Back to {level}': 'Volver a {level}',
@@ -1453,11 +1448,6 @@ export const ES = {
     'Contestó como tus agentes en {matched} de {n} preguntas reales de este proyecto. Todavía no: sigue trabajando con tus agentes aquí y pruébalo otra vez más adelante.',
   'SEND THE NEXT TURN TO @MADRE': 'Enviar el próximo mensaje a @madre',
   'MEASURED {when}': 'Probado {when}',
-  '@madre is MADRE\'s own model, and it runs on another computer of your network. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.': '@madre es el modelo propio de MADRE y funciona en otra computadora de tu red. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
-  '@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.':
-    '@madre es el modelo propio de MADRE y funciona en esta Mac. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
-  'It needs a few conversations with your agents in this project first: without them there is nothing to compare.':
-    'Primero necesita algunas conversaciones con tus agentes en este proyecto: sin ellas no hay con qué compararlo.',
   'PURGE': 'Borrado de datos privados',
   '{events} events · {entries} indexed exchanges · {memories} memories rewritten with the marker':
     '{events} eventos · {entries} intercambios indexados · {memories} memorias reescritas con el marcador',
@@ -7386,4 +7376,14 @@ export const ES = {
   "Best known": "Los más conocidos",
   "No provider matches «{query}».": "Ningún proveedor coincide con «{query}».",
   "No provider": "Ningún proveedor",
+  "This looks like {what}. It may not need so much thinking: try {level} effort on this message only. It answers sooner and spends less.": "Parece {what}. Quizá no necesita pensarlo tanto: prueba con esfuerzo {level} solo en este mensaje. Responde más rápido y gasta menos.",
+  "Try {level} effort": "Probar con esfuerzo {level}",
+  "Only this message": "Solo este mensaje",
+  "This message goes with {level} effort. If the answer falls short, MADRE goes back to {from} on the next one.": "Este mensaje va con esfuerzo {level}. Si la respuesta se queda corta, MADRE vuelve a {from} en el siguiente.",
+  "This message goes with {level} effort. If the answer falls short, MADRE goes back to the agent's usual effort on the next one.": "Este mensaje va con esfuerzo {level}. Si la respuesta se queda corta, MADRE vuelve al esfuerzo de siempre del agente en el siguiente.",
+  "Tried before": "Ya se probó",
+  "@madre, the AI on another computer of your network, can now help in this project. Before you give it work, try it: it answers again up to 12 questions your agents already answered here, and MADRE compares the answers. It takes a few minutes and spends nothing.": "@madre, la IA de otra computadora de tu red, ya puede ayudarte en este proyecto. Antes de darle trabajo, pruébala: vuelve a contestar hasta 12 preguntas que tus agentes ya contestaron aquí y MADRE compara las respuestas. Tarda unos minutos y no gasta nada.",
+  "@madre, the AI on this computer, can now help in this project. Before you give it work, try it: it answers again up to 12 questions your agents already answered here, and MADRE compares the answers. It takes a few minutes and spends nothing.": "@madre, la IA de tu computadora, ya puede ayudarte en este proyecto. Antes de darle trabajo, pruébala: vuelve a contestar hasta 12 preguntas que tus agentes ya contestaron aquí y MADRE compara las respuestas. Tarda unos minutos y no gasta nada.",
+  "MADRE will offer it again in a few days.": "MADRE te lo vuelve a ofrecer en unos días.",
+  "Remind me later": "Recordarme después",
 };

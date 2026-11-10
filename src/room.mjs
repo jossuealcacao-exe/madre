@@ -694,6 +694,10 @@ export class Room {
 
   stopExam() { if (this.#examRunning === 'match') this.#examStop = true; return { stopping: this.#examRunning }; }
 
+  // How many real questions agents other than @madre answered in this conversation: what the local
+  // model's test (matchExam) has to compare its answers with.
+  async answeredByAgents() { return exchanges(await this.#store.readAll()).filter((one) => !one.local).length; }
+
   #keepExam(result) {
     let last = {};
     try { last = JSON.parse(this.#memory?.metaGet('exams') ?? '{}'); } catch { last = {}; }

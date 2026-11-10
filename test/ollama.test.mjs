@@ -277,6 +277,12 @@ test('ollama: every conversation distills locally, the one switched to and the o
   };
   const previous = process.env.PULSE_DISTILL_EVERY;
   process.env.PULSE_DISTILL_EVERY = '2';
+  // What is measured is who distils. The memory reviewer (EYECAT) is another thing: the fake
+  // distiller cites sequence 1 whatever is there, and since 2026-11-10 nothing is written before
+  // the first message (@madre's card waits for answers), so its note reads as unsupported and the
+  // reviewer, which never lets the note's own author judge it, would ask the next agent.
+  const eyecatWas = process.env.PULSE_EYECAT;
+  process.env.PULSE_EYECAT = '0';
   const { server } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers, ollamaProbe: async () => probe, reportFetch: fakeOllama() });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -324,6 +330,7 @@ test('ollama: every conversation distills locally, the one switched to and the o
     assert.equal(paid.length, 0, 'a provider was paid to distill');
   } finally {
     if (previous === undefined) delete process.env.PULSE_DISTILL_EVERY; else process.env.PULSE_DISTILL_EVERY = previous;
+    if (eyecatWas === undefined) delete process.env.PULSE_EYECAT; else process.env.PULSE_EYECAT = eyecatWas;
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

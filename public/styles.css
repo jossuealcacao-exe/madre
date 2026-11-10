@@ -8856,13 +8856,11 @@ dialog.room-ask.review-ask:not(.console) .review-ask-note { margin: 0; font-size
 /* ---------- A suggestion on a project's welcome (2026-10-11) ----------
    Continuity (AHP+), offered and never installed from here: under the three openings, a hairline
    apart, left-aligned to be read; the way into Modules in the accent, «No, thanks» quiet. */
-/* Since 2026-11-10 it is its own card beside @madre's, two columns under the blank page. */
-#messages .empty-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); align-items: stretch; gap: 12px; width: min(760px, 100%); margin: 12px auto 0; }
-#messages#messages .empty-pair > * { width: auto; max-width: none; margin: 0 !important; min-width: 0; align-self: stretch; justify-self: stretch; }
-#messages#messages .empty-pair :is(.empty-suggest, .system.local-model) { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 16px 18px; border-radius: 18px; text-align: left; color: var(--text-2); background-color: color-mix(in srgb, var(--bg) 62%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8); box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, .12), 0 14px 34px -18px rgba(0, 0, 0, .55); }
-:root[data-scheme="light"] #messages#messages .empty-pair :is(.empty-suggest, .system.local-model) { background-color: rgba(255, 255, 255, .72); box-shadow: 0 0 0 .5px rgba(20, 30, 20, .1), inset 0 1px 0 #ffffff, 0 14px 34px -20px rgba(20, 30, 20, .3); }
-#messages#messages .empty-pair .system.local-model .says { font-size: 13px; line-height: 1.5; }
-#messages#messages .empty-pair :is(.empty-suggest-acts, .system.local-model .acts) { margin-top: auto; padding-top: 4px; }
+/* Since 2026-11-10 it is a card of its own under the blank page: no border, a shadow barely there. */
+#messages .empty-pair { display: grid; width: min(540px, 100%); margin: 12px auto 0; }
+#messages#messages .empty-pair > * { width: auto; max-width: none; margin: 0 !important; min-width: 0; }
+#messages#messages .empty-pair .empty-suggest { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 16px 18px; border: 0; border-radius: 18px; text-align: left; color: var(--text-2); background-color: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8); box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 28px -16px rgba(0, 0, 0, .22); }
+:root[data-scheme="light"] #messages#messages .empty-pair .empty-suggest { background-color: rgba(255, 255, 255, .8); box-shadow: 0 1px 2px rgba(20, 30, 20, .04), 0 10px 28px -18px rgba(20, 30, 20, .16); }
 .empty-suggest-head { display: grid; gap: 2px; }
 .empty-suggest-eyebrow { font-family: var(--sans); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-3); }
 #messages .empty-suggest-head b { font-size: 14px; font-weight: 650; color: var(--text); }

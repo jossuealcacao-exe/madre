@@ -942,22 +942,22 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     await syncIntentOffer();
     assert.equal(offer.hidden, false);
     assert.equal(posted.at(-1)[1].mode, 1, 'the mode did not reach the suggestion');
-    assert.match(offer.textContent, /Parece una búsqueda · podría bastar BAJO · pruébalo en esta pregunta y MADRE lo tendrá en cuenta/);
-    assert.ok(offer.children.some((child) => child.className === 'intent-basis trial' && child.textContent === 'Prueba'), 'a try carries no badge');
+    assert.match(offer.textContent, /Parece una búsqueda\. Quizá no necesita pensarlo tanto: prueba con esfuerzo bajo solo en este mensaje\./);
+    assert.ok(offer.children.some((child) => child.className === 'intent-basis trial' && child.textContent === 'Solo este mensaje'), 'a try carries no badge');
     assert.ok(!offer.classList.contains('up'));
     const tryKey = offer.children.find((child) => child.className === 'free-go');
-    assert.equal(tryKey.textContent, 'Probar bajo en esta pregunta');
+    assert.equal(tryKey.textContent, 'Probar con esfuerzo bajo');
     assert.equal(offer.children.find((child) => child.className === 'free-later').textContent, 'Ahora no');
     tryKey.listeners.click[0]();
     assert.deepEqual(state.effortOnce, { agent: 'codex', model: null, intent: 'lookup', effort: 'low', from: 'medium' });
     assert.equal(state.chosenEffort.codex, undefined, 'a try was remembered for every message');
     assert.ok(!String(localStorage.getItem('pulse.chosenEffort')).includes('"codex":"low"'));
-    assert.match(offer.textContent, /Esta pregunta va con BAJO · si no alcanza, MADRE lo notará y volverá a MEDIO/);
+    assert.match(offer.textContent, /Este mensaje va con esfuerzo bajo\. Si la respuesta se queda corta, MADRE vuelve a medio en el siguiente\./);
     // Edited, still the same kind of request: the try stays.
     registry.get('message').value = '¿dónde está definido el puerto por defecto del servidor?';
     await syncIntentOffer();
     assert.equal(state.effortOnce?.effort, 'low');
-    assert.match(offer.textContent, /Esta pregunta va con BAJO/);
+    assert.match(offer.textContent, /Este mensaje va con esfuerzo bajo/);
     // Sent: it goes at BAJO, it is counted as a try taken, and the next message is back where it was.
     for (const listener of registry.get('composer').listeners.submit) {
       try { await listener({ preventDefault() {} }); } catch { /* the rest of the room's submit is not under test here */ }
