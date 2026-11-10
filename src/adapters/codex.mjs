@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
+import { codexSteps } from './steps.mjs';
 import { readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -134,7 +135,7 @@ export async function codexGeneratedImages(threadId, { home = process.env.CODEX_
 export const CODEX_SUBAGENT_NOTE = 'If you start a subagent: this run keeps no conversation history, so never ask the subagent to inherit or fork this conversation. Give it the whole task in its own message.';
 export async function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   const result = await runReadonlyProcess({
-    onProgress: onProgress ? (out) => { const said = parseCodexOutput(out); onProgress({ chars: said.text.length, subagents: said.subagents ?? [] }); } : null,
+    onProgress: onProgress ? (out) => { const said = parseCodexOutput(out); onProgress({ chars: said.text.length, subagents: said.subagents ?? [], steps: codexSteps(out, { root: projectRoot }) }); } : null,
     executable,
     args: buildCodexArgs({ projectRoot, prompt: lease?.airlock ? prompt : `${prompt}\n\n${CODEX_SUBAGENT_NOTE}`, model, effort, attachments, lease, scopes, memoryServer, mcpServers }),
     cwd: lease ? lease.outDir : projectRoot,

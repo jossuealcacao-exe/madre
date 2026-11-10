@@ -5355,6 +5355,50 @@ async function openSkillById(id) {
   openSkillText(skill);
 }
 
+// WHAT THE AGENT IS DOING, IN WORDS (2026-11-09; src/adapters/steps.mjs): the step in front on the
+// line where the phrases were — «Reading src/app.js», «Running npm test» — and the ones before it as
+// quiet cards under the bubble, the last few, with how many more there were. An agent whose CLI
+// does not say its steps keeps the phrases.
+const STEP_WORDS = {
+  read: ['Reading', 'Reading {what}', 'book'],
+  search: ['Searching', 'Searching for {what}', 'search'],
+  edit: ['Changing a file', 'Changing {what}', 'pencil'],
+  write: ['Writing a file', 'Writing {what}', 'compose'],
+  run: ['Running a command', 'Running {what}', 'running'],
+  web: ['Searching the web', 'Searching the web: {what}', 'globe'],
+  fetch: ['Reading a page', 'Reading {what}', 'globe'],
+  think: ['Thinking', 'Thinking', 'brain'],
+  plan: ['Ordering the steps', 'Ordering the steps', 'list'],
+  tool: ['Using a tool', 'Using {what}', 'puzzle'],
+};
+const stepWords = (step) => { const [bare, withWhat] = STEP_WORDS[step.kind] ?? STEP_WORDS.tool; return step.what ? t(withWhat, { what: step.what }) : t(bare); };
+const STEPS_SHOWN = 4;
+function showSteps(event) {
+  const { messageId, steps = [], count = steps.length } = event.payload ?? {};
+  const node = document.getElementById(`working-${messageId}`);
+  if (!node || !steps.length) return;
+  node.dataset.steps = '1';
+  const status = node.querySelector('.bubble .status');
+  const now = `${stepWords(steps.at(-1))}…`;
+  if (status && status.textContent !== now) {
+    setText(status, now);
+    status.animate?.([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+  }
+  let list = node.querySelector(':scope > .work-steps');
+  if (!list) { list = el('div', 'work-steps'); list.setAttribute('aria-label', t('What it did so far')); node.append(list); }
+  const before = steps.slice(0, -1).slice(-STEPS_SHOWN);
+  const more = Math.max(0, count - 1 - before.length);
+  list.replaceChildren(...(more ? [el('span', 'work-step more', t('+{n} earlier', { n: more }))] : []), ...before.map((step) => {
+    const card = el('span', `work-step ${step.kind}`);
+    const icon = el('span', 'work-step-icon');
+    icon.innerHTML = trazo((STEP_WORDS[step.kind] ?? STEP_WORDS.tool)[2]); // trusted: our own SVG
+    card.append(icon, el('span', 'work-step-words', stepWords(step)));
+    card.title = stepWords(step);
+    return card;
+  }));
+  list.hidden = !list.childElementCount;
+}
+
 function showHelpers(event) {
   const { messageId, subagents = [], mode } = event.payload ?? {};
   const node = document.getElementById(`working-${messageId}`);
@@ -5979,6 +6023,8 @@ function renderThinking(event) {
   let phraseIndex = -1;
   let phraseChangedAt = 0;
   const speak = (seconds) => {
+    // Once the agent says its own steps (showSteps), the line is theirs, not a phrase from the list.
+    if (node.dataset.steps) return;
     // Early phrases turn over quickly, then settle: the model reads first, then reasons, then writes.
     const stage = seconds < 4 ? 0 : seconds < 12 ? 1 : seconds < 40 ? 2 : 3;
     const pool = phrases[stage];
@@ -8224,6 +8270,7 @@ function renderEventNode(event) {
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
     case 'turn.reading': showReading(event); return;
     case 'turn.subagents': showHelpers(event); return;
+    case 'turn.steps': showSteps(event); return;
     case 'turn.skills': showSkills(event); return;
     // Who has a session, once the probe that runs when the project starts comes back: the crew is
     // drawn again, so a first message never goes to an agent without one (QA 1.1.0, NUE-11).

@@ -1967,7 +1967,18 @@ export class Room {
       // when what they are doing changes, through the same privacy guard as the answer.
       let helpersSaid = '';
       const keepHelpers = (list) => keptSubagents(list, { redact: (said) => (this.#privacy ? this.#privacy.redact(said).text : said) });
-      const onProgress = ({ chars, subagents }) => {
+      // And its steps, as the CLI says them (src/adapters/steps.mjs): what it reads, searches,
+      // changes and runs, said again only when there is a new one, through the privacy guard.
+      let stepsSaid = '';
+      const onProgress = ({ chars, subagents, steps }) => {
+        if (Array.isArray(steps) && steps.length) {
+          const kept = steps.slice(-12).map(({ kind, what }) => ({ kind, what: what && this.#privacy ? this.#privacy.redact(what).text : what }));
+          const key = JSON.stringify(kept);
+          if (key !== stepsSaid) {
+            stepsSaid = key;
+            this.#say('turn.steps', { messageId, agent: agent.id, steps: kept, count: steps.length });
+          }
+        }
         if (Array.isArray(subagents) && subagents.length) {
           const kept = keepHelpers(subagents);
           const key = JSON.stringify(kept);

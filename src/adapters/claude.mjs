@@ -3,6 +3,7 @@
 import { ENV_SECRETS } from '../checkpoint.mjs';
 import { runReadonlyProcess } from './process.mjs';
 import { claudeSubagents, jsonLines } from './subagents.mjs';
+import { claudeSteps } from './steps.mjs';
 
 // dontAsk denies any tool use that is not pre-approved, so under a lease the
 // Write/Edit tools exist but only paths inside the lease directory are
@@ -131,7 +132,7 @@ export function claudeProgress(output, { root = null } = {}) {
     if (event?.type !== 'assistant' || event.parent_tool_use_id) continue;
     for (const part of event.message?.content ?? []) if (part?.type === 'text') chars += String(part.text ?? '').length;
   }
-  return { chars, subagents: claudeSubagents(events, { root }) };
+  return { chars, subagents: claudeSubagents(events, { root }), steps: claudeSteps(events, { root }) };
 }
 
 export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
