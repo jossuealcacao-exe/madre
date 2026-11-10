@@ -24,7 +24,7 @@
 // for less motion gets one still frame redrawn when something changes. No line joins two universes
 // until a link exists (phase 3c).
 
-import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, texturesReady } from './nostromo-engine.js';
+import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, cellNoise, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, fractalNoise, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, texturesReady } from './nostromo-engine.js';
 import { createStrain, inviteNeural, neuralKey, paintNeuralKey, tellViews } from './neural.js';
 import { trazo } from './icons.js';
 
@@ -65,241 +65,82 @@ function canvasOf(width, height) {
   return canvas;
 }
 
-// ---- BISHOP, as the macroverse sees it: a nebula gathered into a sphere, floating at the centre,
-// with one eye that sees everything, in violets, purples and blues. Drawn here, on canvas 2D, from
-// nothing but noise generated here:
-//   the sphere — gas warped by gas (a nebula, not a marble), magenta and cyan drifting through the
-//     violet, dark lanes of dust, knots of light; lit from the top left, so it has a day side, a
-//     terminator and a night side, a soft sheen and a rim lit from behind: round, not a disc;
-//   the eye — on the sphere itself, so it foreshortens as it looks aside: an iris of fibres and
-//     crypts with a darker limbal ring and a corona, a pupil that opens a little when a universe is
-//     carried to it, the light's reflection in it, lids of gas that blink now and then; it follows
-//     the person (the pointer), with the small jumps of a living eye;
-//   round it — an atmosphere that breathes, wisps of nebula turning two ways, motes of light.
-// The sphere is painted small and scaled up (gas is soft), at most ORB_FPS times a second; the
-// wisps are painted once.
-const ORB_SIDE = 176;              // px of the sphere's own canvas
-const ORB_FPS = 30;                // the most the sphere is painted again in a second
-const ORB_MOTES = 18;              // motes of light in orbit round it
-// The gas, from the deep to the lit: indigo, violet, purple, blue, a pale lilac at the brightest.
-const ORB_GAS = [[0, 7, 3, 24], [0.18, 28, 10, 74], [0.36, 62, 24, 152], [0.52, 108, 50, 222], [0.66, 146, 80, 250], [0.78, 92, 118, 255], [0.9, 158, 188, 255], [1, 236, 228, 255]];
-const ORB_LIGHT = (() => { const l = [-0.46, 0.56, 0.69]; const n = Math.hypot(...l); return l.map((v) => v / n); })();
-
-// Fractal value noise on a band that wraps round in x (a sphere's longitude), 0..1, stretched.
-function orbNoise(width, height, seed, octaves, stretch = 0.5) {
-  const field = new Float32Array(width * height);
-  const cell = (x, y, o) => {
-    let h = Math.imul(x + 1, 374761393) ^ Math.imul(y + 7, 668265263) ^ Math.imul(seed * 31 + o, 2246822519);
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
-  };
-  let amp = 1;
-  for (let o = 0; o < octaves; o += 1) {
-    const cols = Math.min(6 << o, Math.floor(width / 3));
-    const rows = Math.max(2, Math.min(Math.round(cols * stretch), Math.floor(height / 4)));
-    for (let y = 0; y < height; y += 1) {
-      const fy = (y / height) * rows, y0 = Math.floor(fy), ty = fy - y0, sy = ty * ty * (3 - 2 * ty);
-      for (let x = 0; x < width; x += 1) {
-        const fx = (x / width) * cols, x0 = Math.floor(fx) % cols, tx = fx - Math.floor(fx), sx = tx * tx * (3 - 2 * tx);
-        const x1 = (x0 + 1) % cols;
-        const a = cell(x0, y0, o), b = cell(x1, y0, o), c = cell(x0, y0 + 1, o), d = cell(x1, y0 + 1, o);
-        field[y * width + x] += amp * (a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy);
-      }
-    }
-    amp *= 0.52;
-  }
-  let low = Infinity, high = -Infinity;
-  for (const value of field) { low = Math.min(low, value); high = Math.max(high, value); }
-  for (let i = 0; i < field.length; i += 1) field[i] = (field[i] - low) / (high - low || 1);
-  return field;
-}
+const ORB_FPS = 30;                // the most the centre's sun is painted again in a second
 const smooth = (edge0, edge1, x) => { const k = clamp((x - edge0) / (edge1 - edge0), 0, 1); return k * k * (3 - 2 * k); };
 
-function bishopOrb() {
-  const side = ORB_SIDE;
-  const W = 256, H = 128;
-  const gas = orbNoise(W, H, 7, 5, 1.1);
-  const fine = orbNoise(W, H, 13, 4, 0.9);
-  const warp = orbNoise(W, H, 29, 3, 0.8);
-  const tint = orbNoise(W, H, 41, 3, 0.7);
-  const air = orbNoise(W, H, 19, 4);
-  // Knots of light in the gas: a few bright points, soft.
-  const knots = new Float32Array(W * H);
-  {
-    const rnd = random(77);
-    for (let k = 0; k < 80; k += 1) {
-      const kx = Math.floor(rnd() * W), ky = 6 + Math.floor(rnd() * (H - 12)), bright = 0.35 + rnd() * 0.65;
-      for (let dy = -2; dy <= 2; dy += 1) for (let dx = -2; dx <= 2; dx += 1) {
-        const at = (ky + dy) * W + ((kx + dx + W) % W);
-        knots[at] = Math.max(knots[at], bright * Math.exp(-(dx * dx + dy * dy) / 1.3));
+// ---- The sun at the centre of the projects (2026-11-10, asked by the author: «the sun does not feel
+// like a real sun»). The Coordinator in the planets view is a star now, drawn as the Sun is seen in a
+// white-light photograph, from the same noise the memories' dwarfs are made of (nostromo-engine.js):
+//   granulation — bright cells of rising gas and dark lanes between them, over a slow unevenness;
+//   spots — a dark umbra in a paler penumbra, a few, drifting with the turn;
+//   limb darkening — brightest in the middle, dimmer and warmer toward the edge, more in blue than
+//     in red, which is what makes a disc of light read as a ball;
+//   round it — a tight bright skin at the limb and a wide warm glow, no rays.
+// The surface is a map of the whole body in latitude and longitude, built once; turning is sliding
+// along it. Painted small (SUN_SIDE) and scaled, at most ORB_FPS times a second.
+const SUN_SIDE = 192;
+const SUN_W = 256;
+const SUN_H = 128;
+// How much each channel dims at the limb, red to blue.
+const SUN_LIMB = [0.42, 0.62, 0.86];
+// The photosphere's own colour, a little warm of white.
+const SUN_TONE = [255, 236, 196];
+function sunOrb() {
+  const map = new Float32Array(SUN_W * SUN_H);
+  // A few spots, each a latitude, a longitude and a size, in the bands spots keep to.
+  const spots = [[0.28, 0.6, 0.07], [0.22, 0.9, 0.045], [-0.3, 2.4, 0.06], [-0.24, 2.62, 0.035], [0.18, 4.1, 0.05], [-0.2, 5.3, 0.04]];
+  for (let row = 0; row < SUN_H; row += 1) {
+    const lat = ((row + 0.5) / SUN_H - 0.5) * Math.PI;
+    const cl = Math.cos(lat), sl = Math.sin(lat);
+    for (let col = 0; col < SUN_W; col += 1) {
+      const lon = ((col + 0.5) / SUN_W) * Math.PI * 2;
+      const x = cl * Math.cos(lon), y = sl, z = cl * Math.sin(lon);
+      const [near, next] = cellNoise(x * 14 + 3, y * 14, z * 14);
+      const lanes = smooth(0.02, 0.22, next - near);
+      const drift = fractalNoise(x * 2.4 + 9, y * 2.4, z * 2.4, 4);
+      let bright = 0.7 + 0.28 * lanes + 0.2 * (drift - 0.5);
+      for (const [sLat, sLon, size] of spots) {
+        const d = Math.acos(clamp(Math.sin(sLat) * sl + Math.cos(sLat) * cl * Math.cos(lon - sLon), -1, 1));
+        if (d < size * 1.9) bright *= 0.45 + 0.55 * smooth(size * 0.55, size * 1.9, d) + (d < size * 0.55 ? -0.25 : 0);
       }
+      map[row * SUN_W + col] = clamp(bright, 0.05, 1.1);
     }
   }
-  const sample = (field, u, v) => {
-    const x = (((u % 1) + 1) % 1) * W, y = clamp(v, 0, 0.999) * (H - 1);
-    const x0 = Math.floor(x), y0 = Math.floor(y), tx = x - x0, ty = y - y0;
-    const x1 = (x0 + 1) % W, y1 = Math.min(H - 1, y0 + 1);
-    const a = field[y0 * W + x0], b = field[y0 * W + x1], c = field[y1 * W + x0], d = field[y1 * W + x1];
-    return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
-  };
-  const lut = new Float32Array(256 * 3);
-  for (let i = 0; i < 256; i += 1) {
-    const k = i / 255;
-    const at = ORB_GAS.findIndex((stop) => stop[0] >= k);
-    const hi = ORB_GAS[Math.max(1, at)], lo = ORB_GAS[Math.max(0, at - 1)];
-    const f = hi[0] === lo[0] ? 0 : (k - lo[0]) / (hi[0] - lo[0]);
-    for (let c = 0; c < 3; c += 1) lut[i * 3 + c] = lo[c + 1] + (hi[c + 1] - lo[c + 1]) * f;
-  }
-  // The disc, once: for every pixel inside it, its normal, where on the sphere it looks, and how
-  // the light falls on it (diffuse, sheen, rim).
-  const N = side * side;
-  const nxs = new Float32Array(N), nys = new Float32Array(N), nzs = new Float32Array(N);
-  const lon = new Float32Array(N), lat = new Float32Array(N), inside = new Uint8Array(N);
-  const lit = new Float32Array(N), sheen = new Float32Array(N), rimOf = new Float32Array(N);
-  const [Lx, Ly, Lz] = ORB_LIGHT;
-  for (let py = 0; py < side; py += 1) {
-    for (let px = 0; px < side; px += 1) {
-      const i = py * side + px;
-      const sx = ((px + 0.5) / side) * 2 - 1, sy = ((py + 0.5) / side) * 2 - 1;
-      const d2 = sx * sx + sy * sy;
-      if (d2 > 1) continue;
-      const z = Math.sqrt(1 - d2);
-      inside[i] = 1;
-      nxs[i] = sx; nys[i] = -sy; nzs[i] = z;
-      lon[i] = Math.atan2(sx, z); lat[i] = Math.asin(clamp(-sy, -1, 1));
-      const dot = sx * Lx - sy * Ly + z * Lz;
-      lit[i] = Math.max(0, dot);
-      sheen[i] = Math.max(0, 2 * dot * z - Lz) ** 18;
-      rimOf[i] = (1 - z) ** 2.4;
-    }
-  }
-  const canvas = canvasOf(side, side);
-  const ctx = canvas.getContext('2d');
-  const image = ctx.createImageData(side, side);
-  const data = image.data;
-
-  // The wisps round it, painted once: a nebula in a ring from the rim outward, thinning away.
-  const WS = 340, REACH = 2.6;
-  const wisps = canvasOf(WS, WS);
-  {
-    const wctx = wisps.getContext('2d');
-    const out = wctx.createImageData(WS, WS);
-    for (let py = 0; py < WS; py += 1) {
-      for (let px = 0; px < WS; px += 1) {
-        const dx = (px - WS / 2) / (WS / 2), dy = (py - WS / 2) / (WS / 2);
-        const rr = Math.hypot(dx, dy) * REACH;
-        if (rr < 0.82 || rr > REACH) continue;
-        const angle = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
-        const radial = rr / REACH;
-        const bend = sample(warp, angle * 2, radial) - 0.5;
-        const f = sample(air, angle * 2 + bend * 0.3, radial + bend * 0.2) * 0.6 + sample(fine, angle * 4 + 0.21, radial * 0.7 + 0.2) * 0.4;
-        const fall = smooth(0.86, 1.06, rr) * (1 - smooth(1.15, REACH, rr));
-        const a = fall * f ** 2.3;
-        const h = sample(tint, angle * 2, radial);
-        const mag = smooth(0.6, 0.9, h), cyan = smooth(0.6, 0.9, 1 - h);
-        const o = (py * WS + px) * 4;
-        out.data[o] = 112 + 90 * mag - 40 * cyan; out.data[o + 1] = 58 + 40 * cyan; out.data[o + 2] = 240 + 15 * cyan; out.data[o + 3] = 255 * a;
-      }
-    }
-    wctx.putImageData(out, 0, 0);
-  }
-
-  // One frame of the sphere. `eye`: where it looks (x, y: -1..1 across the screen), how open its
-  // pupil is (`open`, 0..1), how closed its lids are (`lid`, 0..1), and whether BISHOP sleeps.
-  function paint(t, eye) {
-    // The eye's direction on the sphere and the frame round it.
-    let gx = eye.x * 0.62, gy = -eye.y * 0.62;
-    const gz = Math.sqrt(Math.max(0.05, 1 - gx * gx - gy * gy));
-    const gl = Math.hypot(gx, gy, gz); gx /= gl; gy /= gl; const gzn = gz / gl;
-    const rl = Math.hypot(gzn, gx) || 1;
-    const Rx = gzn / rl, Rz = -gx / rl;                         // right: up × gaze
-    const Ux = gy * Rz, Uy = gzn * Rx - gx * Rz, Uz = -gy * Rx;   // up: gaze × right
-    const ex = gx, ey = -gy;                                    // the eye's centre on the disc
-    const turn = t * 0.02;
-    const life = eye.asleep ? 0.45 : 1;
-    const pupilR = 0.082 + 0.05 * eye.open + 0.004 * Math.sin(t * 1.3);
-    const irisR = 0.3;
-    const lidHalf = (1 - eye.lid) * 0.36;
-    for (let i = 0; i < N; i += 1) {
-      const o = i * 4;
-      if (!inside[i]) { data[o + 3] = 0; continue; }
-      const nx = nxs[i], ny = nys[i], nz = nzs[i];
-      const c = nx * gx + ny * gy + nz * gzn;
-      const d2 = Math.max(0, 2 * (1 - c));               // chord² from the eye's centre
-      // The vortex: the gas winds into the eye, a little, faster near it.
-      const wind = 0.9 / (1 + d2 * 26) + t * 0.22 / (1 + d2 * 60);
-      const sxp = nx, syp = -ny;
-      const dx = sxp - ex, dy = syp - ey;
-      const cw = Math.cos(wind), sw = Math.sin(wind);
-      const qx = ex + dx * cw - dy * sw, qy = ey + dx * sw + dy * cw;
-      let j = Math.round(((qy + 1) / 2) * side - 0.5) * side + Math.round(((qx + 1) / 2) * side - 0.5);
-      if (j < 0 || j >= N || !inside[j]) j = i;
-      const u = lon[j] / (Math.PI * 2), v = lat[j] / Math.PI + 0.5;
-      // A nebula: the gas warped by gas.
-      const wu = sample(warp, u * 2, v * 2) - 0.5, wv = sample(warp, u * 2 + 0.31, v * 2 + 0.17) - 0.5;
-      const gu = u + turn + wu * 0.18, gv = v + wv * 0.12;
-      let g = sample(gas, gu, gv) * 0.6 + sample(fine, gu * 3 + 0.37, gv * 2.6) * 0.4;
-      g = smooth(0.1, 0.9, g) + (sample(fine, gu * 7 + 0.11, gv * 5.2) - 0.5) * 0.18;
-      const k = clamp(Math.round(g * 255), 0, 255) * 3;
-      let r = lut[k], gr = lut[k + 1], b = lut[k + 2];
-      // Magenta and cyan drifting through the violet; lanes of dust.
-      const h = sample(tint, gu * 1.4, gv * 1.4);
-      const mag = smooth(0.62, 0.92, h) * 0.38, cyan = smooth(0.62, 0.92, 1 - h) * 0.3;
-      r += (198 * g - r) * mag + (80 * g - r) * cyan; gr += (70 * g - gr) * mag + (196 * g - gr) * cyan; b += (226 * g - b) * mag + (255 * g - b) * cyan;
-      const dust = 1 - smooth(0.6, 0.82, sample(warp, gu * 3.3 + 0.6, gv * 2.9)) * 0.55;
-      // The light: a day side and a night side, a sheen, a rim lit from behind; the gas glows a little of its own.
-      const shade = (0.14 + 0.95 * lit[i]) * dust;
-      const glow = 0.1 + 0.2 * g;
-      r = r * (shade + glow) * life; gr = gr * (shade + glow) * life; b = b * (shade + glow) * life;
-      const knot = sample(knots, gu, gv) * life;
-      r += 255 * knot; gr += 214 * knot; b += 255 * knot;
-      const s = sheen[i] * 0.4 * life;
-      r += 170 * s; gr += 180 * s; b += 255 * s;
-      const rim = rimOf[i] * life;
-      r += 60 * rim; gr += 96 * rim; b += 255 * rim;
-      // The eye, on the sphere.
-      if (c > 0.6 && life > 0.5) {
-        const lx = nx * Rx + nz * Rz, ly = nx * Ux + ny * Uy + nz * Uz;
-        const e = Math.sqrt(d2);
-        const ay = Math.abs(ly);
-        const open = 1 - smooth(lidHalf - 0.035, lidHalf + 0.008, ay);
-        // The lids' crease, where gas meets the eye.
-        const crease = eye.lid > 0.02 || lidHalf < 0.34 ? Math.exp(-(((ay - lidHalf) / 0.025) ** 2)) * 0.35 * (e < irisR + 0.12 ? 1 : 0) : 0;
-        if (open > 0) {
-          const angle = Math.atan2(ly, lx) / (Math.PI * 2) + 0.5;
-          const fibre = 0.55 + 0.45 * sample(fine, angle * 9, e * 1.6 + 0.3);
-          // Crypts: soft hollows in the middle of the iris, never ticks at its rim.
-          const crypt = smooth(0.62, 0.86, sample(warp, angle * 3 + 0.2, e * 1.8 + 0.4)) * Math.exp(-(((e - irisR * 0.55) / (irisR * 0.28)) ** 2));
-          const irisIn = 1 - smooth(irisR - 0.018, irisR + 0.01, e);
-          const limbal = smooth(irisR - 0.075, irisR - 0.005, e);
-          const collar = Math.exp(-(((e - pupilR * 1.75) / 0.022) ** 2));
-          const depthIn = e / irisR;
-          let ir = 150 + 70 * (1 - depthIn), ig = 150 + 60 * (1 - depthIn), ib = 255;
-          const fibreLight = (0.55 + 0.6 * fibre) * (1 - 0.3 * crypt) * (1 - 0.45 * limbal) + 0.35 * collar;
-          ir *= fibreLight; ig *= fibreLight; ib *= Math.min(1.2, fibreLight + 0.15);
-          // The iris is lit by the same light, a little: a curved thing, not a sticker.
-          const irisLit = 0.62 + 0.45 * lit[i];
-          ir *= irisLit; ig *= irisLit; ib *= irisLit;
-          const mix = irisIn * open;
-          r += (ir - r) * mix; gr += (ig - gr) * mix; b += (ib - b) * mix;
-          const pupil = (1 - smooth(pupilR - 0.012, pupilR + 0.004, e)) * open;
-          r += (5 - r) * pupil; gr += (2 - gr) * pupil; b += (16 - b) * pupil;
-          const corona = Math.exp(-(((e - irisR) / 0.075) ** 2)) * 0.42 * open;
-          r += 70 * corona; gr += 116 * corona; b += 255 * corona;
-          // The light's reflection: where the light would glint, not where the eye looks.
-          const glint = Math.max(0, 1 - Math.hypot(sxp - (ex - 0.075), syp - (ey - 0.085)) / 0.028) * irisIn * open;
-          const glint2 = Math.max(0, 1 - Math.hypot(sxp - (ex + 0.045), syp - (ey + 0.06)) / 0.012) * irisIn * open * 0.5;
-          r += 255 * (glint + glint2); gr += 255 * (glint + glint2); b += 255 * (glint + glint2);
+  const canvas = canvasOf(SUN_SIDE, SUN_SIDE);
+  const pen = canvas.getContext('2d');
+  const image = pen.createImageData(SUN_SIDE, SUN_SIDE);
+  const sun = { canvas, paintedAt: -1 };
+  // `turn` in radians; `life` dims it while the Coordinator's room sleeps.
+  sun.paint = (turn, life = 1) => {
+    const data = image.data;
+    const half = SUN_SIDE / 2;
+    for (let py = 0; py < SUN_SIDE; py += 1) {
+      const ny = (py + 0.5 - half) / half;
+      for (let px = 0; px < SUN_SIDE; px += 1) {
+        const nx = (px + 0.5 - half) / half;
+        const k = (py * SUN_SIDE + px) * 4;
+        const rr = nx * nx + ny * ny;
+        if (rr > 1) { data[k + 3] = 0; continue; }
+        const mu = Math.sqrt(1 - rr);
+        // A slight lean, so the spots' bands are not a flat line across the face.
+        const lat = Math.asin(clamp(-ny * 0.96 + mu * 0.28, -1, 1));
+        const lon = Math.atan2(nx, mu) + turn;
+        const u = ((lon / (Math.PI * 2)) % 1 + 1) % 1;
+        const v = clamp(lat / Math.PI + 0.5, 0, 0.999);
+        const g = map[Math.floor(v * SUN_H) * SUN_W + Math.floor(u * SUN_W)];
+        // The pattern fades toward the limb, where the cells foreshorten.
+        const grain = 1 + (g - 0.86) * (0.35 + 0.65 * mu);
+        const edge = Math.min(1, (1 - Math.sqrt(rr)) * half * 0.9);
+        for (let c = 0; c < 3; c += 1) {
+          const limb = 1 - SUN_LIMB[c] * (1 - mu);
+          data[k + c] = clamp(SUN_TONE[c] * limb * grain * life * 1.04, 0, 255);
         }
-        r *= 1 - crease; gr *= 1 - crease; b *= 1 - crease;
+        data[k + 3] = 255 * edge;
       }
-      data[o] = r; data[o + 1] = gr; data[o + 2] = b;
-      // The edge is gas, not a line: it thins out, ragged with the gas itself.
-      data[o + 3] = 255 * (1 - smooth(0.92 + (g - 0.5) * 0.06, 1.0, Math.sqrt(1 - nz * nz)));
     }
-    ctx.putImageData(image, 0, 0);
-  }
-  return { canvas, wisps, reach: REACH, paint, paintedAt: -1 };
+    pen.putImageData(image, 0, 0);
+  };
+  return sun;
 }
 
 // How big a universe reads at zoom 1, in css px of radius: the more it knows, the bigger
@@ -350,6 +191,8 @@ function paintUniverse(one, dpr, shown = null, neural = false) {
     for (let step = 0; step < (one.settled ? 8 : RELAX_STEPS); step += 1) { t += 1 / 60; engine.stepNostromo(1, t); }
   }
   scene.cam = { x: 0, y: 0, scale: (css / 2 - 4) / BODY_REACH, manual: true };
+  // The Coordinator's memories ride round the sun drawn here (sunOrb): its own core is not drawn.
+  scene.noCore = Boolean(one.centre) && !neural;
   if (data?.sealed) scene.cage = { at: 0, closed: true };
   // Neural mode (public/neural.js): the universe drawn as a cluster of neurons round its bulb.
   scene.neural = neural;
@@ -519,11 +362,10 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   let queued = false;
   let resizeTimer = 0;
   const drag = { active: false, moved: false, turning: false, link: null, x: 0, y: 0, x0: 0, y0: 0 };
-  // BISHOP at the centre: its room when the lobby knows it, and its body (bishopOrb), made on first
-  // sight. Where its eye looks, how open it is, and where the pointer is over the space.
+  // BISHOP at the centre: its room when the lobby knows it, and its sun (sunOrb), made on first sight;
+  // and where the pointer is over the space.
   const core = { centre: true, room: null, screen: null };
-  let orb = null;
-  const gaze = { x: 0, y: 0, open: 0, at: 0, jumpAt: 0, jx: 0, jy: 0, blinkAt: -1, nextBlink: 3 + Math.random() * 4, twice: false };
+  let sun = null;
   let pointer = null;
   // Neural mode, switched from its key or because a project switched it: the space as it was fades
   // over the new drawing, the light runs out from the centre, every universe is drawn again its new
@@ -562,7 +404,6 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     if (!layer.isConnected || !actions.mayTellViews?.()) return;
     if (tellViews({ key: neuralButton, host: layer, neural, onSwitch: () => setNeuralMode(!neural) })) actions.toldViews?.();
   }, 2200);
-  const motes = Array.from({ length: ORB_MOTES }, (_, i) => { const rnd = random(hash(`mote${i}`)); return { phase: rnd() * Math.PI * 2, reach: 1.3 + rnd() * 0.65, speed: 0.12 + rnd() * 0.2, tilt: (rnd() - 0.5) * 0.5, size: 0.35 + rnd() * 0.6 }; });
 
   function layout(all) {
     // BISHOP's own room is the centre, not a universe on an orbit.
@@ -974,13 +815,11 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     ctx.globalAlpha = 1;
   }
 
-  // BISHOP at the centre: a gaseous sphere floating, an eye that sees everything (bishopOrb). Its
-  // eye follows what the person looks at — the chosen universe, the one under the pointer, the one
-  // being carried — and the pointer itself when nothing is; its pupil opens while a universe is
-  // carried onto it. Dim and slow while its room sleeps. Its name and its state under it.
+  // BISHOP at the centre: a sun in the planets view (sunOrb, 2026-11-10; it was a nebula with an eye),
+  // the bulb of the brain in the neural one. Dimmer while its room sleeps. Its name and its state
+  // under it.
   function drawCentre(ctx, beat) {
     if (!bishop) return;
-    if (!orb) orb = bishopOrb();
     const room = core.room;
     const awake = Boolean(room?.open);
     const float = reduced ? 0 : Math.sin(clock * 0.8) * 3;
@@ -1002,100 +841,33 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       const ignite = neuralSince === null ? 1 : clamp((clock - neuralSince) / NEURAL_IGNITION, 0, 1);
       drawNeuralBulb(ctx, p.x, p.y, r * 1.6, clock, { beat, light: awake ? 1 : 0.6, ignite, tone: 'bishop', still: reduced });
     } else {
-      // Where it looks: at the person (the pointer) first; at the universe being carried, or the
-      // chosen one, when the pointer is away; wandering slowly when nothing is there. A living eye
-      // never holds still: small jumps every second or so.
-      const seen = linking?.from ?? (focus && !focus.centre ? focus : null);
-      let target = pointer ?? seen?.screen ?? null;
-      if (!target && !reduced) target = { x: p.x + Math.cos(clock * 0.21) * 160, y: p.y + Math.sin(clock * 0.34) * 90 };
-      if (!reduced && clock > gaze.jumpAt) { gaze.jumpAt = clock + 0.6 + Math.random() * 1.2; gaze.jx = (Math.random() - 0.5) * 0.07; gaze.jy = (Math.random() - 0.5) * 0.05; }
-      const toward = target ? { x: target.x - p.x, y: target.y - p.y } : { x: 0, y: 0 };
-      const far = Math.hypot(toward.x, toward.y) + 180;
-      const step = reduced ? 1 : clamp((clock - gaze.at) * 6, 0, 1);
-      gaze.at = clock;
-      gaze.x += (clamp(toward.x / far + gaze.jx, -1, 1) - gaze.x) * step;
-      gaze.y += (clamp(toward.y / far + gaze.jy, -1, 1) - gaze.y) * step;
-      gaze.open += ((linking?.over === core ? 1 : hover === core ? 0.45 : 0) - gaze.open) * step;
-      // A blink now and then, sometimes two; the lids close fast and open a little slower.
-      if (!reduced && awake && clock > gaze.nextBlink) {
-        gaze.blinkAt = clock;
-        gaze.twice = !gaze.twice && Math.random() < 0.25;
-        gaze.nextBlink = clock + (gaze.twice ? 0.32 : 4 + Math.random() * 6);
+      // The planets view: a sun (sunOrb). It turns slowly; asleep, it burns lower.
+      if (!sun) sun = sunOrb();
+      const life = awake ? 1 : 0.62;
+      if (clock - sun.paintedAt >= 1 / ORB_FPS || sun.paintedAt < 0) {
+        sun.paint(reduced ? 0 : clock * 0.035, life);
+        sun.paintedAt = clock;
       }
-      const since = clock - gaze.blinkAt;
-      const lid = gaze.blinkAt < 0 || since > 0.26 ? 0 : since < 0.09 ? since / 0.09 : 1 - (since - 0.09) / 0.17;
-      if (clock - orb.paintedAt >= 1 / ORB_FPS || orb.paintedAt < 0 || lid > 0) {
-        orb.paint(reduced ? 0 : clock, { x: gaze.x, y: gaze.y, open: gaze.open, lid: clamp(lid, 0, 1) * 0.94, asleep: !awake });
-        orb.paintedAt = clock;
-      }
-      const life = awake ? 1 : 0.5;
-      // The atmosphere: violet into blue, breathing slowly.
+      // The light it gives, wide and warm, breathing a little: first the glow it sits in, then the
+      // body, then a tight bright skin gripping the limb.
       ctx.globalCompositeOperation = 'lighter';
-      const air = ctx.createRadialGradient(p.x, p.y, r * 0.8, p.x, p.y, r * (2.7 + 0.12 * beat));
-      air.addColorStop(0, `rgba(122, 58, 238, ${0.3 * life})`);
-      air.addColorStop(0.45, `rgba(72, 112, 255, ${0.12 * life})`);
-      air.addColorStop(1, 'rgba(40, 20, 120, 0)');
-      ctx.fillStyle = air;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r * (2.7 + 0.12 * beat), 0, Math.PI * 2); ctx.fill();
-      // The wisps, turning two ways at once, as gas does.
-      const span = r * orb.reach * 2;
-      for (const [speed, alpha] of [[0.05, 0.8], [-0.033, 0.5]]) {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(reduced ? 0 : clock * speed);
-        ctx.globalAlpha = alpha * life;
-        ctx.drawImage(orb.wisps, -span / 2, -span / 2, span, span);
-        ctx.restore();
-      }
-      // The motes behind it, then the sphere, then the motes in front.
-      const drawMotes = (front) => {
-        for (const mote of motes) {
-          const a = mote.phase + (reduced ? 0 : clock * mote.speed);
-          const ahead = Math.sin(a) > 0;
-          if (ahead !== front) continue;
-          const mx = p.x + Math.cos(a) * r * mote.reach;
-          const my = p.y + Math.sin(a) * r * mote.reach * 0.3 + mote.tilt * r * Math.cos(a);
-          const size = mote.size * (ahead ? 1 : 0.7) * clamp(camera.zoom, 0.7, 1.4);
-          const glow = ctx.createRadialGradient(mx, my, 0, mx, my, size * 3);
-          glow.addColorStop(0, `rgba(214, 206, 255, ${(ahead ? 0.6 : 0.25) * life})`);
-          glow.addColorStop(1, 'rgba(120, 140, 255, 0)');
-          ctx.fillStyle = glow;
-          ctx.beginPath(); ctx.arc(mx, my, size * 3, 0, Math.PI * 2); ctx.fill();
-        }
-      };
-      drawMotes(false);
+      const reach = r * (3.4 + 0.15 * beat);
+      const glow = ctx.createRadialGradient(p.x, p.y, r * 0.9, p.x, p.y, reach);
+      glow.addColorStop(0, `rgba(255, 196, 110, ${0.42 * life})`);
+      glow.addColorStop(0.18, `rgba(255, 150, 60, ${0.2 * life})`);
+      glow.addColorStop(0.5, `rgba(240, 96, 30, ${0.07 * life})`);
+      glow.addColorStop(1, 'rgba(200, 60, 20, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(p.x, p.y, reach, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = awake ? 1 : 0.8;
-      ctx.drawImage(orb.canvas, p.x - r, p.y - r, r * 2, r * 2);
-      ctx.globalAlpha = 1;
-      // Volume (2026-10-28): the light comes from the upper left, as its atmosphere says; the far side
-      // falls into a soft night and a sheen sits where the light strikes, so it reads as a sphere.
-      ctx.save();
-      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.clip();
-      const night = ctx.createLinearGradient(p.x - r * 0.72, p.y - r * 0.78, p.x + r * 0.82, p.y + r * 0.88);
-      night.addColorStop(0, 'rgba(6, 4, 20, 0)');
-      night.addColorStop(0.5, 'rgba(6, 4, 20, 0.08)');
-      night.addColorStop(1, `rgba(6, 4, 20, ${0.55 * (awake ? 1 : 0.8)})`);
-      ctx.fillStyle = night;
-      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.drawImage(sun.canvas, p.x - r, p.y - r, r * 2, r * 2);
       ctx.globalCompositeOperation = 'lighter';
-      const sheen = ctx.createRadialGradient(p.x - r * 0.4, p.y - r * 0.44, 0, p.x - r * 0.4, p.y - r * 0.44, r * 0.6);
-      sheen.addColorStop(0, `rgba(236, 228, 255, ${0.24 * life})`);
-      sheen.addColorStop(1, 'rgba(236, 228, 255, 0)');
-      ctx.fillStyle = sheen;
-      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
-      ctx.restore();
-      // Its own thin atmosphere, brighter on the side the light comes from.
-      ctx.globalCompositeOperation = 'lighter';
-      const limb = ctx.createRadialGradient(p.x - r * 0.1, p.y - r * 0.12, r * 0.9, p.x, p.y, r * 1.14);
-      limb.addColorStop(0, 'rgba(120, 150, 255, 0)');
-      limb.addColorStop(0.55, `rgba(130, 160, 255, ${0.28 * life})`);
-      limb.addColorStop(1, 'rgba(90, 60, 220, 0)');
-      ctx.fillStyle = limb;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.14, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalCompositeOperation = 'lighter';
-      drawMotes(true);
+      const skin = ctx.createRadialGradient(p.x, p.y, r * 0.94, p.x, p.y, r * 1.18);
+      skin.addColorStop(0, `rgba(255, 226, 160, ${0.5 * life})`);
+      skin.addColorStop(0.35, `rgba(255, 170, 80, ${0.22 * life})`);
+      skin.addColorStop(1, 'rgba(255, 120, 40, 0)');
+      ctx.fillStyle = skin;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.18, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
     }
     // A ring in the accent while a universe is carried onto it, and while it waits for the person;
@@ -1112,7 +884,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       ctx.lineWidth = core === focus ? 1.4 : 1;
       ctx.beginPath(); ctx.arc(p.x, p.y, r * (neural ? 2.2 : 1.5), 0, Math.PI * 2); ctx.stroke();
     }
-    // The bulb's stem reaches lower than the orb did: its name stands under the stem.
+    // The bulb's stem reaches lower than the sun: its name stands under the stem.
     const below = p.y + r * (neural ? 3.25 : 1.62) + 8;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';

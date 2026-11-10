@@ -27,6 +27,16 @@ const link = (href, words) => {
 };
 const pick = (pair) => pair?.[language()] ?? pair?.es ?? '#';
 
+// The ground over the page while it is drawn (index.html, salas-mac.html: `madre-booting`), put back,
+// with the same way out if nothing takes it away.
+function veilPage() {
+  const root = document.documentElement;
+  if (root.classList.contains('madre-booting')) return;
+  root.classList.remove('madre-arriving');
+  root.classList.add('madre-booting');
+  setTimeout(() => root.classList.remove('madre-booting'), 6000);
+}
+
 export async function ensureTerms() {
   if (typeof document === 'undefined' || typeof fetch !== 'function') return;
   let answer = null;
@@ -107,9 +117,14 @@ function askTerms(answer, done) {
       error.textContent = '';
       const saved = await fetch('/api/terms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accept: true, diagnostics }) }).then((response) => response.ok).catch(() => false);
       if (!saved) { yes.disabled = false; no.disabled = false; error.textContent = t('It could not be saved. Try again.'); return; }
-      // Whoever updated meets MADRE's opening here, before Home is drawn behind it (2026-10-30): drawn
-      // first and the opening over it, it looked like a jump. Someone new meets it in the welcome.
-      if (returning) { card.style.visibility = 'hidden'; await playOpening(dialog, { skipLabel: t('Skip') }); }
+      // MADRE's opening plays here, before Home is drawn behind it (2026-10-30): drawn first and the
+      // opening over it, it looked like a jump. Since 2026-11-10 for someone new too: the page's veil
+      // had gone while they read the license (loader.js, six seconds), so Home showed and the opening
+      // came after it, with the welcome. The veil goes back over the page until the welcome opens or
+      // Home is drawn (bootDone); the welcome does not play the opening again (openingPlayed).
+      card.style.visibility = 'hidden';
+      await playOpening(dialog, { skipLabel: t('Skip') });
+      veilPage();
       dialog.classList.add('leaving');
       setTimeout(() => { dialog.close(); dialog.remove(); done(); }, 260);
     });

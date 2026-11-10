@@ -111,6 +111,29 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - ((-2 * x + 2) ** 3) / 2)
 const easeOut = (x) => 1 - (1 - x) ** 3;
 const span = (now, from, to) => Math.max(0, Math.min(1, (now - from) / (to - from)));
 
+// A window that opens does not open with its × lit (2026-11-10). With nothing marked `autofocus`, the
+// browser gives the first key the focus, and in most windows that is the ×: it opened red, as if
+// pointed at (Connections, Add project…). When the focus lands on a ×, the window takes it itself;
+// Tab still reaches the × first, and a window whose first control is a field keeps it there. Here
+// because Home and the project both load this file.
+const CLOSE_KEYS = '.x-close, .surface-mode.close';
+{
+  const Dialog = globalThis.HTMLDialogElement;
+  const open = Dialog?.prototype?.showModal;
+  if (open && !Dialog.prototype.showModal.madreQuiet) {
+    Dialog.prototype.showModal = function showModal(...args) {
+      const done = open.apply(this, args);
+      const now = globalThis.document?.activeElement;
+      if (now && now !== this && this.contains(now) && now.matches?.(CLOSE_KEYS)) {
+        if (!this.hasAttribute('tabindex')) this.tabIndex = -1;
+        this.focus({ preventScroll: true });
+      }
+      return done;
+    };
+    Dialog.prototype.showModal.madreQuiet = true;
+  }
+}
+
 // The page is ready (2026-10-30): the ground put over it before its first frame (index.html,
 // salas-mac.html) fades out, the way a page arriving from another one does. Under an opening, it
 // goes unseen; once is enough.

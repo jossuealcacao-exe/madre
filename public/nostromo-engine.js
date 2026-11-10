@@ -490,7 +490,7 @@ const NOISE_PERM = (() => {
   }
   return Uint8Array.from([...order, ...order]);
 })();
-function gradientNoise(x, y, z) {
+export function gradientNoise(x, y, z) {
   const P = NOISE_PERM;
   const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
   x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
@@ -509,7 +509,7 @@ function gradientNoise(x, y, z) {
     lerp(v, lerp(u, grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1)), lerp(u, grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1))));
 }
 // Octaves of it, folded into 0..1.
-function fractalNoise(x, y, z, octaves) {
+export function fractalNoise(x, y, z, octaves) {
   let sum = 0, amp = 0.5, freq = 1, norm = 0;
   for (let i = 0; i < octaves; i += 1) { sum += amp * gradientNoise(x * freq, y * freq, z * freq); norm += amp; amp *= 0.5; freq *= 2.03; }
   return 0.5 + 0.5 * Math.max(-1, Math.min(1, (sum / norm) * 1.6));
@@ -517,7 +517,7 @@ function fractalNoise(x, y, z, octaves) {
 // Cellular noise: the distance to the nearest and the second nearest of a scatter of points,
 // one jittered into each unit cell. Where the two are nearly equal is the border between two
 // cells, which is exactly the shape of a granule's dark lane.
-function cellNoise(x, y, z) {
+export function cellNoise(x, y, z) {
   const P = NOISE_PERM;
   const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
   let near = 9, next = 9;
@@ -2608,156 +2608,161 @@ export function createNostromo(nostromo) {
       return { x: px, y, z, light: Math.max(0, px * CORE_LIGHT.x + y * CORE_LIGHT.y + z * CORE_LIGHT.z) };
     };
 
-    // ---- What the star sits in.
-    //
-    // No wide halo. A body this size does not need a cloud around it to be felt, and a soft
-    // smudge only makes it look smaller. What surrounds it is darkness: one tight, fierce skin of
-    // light gripping the limb and falling away almost at once, and beyond that a deep red stain
-    // so faint it reads as the dark being lit rather than as anything drawn.
-    const stain = ctx.createRadialGradient(0, 0, R, 0, 0, R * 4.6);
-    stain.addColorStop(0, `rgba(122, 12, 6, ${0.3 + 0.08 * beat})`);
-    stain.addColorStop(0.24, `rgba(88, 6, 6, ${0.14 + 0.04 * beat})`);
-    stain.addColorStop(0.62, 'rgba(46, 2, 6, .05)');
-    stain.addColorStop(1, 'rgba(20, 0, 4, 0)');
-    ctx.fillStyle = stain;
-    ctx.beginPath(); ctx.arc(0, 0, R * 4.6, 0, Math.PI * 2); ctx.fill();
+    // A scene that has a body of its own at the centre (the Macroverso's sun, 2026-11-10: `noCore`)
+    // draws only what is round it.
+    if (!nostromo.noCore) {
+      // ---- What the star sits in.
+      //
+      // No wide halo. A body this size does not need a cloud around it to be felt, and a soft
+      // smudge only makes it look smaller. What surrounds it is darkness: one tight, fierce skin of
+      // light gripping the limb and falling away almost at once, and beyond that a deep red stain
+      // so faint it reads as the dark being lit rather than as anything drawn.
+      const stain = ctx.createRadialGradient(0, 0, R, 0, 0, R * 4.6);
+      stain.addColorStop(0, `rgba(122, 12, 6, ${0.3 + 0.08 * beat})`);
+      stain.addColorStop(0.24, `rgba(88, 6, 6, ${0.14 + 0.04 * beat})`);
+      stain.addColorStop(0.62, 'rgba(46, 2, 6, .05)');
+      stain.addColorStop(1, 'rgba(20, 0, 4, 0)');
+      ctx.fillStyle = stain;
+      ctx.beginPath(); ctx.arc(0, 0, R * 4.6, 0, Math.PI * 2); ctx.fill();
 
-    // ---- The body: a star, dark and molten.
-    //
-    // A star makes its own light, so it has no day side, no night side and no highlight struck
-    // off it by something else. This one is not a bright disc either: it burns deep, almost
-    // black at the limb, and what moves on it is liquid rock. The skin is a strip of boiling
-    // cells built once and wrapped round the body; a second pass of the same strip, sliding at a
-    // different rate, makes the two disagree, and that disagreement is what reads as flow. Over
-    // both, masses of molten matter drift across the face at a walking pace.
-    ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
-    ctx.shadowColor = `rgba(220, 44, 12, ${0.55 + 0.2 * beat})`;
-    ctx.shadowBlur = 40 + 26 * beat;
-    const body = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R);
-    body.addColorStop(0, `hsl(${14 + 5 * beat} 100% ${28 + 8 * beat}%)`);
-    body.addColorStop(0.58, 'hsl(9 100% 20%)');
-    body.addColorStop(1, 'hsl(5 100% 10%)');
-    ctx.fillStyle = body;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.clip();
+      // ---- The body: a star, dark and molten.
+      //
+      // A star makes its own light, so it has no day side, no night side and no highlight struck
+      // off it by something else. This one is not a bright disc either: it burns deep, almost
+      // black at the limb, and what moves on it is liquid rock. The skin is a strip of boiling
+      // cells built once and wrapped round the body; a second pass of the same strip, sliding at a
+      // different rate, makes the two disagree, and that disagreement is what reads as flow. Over
+      // both, masses of molten matter drift across the face at a walking pace.
+      ctx.save();
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
+      ctx.shadowColor = `rgba(220, 44, 12, ${0.55 + 0.2 * beat})`;
+      ctx.shadowBlur = 40 + 26 * beat;
+      const body = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R);
+      body.addColorStop(0, `hsl(${14 + 5 * beat} 100% ${28 + 8 * beat}%)`);
+      body.addColorStop(0.58, 'hsl(9 100% 20%)');
+      body.addColorStop(1, 'hsl(5 100% 10%)');
+      ctx.fillStyle = body;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.clip();
 
-    // Molten rock, painted pixel by pixel wherever there is a buffer to paint into: plates of
-    // crust, cracks running white-hot, lava flowing under them, bursts going off inside.
-    const magma = magmaFace(R, cam.scale * dpr, t, { turn: spin - yaw, beat, alarm, reduced: nostromo.reduced, tilt: nostromo.pitch ?? 0 });
-    if (magma) ctx.drawImage(magma, -R, -R, R * 2, R * 2);
-    else {
-      // The skin, wrapped on. Each row of the disc takes the slice of the strip belonging to its
-      // latitude, cut into pieces so longitude runs as a sphere's does and the cells narrow toward
-      // the limb instead of smearing along it. Turning the star is moving the window along.
-      // Someone who asked for stillness gets a star that turns and breathes but does not churn.
-      const flowTime = nostromo.reduced ? 0 : t;
-      const grain = granuleTexture();
-      if (grain) {
-        const width = grain.width / 2;
-        const wrapAt = (turn, alpha, lift) => {
-          ctx.globalAlpha = alpha;
-          for (let row = 0; row < GRAIN_ROWS; row += 1) {
-            const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
-            const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
-            const mid = (y0 + y1) * 0.5;
-            const half = Math.sqrt(Math.max(0, R * R - mid * mid));
-            if (half < 0.5) continue;
-            const v0 = (((y0 + R) / (2 * R) + lift) % 1 + 1) % 1 * grain.height;
-            const dv = Math.max(1, ((y1 - y0) / (2 * R)) * grain.height);
-            for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
-              const xA = Math.sin((piece / GRAIN_PIECES - 0.5) * Math.PI) * half;
-              const xB = Math.sin(((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI) * half;
-              const u = (turn + (piece / GRAIN_PIECES) * 0.5) * width;
-              ctx.drawImage(grain, u, Math.min(v0, grain.height - dv), (width * 0.5) / GRAIN_PIECES, dv, xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
+      // Molten rock, painted pixel by pixel wherever there is a buffer to paint into: plates of
+      // crust, cracks running white-hot, lava flowing under them, bursts going off inside.
+      const magma = magmaFace(R, cam.scale * dpr, t, { turn: spin - yaw, beat, alarm, reduced: nostromo.reduced, tilt: nostromo.pitch ?? 0 });
+      if (magma) ctx.drawImage(magma, -R, -R, R * 2, R * 2);
+      else {
+        // The skin, wrapped on. Each row of the disc takes the slice of the strip belonging to its
+        // latitude, cut into pieces so longitude runs as a sphere's does and the cells narrow toward
+        // the limb instead of smearing along it. Turning the star is moving the window along.
+        // Someone who asked for stillness gets a star that turns and breathes but does not churn.
+        const flowTime = nostromo.reduced ? 0 : t;
+        const grain = granuleTexture();
+        if (grain) {
+          const width = grain.width / 2;
+          const wrapAt = (turn, alpha, lift) => {
+            ctx.globalAlpha = alpha;
+            for (let row = 0; row < GRAIN_ROWS; row += 1) {
+              const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
+              const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
+              const mid = (y0 + y1) * 0.5;
+              const half = Math.sqrt(Math.max(0, R * R - mid * mid));
+              if (half < 0.5) continue;
+              const v0 = (((y0 + R) / (2 * R) + lift) % 1 + 1) % 1 * grain.height;
+              const dv = Math.max(1, ((y1 - y0) / (2 * R)) * grain.height);
+              for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
+                const xA = Math.sin((piece / GRAIN_PIECES - 0.5) * Math.PI) * half;
+                const xB = Math.sin(((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI) * half;
+                const u = (turn + (piece / GRAIN_PIECES) * 0.5) * width;
+                ctx.drawImage(grain, u, Math.min(v0, grain.height - dv), (width * 0.5) / GRAIN_PIECES, dv, xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
+              }
             }
-          }
-          ctx.globalAlpha = 1;
-        };
-        // Advancing the window carries the skin from right to left, so a turn of the hand to the
-        // right carries it back the other way, with the memories.
-        const turn = (((spin - yaw) / (Math.PI * 2)) % 1 + 1) % 1;
-        wrapAt(turn, 0.95, 0);
-        // The same skin again, crawling at its own pace: where the two pull apart the surface
-        // churns, and that is the slowness of lava rather than the flicker of fire.
-        ctx.globalCompositeOperation = 'lighter';
-        wrapAt(((turn * 0.83 + flowTime * 0.0042) % 1 + 1) % 1, 0.32, 0.37);
-        ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1;
+          };
+          // Advancing the window carries the skin from right to left, so a turn of the hand to the
+          // right carries it back the other way, with the memories.
+          const turn = (((spin - yaw) / (Math.PI * 2)) % 1 + 1) % 1;
+          wrapAt(turn, 0.95, 0);
+          // The same skin again, crawling at its own pace: where the two pull apart the surface
+          // churns, and that is the slowness of lava rather than the flicker of fire.
+          ctx.globalCompositeOperation = 'lighter';
+          wrapAt(((turn * 0.83 + flowTime * 0.0042) % 1 + 1) % 1, 0.32, 0.37);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Masses of molten matter riding the surface. They are slow, they are large, and each keeps
+        // its own drift, so the face is never the same face twice.
+        for (let i = 0; i < CORE_FLOWS.length; i += 1) {
+          const flow = CORE_FLOWS[i];
+          // The masses ride the same way the skin turns. They used to travel against it, and the two
+          // motions cancelled into a surface that churned in place instead of turning.
+          const p = surface(flow.lat + 0.1 * Math.sin(flowTime * flow.rate * 0.6 + i), flow.lon - spin * 0.96 + yaw + flowTime * flow.drift);
+          if (p.z <= 0.02) continue;
+          const swell = 0.62 + 0.38 * Math.sin(flowTime * flow.rate + i * 1.7);
+          const fade = Math.min(1, p.z * 2.3) * swell;
+          ctx.save();
+          ctx.translate(p.x * R, p.y * R);
+          ctx.rotate(Math.atan2(p.y, p.x));
+          ctx.scale(Math.max(0.05, p.z), 1);
+          const molten = ctx.createRadialGradient(0, 0, 0, 0, 0, R * flow.size);
+          molten.addColorStop(0, `rgba(255, ${flow.hot ? 214 : 96}, ${flow.hot ? 132 : 30}, ${(flow.hot ? 0.46 : 0.2) * fade})`);
+          molten.addColorStop(0.42, `rgba(${flow.hot ? '255, 122, 36' : '176, 34, 10'}, ${(flow.hot ? 0.24 : 0.14) * fade})`);
+          molten.addColorStop(1, 'rgba(120, 16, 8, 0)');
+          ctx.fillStyle = molten;
+          ctx.beginPath(); ctx.arc(0, 0, R * flow.size, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+
+        // Limb darkening, hard. Looking at the edge of a star means looking through far more of its
+        // own gas, and on a body this dark the edge goes almost to black. This is the whole of the
+        // illusion: it is what gives the thing its weight.
+        const limb = ctx.createRadialGradient(0, 0, R * 0.34, 0, 0, R);
+        limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        limb.addColorStop(0.58, `rgba(96, 8, 4, ${0.3 - 0.05 * beat})`);
+        limb.addColorStop(0.85, `rgba(50, 2, 4, ${0.62 - 0.08 * beat})`);
+        limb.addColorStop(1, `rgba(14, 0, 2, ${0.9 - 0.1 * beat})`);
+        ctx.fillStyle = limb;
+        ctx.fillRect(-R, -R, R * 2, R * 2);
+      }
+      ctx.restore();
+
+      // Prominences: arches of matter torn off the limb, standing up and falling back. Few, large
+      // and slow. A star this size does not flicker; it heaves.
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 4; i += 1) {
+        const base = i * 1.5708 + t * 0.05;
+        const spread = 0.28 + 0.1 * Math.sin(t * 0.37 + i);
+        const lift = R * (0.2 + 0.26 * Math.abs(Math.sin(t * 0.21 + i * 1.7)) + 0.3 * alarm);
+        const x0 = Math.cos(base - spread) * R * 0.99, y0 = Math.sin(base - spread) * R * 0.99;
+        const x1 = Math.cos(base + spread) * R * 0.99, y1 = Math.sin(base + spread) * R * 0.99;
+        const cxp = Math.cos(base) * (R + lift * 2.1), cyp = Math.sin(base) * (R + lift * 2.1);
+        // A wide dull body of matter with a thin hot thread running through it.
+        ctx.strokeStyle = `rgba(190, 34, 14, ${0.2 + 0.14 * Math.abs(Math.sin(t * 0.6 + i))})`;
+        ctx.lineWidth = (5.5 + 3 * beat) / cam.scale;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
+        ctx.strokeStyle = `rgba(255, ${128 + 70 * beat}, ${64 + 60 * beat}, ${0.3 + 0.28 * Math.abs(Math.sin(t * 0.6 + i))})`;
+        ctx.lineWidth = (1.5 + 0.9 * beat) / cam.scale;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
       }
 
-      // Masses of molten matter riding the surface. They are slow, they are large, and each keeps
-      // its own drift, so the face is never the same face twice.
-      for (let i = 0; i < CORE_FLOWS.length; i += 1) {
-        const flow = CORE_FLOWS[i];
-        // The masses ride the same way the skin turns. They used to travel against it, and the two
-        // motions cancelled into a surface that churned in place instead of turning.
-        const p = surface(flow.lat + 0.1 * Math.sin(flowTime * flow.rate * 0.6 + i), flow.lon - spin * 0.96 + yaw + flowTime * flow.drift);
-        if (p.z <= 0.02) continue;
-        const swell = 0.62 + 0.38 * Math.sin(flowTime * flow.rate + i * 1.7);
-        const fade = Math.min(1, p.z * 2.3) * swell;
-        ctx.save();
-        ctx.translate(p.x * R, p.y * R);
-        ctx.rotate(Math.atan2(p.y, p.x));
-        ctx.scale(Math.max(0.05, p.z), 1);
-        const molten = ctx.createRadialGradient(0, 0, 0, 0, 0, R * flow.size);
-        molten.addColorStop(0, `rgba(255, ${flow.hot ? 214 : 96}, ${flow.hot ? 132 : 30}, ${(flow.hot ? 0.46 : 0.2) * fade})`);
-        molten.addColorStop(0.42, `rgba(${flow.hot ? '255, 122, 36' : '176, 34, 10'}, ${(flow.hot ? 0.24 : 0.14) * fade})`);
-        molten.addColorStop(1, 'rgba(120, 16, 8, 0)');
-        ctx.fillStyle = molten;
-        ctx.beginPath(); ctx.arc(0, 0, R * flow.size, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-      }
+      // The limb. One fierce skin of light gripping the edge, gone within a fraction of a radius:
+      // it is what separates the body from the dark, and it holds the whole shape together. It is
+      // also what answers when a pulse comes home.
+      const home = Math.min(1, nostromo.coreLit ?? 0);
+      const fierce = 0.55 + 0.35 * beat + 0.4 * home;
+      ctx.globalCompositeOperation = 'lighter';
+      const edge = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 1.22);
+      edge.addColorStop(0, 'rgba(255, 96, 34, 0)');
+      edge.addColorStop(0.42, `rgba(255, ${132 + 60 * beat}, 62, ${0.5 * fierce})`);
+      edge.addColorStop(0.52, `rgba(255, ${176 + 60 * beat}, ${110 + 60 * beat}, ${0.62 * fierce})`);
+      edge.addColorStop(1, 'rgba(210, 40, 16, 0)');
+      ctx.fillStyle = edge;
+      ctx.beginPath(); ctx.arc(0, 0, R * 1.22, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = `rgba(255, ${186 + 60 * beat}, ${128 + 80 * beat}, ${Math.min(0.92, 0.7 * fierce)})`;
+      ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
 
-      // Limb darkening, hard. Looking at the edge of a star means looking through far more of its
-      // own gas, and on a body this dark the edge goes almost to black. This is the whole of the
-      // illusion: it is what gives the thing its weight.
-      const limb = ctx.createRadialGradient(0, 0, R * 0.34, 0, 0, R);
-      limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      limb.addColorStop(0.58, `rgba(96, 8, 4, ${0.3 - 0.05 * beat})`);
-      limb.addColorStop(0.85, `rgba(50, 2, 4, ${0.62 - 0.08 * beat})`);
-      limb.addColorStop(1, `rgba(14, 0, 2, ${0.9 - 0.1 * beat})`);
-      ctx.fillStyle = limb;
-      ctx.fillRect(-R, -R, R * 2, R * 2);
     }
-    ctx.restore();
-
-    // Prominences: arches of matter torn off the limb, standing up and falling back. Few, large
-    // and slow. A star this size does not flicker; it heaves.
-    ctx.lineCap = 'round';
-    for (let i = 0; i < 4; i += 1) {
-      const base = i * 1.5708 + t * 0.05;
-      const spread = 0.28 + 0.1 * Math.sin(t * 0.37 + i);
-      const lift = R * (0.2 + 0.26 * Math.abs(Math.sin(t * 0.21 + i * 1.7)) + 0.3 * alarm);
-      const x0 = Math.cos(base - spread) * R * 0.99, y0 = Math.sin(base - spread) * R * 0.99;
-      const x1 = Math.cos(base + spread) * R * 0.99, y1 = Math.sin(base + spread) * R * 0.99;
-      const cxp = Math.cos(base) * (R + lift * 2.1), cyp = Math.sin(base) * (R + lift * 2.1);
-      // A wide dull body of matter with a thin hot thread running through it.
-      ctx.strokeStyle = `rgba(190, 34, 14, ${0.2 + 0.14 * Math.abs(Math.sin(t * 0.6 + i))})`;
-      ctx.lineWidth = (5.5 + 3 * beat) / cam.scale;
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
-      ctx.strokeStyle = `rgba(255, ${128 + 70 * beat}, ${64 + 60 * beat}, ${0.3 + 0.28 * Math.abs(Math.sin(t * 0.6 + i))})`;
-      ctx.lineWidth = (1.5 + 0.9 * beat) / cam.scale;
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
-    }
-
-    // The limb. One fierce skin of light gripping the edge, gone within a fraction of a radius:
-    // it is what separates the body from the dark, and it holds the whole shape together. It is
-    // also what answers when a pulse comes home.
-    const home = Math.min(1, nostromo.coreLit ?? 0);
-    const fierce = 0.55 + 0.35 * beat + 0.4 * home;
-    ctx.globalCompositeOperation = 'lighter';
-    const edge = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 1.22);
-    edge.addColorStop(0, 'rgba(255, 96, 34, 0)');
-    edge.addColorStop(0.42, `rgba(255, ${132 + 60 * beat}, 62, ${0.5 * fierce})`);
-    edge.addColorStop(0.52, `rgba(255, ${176 + 60 * beat}, ${110 + 60 * beat}, ${0.62 * fierce})`);
-    edge.addColorStop(1, 'rgba(210, 40, 16, 0)');
-    ctx.fillStyle = edge;
-    ctx.beginPath(); ctx.arc(0, 0, R * 1.22, 0, Math.PI * 2); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = `rgba(255, ${186 + 60 * beat}, ${128 + 80 * beat}, ${Math.min(0.92, 0.7 * fierce)})`;
-    ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
 
     // ---- Memories: dwarf stars.
     //

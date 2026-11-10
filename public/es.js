@@ -348,12 +348,6 @@ export const ES = {
   'INTRUDER ›': 'INTRUSO ›',
 
   // ── LA PÁGINA EN BLANCO ───────────────────────────────────────────────────
-  'Explain {project} to me: what it does, how it runs, and where the important code lives.':
-    'Explícame {project}: qué hace, cómo se ejecuta y dónde está el código que importa.',
-  'Read the project and name the three things most likely to break. Say why, with file and line.':
-    'Lee el proyecto y dime las tres cosas que están más cerca de romperse. Explica por qué, con archivo y línea.',
-  'What would you change first in {project}, and what would you not touch?':
-    '¿Qué cambiarías primero en {project} y qué no tocarías?',
 
   // ── LAS CONVERSACIONES ────────────────────────────────────────────────────
   'CONVERSATIONS': 'Chats',
@@ -1272,7 +1266,6 @@ export const ES = {
   'Ask without the place pointed at': 'Preguntar sin el lugar señalado',
   'area {w}×{h}': 'área {w}×{h}',
   'Drop here to open it beside': 'Suéltala aquí para abrirla al lado',
-  'Open beside (⌘-click, or drag it onto the conversation)': 'Abrir al lado (⌘ + clic, o arrástrala sobre la conversación)',
   'QUICK ACTIONS': 'Acciones rápidas',
   'FROM THE MEMORY': 'De la memoria',
   'Does this keep to the decision: «{note}»?': '¿Esto respeta la decisión: «{note}»?',
@@ -2289,7 +2282,6 @@ export const ES = {
   '{what} moved to a window so the conversation stays readable. Its split button puts it back beside.': '{what} se abrió en una ventana aparte para que la conversación se lea bien. Su botón de pantalla dividida lo regresa al lado.',
   'I want to start a project: ': 'Quiero empezar un proyecto: ',
   'Before writing anything, ask me what I want to build and propose a plan in steps.': 'Antes de escribir nada, pregúntame qué quiero construir y propón un plan por pasos.',
-  'Which stack would you use for a small web app that anyone can open, and why?': '¿Qué tecnología usarías para una app web pequeña que cualquiera pueda abrir, y por qué?',
   'First conversation': 'Primer chat',
   'Fresh input tokens of a typical (median) turn with each outside tool (MCP) connected, and without it.': 'Tokens de entrada nuevos en una respuesta típica (la mediana), con cada herramienta externa (MCP) conectada y sin ella.',
   '@{agent} · {server}: {with} with it ({nWith} turns) · {without} without it ({nWithout} turns)': '@{agent} · {server}: {with} con él ({nWith} respuestas) · {without} sin él ({nWithout} respuestas)',
@@ -7310,4 +7302,24 @@ export const ES = {
   "Opening {name}…": "Abriendo {name}…",
   "Signed in with your {name} account": "Entró con tu cuenta de {name}",
   "Connected with a {name} API key": "Conectada con una llave de API de {name}",
+  // Los primeros mensajes de un chat vacío (public/starters.js).
+  "Read {file} and tell me the most important thing its numbers show.": "Lee {file} y dime qué es lo más importante que muestran sus números.",
+  "With {file}, put together a summary of the month: what goes up, what goes down and what you would do.": "Con {file}, arma un resumen del mes: qué sube, qué baja y qué harías tú.",
+  "Sum up {file} in five points and tell me what is still to be decided.": "Resume {file} en cinco puntos y dime qué falta decidir.",
+  "Improve the writing of {file} without changing what it says.": "Mejora la redacción de {file} sin cambiar lo que dice.",
+  "Go through {file} and tell me which slide is not needed and what is missing.": "Revisa {file} y dime qué diapositiva sobra y qué falta.",
+  "Look at the main page of {project} and suggest three changes so it brings in more customers.": "Revisa la página principal de {project} y propón tres cambios para que atraiga más clientes.",
+  "Check the texts of {project}: spelling mistakes, confusing sentences and anything that is not clear.": "Revisa los textos de {project}: faltas de ortografía, frases confusas y lo que no se entiende.",
+  "Sort the pictures in {project} by subject and suggest clear names for them.": "Ordena las imágenes de {project} por tema y propón nombres claros.",
+  "Explain {project} to me as to someone who does not program: what it does and how it is used.": "Explícame {project} como a alguien que no programa: qué hace y cómo se usa.",
+  "How do I open it on my computer? Give me the steps one by one.": "¿Cómo lo abro en mi computadora? Dame los pasos uno por uno.",
+  "Go through {project} and tell me what is most urgent to fix, and why.": "Revisa {project} y dime qué es lo más urgente de arreglar, y por qué.",
+  "What is in {project}, and how can you help me with it?": "¿Qué hay en {project} y en qué me puedes ayudar con eso?",
+  "Make a list of what is in {project}, folder by folder.": "Haz una lista de lo que hay en {project}, carpeta por carpeta.",
+  "I want a page for my business: ": "Quiero una página para mi negocio: ",
+  "Make me a list of what to do this week to get my business going.": "Hazme una lista de lo que tengo que hacer esta semana para arrancar mi negocio.",
+  "Make me a sheet to keep my sales and expenses for the month.": "Hazme una hoja para llevar mis ventas y gastos del mes.",
+  "I want to put my ideas in order in a document: ": "Quiero ordenar mis ideas en un documento: ",
+  "I want to start an app: ": "Quiero empezar una app: ",
+  "What could you do for me in an empty folder? Give me three ideas.": "¿Qué podrías hacer por mí en una carpeta vacía? Dame tres ideas.",
 };

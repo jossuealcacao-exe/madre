@@ -25,7 +25,7 @@
 
 import { t, language } from './i18n.js';
 import { platformOf, remedyKey } from './remedy.js';
-import { MADRE_LOGO as BRAND_LOGO, playOpening } from './loader.js';
+import { MADRE_LOGO as BRAND_LOGO, openingPlayed, playOpening } from './loader.js';
 import { trazo } from './icons.js';
 import { createScene } from './welcome-scene.js';
 
@@ -1186,7 +1186,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (!s.progress.at) void save({ at: WELCOME_STEPS[s.step] });
     // The opening plays on the first step; after it the rail's logo is already drawn, and stays still.
     dialog.classList.remove('waiting');
-    if (WELCOME_STEPS[s.step] === 'hello') void playOpening(dialog, { skipLabel: t('Skip') }).then((played) => { if (played) brand.classList.add('still'); });
+    // Played already as the license was accepted (terms.js): not twice in a row.
+    if (WELCOME_STEPS[s.step] === 'hello' && openingPlayed()) brand.classList.add('still');
+    else if (WELCOME_STEPS[s.step] === 'hello') void playOpening(dialog, { skipLabel: t('Skip') }).then((played) => { if (played) brand.classList.add('still'); });
   });
   return current;
 }

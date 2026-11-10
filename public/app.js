@@ -34,6 +34,7 @@ import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
 import { trazo, trazoDrawing } from './icons.js';
+import { startersFor } from './starters.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
@@ -1691,7 +1692,6 @@ function syncCode() {
   try { on = codeOn(); } catch { return; }
   viewer.dialog.classList.toggle('code', on);
   code.bar.hidden = !on || !code.tabs.length;
-  code.crumbs.hidden = !on || !viewerUI.path;
   // The code comes first: the files beside it only when there is room for them and for the code,
   // and less room is left when what the code makes is beside it too.
   const width = viewer.dialog.getBoundingClientRect?.().width ?? 0;
@@ -1705,6 +1705,10 @@ function syncCode() {
   const browse = on && code.narrow && (code.browsing || !viewerUI.path);
   code.shell.classList.toggle('browse', browse);
   const showFiles = on && (browse || (code.files && wide));
+  // The path over the code holds the key that brings the files back (paintCodeCrumbs): with no file
+  // open it stays too while the files are put away, with only that key (2026-11-10: folded with no
+  // file open, there was no way back).
+  code.crumbs.hidden = !on || (!viewerUI.path && showFiles);
   code.explorer.querySelector('.code-files-fold')?.toggleAttribute('hidden', browse && !viewerUI.path);
   if (code.explorer.hidden === showFiles) {
     code.explorer.hidden = !showFiles;
@@ -1855,7 +1859,7 @@ function drawCodeTabs() {
 
 /* the path above the code: folders quiet, the file, and the function the line is in */
 function paintCodeCrumbs(line = code.line) {
-  if (!code.crumbs || code.crumbs.hidden || !viewerUI.path) return;
+  if (!code.crumbs || code.crumbs.hidden) return;
   code.line = line;
   code.crumbs.replaceChildren();
   // The files, put away by hand (or, narrow, waiting behind the code), come back from here.
@@ -1868,6 +1872,7 @@ function paintCodeCrumbs(line = code.line) {
     show.addEventListener('click', () => { if (code.narrow) code.browsing = true; else { code.files = true; rememberCode(); } syncCode(); });
     code.crumbs.append(show);
   }
+  if (!viewerUI.path) return;
   const where = el('span', 'code-crumbs-path');
   const parts = viewerUI.path.split('/');
   parts.forEach((part, index) => {
@@ -5073,8 +5078,9 @@ function renderOnboarding() {
 }
 const sessionOf = (agent) => state.sessions?.[agent.id]?.state ?? 'unknown';
 
-// The blank page is its own friction: three first messages, written for this project — and for a
-// folder with nothing in it yet, three ways to begin one, since there is nothing to explain.
+// The blank page is its own friction: three first messages, written for this project and this person
+// (public/starters.js, 2026-11-10) — from what its folder holds, or, in a folder with nothing yet,
+// from what the person said MADRE is for in the welcome.
 function renderEmptyStarts() {
   const box = els.emptyStarts;
   if (!box) return;
@@ -5084,32 +5090,33 @@ function renderEmptyStarts() {
   // The Coordinator's own project is a folder with nothing to explain: what it is for is the rest
   // of your projects, so that is what its first messages ask about.
   const coordinator = state.salas ? [
-    t('What happened in my projects lately?'),
-    t('What was decided in the projects I connected?'),
-    t('Which project needs me first, and why?'),
+    { icon: 'coordinator', text: t('What happened in my projects lately?') },
+    { icon: 'check', text: t('What was decided in the projects I connected?') },
+    { icon: 'target', text: t('Which project needs me first, and why?') },
   ] : null;
-  if (!coordinator && state.projectEmpty === undefined) {
-    state.projectEmpty = null;
-    void fetch('/api/tree?path=.').then((response) => response.json()).then((data) => {
-      state.projectEmpty = !(data.entries ?? []).some((entry) => !entry.name.startsWith('.'));
+  if (!coordinator && state.projectEntries === undefined) {
+    state.projectEntries = null;
+    void Promise.all([
+      fetch('/api/tree?path=.').then((response) => response.json()).then((data) => data.entries ?? []).catch(() => []),
+      fetch('/api/tour', { cache: 'no-store' }).then((response) => response.json()).then((data) => data.state?.welcome?.profile ?? []).catch(() => []),
+    ]).then(([entries, profile]) => {
+      state.projectEntries = entries;
+      state.projectProfile = profile;
       renderEmptyStarts();
-    }).catch(() => { state.projectEmpty = false; });
+    });
     return;
   }
-  if (!coordinator && state.projectEmpty === null) return;
+  if (!coordinator && state.projectEntries === null) return;
   const project = projectDesignation() || t('this project');
-  for (const text of coordinator ?? (state.projectEmpty ? [
-    t('I want to start a project: '),
-    t('Before writing anything, ask me what I want to build and propose a plan in steps.'),
-    t('Which stack would you use for a small web app that anyone can open, and why?'),
-  ] : [
-    t('Explain {project} to me: what it does, how it runs, and where the important code lives.', { project }),
-    t('Read the project and name the three things most likely to break. Say why, with file and line.'),
-    t('What would you change first in {project}, and what would you not touch?', { project }),
-  ])) {
+  const chips = coordinator ?? startersFor({ entries: state.projectEntries, profile: state.projectProfile ?? [], project, t });
+  for (const { icon, text } of chips) {
     // One that ends open is for the human to finish: it says so, and the cursor waits at its end.
-    const chip = el('button', 'empty-start', text.endsWith(': ') ? `${text}…` : text);
+    const chip = el('button', 'empty-start');
     chip.type = 'button';
+    const mark = el('span', 'empty-start-icon');
+    mark.setAttribute('aria-hidden', 'true');
+    mark.innerHTML = trazo(icon); // trusted: our own SVG string
+    chip.append(mark, el('span', 'empty-start-text', text.endsWith(': ') ? `${text}…` : text));
     chip.addEventListener('click', () => {
       els.input.value = text;
       els.input.focus();
@@ -12219,7 +12226,8 @@ function renderChats() {
     name.append(chat.title);
     open.append(glyph, name);
     open.append(el('span', 'when', whenWords(chat.updatedAt)));
-    open.title = `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`;
+    // Its count and date for a screen reader, not as a tip over the list (2026-11-10).
+    open.setAttribute('aria-description', `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`);
     open.addEventListener('click', (event) => {
       if (chat.id === chats.active) return;
       // ⌘-click (Ctrl-click) opens it beside, the way a browser opens a link in another tab.
@@ -12268,7 +12276,6 @@ function renderChats() {
       half.type = 'button';
       half.innerHTML = SPLIT_ICON; // trusted: our own SVG string
       half.setAttribute('aria-label', beside ? t('Close the split') : t('Open this conversation in the other half of the window'));
-      half.title = beside ? t('Close the split') : t('Open beside (⌘-click, or drag it onto the conversation)');
       half.setAttribute('aria-pressed', String(beside));
       half.addEventListener('click', (event) => { event.stopPropagation(); if (beside) closeSplit(); else openSplit(chat.id); });
       const win = el('button', `chat-window${floating ? ' on' : ''}${full ? ' full' : ''}`);
@@ -14373,7 +14380,8 @@ async function runSlashCommand(text) {
 // platform. The break is inserted by hand rather than left to the browser: with the modifier
 // held, what a textarea does with Enter is not the same everywhere, and a key that works on one
 // machine and does nothing on the next is worse than no shortcut.
-els.input.title = t('Enter sends · ⌥ Enter (Alt on Linux) breaks the line');
+// Said to a screen reader only: a tip over the box you write in got in the way (2026-11-10).
+els.input.setAttribute('aria-description', t('Enter sends · ⌥ Enter (Alt on Linux) breaks the line'));
 els.input.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   event.preventDefault();

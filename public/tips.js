@@ -9,7 +9,9 @@
 // One element for the whole page, under the key or over it when there is no room, never under the
 // pointer's way, gone at the first press, scroll or key. Nothing shows on touch.
 
-const SHOW_AFTER = 380;     // ms resting on a key before its tip shows
+// ms resting on a key before its tip shows (2026-11-10, the author: 380 was too eager). A part of the
+// page can ask for longer with `data-tip-after` (the box's agent, mode, model, effort and copilot).
+const SHOW_AFTER = 2000;
 const AGAIN_WITHIN = 600;   // ms after one hides in which the next shows at once
 const GAP = 7;
 
@@ -89,7 +91,8 @@ function arm(key) {
   hideTip();
   const soon = performance.now() - hiddenAt < AGAIN_WITHIN;
   pending = key;
-  timer = setTimeout(() => { pending = null; show(key); }, soon ? 0 : SHOW_AFTER);
+  const after = Number(key.closest('[data-tip-after]')?.dataset.tipAfter) || SHOW_AFTER;
+  timer = setTimeout(() => { pending = null; show(key); }, soon ? 0 : after);
 }
 
 export function installTips(root = globalThis.document) {

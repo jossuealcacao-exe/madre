@@ -6905,7 +6905,11 @@ dialog.surface.window:is(.settings-window, .module-window).lifted { background-c
 .surface-modes { border: 0 !important; background: transparent !important; box-shadow: var(--key-track); padding: 3px; border-radius: 10px; }
 .surface-modes .surface-mode { border-radius: 7px; }
 .surface-modes .surface-mode[aria-pressed="true"] { background: var(--surface, var(--panel)); box-shadow: var(--key-rest); }
-.surface-modes .surface-mode.close:hover { box-shadow: var(--key-rest); background: var(--surface, var(--panel)); }
+/* The ×, pointed at or reached with Tab, looks one way: raised white with its red mark, never the pink
+   ground the key had with the focus (2026-11-10). */
+.surface-modes .surface-mode.close:is(:hover, :focus-visible) { box-shadow: var(--key-rest); background: var(--surface, var(--panel)); }
+/* A window that took the focus itself (loader.js) shows no ring around itself. */
+dialog[tabindex="-1"]:focus { outline: none; }
 /* The selectors: a pressed track, the chosen option raised. */
 :is(.sx-seg, .settings-seg, .sx-stepper, .sx-look .custom-seg) { background: transparent !important; box-shadow: var(--key-track); }
 :is(.sx-seg button[aria-checked="true"], .settings-seg button.on, .sx-look .custom-seg .seg-option[aria-checked="true"]) { background: var(--surface, var(--panel)) !important; box-shadow: var(--key-rest) !important; }
@@ -13183,3 +13187,17 @@ html.chat-shell .code-files.finder .tree-search.folded-search > .code-files-fold
 .point-check-again { margin-left: 4px; height: 26px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--phosphor); color: var(--phosphor-ink, #fff); font: 600 12.5px var(--read); cursor: pointer; }
 .point-check-again:hover { filter: brightness(1.06); }
 .point-check-all { margin-left: 4px; font: 500 12px var(--read); color: var(--text-3); }
+
+/* THE FIRST MESSAGES OF AN EMPTY CHAT (2026-11-10, public/starters.js): no rim, a soft ground, and the
+   drawing of what each one is about beside its words. */
+:root[data-scheme] #messages .empty-starts .empty-start {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 0; border-radius: 12px;
+  box-shadow: none; background-image: none; background-color: color-mix(in srgb, var(--text) 4.5%, transparent);
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  color: var(--text); font: 450 13px/1.45 var(--read);
+}
+:root[data-scheme] #messages .empty-starts .empty-start:hover { background-color: color-mix(in srgb, var(--text) 8%, transparent); }
+:root[data-scheme] #messages .empty-starts .empty-start:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor) 55%, transparent); outline-offset: 1px; }
+.empty-start-icon { flex: none; display: grid; place-items: center; width: 18px; height: 19px; color: var(--phosphor); }
+.empty-start-icon svg { width: 16px; height: 16px; }
+.empty-start-text { min-width: 0; }
