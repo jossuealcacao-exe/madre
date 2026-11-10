@@ -3183,7 +3183,7 @@ async function pointSend(agentId, prompt) {
   // view), then one numbered line each with its note, and the ask to answer each number, which is
   // what lets one turn carry them all (2026-11-09).
   const many = marks.length > 1;
-  const where = many ? t('{n} marks', { n: marks.length }) : pointWhere(mark);
+  const where = many ? markCount(marks.length) : pointWhere(mark);
   const said = capture ? ` · ${many ? t('capture attached, numbered') : t('capture attached')}` : '';
   const line = many
     ? [`⌖ ${name} ${path} · ${t('view {width} px', { width })} · ${where}${said}`,
@@ -3197,7 +3197,7 @@ async function pointSend(agentId, prompt) {
   // Where it was pointed goes above the field as one short card (2026-11-09), not as the field's
   // first line: written in the field it wrapped, its highlight broken across lines, in any narrow
   // composer. It still travels as the message's first line, as before (the submit, state.point).
-  const brief = [port ? `:${port}` : url, many ? t('{n} marks', { n: marks.length }) : mark.kind === 'dot' ? t('point at ({x}, {y})', { x: mark.x, y: mark.y }) : t('area {w}×{h}', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) })].join(' · ');
+  const brief = [port ? `:${port}` : url, many ? markCount(marks.length) : mark.kind === 'dot' ? t('point at ({x}, {y})', { x: mark.x, y: mark.y }) : t('area {w}×{h}', { w: Math.abs(mark.x2 - mark.x1), h: Math.abs(mark.y2 - mark.y1) })].join(' · ');
   state.point = { line, brief };
   renderPointQuote();
   els.input.value = [prompt, current].filter(Boolean).join(' ');
@@ -5707,7 +5707,7 @@ function renderUserMessage(event) {
     // Several marks: each one, numbered as on the picture, in a short list under the card.
     if (pointed.items.length) {
       const list = el('ol', 'point-said-list');
-      for (const item of pointed.items) list.append(el('li', null, item));
+      for (const item of pointed.items) { const one = el('li', null, item.text); one.value = item.n; list.append(one); }
       bubble.prepend(list);
     }
     bubble.prepend(card);
@@ -5783,6 +5783,10 @@ function renderAssistantMessage(event) {
   }
   if (event.payload.subagents?.length) bubble.append(subagentFold(event.payload.subagents, mode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
+  // An answer to several marks (Apuntar) says, under it, which numbers are settled (pointChecks).
+  const asked = delegated ? null : state.userMessages.get(parentMessageId);
+  const pointedAsk = asked ? parsePointed(asked.text) : null;
+  if (pointedAsk?.items.length) bubble.append(pointChecks({ pointed: pointedAsk, reply: String(shown ?? ''), messageId, agent: sender }));
   // What the reply recalled, what it cost and what can be done with it travel inside it, on a
   // foot of its own: the memory as dots on the left; rate, copy and reply (shown under the pointer)
   // and the bill on the right. The notes themselves open under the foot only when asked for.
@@ -5957,6 +5961,7 @@ function briefQuestion(text) {
 // spot or the area, or how many marks), each mark's line when there are several, the lines that said
 // all that, and what was asked. Null for any other message.
 const ANSWER_EACH = new Set(['Answer each number.']);
+const markCount = (n) => (n === 1 ? t('1 mark') : t('{n} marks', { n }));
 function parsePointed(text) {
   const said = String(text ?? '');
   const head = said.match(/^⌖ (\S+)[^\n]*/);
@@ -5965,14 +5970,72 @@ function parsePointed(text) {
   const lines = said.split('\n');
   let at = 1;
   const items = [];
-  while (at < lines.length && /^\d{1,2}\. \S/.test(lines[at])) { items.push(lines[at].replace(/^\d{1,2}\. /, '')); at += 1; }
+  for (let found; at < lines.length && (found = lines[at].match(/^(\d{1,2})\. (\S.*)$/)); at += 1) items.push({ n: Number(found[1]), text: found[2] });
   if (items.length && ANSWER_EACH.has(lines[at]?.trim())) at += 1;
   const one = head[0].match(/ · ((?:area|área|point|punto) [^·]*)/);
   const summary = items.length
-    ? t('{n} marks', { n: items.length })
+    ? markCount(items.length)
     : one ? one[1].trim().replace(/^(area|área)( \S+) (?:at|en) \(.*\)$/, '$1$2') : null;
   if (!summary) return null;
   return { server: head[1], summary, items, line: lines.slice(0, at).join('\n'), rest: lines.slice(at).join('\n').replace(/^\n+/, '') };
+}
+
+// UNDER AN ANSWER TO SEVERAL MARKS (2026-11-09): each number, settled or still open. Settled at first
+// is what the answer took up by its number («1.», «**2**», «mark 3»…); a press changes it, and the
+// person's word is kept (this browser only). What is still open goes back with one press: a question
+// with only those marks, under their own numbers, and no new picture — the agent has the first one.
+const POINT_CHECKS = 'pulse.pointChecks';
+const pointChecksKept = () => { try { return JSON.parse(localStorage.getItem(POINT_CHECKS) ?? '{}') ?? {}; } catch { return {}; } };
+function pointTakenUp(reply, n) {
+  return new RegExp(`(^|\\n)[\\s>#*_-]*(?:\\*\\*|__)?(?:(?:marca|mark|punto|point|área|area)\\s*)?${n}(?:\\*\\*|__)?\\s*[.):—–-]`, 'i').test(reply)
+    || new RegExp(`\\b(?:marca|mark)\\s*(?:#|n\\.?\\s*)?${n}\\b`, 'i').test(reply);
+}
+function pointChecks({ pointed, reply, messageId, agent }) {
+  const box = el('div', 'point-check');
+  const kept = pointChecksKept()[messageId] ?? {};
+  const settled = new Map(pointed.items.map((item) => [item.n, kept[item.n] ?? pointTakenUp(reply, item.n)]));
+  const draw = () => {
+    const open = pointed.items.filter((item) => !settled.get(item.n));
+    box.replaceChildren(el('span', 'point-check-title', t('Marks')));
+    for (const item of pointed.items) {
+      const done = settled.get(item.n);
+      const chip = el('button', `point-check-item${done ? ' done' : ''}`, `${done ? '✓' : '·'} ${item.n}`);
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', String(done));
+      chip.title = `${item.n}. ${item.text} — ${done ? t('settled · press if it is still open') : t('still open · press when it is settled')}`;
+      chip.addEventListener('click', () => {
+        settled.set(item.n, !settled.get(item.n));
+        const all = pointChecksKept();
+        all[messageId] = Object.fromEntries(settled);
+        try { localStorage.setItem(POINT_CHECKS, JSON.stringify(all)); } catch { /* as long as the page lasts */ }
+        draw();
+      });
+      box.append(chip);
+    }
+    if (open.length) {
+      const again = el('button', 'point-check-again', open.length === 1 ? t('Ask again about the open one') : t('Ask again about the {n} open', { n: open.length }));
+      again.type = 'button';
+      again.addEventListener('click', () => pointAskAgain({ pointed, open, agent }));
+      box.append(again);
+    } else box.append(el('span', 'point-check-all', t('All settled')));
+  };
+  draw();
+  return box;
+}
+function pointAskAgain({ pointed, open, agent }) {
+  const head = pointed.line.split('\n')[0];
+  const cut = head.indexOf(` · ${pointed.summary}`);
+  const shared = cut > 0 ? head.slice(0, cut) : head.split(' · ').slice(0, 2).join(' · ');
+  const line = [`${shared} · ${markCount(open.length)} · ${t('the picture is in the earlier question')}`,
+    ...open.map((item) => `${item.n}. ${item.text}`),
+    t('Answer each number.')].join('\n');
+  state.point = { line, brief: `${pointed.server} · ${markCount(open.length)}` };
+  renderPointQuote();
+  if (!els.input.value.trim()) els.input.value = t('These are still open: pick them up where you left them.');
+  if (agent && state.agents.get(agent)?.ready) { els.target.value = agent; renderPicker(); }
+  autosize();
+  els.input.focus();
+  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
 }
 
 // No message number (Q-14, 2026-11-06): «↩ @codex #4: …» read as #4 FULL ACCESS beside the modes

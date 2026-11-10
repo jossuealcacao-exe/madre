@@ -259,6 +259,23 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(ashToggle.hidden, true, 'a live module toggle did not turn Ash off');
   streamInstance.onmessage({ data: JSON.stringify({ id: 'live-ash-on', sequence: sequence + 2, type: 'extension.toggled', payload: { id: 'ash', enabled: true } }) });
   assert.equal(ashToggle.hidden, false, 'a live module toggle did not turn Ash on');
+  // Several marks (Apuntar, 2026-11-09): the question reads short, and the answer says under it which
+  // numbers it took up; the open one can be asked about again.
+  const marked = '⌖ :5180 (python3) / · view 504 px · 3 marks · capture attached, numbered\n1. point at (120, 200) — botón chico\n2. point at (400, 260)\n3. area 270×120 at (150, 400)\nAnswer each number.\n¿Qué está mal?';
+  streamInstance.onmessage({ data: JSON.stringify({ id: 'live-marks-q', sequence: sequence + 10, type: 'message.created', timestamp: new Date().toISOString(), payload: { messageId: 'mq', role: 'user', sender: 'you', target: 'codex', text: marked, status: 'sent' } }) });
+  streamInstance.onmessage({ data: JSON.stringify({ id: 'live-marks-a', sequence: sequence + 11, type: 'message.created', timestamp: new Date().toISOString(), payload: { messageId: 'ma', parentMessageId: 'mq', role: 'assistant', sender: 'codex', target: 'you', status: 'sent', text: '**1.** El botón mide 20 px.\n\n2) El texto no se centra.' } }) });
+  const said = column.querySelectorAll('.point-said').at(-1);
+  assert.match(said?.textContent ?? '', /:5180 · 3 marcas/, 'the question reads short');
+  const checks = column.querySelectorAll('.point-check').at(-1);
+  assert.ok(checks, 'the answer says which marks it took up');
+  const items = checks.querySelectorAll('.point-check-item');
+  assert.deepEqual(items.map((item) => item.getAttribute('aria-pressed')), ['true', 'true', 'false']);
+  const again = checks.querySelectorAll('.point-check-again')[0];
+  assert.match(again.textContent, /pendiente/);
+  again.listeners.click[0]();
+  assert.match(registry.get('message').value, /siguen pendientes/);
+  const carried = registry.get('attachments').querySelectorAll('.attachment-chip')[0];
+  assert.match(carried?.textContent ?? '', /:5180 · 1 marca/);
   ashToggle.listeners.click[0]();
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'false', 'the human can turn it off per message');
   assert.equal(globalThis.__pulse.state.ash, false);
