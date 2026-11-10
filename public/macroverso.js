@@ -24,7 +24,7 @@
 // for less motion gets one still frame redrawn when something changes. No line joins two universes
 // until a link exists (phase 3c).
 
-import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, cellNoise, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, fractalNoise, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, texturesReady } from './nostromo-engine.js';
+import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, drawSun, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, sunOrb, texturesReady } from './nostromo-engine.js';
 import { createStrain, inviteNeural, neuralKey, paintNeuralKey, tellViews } from './neural.js';
 import { trazo } from './icons.js';
 
@@ -66,82 +66,6 @@ function canvasOf(width, height) {
 }
 
 const ORB_FPS = 30;                // the most the centre's sun is painted again in a second
-const smooth = (edge0, edge1, x) => { const k = clamp((x - edge0) / (edge1 - edge0), 0, 1); return k * k * (3 - 2 * k); };
-
-// ---- The sun at the centre of the projects (2026-11-10, asked by the author: «the sun does not feel
-// like a real sun»). The Coordinator in the planets view is a star now, drawn as the Sun is seen in a
-// white-light photograph, from the same noise the memories' dwarfs are made of (nostromo-engine.js):
-//   granulation — bright cells of rising gas and dark lanes between them, over a slow unevenness;
-//   spots — a dark umbra in a paler penumbra, a few, drifting with the turn;
-//   limb darkening — brightest in the middle, dimmer and warmer toward the edge, more in blue than
-//     in red, which is what makes a disc of light read as a ball;
-//   round it — a tight bright skin at the limb and a wide warm glow, no rays.
-// The surface is a map of the whole body in latitude and longitude, built once; turning is sliding
-// along it. Painted small (SUN_SIDE) and scaled, at most ORB_FPS times a second.
-const SUN_SIDE = 192;
-const SUN_W = 256;
-const SUN_H = 128;
-// How much each channel dims at the limb, red to blue.
-const SUN_LIMB = [0.42, 0.62, 0.86];
-// The photosphere's own colour, a little warm of white.
-const SUN_TONE = [255, 236, 196];
-function sunOrb() {
-  const map = new Float32Array(SUN_W * SUN_H);
-  // A few spots, each a latitude, a longitude and a size, in the bands spots keep to.
-  const spots = [[0.28, 0.6, 0.07], [0.22, 0.9, 0.045], [-0.3, 2.4, 0.06], [-0.24, 2.62, 0.035], [0.18, 4.1, 0.05], [-0.2, 5.3, 0.04]];
-  for (let row = 0; row < SUN_H; row += 1) {
-    const lat = ((row + 0.5) / SUN_H - 0.5) * Math.PI;
-    const cl = Math.cos(lat), sl = Math.sin(lat);
-    for (let col = 0; col < SUN_W; col += 1) {
-      const lon = ((col + 0.5) / SUN_W) * Math.PI * 2;
-      const x = cl * Math.cos(lon), y = sl, z = cl * Math.sin(lon);
-      const [near, next] = cellNoise(x * 14 + 3, y * 14, z * 14);
-      const lanes = smooth(0.02, 0.22, next - near);
-      const drift = fractalNoise(x * 2.4 + 9, y * 2.4, z * 2.4, 4);
-      let bright = 0.7 + 0.28 * lanes + 0.2 * (drift - 0.5);
-      for (const [sLat, sLon, size] of spots) {
-        const d = Math.acos(clamp(Math.sin(sLat) * sl + Math.cos(sLat) * cl * Math.cos(lon - sLon), -1, 1));
-        if (d < size * 1.9) bright *= 0.45 + 0.55 * smooth(size * 0.55, size * 1.9, d) + (d < size * 0.55 ? -0.25 : 0);
-      }
-      map[row * SUN_W + col] = clamp(bright, 0.05, 1.1);
-    }
-  }
-  const canvas = canvasOf(SUN_SIDE, SUN_SIDE);
-  const pen = canvas.getContext('2d');
-  const image = pen.createImageData(SUN_SIDE, SUN_SIDE);
-  const sun = { canvas, paintedAt: -1 };
-  // `turn` in radians; `life` dims it while the Coordinator's room sleeps.
-  sun.paint = (turn, life = 1) => {
-    const data = image.data;
-    const half = SUN_SIDE / 2;
-    for (let py = 0; py < SUN_SIDE; py += 1) {
-      const ny = (py + 0.5 - half) / half;
-      for (let px = 0; px < SUN_SIDE; px += 1) {
-        const nx = (px + 0.5 - half) / half;
-        const k = (py * SUN_SIDE + px) * 4;
-        const rr = nx * nx + ny * ny;
-        if (rr > 1) { data[k + 3] = 0; continue; }
-        const mu = Math.sqrt(1 - rr);
-        // A slight lean, so the spots' bands are not a flat line across the face.
-        const lat = Math.asin(clamp(-ny * 0.96 + mu * 0.28, -1, 1));
-        const lon = Math.atan2(nx, mu) + turn;
-        const u = ((lon / (Math.PI * 2)) % 1 + 1) % 1;
-        const v = clamp(lat / Math.PI + 0.5, 0, 0.999);
-        const g = map[Math.floor(v * SUN_H) * SUN_W + Math.floor(u * SUN_W)];
-        // The pattern fades toward the limb, where the cells foreshorten.
-        const grain = 1 + (g - 0.86) * (0.35 + 0.65 * mu);
-        const edge = Math.min(1, (1 - Math.sqrt(rr)) * half * 0.9);
-        for (let c = 0; c < 3; c += 1) {
-          const limb = 1 - SUN_LIMB[c] * (1 - mu);
-          data[k + c] = clamp(SUN_TONE[c] * limb * grain * life * 1.04, 0, 255);
-        }
-        data[k + 3] = 255 * edge;
-      }
-    }
-    pen.putImageData(image, 0, 0);
-  };
-  return sun;
-}
 
 // How big a universe reads at zoom 1, in css px of radius: the more it knows, the bigger
 // (2026-10-28), plainly enough to tell one project from another, and never past a size that looks
@@ -848,27 +772,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
         sun.paint(reduced ? 0 : clock * 0.035, life);
         sun.paintedAt = clock;
       }
-      // The light it gives, wide and warm, breathing a little: first the glow it sits in, then the
-      // body, then a tight bright skin gripping the limb.
-      ctx.globalCompositeOperation = 'lighter';
-      const reach = r * (3.4 + 0.15 * beat);
-      const glow = ctx.createRadialGradient(p.x, p.y, r * 0.9, p.x, p.y, reach);
-      glow.addColorStop(0, `rgba(255, 196, 110, ${0.42 * life})`);
-      glow.addColorStop(0.18, `rgba(255, 150, 60, ${0.2 * life})`);
-      glow.addColorStop(0.5, `rgba(240, 96, 30, ${0.07 * life})`);
-      glow.addColorStop(1, 'rgba(200, 60, 20, 0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(p.x, p.y, reach, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.drawImage(sun.canvas, p.x - r, p.y - r, r * 2, r * 2);
-      ctx.globalCompositeOperation = 'lighter';
-      const skin = ctx.createRadialGradient(p.x, p.y, r * 0.94, p.x, p.y, r * 1.18);
-      skin.addColorStop(0, `rgba(255, 226, 160, ${0.5 * life})`);
-      skin.addColorStop(0.35, `rgba(255, 170, 80, ${0.22 * life})`);
-      skin.addColorStop(1, 'rgba(255, 120, 40, 0)');
-      ctx.fillStyle = skin;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.18, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+      drawSun(ctx, p.x, p.y, r, sun, { life, beat });
     }
     // A ring in the accent while a universe is carried onto it, and while it waits for the person;
     // a white one while it is pointed at or chosen.

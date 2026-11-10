@@ -7425,7 +7425,8 @@ dialog.nostromo-key .room-ask-icon { --tone: #e5484d; }
 :is(#nostromo, .mv) .nostromo-actions .mother-close:hover { background: rgba(255, 255, 255, .14); }
 :is(#nostromo, .mv) .nostromo-actions .mother-close[aria-pressed="true"] { background: #f2f1ee; color: #111; }
 #nostromo .nostromo-help { left: 20px; bottom: 14px; font-family: var(--read); font-size: 11.5px; letter-spacing: 0; color: rgba(242, 241, 238, .42); }
-#nostromo .nostromo-empty { font-family: var(--read); letter-spacing: 0; text-transform: lowercase; color: rgba(242, 241, 238, .6); }
+/* Under the sun, not across it (2026-11-10): over its light the words could not be read. */
+#nostromo .nostromo-empty { inset: auto 0 84px 0; font-family: var(--read); letter-spacing: 0; text-transform: lowercase; color: rgba(242, 241, 238, .6); }
 #nostromo .nostromo-empty::first-letter { text-transform: uppercase; }
 /* A memory's card and the questions to ask: dark glass panels, the kind as a coloured dot and a
    word, labels in sentences, figures in small mono, and the one destructive key a soft red. */
@@ -8855,10 +8856,16 @@ dialog.room-ask.review-ask:not(.console) .review-ask-note { margin: 0; font-size
 /* ---------- A suggestion on a project's welcome (2026-10-11) ----------
    Continuity (AHP+), offered and never installed from here: under the three openings, a hairline
    apart, left-aligned to be read; the way into Modules in the accent, «No, thanks» quiet. */
-#messages .empty .empty-suggest { display: grid; gap: 8px; width: 100%; margin-top: 8px; padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent); text-align: left; }
+/* Since 2026-11-10 it is its own card beside @madre's, two columns under the blank page. */
+#messages .empty-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); align-items: stretch; gap: 12px; width: min(760px, 100%); margin: 12px auto 0; }
+#messages#messages .empty-pair > * { width: auto; max-width: none; margin: 0 !important; min-width: 0; align-self: stretch; justify-self: stretch; }
+#messages#messages .empty-pair :is(.empty-suggest, .system.local-model) { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 16px 18px; border-radius: 18px; text-align: left; color: var(--text-2); background-color: color-mix(in srgb, var(--bg) 62%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8); box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, .12), 0 14px 34px -18px rgba(0, 0, 0, .55); }
+:root[data-scheme="light"] #messages#messages .empty-pair :is(.empty-suggest, .system.local-model) { background-color: rgba(255, 255, 255, .72); box-shadow: 0 0 0 .5px rgba(20, 30, 20, .1), inset 0 1px 0 #ffffff, 0 14px 34px -20px rgba(20, 30, 20, .3); }
+#messages#messages .empty-pair .system.local-model .says { font-size: 13px; line-height: 1.5; }
+#messages#messages .empty-pair :is(.empty-suggest-acts, .system.local-model .acts) { margin-top: auto; padding-top: 4px; }
 .empty-suggest-head { display: grid; gap: 2px; }
 .empty-suggest-eyebrow { font-family: var(--sans); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-3); }
-#messages .empty .empty-suggest-head b { font-size: 14px; font-weight: 650; color: var(--text); }
+#messages .empty-suggest-head b { font-size: 14px; font-weight: 650; color: var(--text); }
 .empty-suggest-gains { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
 .empty-suggest-gains li { position: relative; padding-left: 14px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 .empty-suggest-gains li::before { content: ''; position: absolute; left: 1px; top: .6em; width: 5px; height: 5px; border-radius: 50%; background: var(--phosphor); }
@@ -9189,7 +9196,7 @@ dialog.key-ask:not(.console) { width: min(400px, calc(100vw - 32px)); }
 .oc-provider .sx-words b { font-size: 13.5px; font-weight: 600; color: var(--text); }
 .oc-controls { display: inline-flex; align-items: center; gap: 12px; flex: none; }
 .oc-shown { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); }
-.oc-add { display: grid; grid-template-columns: auto minmax(110px, 160px) minmax(0, 1fr) auto auto; align-items: center; gap: 8px 10px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent); }
+.oc-add { display: grid; grid-template-columns: auto minmax(150px, 200px) minmax(0, 1fr) auto auto; align-items: center; gap: 8px 10px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent); }
 .oc-add .sx-input { height: 32px; min-width: 0; }
 .oc-where { font-size: 12px; font-weight: 550; color: var(--phosphor); text-decoration: none; white-space: nowrap; }
 .oc-where:hover { text-decoration: underline; }
@@ -13300,3 +13307,27 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 .ns-aw-toast .ns-face { width: 1.8em; height: 1.8em; }
 .ns-aw-toast-words { display: grid; gap: .05em; line-height: 1.2; }
 .ns-aw-toast-words span { color: var(--ns-text-2); font-size: .9em; }
+
+/* ---------- Choosing one of OpenCode's providers (2026-11-10, provider-pick.js) ----------
+   A key with the provider's mark, and a list with a search on top: the best known pinned, then all. */
+.pp { position: relative; min-width: 0; }
+.pp-key { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px 0 9px; border: 0; border-radius: 9px; background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); font: 450 13px var(--read); text-align: left; cursor: pointer; }
+.pp-key:hover, .pp-key[aria-expanded="true"] { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.pp-key:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 1px; }
+.pp-key .pp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-chevron { display: grid; place-items: center; width: 14px; height: 14px; color: var(--text-3); }
+.pp-chevron svg { width: 12px; height: 12px; }
+.pp-mark { flex: none; display: grid; place-items: center; width: 18px; height: 18px; color: var(--text); }
+.pp-mark svg { width: 21px; height: 21px; }
+.pp-mark.initial { border-radius: 5px; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text-2); font: 600 10.5px/1 var(--read); }
+.pp-panel { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); width: max(100%, 280px); max-height: 340px; padding: 6px; border-radius: 12px; background: var(--bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent), 0 18px 40px -16px rgba(0, 0, 0, .5); }
+.pp-panel[hidden] { display: none; }
+.pp-search { height: 32px; margin: 0 0 6px; padding: 0 10px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font: 450 13px var(--read); outline: 0; }
+.pp-search:focus { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 60%, transparent); }
+.pp-list { overflow-y: auto; overscroll-behavior: contain; }
+.pp-group { margin: 6px 8px 4px; font: 600 11px/1.2 var(--read); color: var(--text-3); }
+.pp-row { display: flex; align-items: center; gap: 9px; width: 100%; height: 32px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--text); font: 450 13px var(--read); text-align: left; cursor: pointer; }
+.pp-row[aria-selected="true"] { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.pp-row.chosen .pp-name { font-weight: 600; }
+.pp-row.chosen::after { content: '✓'; margin-left: auto; color: var(--phosphor); font-size: 12px; }
+.pp-none { margin: 10px 8px; font-size: 12.5px; color: var(--text-3); }

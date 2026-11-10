@@ -28,6 +28,7 @@ import { platformOf, remedyKey } from './remedy.js';
 import { MADRE_LOGO as BRAND_LOGO, openingPlayed, playOpening } from './loader.js';
 import { trazo } from './icons.js';
 import { createScene } from './welcome-scene.js';
+import { startersFor } from './starters.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -59,18 +60,25 @@ const STEP_NAMES = {
   hello: () => t('Hello'), use: () => t('What you want it for'), agents: () => t('Your AIs'), project: () => t('Your projects'),
   ai: () => t('AI on your computer'), ready: () => t('Your first message'),
 };
-// What MADRE is for to this person (src/tour.mjs, WELCOME_PROFILES): the examples follow it.
+// What MADRE is for to this person (src/tour.mjs, WELCOME_PROFILES): the examples follow it. Eight
+// since 2026-11-10 (the author: «more examples, with MADRE's icons»), each with its Trazo drawing.
 const PROFILES = [
-  { id: 'business', title: () => t('My business'), sub: () => t('What I sell, my customers, my social media.') },
-  { id: 'numbers', title: () => t('Invoices and numbers'), sub: () => t('The spreadsheet, the expenses, what the accountant asks for.') },
-  { id: 'code', title: () => t('Programming'), sub: () => t('Websites, apps, the usual repository.') },
-  { id: 'notes', title: () => t('Writing and getting organised'), sub: () => t('Loose notes, to-dos, long texts.') },
-  { id: 'curious', title: () => t('I just want to see what it does'), sub: () => t('Show me, and then I will decide.') },
+  { id: 'business', icon: 'market', title: () => t('My business'), sub: () => t('What I sell, my customers and how they find me.') },
+  { id: 'social', icon: 'image', title: () => t('Social media and content'), sub: () => t('Posts, captions, ads and product photos.') },
+  { id: 'numbers', icon: 'bars', title: () => t('Accounts and invoices'), sub: () => t('Expenses, invoices and what the accountant asks for.') },
+  { id: 'office', icon: 'inbox', title: () => t('My office work'), sub: () => t('Emails, reports, presentations and meetings.') },
+  { id: 'study', icon: 'book', title: () => t('Studying and learning'), sub: () => t('Notes, homework and topics I want to understand.') },
+  { id: 'notes', icon: 'note', title: () => t('Writing and getting organised'), sub: () => t('Loose ideas, to-dos and long texts.') },
+  { id: 'code', icon: 'code', title: () => t('Programming'), sub: () => t('Websites, apps and the repository I always use.') },
+  { id: 'curious', icon: 'spark', title: () => t('I just want to see what it does'), sub: () => t('Show me first, then I decide.') },
 ];
 // A first message for each, written as a person would ask it, and what to say first to @madre.
 const IDEAS = {
   business: () => [t('Write the description of my 5 best-selling products'), t('Make me a simple page with my opening hours and my WhatsApp'), t('Answer the questions my customers always ask me')],
+  social: () => [t('Write five posts for this week about what I sell'), t('Give me ideas for a short video that shows my product'), t('Write the description of my Instagram profile')],
   numbers: () => [t('Sort these invoices by month in a table'), t('Check this sheet and tell me what does not add up'), t('Make the expense summary I send to my accountant')],
+  office: () => [t('Turn these notes into a clear report'), t('Write a polite email asking for more time'), t('Make me the outline of a ten-minute presentation')],
+  study: () => [t('Explain this topic to me as if I were fifteen'), t('Make me ten questions to check that I understood it'), t('Turn this document into study notes')],
   code: () => [t('Explain this project to me as if it were my first day'), t('Find out why it does not start'), t('Propose three small fixes and make them in a separate branch')],
   notes: () => [t('Group my loose notes by topic'), t('Plan my week with what I have pending'), t('Remind me on Friday to check this')],
   curious: () => [t('Change the colours of the page'), t('Add a task to the list'), t('Tell me what is in this folder')],
@@ -78,7 +86,10 @@ const IDEAS = {
 };
 const SUGGESTIONS = {
   business: () => [t('Name an end-of-month promotion'), t('Write to a customer who has not paid, without sounding rude')],
+  social: () => [t('Give me three ideas for posts this week'), t('Write a short, friendly caption for a photo of my product')],
   numbers: () => [t('How do I sort my invoices so I never lose one?'), t('Make the list of what I ask my accountant every month')],
+  office: () => [t('Help me write a polite email to say no'), t('Give me an outline for a short presentation')],
+  study: () => [t('Explain photosynthesis in three lines'), t('Give me a trick to remember what I study')],
   code: () => [t('Explain what a git branch is in two lines'), t('Give me a name for a booking app')],
   notes: () => [t('Make me a list to organise my week'), t('Give me an idea to start a long text')],
   curious: () => [t('What can you do for me?'), t('Tell me something fun in one line')],
@@ -169,7 +180,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     ready: 0,                   // agents connected
     found: null,                // the folders that look like projects, and the ones other tools know
     picked: null,               // the ones marked to bring
-    picker: false,              // «another folder or a new one» open
+    way: null,                  // the other way in open: «new» · «browse»
+    allFound: false,            // every found folder shown, not only the first rows
     added: [],                  // the projects added while the welcome was open
   };
   let leave = null;             // what the step on screen stops when another one comes
@@ -268,10 +280,20 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     box.append(...children.filter(Boolean).map((child) => (typeof child === 'string' ? el('p', null, child) : child)));
     return box;
   };
+  // What just unfolded is brought into sight with a gentle scroll (2026-11-10, the author: «guide
+  // them down as more shows»): only as far as its end, and never past its top.
+  const reveal = (node) => requestAnimationFrame(() => {
+    if (!node?.isConnected || !content.contains(node)) return;
+    const box = content.getBoundingClientRect();
+    const own = node.getBoundingClientRect();
+    const by = Math.min(own.bottom - box.bottom + 18, own.top - box.top - 12);
+    if (by > 4) content.scrollBy({ top: by, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
   // A word MADRE uses, explained where it first appears, folded: «what is this?».
   const what = (question, answer) => {
     const box = el('details', 'wl-what');
     box.append(el('summary', null, question), el('p', null, answer));
+    box.addEventListener('toggle', () => { if (box.open) reveal(box); });
     return box;
   };
   // «See how to fix it», under what went wrong: the card of Diagnostics for it, for this system.
@@ -357,6 +379,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     fact(t('Graphics card'), graphicsWords());
     fact(t('Free space'), env.disk ? t('{n} GB free', { n: number(env.disk.freeGb) }) : null);
     const fold = el('details', 'wl-more');
+    fold.addEventListener('toggle', () => { if (fold.open) reveal(fold); });
     fold.append(el('summary', null, t('See what we found on your computer')), grid, el('p', 'wl-tiny', t('This never leaves your computer. We only use it to know which AI fits.')));
     return fold;
   }
@@ -414,8 +437,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   // ---- 2 · WHAT YOU WANT IT FOR: one or several; the examples from here on follow it.
   function use() {
     const picture = { id: 'use', data: () => ({ items: PROFILES.map((one) => ({ id: one.id, on: s.profile.has(one.id) })) }) };
-    const parts = head(t('What do you want it for?'), t('Mark whatever looks like yours. That way the examples we show you are ones that help you, not a programmer\'s.'), picture, s.profile.size ? t('This picks the examples you will see.') : t('Mark one or several.'));
-    const grid = el('div', 'wl-tiles');
+    const parts = head(t('What would you like MADRE to help you with?'), t('Mark everything that sounds like your day. From here on, the examples you see are about your things, not a programmer\'s.'), picture, s.profile.size ? t('This picks the examples you will see.') : t('Mark one or several.'));
+    const grid = el('div', 'wl-tiles wl-uses');
     for (const one of PROFILES) {
       const tile = button('wl-tile', null, () => {
         if (s.profile.has(one.id)) s.profile.delete(one.id); else s.profile.add(one.id);
@@ -424,7 +447,10 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
         paintUseKeys();
       });
       tile.setAttribute('aria-pressed', String(s.profile.has(one.id)));
-      tile.append(el('b', null, one.title()), el('small', null, one.sub()));
+      const mark = el('span', 'wl-tile-icon');
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = trazo(one.icon); // trusted: our own SVG string
+      tile.append(mark, el('b', null, one.title()), el('small', null, one.sub()));
       grid.append(tile);
     }
     parts.push(grid);
@@ -502,6 +528,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const n = s.picked?.size ?? 0;
     return n ? t('{n} on their way. They stay where they are; MADRE only learns where to find them.', { n }) : t('Mark the folders you want to bring.');
   };
+  // Found folders shown at first: three rows of three; the rest behind «See all».
+  const FOUND_SHOWN = 9;
   function project() {
     const had = host.projects?.() ?? [];
     if (!s.found && !s.finding) { s.finding = true; void loadFound(); }
@@ -509,16 +537,18 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const looking = !s.found;
     const known = found.some((one) => one.from?.length);
     const picture = { id: 'project', data: () => ({ count: s.picked?.size ?? 0 }) };
-    const lead = looking ? t('Looking for your folders…') : !found.length ? t('Choose a folder you work in, or make a new one.')
-      : known ? t('You already opened these folders with other tools. We marked the ones you used most recently; untick the ones you do not want.')
+    const lead = looking ? t('Looking for your folders…') : !found.length ? t('Make a new project, or choose a folder you already work in.')
+      : known ? t('These are folders you already opened with other tools; the newest come marked. They stay where they are: MADRE only learns where to find them.')
         : t('These folders look like projects. Mark the ones you want to bring.');
     const parts = head(t('Bring what you already have'), lead, picture, projectCaption());
-    parts.push(what(t('What is a project?'), t('Each folder you bring is a project: your shop, this year\'s invoices, your website. Each one keeps its own conversations and what has been decided, without mixing with the others. Bringing it does not move it or change anything in it.')));
     if (had.length) parts.push(note('ok', had.length === 1 ? t('You already have a project in Home: {name}. Add another one, or continue.', { name: had[0].name }) : t('You already have {n} projects in Home. Add another one, or continue.', { n: had.length })));
     if (s.env?.place === 'wsl') parts.push(note('warn', t('Keep your projects inside Linux (your folder in /home). A Windows folder (/mnt/c/…) makes MADRE slower and protects your files less.'), fix('wsl-windows-folder')));
     if (found.length) {
+      // Three columns of small cards (2026-11-10, the author: «less scrolling»): the name, where it
+      // is and when, and the tools it was opened with, each on one line.
       const list = el('div', 'wl-found');
-      for (const one of found) {
+      const shown = s.allFound ? found : found.slice(0, FOUND_SHOWN);
+      for (const one of shown) {
         const on = s.picked?.has(one.path);
         const row = button('wl-found-row', null, () => {
           if (s.picked.has(one.path)) s.picked.delete(one.path); else s.picked.add(one.path);
@@ -531,50 +561,70 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
         const box = el('span', 'wl-box');
         box.innerHTML = TICK; // trusted: our own SVG string
         const words = el('span', 'wl-found-words');
-        words.append(el('b', null, one.name), el('small', null, [homeWord(one.path), ago(one.when)].filter(Boolean).join(' · ')));
-        const from = el('span', 'wl-from');
-        if (one.from?.length) for (const tool of one.from) from.append(el('span', null, t('You opened it with {tool}', { tool: TOOL_NAMES[tool] ?? tool })));
-        else from.append(el('span', null, t('Looks like a project')));
-        row.append(box, words, from);
+        const where = [homeWord(one.path), ago(one.when)].filter(Boolean).join(' · ');
+        const tools = one.from?.length ? t('Opened with {tools}', { tools: new Intl.ListFormat(language(), { type: 'conjunction' }).format(one.from.map((tool) => TOOL_NAMES[tool] ?? tool)) }) : t('Looks like a project');
+        words.append(el('b', null, one.name), el('small', null, where), el('small', 'wl-from', tools));
+        row.title = [one.name, where, tools].join('\n');
+        row.append(box, words);
         list.append(row);
       }
       parts.push(list);
+      if (found.length > FOUND_SHOWN) {
+        const more = button('wl-btn ghost small wl-found-more', s.allFound ? t('Show fewer') : t('See all {n}', { n: found.length }), () => { s.allFound = !s.allFound; project(); });
+        parts.push(more);
+      }
     }
-    // Other ways in: any folder or a new one (Home's own picker), or a project made to practise in.
+    // Other ways in (2026-11-10, the author: «simple: create or bring a project»): a new one by its
+    // name, any other folder, or one made to practise in. The folders found above are not offered
+    // again in a tab of their own.
     const others = el('div', 'wl-otherways');
-    const browse = button('wl-tile', null, () => { s.picker = !s.picker; project(); });
-    browse.setAttribute('aria-pressed', String(s.picker));
-    browse.append(el('b', null, t('Another folder, or a new one')), el('small', null, t('Look on your computer, or make an empty folder with a name.')));
+    const way = (id, icon, title, sub, onPick) => {
+      const tile = button('wl-tile', null, onPick);
+      tile.setAttribute('aria-pressed', String(s.way === id));
+      const mark = el('span', 'wl-tile-icon');
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = trazo(icon); // trusted: our own SVG string
+      const said = el('small', null, sub);
+      tile.append(mark, el('b', null, title), said);
+      return { tile, said };
+    };
+    const pick = (id) => { s.way = s.way === id ? null : id; project(); };
+    const fresh = way('new', 'add', t('Create a new one'), t('An empty folder with the name you choose.'), () => pick('new'));
+    const browse = way('browse', 'folder', t('Choose another folder'), t('Any folder on your computer.'), () => pick('browse'));
     // No project at hand (2026-11-01): one made to try MADRE, a page with a list of tasks and a README
     // with what to ask. «I do not know what I would do with MADRE» is answered by having something.
-    const sample = button('wl-tile', null, async () => {
-      sample.disabled = true;
+    const sample = way('sample', 'spark', t('A practice one'), t('A page with a list of tasks, to ask your AIs for changes without fear of breaking anything.'), async () => {
+      sample.tile.disabled = true;
       const answer = await post('/api/salas/new', { sample: true, language: language() });
-      if (!answer.ok) { sampleSaid.textContent = answer.body?.error ?? t('The project to try MADRE could not be made.'); sample.disabled = false; return; }
+      if (!answer.ok) { sample.said.textContent = answer.body?.error ?? t('The project to try MADRE could not be made.'); sample.tile.disabled = false; return; }
       s.added = [...s.added, ...(answer.body.added ?? [])];
       await host.refresh?.();
       if (stepId() === 'project') go(s.step + 1, 'done');
     });
-    const sampleSaid = el('small', null, t('A page with a list of tasks, to ask your AIs for changes without fear of breaking anything.'));
-    sample.append(el('b', null, t('A practice one')), sampleSaid);
-    others.append(browse, sample);
-    parts.push(el('p', 'wl-section', found.length ? t('Would you rather start another way?') : t('Or start another way')), others);
-    if (s.picker) {
+    others.append(fresh.tile, browse.tile, sample.tile);
+    parts.push(el('p', 'wl-section', found.length ? t('Or start another way') : t('How do you want to start?')), others);
+    let opened = null;
+    if (s.way === 'new' || s.way === 'browse') {
       const picker = host.projectPicker?.({
+        sources: [s.way],
         // A project made new here does not drop the folders already chosen (QA 1.1.0, NUE-08): they
         // are added too, and the found ones stay marked.
         onAdded: (added) => {
           s.added = [...s.added, ...(added ?? [])];
-          s.picker = false;
+          s.way = null;
           s.found = null;
           if (stepId() === 'project') project();
         },
       });
-      if (picker) parts.push(picker.node);
+      if (picker) { opened = picker.node; parts.push(opened); }
     }
     if (s.added.length) parts.push(note('ok', s.added.length === 1 ? t('{name} was added to Home.', { name: s.added[0].name }) : t('{n} projects were added to Home.', { n: s.added.length })));
+    parts.push(what(t('What is a project?'), t('Each folder you bring is a project: your shop, this year\'s invoices, your website. Each one keeps its own conversations and what has been decided, without mixing with the others. Bringing it does not move it or change anything in it.')));
+    const top = content.scrollTop;
     content.replaceChildren(...parts);
+    content.scrollTop = top;
     paintProjectKeys();
+    if (opened) { reveal(opened); opened.querySelector('input[type="text"]')?.focus({ preventScroll: true }); }
   }
   function paintProjectKeys() {
     const n = s.picked?.size ?? 0;
@@ -622,6 +672,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       // Back to this computer's Ollama after pointing at another one.
       if ((value === 'here' || value === 'other') && s.ollama?.host && !localHost(s.ollama.host)) void post('/api/local-ai/host', { host: null }).then(() => readOllama({ probe: true })).then(() => paintAi());
       paintAi();
+      // What the choice opened, brought into sight.
+      reveal(aiBody?.lastElementChild);
     };
     const options = [];
     const recommended = fit()?.recommended?.run ?? null;
@@ -642,7 +694,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const grid = el('div', 'wl-models');
     const best = fit()?.recommended?.run?.id;
     for (const model of fitting()) {
-      const key = button('wl-model', null, () => { s.model = model; paintAi(); });
+      const key = button('wl-model', null, () => { s.model = model; paintAi(); reveal(aiBody?.lastElementChild); });
       key.setAttribute('aria-pressed', String(offered()?.id === model.id));
       key.append(el('b', null, model.label), el('small', null, t('{size} GB to download', { size: number(model.sizeGb ?? 0) })), el('span', 'wl-model-fit', model.id === best ? t('The one we recommend') : model.run === 'slow' ? t('Fits, answering slowly') : t('Fits without slowing it down')));
       grid.append(key);
@@ -688,7 +740,12 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (s.choice === 'windows' || s.choice === 'remote') blocks.push(addressFlow());
     // Once its model is there, a first talk with it, wherever it runs.
     if (s.choice !== 'skip' && aiReady()) blocks.push(talkFlow());
+    const top = content.scrollTop;
     aiBody.replaceChildren(...blocks);
+    content.scrollTop = top;
+    // The first time the talk with it shows, it is brought into sight.
+    const talk = aiBody.querySelector('.wl-talk-card');
+    if (talk && !s.talkShown) { s.talkShown = true; reveal(talk); }
     // With the AI there, its memory comes on its own: nothing to press.
     if ((s.choice === 'here' || s.choice === 'other') && aiReady() && !hasModel(EMBED_MODEL) && !s.pulls.has(EMBED_MODEL) && !pulling()) void startPull(EMBED_MODEL);
     const going = Boolean(pulling()) || s.queue.length > 0;
@@ -1006,7 +1063,15 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const added = s.added.map((one) => rooms.find((room) => room.root === one.root || room.name === one.name)).filter(Boolean);
     const room = added[0] ?? rooms[0] ?? null;
     const sample = s.added.some((one) => one.sample && (room?.root === one.root || room?.name === one.name));
-    const ideas = (IDEAS[sample ? 'curious' : profileOf() ?? 'none'] ?? IDEAS.none)();
+    // Ideas for what is in that folder (2026-11-10, the author: «for the project the person chose»):
+    // its sheets, documents, pages or code by name; an empty one is a project being born, and gets
+    // ideas to make something, by what MADRE is for to this person. The practice one has its own.
+    const inside = room && !sample ? await getJson(`/api/salas/peek?room=${encodeURIComponent(room.id)}`) : null;
+    if (stepId() !== 'ready') return;
+    const born = Array.isArray(inside?.entries) && !inside.entries.some((entry) => !String(entry.name).startsWith('.'));
+    const ideas = Array.isArray(inside?.entries)
+      ? startersFor({ entries: inside.entries, profile: [...s.profile], project: room.name, t, count: 4 })
+      : (IDEAS[sample ? 'curious' : profileOf() ?? 'none'] ?? IDEAS.none)().map((text) => ({ icon: sample ? 'spark' : 'compose', text, open: false }));
     const pull = pulling();
     const aiWords = aiReady() && !pull
       ? (s.talk?.messages?.length > 1 ? t('Ready, and you have already met') : `${s.ollama.chatModel ?? chatModels()[0].name}${localHost(s.ollama.host) ? '' : ` · ${t('on another computer')}`}`)
@@ -1032,7 +1097,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const lead = room && connected.length
       ? t('We open {name}. Tap an idea and it stays written so you only send it, or write your own.', { name: room.name })
       : t('Here is what is ready. Anything you left for later has its button.');
-    parts.push(...head(t('Where do we start?'), lead, { id: 'ready', data: () => ({ text: ideas[0] }) }, room && connected.length ? t('Your first message, almost written.') : t('Almost there.')), summary);
+    parts.push(...head(t('Where do we start?'), lead, { id: 'ready', data: () => ({ text: ideas[0]?.text ?? '' }) }, room && connected.length ? t('Your first message, almost written.') : t('Almost there.')), summary);
     // The AI arrived while the person was elsewhere: say so, and offer the hello.
     if (aiReady() && !pull && !(s.talk?.messages?.length > 1)) {
       const arrived = el('div', 'wl-arrived');
@@ -1059,9 +1124,17 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     // opened a project. Since 1.1 with the first message already written (`#escribe=`): the person only
     // sends it. Without a project or an agent, Home as before, whose first-time cards walk them there.
     if (room && connected.length) {
-      parts.push(el('p', 'wl-section', t('Ideas for {name}', { name: room.name })));
+      parts.push(el('p', 'wl-section', born ? t('To get {name} going', { name: room.name }) : t('Ideas for {name}', { name: room.name })));
       const list = el('div', 'wl-ideas');
-      for (const idea of ideas) { const key = button('wl-idea', idea, () => void enter(idea, key)); list.append(key); }
+      for (const idea of ideas) {
+        // One that ends open is for the person to finish: it opens written up to there.
+        const key = button('wl-idea', null, () => void enter(idea.text, key));
+        const mark = el('span', 'wl-idea-icon');
+        mark.setAttribute('aria-hidden', 'true');
+        mark.innerHTML = trazo(idea.icon); // trusted: our own SVG string
+        key.append(mark, el('span', 'wl-idea-text', idea.open ? `${idea.text.trim()}…` : idea.text));
+        list.append(key);
+      }
       parts.push(list);
       content.replaceChildren(...parts);
       const home = button('wl-btn ghost', t('Go to Home'), () => finish());

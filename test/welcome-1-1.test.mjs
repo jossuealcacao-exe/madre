@@ -19,7 +19,7 @@ test('welcome 1.1 · six steps, the same on the page and on the server, and «wh
   const said = welcome.match(/export const WELCOME_STEPS = (\[[^\]]+\]);/)[1].replace(/'/g, '"');
   assert.deepEqual(JSON.parse(said), WELCOME_STEPS);
   // Each use the page offers is one the server keeps, and each has its own first messages.
-  const offered = [...welcome.matchAll(/\{ id: '(\w+)', title: /g)].map((match) => match[1]);
+  const offered = [...welcome.matchAll(/\{ id: '(\w+)', icon: '[\w-]+', title: /g)].map((match) => match[1]);
   assert.deepEqual(offered, WELCOME_PROFILES);
   for (const id of [...WELCOME_PROFILES, 'none']) assert.match(welcome, new RegExp(`\\n  ${id}: \\(\\) => \\[t\\(`), `no first messages for ${id}`);
   assert.match(welcome, /await save\(\{ profile: \[\.\.\.s\.profile\] \}\);/);
@@ -98,7 +98,10 @@ test('welcome 1.1 · it ends inside a project with the first message written, ne
   // saying it is opening, until the project's page takes over; no stop on Home in between.
   assert.match(welcome, /const warm = room && connected\.length \? \(host\.warmProject\?\.\(room\) \?\? Promise\.resolve\(true\)\) : null;/);
   assert.match(welcome, /const answer = await host\.openProject\?\.\(room, \{ draft \}\);/);
-  assert.match(welcome, /button\('wl-idea', idea, \(\) => void enter\(idea, key\)\)/);
+  assert.match(welcome, /button\('wl-idea', null, \(\) => void enter\(idea\.text, key\)\)/);
+  // Its ideas are for what is in that folder, or to get a new one going (2026-11-10).
+  assert.match(welcome, /\/api\/salas\/peek\?room=/);
+  assert.match(welcome, /startersFor\(\{ entries: inside\.entries, profile: \[\.\.\.s\.profile\], project: room\.name, t, count: 4 \}\)/);
   assert.match(home, /warmProject: \(room\) => \(room\?\.open \? Promise\.resolve\(true\) : fetch\('\/api\/salas\/start'/);
   assert.match(home, /openProject: \(room, \{ draft = null \} = \{\}\) => startRoom\(room, \{ enter: true, draft \}\),/);
   assert.match(home, /#escribe=\$\{encodeURIComponent\(draft\)\}/);

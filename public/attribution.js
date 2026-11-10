@@ -81,7 +81,7 @@ export async function drawColophonKeys(host) {
 // The legal notices (1.1.0, Business Source License 1.1): the copyright, who may use MADRE for free,
 // that there is no warranty, how to read the license and where the code is — and the author's
 // attribution, which NOTICE asks every copy to keep. Built with the Settings blocks both pages share.
-export const TRADEMARKS = () => t('Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos appear unaltered and only to identify each service; MADRE is not affiliated with them or endorsed by them.');
+export const TRADEMARKS = () => t('Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos, and those of the providers OpenCode connects to, belong to their owners and appear unaltered only to identify each service; MADRE is not affiliated with them or endorsed by them.');
 
 export function drawLegal(host) {
   if (!host) return null;

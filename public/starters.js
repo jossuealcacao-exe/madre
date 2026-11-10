@@ -21,7 +21,7 @@ const CODE_DIRS = new Set(['src', 'lib', 'app', 'node_modules', 'tests', 'test']
 // A store's theme (Shopify) or a site (WordPress, a folder of pages).
 const WEB_DIRS = new Set(['layout', 'templates', 'sections', 'snippets', 'wp-content', 'public', 'site', 'www']);
 // What every project has and says nothing of what it is about.
-const PAPERWORK = /^(readme|leeme|license|licen[cs]e|licencia|changelog|cambios|contributing|code_of_conduct|security|agents|claude|gemini)(\.|$)/i;
+const PAPERWORK = /^(readme|leeme|license|licen[cs]e|licencia|changelog|cambios|contributing|code_of_conduct|security|agents|claude|gemini|credits|authors|notice|creditos|autores)(\.|$)/i;
 
 // What the first level of the folder holds, by kind; each list keeps the files' names in order.
 export function readFolder(entries = []) {
@@ -80,7 +80,10 @@ const ANY = (project) => [
 // A folder with nothing in it: what the person uses MADRE for (the welcome's `profile`).
 const BORN = {
   business: [['globe', 'I want a page for my business: ', {}], ['calendar', 'Make me a list of what to do this week to get my business going.', {}]],
+  social: [['image', 'Plan my posts for this month about: ', {}], ['calendar', 'Make me a calendar of posts for the next two weeks.', {}]],
   numbers: [['bars', 'Make me a sheet to keep my sales and expenses for the month.', {}]],
+  office: [['note', 'Help me put together a report about: ', {}], ['card', 'Make me the outline of a presentation about: ', {}]],
+  study: [['book', 'I want to learn about: ', {}], ['list', 'Make me a study plan for this week with what I have to learn.', {}]],
   notes: [['note', 'I want to put my ideas in order in a document: ', {}]],
   code: [['code', 'I want to start an app: ', {}], ['compose', 'Before writing anything, ask me what I want to build and propose a plan in steps.', {}]],
   curious: [['spark', 'What could you do for me in an empty folder? Give me three ideas.', {}]],

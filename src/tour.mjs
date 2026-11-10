@@ -37,7 +37,7 @@ export const CHAPTERS = ['moved', 'home', 'renamed', 'board', 'widgets', 'projec
 // one port, and a project takes the first free port when it opens: the cards came back whenever it
 // got another one, and the project that got the old port inherited them (2026-10-19).)
 export const HINTS = ['switch', 'links', 'key4',
-  'home-links', 'home-map', 'home-settings', 'home-add', 'new-add-widgets',
+  'home-links', 'home-map', 'home-settings', 'home-add', 'new-add-widgets', 'home-widgets',
   'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage', 'w-agenda',
   // The author's own widgets (2026-10-30): their first-time card came back on every start, never kept.
   'w-errors', 'w-live', 'w-installs', 'w-environments', 'w-rumbo',
@@ -71,7 +71,7 @@ const BEFORE = ['1.0'];
 // greeting and the memory into the local AI; «what it is for» comes in, and is kept as `profile`, so
 // the examples MADRE gives are this person's and not a programmer's.
 export const WELCOME_STEPS = ['hello', 'use', 'agents', 'project', 'ai', 'ready'];
-export const WELCOME_PROFILES = ['business', 'numbers', 'code', 'notes', 'curious'];
+export const WELCOME_PROFILES = ['business', 'social', 'numbers', 'office', 'study', 'notes', 'code', 'curious'];
 const freshWelcome = () => ({ at: null, done: [], skipped: [], finished: null, profile: [] });
 const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null, welcome: freshWelcome() });
 // A tab that shows the bonjour or the chapters says so every few seconds; another tab that finds it

@@ -28,6 +28,7 @@ import { openWelcome, welcomeOpen, WELCOME_STEPS } from './welcome.js';
 import { remedyKey } from './remedy.js';
 import { loadMarket } from './market.js';
 import { trazo, trazoDrawing } from './icons.js';
+import { providerPick } from './provider-pick.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
@@ -1963,16 +1964,20 @@ async function openHomeAdd() {
   } else sheetNow.showModal();
   void homeTour.hint('home-add', list, { inside: true, title: t('Add to Home'), text: t('The tiles you took off and the widgets you can add. A widget shows up only when this Mac has something to put in it. Right-click any tile to move it, change its size or take it off.') });
   // The author's widget is asked about before the list is drawn: where it cannot be read, it is not listed at all.
+  // All asked at once (2026-11-10): one after another, the list came in a row at a time.
   const ownerOk = new Set();
-  for (const [id, spec] of Object.entries(WIDGETS).filter(([id, spec]) => spec.owner && !placed(id))) {
+  await Promise.all(Object.entries(WIDGETS).filter(([id, spec]) => spec.owner && !placed(id)).map(async ([id, spec]) => {
     if (await fetch(`/api/salas/widget?kind=${spec.kind}`, { cache: 'no-store' }).then((response) => response.ok).catch(() => false)) ownerOk.add(id);
-  }
+  }));
   if (!homeAddSheet) return;
   const entries = [
     ...Object.entries(HOME_TILES).filter(([id]) => !placed(id)).map(([id, spec]) => ({ id, spec, ready: true })),
     ...Object.entries(WIDGETS).filter(([id, spec]) => !placed(id) && (!spec.owner || ownerOk.has(id))).map(([id, spec]) => ({ id, spec, ready: null })),
   ];
   if (!entries.length) { list.append(el('p', 'sm-hint', t('Everything is already on Home.'))); fit(); return; }
+  // Every row is drawn at once; each widget then says, as soon as its own answer comes, whether
+  // something feeds it.
+  const checks = [];
   for (const entry of entries) {
     const row = el('div', 'sm-add-row');
     row.append(tileIcon(entry.id));
@@ -1986,19 +1991,22 @@ async function openHomeAdd() {
     // A widget is offered only when something feeds it: asked of the server, which says so.
     if (entry.ready === null) {
       add.disabled = true;
-      said.textContent = t('Checking…');
-      // One that reads for itself (the agenda) is ready when it can read: it has a box to start with.
-      const reading = entry.spec.read ? ((await entry.spec.read()) ? { available: true } : { failed: true })
-        : await fetch(`/api/salas/widget?kind=${entry.spec.kind}`, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : { failed: response.status })).catch(() => ({ failed: true }));
-      if (!row.isConnected) return;
-      const ok = Boolean(reading?.available);
-      add.disabled = !ok;
-      // A page served by a project started before widgets existed cannot read them: said as that,
-      // not as a Mac with nothing to show.
-      said.textContent = ok ? '' : reading.failed === 404 ? t('This page is served by a project started before widgets existed: open Home from its own address, or restart that project.') : reading.failed ? t('It could not be read just now.') : (entry.spec.needs?.() ?? t('Nothing feeds it on this Mac yet.'));
+      checks.push((async () => {
+        // One that reads for itself (the agenda) is ready when it can read: it has a box to start with.
+        const reading = entry.spec.read ? ((await entry.spec.read()) ? { available: true } : { failed: true })
+          : await fetch(`/api/salas/widget?kind=${entry.spec.kind}`, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : { failed: response.status })).catch(() => ({ failed: true }));
+        if (!row.isConnected) return;
+        const ok = Boolean(reading?.available);
+        add.disabled = !ok;
+        // A page served by a project started before widgets existed cannot read them: said as that,
+        // not as a Mac with nothing to show.
+        said.textContent = ok ? '' : reading.failed === 404 ? t('This page is served by a project started before widgets existed: open Home from its own address, or restart that project.') : reading.failed ? t('It could not be read just now.') : (entry.spec.needs?.() ?? t('Nothing feeds it on this Mac yet.'));
+        fit();
+      })());
     }
   }
   fit();
+  await Promise.all(checks);
 }
 
 // ---- The widgets. Each is a tile that reads its own route every 20 s while Home is in view.
@@ -3026,6 +3034,12 @@ function welcomeHome() {
         anchor: () => $('sm-bishop-go'),
         title: () => t('Your Coordinator'),
         text: () => t('An agent that sees all your projects. Ask it «which project was I on yesterday?», or to pass an instruction from one project to another.'),
+      },
+      {
+        id: 'home-widgets',
+        anchor: () => document.getElementById('sm-add-widgets'),
+        title: () => t('Your widgets'),
+        text: () => t('Put on Home what you want in sight: your reminders, your projects\' servers, how busy this computer is. Right-click any tile to move it or take it off.'),
       },
       {
         id: 'links',
@@ -4805,11 +4819,13 @@ function foldTile({ name, path, note = null, project = true, known = false, chec
   return item;
 }
 
-function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {}) {
+// `sources`: the ways it offers, of found · browse · new. The welcome lists the found folders itself
+// and opens one way at a time (2026-11-10): a single way shows no tabs.
+function projectPicker({ onAdded = null, onChange = null, withAdd = true, sources = ['found', 'browse', 'new'] } = {}) {
   const chosen = new Map();     // path → name
   const node = el('div', 'sm-picker');
   const pages = foldPages();
-  let source = 'found';         // found · browse · new
+  let source = sources[0];      // found · browse · new
   let found = null;             // the suggestions, once read
   let here = null;              // the folder being walked, as /api/salas/folders answered
   let query = '';
@@ -4890,13 +4906,14 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
     onToggle: (on) => { if (on) chosen.set(one.path, one.name); else chosen.delete(one.path); sync(); },
   });
   function draw({ keepPage = false } = {}) {
-    const options = customSeg([['found', t('Found on this Mac')], ['browse', t('Your folders')], ['new', t('New project')]], source, (value) => {
+    const ways = [['found', t('Found on this Mac')], ['browse', t('Your folders')], ['new', t('New project')]].filter(([id]) => sources.includes(id) || id === source);
+    const options = ways.length > 1 ? customSeg(ways, source, (value) => {
       touched = true;
       source = value;
       draw();
       if (value !== 'found' && !here) void walk();
       if (value === 'new') nameInput.focus();
-    });
+    }) : el('span');
     seg.replaceWith(options);
     seg = options;
     const making = source === 'new';
@@ -4904,6 +4921,8 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
     pages.grid.hidden = making;
     footer.hidden = making;
     search.hidden = making;
+    // With one way and nothing to search, the head is empty: it takes no room.
+    head.hidden = ways.length < 2 && making;
     if (making) {
       line.replaceChildren(el('span', 'sm-picker-note', t('An empty folder, made for you, that becomes a project.')));
       sayWhere();
@@ -4967,7 +4986,8 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
     return true;
   }
   draw();
-  void loadFound();
+  if (sources.includes('found')) void loadFound();
+  else if (!here) void walk();
   sync();
   return { node, add, count: () => chosen.size };
 }
@@ -5104,9 +5124,8 @@ const openCodeProviders = (() => {
     const waiting = providers.filter((one) => !one.via && one.takesKey);
     if (waiting.length) {
       const form = el('form', 'sm-agent-key-form sm-oc-add');
-      const which = el('select');
-      which.setAttribute('aria-label', t('Provider'));
-      for (const provider of waiting) { const option = el('option', null, provider.label); option.value = provider.id; which.append(option); }
+      // OpenCode knows over two hundred: a list to search, the best known pinned on top (2026-11-10).
+      const which = providerPick({ providers: waiting, onChange: () => sync() });
       const input = el('input');
       input.type = 'password'; input.autocomplete = 'off'; input.spellcheck = false;
       const link = el('a', 'sm-agent-key-link', t('Where do I get one?'));
@@ -5118,11 +5137,10 @@ const openCodeProviders = (() => {
         link.hidden = !provider?.keyUrl;
         if (provider?.keyUrl) link.href = provider.keyUrl;
       };
-      which.addEventListener('change', sync);
       sync();
       const save = el('button', 'sm-btn primary small', t('Add'));
       save.type = 'submit';
-      form.append(which, input, save, link, said);
+      form.append(which.node, input, save, link, said);
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!input.value.trim()) { input.focus(); return; }

@@ -49,7 +49,9 @@ GitHub, Stripe y los demás— son marcas de sus dueños. MADRE los muestra solo
 servicio se conecta cada conector (uso nominativo), no porque esos dueños respalden a MADRE ni
 tengan relación con ella. Los dibujos vienen de [Simple Icons](https://simpleicons.org) (CC0 1.0)
 con sus colores oficiales; los que Simple Icons no dibuja, de CoreUI Brands y SVG Logos (CC0 1.0) y
-de VSCode Icons (MIT). Si
+de VSCode Icons (MIT). Los logos de los proveedores de OpenCode (Anthropic, OpenAI, Google, Groq y
+los demás) y los de los agentes vienen de [Lobe Icons](https://lobehub.com/icons) (MIT), en su
+versión de un solo color y sin alterar, solo para decir de qué proveedor es cada llave. Si
 eres dueño de una de esas marcas y prefieres que no aparezca, escribe y se quita.
 
 ## Si tienes duda
@@ -92,7 +94,9 @@ tools (MCP) — Notion, GitHub, Stripe and the rest — are their owners' tradem
 only to say which service a connector reaches (nominative use), not because their owners endorse
 or are affiliated with MADRE. The drawings come from [Simple Icons](https://simpleicons.org)
 (CC0 1.0) with their official colors; the ones Simple Icons does not draw, from CoreUI Brands and
-SVG Logos (CC0 1.0) and VSCode Icons (MIT). If
+SVG Logos (CC0 1.0) and VSCode Icons (MIT). The logos of OpenCode's providers (Anthropic, OpenAI,
+Google, Groq and the rest) and of the agents come from [Lobe Icons](https://lobehub.com/icons) (MIT),
+in their one-colour version and unaltered, only to say which provider each key is for. If
 you own one of those marks and would rather it not appear, write and it is taken off.
 
 In doubt, contact Jossue Alcalá at [jossuealcala.com](https://jossuealcala.com) before publishing.

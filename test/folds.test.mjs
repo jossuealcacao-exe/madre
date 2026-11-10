@@ -524,7 +524,8 @@ test('1.0.5: the hints are a short walk, once each; whoever knew MADRE is told o
   assert.match(home, /step: at \+ 1,\n {8}of: here\.length,/);
   // Someone new: Home's walk after the bonjour, the project's with Code and the manual.
   const walk = [...home.slice(home.indexOf('const HOME_WALK = ['), home.indexOf('let walkTries')).matchAll(/id: '([\w-]+)'/g)].map((match) => match[1]);
-  assert.deepEqual(walk, ['home-start', 'home-coordinator', 'links', 'home-manual']);
+  // The widgets, said once with the rest (2026-11-10).
+  assert.deepEqual(walk, ['home-start', 'home-coordinator', 'home-widgets', 'links', 'home-manual']);
   const guides = [...app.slice(app.indexOf('const GUIDE_HINTS = ['), app.indexOf('const NEWS_SINCE')).matchAll(/\{ id: '([\w-]+)'/g)].map((match) => match[1]);
   assert.deepEqual(guides, ['guide-talk', 'guide-agent', 'guide-mode', 'guide-code', 'guide-manual']);
   for (const id of [...walk, ...guides]) assert.ok(HINTS.includes(id), `${id} is shown but never kept as seen`);

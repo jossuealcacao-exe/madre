@@ -655,7 +655,7 @@ dialog.sm-sheet > .sm-sheet-body { border: 0 solid transparent; border-width: 8p
 .sm-oc-title + .sm-oc-row { border-top: 0; }
 .sm-oc-controls { display: inline-flex; align-items: center; gap: 10px; flex: none; }
 .sm-oc-shown { font-size: 12px; color: var(--text-2); }
-.sm-oc-add select { flex: 0 1 150px; }
+.sm-oc-add .pp { flex: 0 1 200px; }
 .sm-agent-words { display: grid; gap: 2px; min-width: 0; }
 .sm-agent-words b { font-size: 14.5px; font-weight: 600; }
 .sm-agent-words small { font-size: 12.5px; }
@@ -1972,6 +1972,8 @@ dialog.wl {
   position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 24px 16px; border: 0; background: transparent; color: var(--text); overflow: hidden auto; font: 400 14px/1.5 var(--read);
 }
 dialog.wl[open] { display: grid; place-items: center; }
+/* The page behind does not scroll while the welcome is up (2026-11-10). */
+html:has(dialog.wl[open]), html:has(dialog.wl[open]) body { overflow: hidden; }
 dialog.wl::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .wl-window { position: relative; width: min(980px, 100%); height: min(680px, calc(100dvh - 48px)); display: grid; grid-template-columns: 236px minmax(0, 1fr); border-radius: 14px; overflow: hidden; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line), 0 34px 90px -30px rgba(0, 0, 0, .55), 0 8px 24px -8px rgba(0, 0, 0, .25); }
 .wl-rail { display: flex; flex-direction: column; gap: 2px; min-height: 0; padding: 16px 10px; background: var(--wl-side); box-shadow: inset -1px 0 0 var(--wl-line); }
@@ -1994,10 +1996,11 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-step:hover { background: var(--wl-hover); color: var(--text); }
 .wl-step[aria-current="step"] { background: var(--wl-sel); color: var(--text); font-weight: 500; }
 .wl-step:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: -2px; }
-.wl-step i { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-3); font: 500 10.5px var(--read); font-style: normal; color: var(--text-3); }
+/* A true circle (2026-11-10): a border, not an inset shadow, on a square that cannot be squeezed. */
+.wl-step i { flex: 0 0 20px; box-sizing: border-box; display: grid; place-items: center; width: 20px; height: 20px; aspect-ratio: 1; border: 1.5px solid var(--text-3); border-radius: 50%; font: 500 10.5px/1 var(--read); font-style: normal; font-variant-numeric: tabular-nums; color: var(--text-3); }
 .wl-step i svg { width: 12px; height: 12px; }
-.wl-step.done i { background: var(--wl-acc); box-shadow: none; color: var(--wl-acc-ink); }
-.wl-step.skipped i { box-shadow: inset 0 0 0 1.5px var(--wl-warn); color: var(--wl-warn); }
+.wl-step.done i { background: var(--wl-acc); border-color: var(--wl-acc); color: var(--wl-acc-ink); }
+.wl-step.skipped i { border-color: var(--wl-warn); color: var(--wl-warn); }
 .wl-rail-foot { margin: auto 0 0; padding: 12px 10px 2px; font-size: 12px; line-height: 1.45; color: var(--text-3); }
 .wl-main { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
 /* No close key (1.1, 2026-11-08): the welcome is left through its own keys — «Skip for now» on each
@@ -2144,19 +2147,33 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-tile:disabled { opacity: .6; cursor: default; }
 .wl-agent-plan { margin: 0 0 4px; font-size: 13px; line-height: 1.45; color: var(--text); }
 .wl-agent-notes { display: grid; gap: 2px; }
-.wl-found { display: grid; gap: 6px; }
-.wl-found-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 10px 14px; border: 0; border-radius: 10px; background: none; box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+/* Three columns of small cards (2026-11-10): name, where and when, and the tools, a line each. */
+.wl-found { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wl-found-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; width: 100%; min-width: 0; padding: 11px 12px; border: 0; border-radius: 12px; background: none; box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.wl-found-row[aria-checked="true"] { background: color-mix(in srgb, var(--wl-acc) 7%, var(--wl-canvas)); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--wl-acc) 70%, transparent); }
+.wl-found-more { justify-self: start; margin-top: -4px !important; }
 .wl-found-row:hover { background: var(--wl-hover); }
 .wl-found-row:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
-.wl-box { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--text-3); color: transparent; }
+.wl-box { display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--text-3); color: transparent; }
 .wl-box svg { width: 12px; height: 12px; }
 .wl-found-row[aria-checked="true"] .wl-box { background: var(--wl-acc); box-shadow: none; color: var(--wl-acc-ink); }
-.wl-found-words { display: grid; min-width: 0; }
-.wl-found-words b { font-weight: 500; overflow-wrap: anywhere; }
-.wl-found-words small { font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
-.wl-from { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-.wl-from span { padding: 2px 8px; border-radius: 999px; background: var(--wl-hover); color: var(--text-2); font-size: 11.5px; white-space: nowrap; }
-.wl-otherways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.wl-found-words { display: grid; gap: 1px; min-width: 0; }
+.wl-found-words :is(b, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wl-found-words b { font-weight: 500; }
+.wl-found-words small { font-size: 12px; color: var(--text-3); }
+.wl-found-words .wl-from { color: var(--text-2); }
+.wl-otherways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wl-otherways .wl-tile { min-height: 0; }
+/* MADRE's own drawings on the tiles (2026-11-10): a small square in the accent's tint. */
+.wl-tile-icon { display: grid; place-items: center; width: 30px; height: 30px; margin-bottom: 4px; border-radius: 9px; background: color-mix(in srgb, var(--wl-acc) 11%, transparent); color: color-mix(in srgb, var(--wl-acc) 78%, var(--text)); }
+.wl-tile-icon svg { width: 17px; height: 17px; }
+.wl-tile[aria-pressed="true"] .wl-tile-icon { background: var(--wl-acc); color: var(--wl-acc-ink); }
+.wl-uses { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+:is(.wl-uses, .wl-otherways) .wl-tile { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 9px; min-height: 0; padding: 11px 12px; }
+:is(.wl-uses, .wl-otherways) .wl-tile .wl-tile-icon { width: 26px; height: 26px; margin: 0; border-radius: 8px; }
+:is(.wl-uses, .wl-otherways) .wl-tile .wl-tile-icon svg { width: 15px; height: 15px; }
+:is(.wl-uses, .wl-otherways) .wl-tile b { font-size: 13.5px; line-height: 1.25; }
+:is(.wl-uses, .wl-otherways) .wl-tile small { grid-column: 1 / -1; margin-top: 2px; font-size: 12px; }
 .wl-coordinator { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 14px 16px; border-radius: 12px; box-shadow: 0 0 0 1px var(--wl-line); }
 .wl-coordinator b { display: block; margin-bottom: 4px; font-weight: 600; }
 .wl-coordinator p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
@@ -2181,6 +2198,12 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-idea:hover { background: var(--wl-hover); box-shadow: 0 0 0 1px color-mix(in srgb, var(--wl-acc) 45%, transparent); }
 .wl-idea:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
 .wl-idea::after { content: '↗'; margin-left: auto; color: var(--text-3); }
+.wl-ideas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wl-idea { align-items: flex-start; }
+.wl-idea::after { align-self: center; }
+.wl-idea-icon { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--wl-acc) 11%, transparent); color: color-mix(in srgb, var(--wl-acc) 78%, var(--text)); }
+.wl-idea-icon svg { width: 15px; height: 15px; }
+.wl-idea-text { align-self: center; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { .wl-scene-cap.new span { animation: none; } .wl-tile { transition: none; } }
 @media (max-width: 760px) {
   .wl-window { grid-template-columns: 1fr; height: calc(100dvh - 48px); }
@@ -2190,9 +2213,8 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
   .wl-content, .wl-actions { padding-left: 18px; padding-right: 18px; }
   .wl-actions { flex-wrap: wrap; }
   .wl-skipnote { flex-basis: 100%; order: -1; text-align: left; }
-  .wl-otherways { grid-template-columns: 1fr; }
-  .wl-found-row { grid-template-columns: 20px minmax(0, 1fr); }
-  .wl-from { grid-column: 2; justify-content: flex-start; }
+  .wl-otherways, .wl-ideas { grid-template-columns: 1fr; }
+  .wl-found, .wl-uses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wl-scene { height: 150px; }
 }
 @media (prefers-reduced-motion: reduce) { .wl-bar > i { transition: none; } }

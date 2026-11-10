@@ -534,6 +534,116 @@ export function cellNoise(x, y, z) {
 
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
+const sunClamp = (value, low, high) => Math.min(high, Math.max(low, value));
+// ---- The sun at the centre of the projects (2026-11-10, asked by the author: «the sun does not feel
+// like a real sun»). The Coordinator in the planets view is a star now, and so is the centre of every project's map (2026-11-10: «the sun in the projects does not look like the Coordinator's»), drawn as the Sun is seen in a
+// white-light photograph, from the same noise the memories' dwarfs are made of (this file):
+//   granulation — bright cells of rising gas and dark lanes between them, over a slow unevenness;
+//   spots — a dark umbra in a paler penumbra, a few, drifting with the turn;
+//   limb darkening — brightest in the middle, dimmer and warmer toward the edge, more in blue than
+//     in red, which is what makes a disc of light read as a ball;
+//   round it — a tight bright skin at the limb and a wide warm glow, no rays.
+// The surface is a map of the whole body in latitude and longitude, built once; turning is sliding
+// along it. Painted at `side` pixels (SUN_SIDE in Home, more on a map seen up close) and scaled.
+const SUN_SIDE = 192;
+const SUN_W = 256;
+const SUN_H = 128;
+// How much each channel dims at the limb, red to blue.
+const SUN_LIMB = [0.42, 0.62, 0.86];
+// The photosphere's own colour, a little warm of white.
+const SUN_TONE = [255, 236, 196];
+export function sunOrb({ side = SUN_SIDE } = {}) {
+  // The surface keeps about two of its texels to each pixel across the face, whatever the size.
+  const W = Math.min(1024, Math.max(SUN_W, side * 2));
+  const H = W / 2;
+  const map = new Float32Array(W * H);
+  // A few spots, each a latitude, a longitude and a size, in the bands spots keep to.
+  const spots = [[0.28, 0.6, 0.07], [0.22, 0.9, 0.045], [-0.3, 2.4, 0.06], [-0.24, 2.62, 0.035], [0.18, 4.1, 0.05], [-0.2, 5.3, 0.04]];
+  for (let row = 0; row < H; row += 1) {
+    const lat = ((row + 0.5) / H - 0.5) * Math.PI;
+    const cl = Math.cos(lat), sl = Math.sin(lat);
+    for (let col = 0; col < W; col += 1) {
+      const lon = ((col + 0.5) / W) * Math.PI * 2;
+      const x = cl * Math.cos(lon), y = sl, z = cl * Math.sin(lon);
+      const [near, next] = cellNoise(x * 14 + 3, y * 14, z * 14);
+      const lanes = smooth(0.02, 0.22, next - near);
+      const drift = fractalNoise(x * 2.4 + 9, y * 2.4, z * 2.4, 4);
+      let bright = 0.7 + 0.28 * lanes + 0.2 * (drift - 0.5);
+      for (const [sLat, sLon, size] of spots) {
+        const d = Math.acos(sunClamp(Math.sin(sLat) * sl + Math.cos(sLat) * cl * Math.cos(lon - sLon), -1, 1));
+        if (d < size * 1.9) bright *= 0.45 + 0.55 * smooth(size * 0.55, size * 1.9, d) + (d < size * 0.55 ? -0.25 : 0);
+      }
+      map[row * W + col] = sunClamp(bright, 0.05, 1.1);
+    }
+  }
+  // Where each pixel of the face lands on the surface, worked out once: turning is only adding to
+  // its longitude, so a bigger sun costs a lookup per pixel and no trigonometry.
+  const half = side / 2;
+  const cells = [];
+  for (let py = 0; py < side; py += 1) {
+    const ny = (py + 0.5 - half) / half;
+    for (let px = 0; px < side; px += 1) {
+      const nx = (px + 0.5 - half) / half;
+      const rr = nx * nx + ny * ny;
+      if (rr > 1) continue;
+      const mu = Math.sqrt(1 - rr);
+      // A slight lean, so the spots' bands are not a flat line across the face.
+      const lat = Math.asin(sunClamp(-ny * 0.96 + mu * 0.28, -1, 1));
+      const v = sunClamp(lat / Math.PI + 0.5, 0, 0.999);
+      cells.push((py * side + px) * 4, Math.floor(v * H) * W, Math.atan2(nx, mu) / (Math.PI * 2), mu, Math.min(1, (1 - Math.sqrt(rr)) * half * 0.9));
+    }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = side;
+  canvas.height = side;
+  const pen = canvas.getContext('2d');
+  const image = pen.createImageData(side, side);
+  const sun = { canvas, paintedAt: -1 };
+  // `turn` in radians; `life` dims it while the Coordinator's room sleeps.
+  sun.paint = (turn, life = 1) => {
+    const data = image.data;
+    const shift = turn / (Math.PI * 2);
+    for (let i = 0; i < cells.length; i += 5) {
+      const k = cells[i], mu = cells[i + 3];
+      const u = ((cells[i + 2] + shift) % 1 + 1) % 1;
+      const g = map[cells[i + 1] + Math.floor(u * W)];
+      // The pattern fades toward the limb, where the cells foreshorten.
+      const grain = 1 + (g - 0.86) * (0.35 + 0.65 * mu);
+      for (let c = 0; c < 3; c += 1) {
+        const limb = 1 - SUN_LIMB[c] * (1 - mu);
+        data[k + c] = sunClamp(SUN_TONE[c] * limb * grain * life * 1.04, 0, 255);
+      }
+      data[k + 3] = 255 * cells[i + 4];
+    }
+    pen.putImageData(image, 0, 0);
+  };
+  return sun;
+}
+
+// The sun where it sits: the warm light it gives, wide and breathing a little, then its body, then a
+// tight bright skin gripping the limb. The same in Home's planets view and at the centre of a map.
+export function drawSun(ctx, x, y, r, sun, { life = 1, beat = 0, lit = 0 } = {}) {
+  ctx.globalCompositeOperation = 'lighter';
+  const reach = r * (3.4 + 0.15 * beat);
+  const glow = ctx.createRadialGradient(x, y, r * 0.9, x, y, reach);
+  glow.addColorStop(0, `rgba(255, 196, 110, ${0.42 * life})`);
+  glow.addColorStop(0.18, `rgba(255, 150, 60, ${0.2 * life})`);
+  glow.addColorStop(0.5, `rgba(240, 96, 30, ${0.07 * life})`);
+  glow.addColorStop(1, 'rgba(200, 60, 20, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(x, y, reach, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(sun.canvas, x - r, y - r, r * 2, r * 2);
+  ctx.globalCompositeOperation = 'lighter';
+  const skin = ctx.createRadialGradient(x, y, r * 0.94, x, y, r * 1.18);
+  skin.addColorStop(0, `rgba(255, 226, 160, ${Math.min(1, (0.5 + 0.4 * lit) * life)})`);
+  skin.addColorStop(0.35, `rgba(255, 170, 80, ${Math.min(1, (0.22 + 0.25 * lit) * life)})`);
+  skin.addColorStop(1, 'rgba(255, 120, 40, 0)');
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(x, y, r * 1.18, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 // The whole surface of one class: how bright the granulation is at each texel, and how strong
 // the magnetic field is there. Spots and faculae are read from the field when a dwarf is
 // painted, so how many a dwarf shows can follow the memory's standing instead of being baked in.
@@ -1586,6 +1696,7 @@ export function createNostromo(nostromo) {
   // painted face at its current size.
   const shading = { frame: -1, painted: 0, built: false };
   let magmaSprite = null;
+  let coreSun = null;           // the star at the centre (sunOrb), painted at the size it is seen
 
   function beginImplosion(node, t) {
     node.forgetting = { at: t };
@@ -2584,184 +2695,37 @@ export function createNostromo(nostromo) {
     const ordered = [...nostromo.nodes].sort((a, b) => (a.depth ?? 0) - (b.depth ?? 0));
     for (const node of ordered) if ((node.depth ?? 0) < 0) drawMemory(node);
 
-    // ---- MOTHER's core: a body, not a disc.
-    //
-    // Everything on the surface lives at a latitude and a longitude and is projected before it
-    // is drawn, so it narrows toward the limb and goes round the back as the planet turns.
-    // Three cues do the work: features that travel on a real sphere, an edge that darkens into
-    // shadow, and one fixed light that decides which side is day. The planet turns; the sun
-    // stays where it is.
-    // The human's hand turns the star with the body around it: the turn adds to its longitude and
-    // the tip to its lean, in the same order the memories are projected in.
+    // ---- MOTHER's core. The human's hand turns the star with the body around it: the turn adds to
+    // its longitude, in the same order the memories are projected in.
     const yaw = nostromo.yaw ?? 0;
-    const sinT = Math.sin(CORE_TILT + (nostromo.pitch ?? 0));
-    const cosT = Math.cos(CORE_TILT + (nostromo.pitch ?? 0));
     const spin = nostromo.spin ?? 0;
-    // A point on the surface: where it lands on screen, how much it faces us, what light it takes.
-    const surface = (lat, lon) => {
-      const cl = Math.cos(lat);
-      const px = cl * Math.sin(lon);
-      const py = Math.sin(lat);
-      const pz = cl * Math.cos(lon);
-      const y = py * cosT - pz * sinT;
-      const z = py * sinT + pz * cosT;
-      return { x: px, y, z, light: Math.max(0, px * CORE_LIGHT.x + y * CORE_LIGHT.y + z * CORE_LIGHT.z) };
-    };
 
     // A scene that has a body of its own at the centre (the Macroverso's sun, 2026-11-10: `noCore`)
     // draws only what is round it.
     if (!nostromo.noCore) {
-      // ---- What the star sits in.
-      //
-      // No wide halo. A body this size does not need a cloud around it to be felt, and a soft
-      // smudge only makes it look smaller. What surrounds it is darkness: one tight, fierce skin of
-      // light gripping the limb and falling away almost at once, and beyond that a deep red stain
-      // so faint it reads as the dark being lit rather than as anything drawn.
-      const stain = ctx.createRadialGradient(0, 0, R, 0, 0, R * 4.6);
-      stain.addColorStop(0, `rgba(122, 12, 6, ${0.3 + 0.08 * beat})`);
-      stain.addColorStop(0.24, `rgba(88, 6, 6, ${0.14 + 0.04 * beat})`);
-      stain.addColorStop(0.62, 'rgba(46, 2, 6, .05)');
-      stain.addColorStop(1, 'rgba(20, 0, 4, 0)');
-      ctx.fillStyle = stain;
-      ctx.beginPath(); ctx.arc(0, 0, R * 4.6, 0, Math.PI * 2); ctx.fill();
-
-      // ---- The body: a star, dark and molten.
-      //
-      // A star makes its own light, so it has no day side, no night side and no highlight struck
-      // off it by something else. This one is not a bright disc either: it burns deep, almost
-      // black at the limb, and what moves on it is liquid rock. The skin is a strip of boiling
-      // cells built once and wrapped round the body; a second pass of the same strip, sliding at a
-      // different rate, makes the two disagree, and that disagreement is what reads as flow. Over
-      // both, masses of molten matter drift across the face at a walking pace.
-      ctx.save();
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
-      ctx.shadowColor = `rgba(220, 44, 12, ${0.55 + 0.2 * beat})`;
-      ctx.shadowBlur = 40 + 26 * beat;
-      const body = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R);
-      body.addColorStop(0, `hsl(${14 + 5 * beat} 100% ${28 + 8 * beat}%)`);
-      body.addColorStop(0.58, 'hsl(9 100% 20%)');
-      body.addColorStop(1, 'hsl(5 100% 10%)');
-      ctx.fillStyle = body;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.clip();
-
-      // Molten rock, painted pixel by pixel wherever there is a buffer to paint into: plates of
-      // crust, cracks running white-hot, lava flowing under them, bursts going off inside.
-      const magma = magmaFace(R, cam.scale * dpr, t, { turn: spin - yaw, beat, alarm, reduced: nostromo.reduced, tilt: nostromo.pitch ?? 0 });
-      if (magma) ctx.drawImage(magma, -R, -R, R * 2, R * 2);
-      else {
-        // The skin, wrapped on. Each row of the disc takes the slice of the strip belonging to its
-        // latitude, cut into pieces so longitude runs as a sphere's does and the cells narrow toward
-        // the limb instead of smearing along it. Turning the star is moving the window along.
-        // Someone who asked for stillness gets a star that turns and breathes but does not churn.
-        const flowTime = nostromo.reduced ? 0 : t;
-        const grain = granuleTexture();
-        if (grain) {
-          const width = grain.width / 2;
-          const wrapAt = (turn, alpha, lift) => {
-            ctx.globalAlpha = alpha;
-            for (let row = 0; row < GRAIN_ROWS; row += 1) {
-              const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
-              const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
-              const mid = (y0 + y1) * 0.5;
-              const half = Math.sqrt(Math.max(0, R * R - mid * mid));
-              if (half < 0.5) continue;
-              const v0 = (((y0 + R) / (2 * R) + lift) % 1 + 1) % 1 * grain.height;
-              const dv = Math.max(1, ((y1 - y0) / (2 * R)) * grain.height);
-              for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
-                const xA = Math.sin((piece / GRAIN_PIECES - 0.5) * Math.PI) * half;
-                const xB = Math.sin(((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI) * half;
-                const u = (turn + (piece / GRAIN_PIECES) * 0.5) * width;
-                ctx.drawImage(grain, u, Math.min(v0, grain.height - dv), (width * 0.5) / GRAIN_PIECES, dv, xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
-              }
-            }
-            ctx.globalAlpha = 1;
-          };
-          // Advancing the window carries the skin from right to left, so a turn of the hand to the
-          // right carries it back the other way, with the memories.
-          const turn = (((spin - yaw) / (Math.PI * 2)) % 1 + 1) % 1;
-          wrapAt(turn, 0.95, 0);
-          // The same skin again, crawling at its own pace: where the two pull apart the surface
-          // churns, and that is the slowness of lava rather than the flicker of fire.
-          ctx.globalCompositeOperation = 'lighter';
-          wrapAt(((turn * 0.83 + flowTime * 0.0042) % 1 + 1) % 1, 0.32, 0.37);
-          ctx.globalCompositeOperation = 'source-over';
+      // ---- The star: the same sun as the Coordinator's in Home (sunOrb, 2026-11-10, asked by the
+      // author: «the sun in the projects does not look like the Coordinator's»). It turns with the
+      // body round it when the human's hand turns it, and its skin answers when a pulse comes home.
+      const side = Math.min(512, Math.max(SUN_SIDE, 2 ** Math.ceil(Math.log2(Math.max(1, R * 2 * cam.scale * dpr)))));
+      // Some engines refuse a second canvas: then the star is its light alone, with no face.
+      if (coreSun !== false && (!coreSun || coreSun.canvas.width !== side)) { try { coreSun = sunOrb({ side }); } catch { coreSun = false; } }
+      const lit = Math.min(1, nostromo.coreLit ?? 0);
+      if (coreSun) {
+        const hand = spin - yaw;
+        if (t - coreSun.paintedAt >= 1 / 30 || coreSun.paintedAt < 0 || coreSun.hand !== hand) {
+          coreSun.paint((nostromo.reduced ? 0 : t * 0.035) + hand, 1);
+          coreSun.paintedAt = t;
+          coreSun.hand = hand;
         }
-
-        // Masses of molten matter riding the surface. They are slow, they are large, and each keeps
-        // its own drift, so the face is never the same face twice.
-        for (let i = 0; i < CORE_FLOWS.length; i += 1) {
-          const flow = CORE_FLOWS[i];
-          // The masses ride the same way the skin turns. They used to travel against it, and the two
-          // motions cancelled into a surface that churned in place instead of turning.
-          const p = surface(flow.lat + 0.1 * Math.sin(flowTime * flow.rate * 0.6 + i), flow.lon - spin * 0.96 + yaw + flowTime * flow.drift);
-          if (p.z <= 0.02) continue;
-          const swell = 0.62 + 0.38 * Math.sin(flowTime * flow.rate + i * 1.7);
-          const fade = Math.min(1, p.z * 2.3) * swell;
-          ctx.save();
-          ctx.translate(p.x * R, p.y * R);
-          ctx.rotate(Math.atan2(p.y, p.x));
-          ctx.scale(Math.max(0.05, p.z), 1);
-          const molten = ctx.createRadialGradient(0, 0, 0, 0, 0, R * flow.size);
-          molten.addColorStop(0, `rgba(255, ${flow.hot ? 214 : 96}, ${flow.hot ? 132 : 30}, ${(flow.hot ? 0.46 : 0.2) * fade})`);
-          molten.addColorStop(0.42, `rgba(${flow.hot ? '255, 122, 36' : '176, 34, 10'}, ${(flow.hot ? 0.24 : 0.14) * fade})`);
-          molten.addColorStop(1, 'rgba(120, 16, 8, 0)');
-          ctx.fillStyle = molten;
-          ctx.beginPath(); ctx.arc(0, 0, R * flow.size, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        }
-
-        // Limb darkening, hard. Looking at the edge of a star means looking through far more of its
-        // own gas, and on a body this dark the edge goes almost to black. This is the whole of the
-        // illusion: it is what gives the thing its weight.
-        const limb = ctx.createRadialGradient(0, 0, R * 0.34, 0, 0, R);
-        limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        limb.addColorStop(0.58, `rgba(96, 8, 4, ${0.3 - 0.05 * beat})`);
-        limb.addColorStop(0.85, `rgba(50, 2, 4, ${0.62 - 0.08 * beat})`);
-        limb.addColorStop(1, `rgba(14, 0, 2, ${0.9 - 0.1 * beat})`);
-        ctx.fillStyle = limb;
-        ctx.fillRect(-R, -R, R * 2, R * 2);
+        drawSun(ctx, 0, 0, R, coreSun, { beat, lit });
+      } else {
+        const face = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+        face.addColorStop(0, 'rgb(255, 240, 206)');
+        face.addColorStop(0.7, 'rgb(250, 206, 140)');
+        face.addColorStop(1, 'rgb(214, 120, 52)');
+        ctx.fillStyle = face;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.restore();
-
-      // Prominences: arches of matter torn off the limb, standing up and falling back. Few, large
-      // and slow. A star this size does not flicker; it heaves.
-      ctx.lineCap = 'round';
-      for (let i = 0; i < 4; i += 1) {
-        const base = i * 1.5708 + t * 0.05;
-        const spread = 0.28 + 0.1 * Math.sin(t * 0.37 + i);
-        const lift = R * (0.2 + 0.26 * Math.abs(Math.sin(t * 0.21 + i * 1.7)) + 0.3 * alarm);
-        const x0 = Math.cos(base - spread) * R * 0.99, y0 = Math.sin(base - spread) * R * 0.99;
-        const x1 = Math.cos(base + spread) * R * 0.99, y1 = Math.sin(base + spread) * R * 0.99;
-        const cxp = Math.cos(base) * (R + lift * 2.1), cyp = Math.sin(base) * (R + lift * 2.1);
-        // A wide dull body of matter with a thin hot thread running through it.
-        ctx.strokeStyle = `rgba(190, 34, 14, ${0.2 + 0.14 * Math.abs(Math.sin(t * 0.6 + i))})`;
-        ctx.lineWidth = (5.5 + 3 * beat) / cam.scale;
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
-        ctx.strokeStyle = `rgba(255, ${128 + 70 * beat}, ${64 + 60 * beat}, ${0.3 + 0.28 * Math.abs(Math.sin(t * 0.6 + i))})`;
-        ctx.lineWidth = (1.5 + 0.9 * beat) / cam.scale;
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
-      }
-
-      // The limb. One fierce skin of light gripping the edge, gone within a fraction of a radius:
-      // it is what separates the body from the dark, and it holds the whole shape together. It is
-      // also what answers when a pulse comes home.
-      const home = Math.min(1, nostromo.coreLit ?? 0);
-      const fierce = 0.55 + 0.35 * beat + 0.4 * home;
-      ctx.globalCompositeOperation = 'lighter';
-      const edge = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 1.22);
-      edge.addColorStop(0, 'rgba(255, 96, 34, 0)');
-      edge.addColorStop(0.42, `rgba(255, ${132 + 60 * beat}, 62, ${0.5 * fierce})`);
-      edge.addColorStop(0.52, `rgba(255, ${176 + 60 * beat}, ${110 + 60 * beat}, ${0.62 * fierce})`);
-      edge.addColorStop(1, 'rgba(210, 40, 16, 0)');
-      ctx.fillStyle = edge;
-      ctx.beginPath(); ctx.arc(0, 0, R * 1.22, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = `rgba(255, ${186 + 60 * beat}, ${128 + 80 * beat}, ${Math.min(0.92, 0.7 * fierce)})`;
-      ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
-
     }
 
     // ---- Memories: dwarf stars.

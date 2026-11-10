@@ -35,6 +35,7 @@ import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tool
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
 import { trazo, trazoDrawing } from './icons.js';
 import { startersFor } from './starters.js';
+import { providerPick } from './provider-pick.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
@@ -5139,10 +5140,10 @@ function ahpSuggestionDeclined() {
 }
 function renderAhpSuggestion() {
   const welcome = els.emptyStarts?.closest('.empty');
-  if (!welcome || state.salas || state.device || ahpSuggestionDeclined()) { welcome?.querySelector('.empty-suggest')?.remove(); return; }
+  if (!welcome || state.salas || state.device || ahpSuggestionDeclined()) { els.column.querySelector('.empty-suggest')?.remove(); return; }
   void installedModules().then((list) => {
     const ahp = list.find((item) => item.id === 'ahp');
-    if (!ahp || ahp.status?.installed || ahpSuggestionDeclined() || !welcome.isConnected || welcome.querySelector('.empty-suggest')) return;
+    if (!ahp || ahp.status?.installed || ahpSuggestionDeclined() || !welcome.isConnected || els.column.querySelector('.empty-suggest')) return;
     const box = el('aside', 'empty-suggest');
     box.setAttribute('aria-label', t('Suggestion'));
     const head = el('div', 'empty-suggest-head');
@@ -5170,7 +5171,7 @@ function renderAhpSuggestion() {
     });
     acts.append(open, no);
     box.append(head, gains, note, acts);
-    welcome.append(box);
+    welcomePair()?.prepend(box);
   });
 }
 
@@ -5412,6 +5413,18 @@ function signInTerminalWay(agent) {
 
 function removeEmpty() {
   els.column.querySelector('.empty')?.remove();
+  // The suggestion goes with the blank page; @madre's card stays where it was, on its own.
+  const pair = els.column.querySelector('.empty-pair');
+  if (pair) { pair.querySelector('.empty-suggest')?.remove(); pair.replaceWith(...pair.children); }
+}
+// A new project's two cards side by side under its blank page (2026-11-10, asked by the author):
+// Continuity on the left, @madre on this computer on the right; one under the other when narrow.
+function welcomePair() {
+  const welcome = els.column.querySelector('.empty');
+  if (!welcome) return null;
+  let pair = els.column.querySelector('.empty-pair');
+  if (!pair) { pair = el('div', 'empty-pair'); welcome.after(pair); }
+  return pair;
 }
 
 // Every clock a «working» row runs, so a switch of conversation stops them all at once.
@@ -8734,6 +8747,8 @@ function renderEventNode(event) {
   if (event.type.startsWith('message.') || event.type === 'command.output' || event.type === 'run.requested') removeEmpty();
   const stickToBottom = !drawingRecord && pinnedToEnd;
   els.column.append(tidySystemLine(node));
+  // @madre's card on a blank page sits beside the suggestion, not under it.
+  if (node.matches('.local-model') && !els.column.querySelector('.empty-pair .local-model')) welcomePair()?.append(node);
   scheduleFold(node);
   if (!drawingRecord) followTurn(event, node, stickToBottom);
 }
@@ -21183,17 +21198,8 @@ function drawOpenCodeSettings(host, s) {
     add.replaceChildren();
     add.hidden = !waiting.length;
     if (!waiting.length) return;
-    const which = el('select', 'sx-input');
-    which.setAttribute('aria-label', t('Provider'));
-    // Many providers (OpenCode's whole catalogue): the usual ones first, then all, by name.
-    const option = (provider) => { const one = el('option', null, provider.label); one.value = provider.id; return one; };
-    const featured = waiting.filter((one) => one.featured);
-    const rest = waiting.filter((one) => !one.featured).sort((a, b) => a.label.localeCompare(b.label));
-    if (featured.length && rest.length) {
-      const top = el('optgroup'); top.label = t('Most used'); top.append(...featured.map(option));
-      const all = el('optgroup'); all.label = t('All providers'); all.append(...rest.map(option));
-      which.append(top, all);
-    } else for (const provider of waiting) which.append(option(provider));
+    // Many providers (OpenCode's whole catalogue): a list to search, the best known pinned on top.
+    const which = providerPick({ providers: waiting, onChange: () => sync() });
     const input = el('input', 'sx-input mono');
     input.type = 'password'; input.autocomplete = 'off'; input.spellcheck = false;
     const where = el('a', 'oc-where', t('Where do I get one?'));
@@ -21205,12 +21211,11 @@ function drawOpenCodeSettings(host, s) {
       where.hidden = !provider?.keyUrl;
       if (provider?.keyUrl) where.href = provider.keyUrl;
     };
-    which.addEventListener('change', sync);
     sync();
     const save = el('button', 'sx-btn primary', t('Add'));
     save.type = 'submit';
     const label = el('b', 'oc-add-label', t('Add a provider'));
-    add.append(label, which, input, save, where);
+    add.append(label, which.node, input, save, where);
     add.onsubmit = async (event) => {
       event.preventDefault();
       if (!input.value.trim()) { input.focus(); return; }

@@ -138,6 +138,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
       moveTo: () => {}, lineTo: () => {}, stroke: () => {}, save: () => {}, restore: () => {},
       ellipse: () => {}, clip: () => {}, quadraticCurveTo: () => {}, scale: () => {},
       clearRect: () => {}, setTransform: () => {}, getTransform: () => ({}), drawImage: () => {}, rect: () => {},
+      createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData: (...args) => own.push({ name: 'putImageData', args }),
     }, { get: (target, key) => (key === 'canvas' ? canvas : key in target ? target[key] : undefined), set: () => true });
     canvas = { width: 0, height: 0, getContext: () => paint, calls: own };
     offscreen.push(canvas);
@@ -153,6 +154,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('NEBULA_CAP')} ${block('NEBULA_CLOUDS')} ${fn('drawNebula')} ${block('PULSE_SCALE')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${block('dwarfSkins')} ${block('SKIN_COLUMNS')} ${block('SKIN_EDGES')} ${fn('dwarfTexture')} ${fn('dwarfSprite')} ${fn('magmaFace')} ${block('COLD_GLOW')}
+    ${block('smooth')} ${block('NOISE_PERM')} ${fn('gradientNoise')} ${fn('fractalNoise')} ${fn('cellNoise')} ${block('sunClamp')} ${block('SUN_SIDE')} ${block('SUN_W')} ${block('SUN_H')} ${block('SUN_LIMB')} ${block('SUN_TONE')} ${fn('sunOrb')} ${fn('drawSun')} let coreSun = null;
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawCage')} ${fn('drawHoverLabel')} ${fn('fadeOver')}
@@ -229,130 +231,46 @@ test('nostromo: neural mode draws the same scene as neurons, whole, and shades n
   assert.ok(gradients <= 4, `${gradients} gradients a frame`);
 });
 
-test('nostromo: the skin is wrapped on a sphere, so it narrows toward the limb', async () => {
+// MOTHER's core is the Coordinator's sun (2026-11-10, asked by the author: «the sun in the projects
+// does not look like the Coordinator's»): one sun, made in the engine, worn by both.
+test('nostromo: the core of a map is the same sun as the Coordinator\'s in Home', async () => {
+  const engine = await readFile(join(import.meta.dirname, '..', 'public', 'nostromo-engine.js'), 'utf8');
+  const macroverso = await readFile(join(import.meta.dirname, '..', 'public', 'macroverso.js'), 'utf8');
+  assert.match(engine, /export function sunOrb\(/);
+  assert.match(engine, /export function drawSun\(/);
+  assert.match(engine, /drawSun\(ctx, 0, 0, R, coreSun,/);
+  assert.match(macroverso, /drawSun\(ctx, p\.x, p\.y, r, sun,/);
+  assert.doesNotMatch(macroverso, /function sunOrb\(/, 'Home draws a sun of its own again');
+});
+
+// What the sun's face was painted with, frame by frame: a copy of its pixels.
+const sunFace = (offscreen) => {
+  const painted = offscreen.flatMap((canvas) => canvas.calls.filter((call) => call.name === 'putImageData'));
+  const last = painted.at(-1)?.args[0]?.data;
+  return last ? Array.from(last.subarray(0, last.length)).join(',') : '';
+};
+
+test('nostromo: the sun turns on its own, and with the hand that turns the map', async () => {
   const room = fakeRoom();
-  const { run, calls } = await nostromoRenderer(room);
-
-  // Each piece of the skin is laid down as a destination rectangle on the face. Nothing may be
-  // laid outside the body, and the rows have to narrow toward the top and bottom the way a
-  // sphere's do, or the star is a cylinder.
-  const pieces = (spin) => {
-    room.spin = spin;
-    calls.length = 0;
-    run(2);
-    return calls.filter((c) => c.name === 'drawImage')
-      .map((c) => ({ x: c.args[5], y: c.args[6], w: c.args[7], h: c.args[8] }))
-      .filter((piece) => Math.abs(piece.x) < 104 * 1.6 && Math.abs(piece.y) < 104 * 1.6);
-  };
-  const laid = pieces(0);
-  assert.ok(laid.length > 60, `the face should be laid in rows and pieces, saw ${laid.length}`);
-
-  // The widest row is the one across the middle, and the rows at the poles are the narrowest.
-  const rows = new Map();
-  for (const piece of laid) rows.set(piece.y, (rows.get(piece.y) ?? 0) + piece.w);
-  const ordered = [...rows.entries()].sort((a, b) => a[0] - b[0]);
-  const middle = ordered[Math.floor(ordered.length / 2)][1];
-  assert.ok(ordered[0][1] < middle * 0.5, 'the top of the body is as wide as its middle');
-  assert.ok(ordered.at(-1)[1] < middle * 0.5, 'the bottom of the body is as wide as its middle');
-
-  // Nothing is laid beyond the body, at any angle.
-  for (const spin of [0, 1, 2, 3, 4, 5, 6]) {
-    for (const piece of pieces(spin)) {
-      const far = Math.max(Math.hypot(piece.x, piece.y), Math.hypot(piece.x + piece.w, piece.y + piece.h));
-      assert.ok(far < 104 * 1.6, `a piece of skin was laid ${(far / 104).toFixed(2)} radii out`);
-    }
-  }
+  const { run, offscreen } = await nostromoRenderer(room);
+  run(0);
+  const first = sunFace(offscreen);
+  assert.ok(first.length > 0, 'the sun\'s face was never painted');
+  run(20);
+  assert.notEqual(sunFace(offscreen), first, 'the sun stood still');
+  const before = sunFace(offscreen);
+  room.spin = 1.2;
+  run(20);
+  assert.notEqual(sunFace(offscreen), before, 'turning the map did not turn the sun');
 });
 
-test('nostromo: the star wears no halo, only darkness', async () => {
-  const { run, calls } = await nostromoRenderer(fakeRoom());
-  run(0.4);
-  const core = 114;   // CORE_R
-
-  // A soft cloud around a star makes it look smaller, not bigger. Nothing additive may be laid
-  // down far from the body: the light stops close to the limb and the rest is dark.
-  let blending = false;
-  for (let i = 0; i < calls.length; i += 1) {
-    const call = calls[i];
-    if (call.name === 'set:globalCompositeOperation') { blending = call.args[0] === 'lighter'; continue; }
-    if (!blending || call.name !== 'arc') continue;
-    const reach = Math.hypot(call.args[0], call.args[1]) + call.args[2];
-    // Memories carry their own light and sit far out; the star's own additive work is near it.
-    if (Math.hypot(call.args[0], call.args[1]) > core * 2) continue;
-    assert.ok(reach < core * 1.6, `the star is glowing out to ${reach.toFixed(0)}, ${(reach / core).toFixed(1)} radii`);
-  }
-});
-
-test('nostromo: the surface is molten and moves at the pace of rock, not of fire', async () => {
-  const room = fakeRoom();
-  const { run, calls } = await nostromoRenderer(room);
-
-  // Masses of molten matter are the gradients struck at the origin of their own frame: they are
-  // drawn translated onto the face, so this is what identifies them.
-  // The body swells and settles with the room's heartbeat, so a mass measured in raw units
-  // seems to jump when it has not moved at all. Everything here is measured against the body's
-  // own radius that frame, which is the smallest circle struck at its centre.
-  const massesAt = (t) => {
-    calls.length = 0;
-    run(t);
-    let radius = Infinity;
-    for (const call of calls) {
-      if (call.name === 'arc' && call.args[0] === 0 && call.args[1] === 0 && call.args[2] < radius) radius = call.args[2];
-    }
-    const out = [];
-    for (let i = 0; i < calls.length; i += 1) {
-      const call = calls[i];
-      if (call.name !== 'createRadialGradient') continue;
-      if (call.args[0] === 0 && call.args[1] === 0 && call.args[2] === 0 && call.args[3] === 0 && call.args[4] === 0 && call.args[5] > 0) {
-        const at = calls.slice(Math.max(0, i - 6), i).findLast((c) => c.name === 'translate');
-        if (at) out.push({ x: at.args[0] / radius, y: at.args[1] / radius, size: call.args[5] / radius });
-      }
-    }
-    return out;
-  };
-
-  const now = massesAt(0);
-  assert.ok(now.length >= 4, `the face should carry molten masses, saw ${now.length}`);
-  assert.ok(now.length <= 8, 'more masses were drawn than there are');
-  assert.ok(now.some((mass) => mass.size > 0.3), 'the masses are too small to read as flow');
-
-  // Slow: over a second nothing on the face may jump. Lava crawls.
-  const soon = massesAt(1);
-  for (let i = 0; i < Math.min(now.length, soon.length); i += 1) {
-    const step = Math.hypot(soon[i].x - now[i].x, soon[i].y - now[i].y);
-    assert.ok(step < 0.04, `a mass crossed ${(step * 100).toFixed(1)}% of the body in a second, which is not lava`);
-  }
-
-  // But it does move, and it goes round the back: over a full turn the face keeps changing and
-  // some of the masses are hidden.
-  const counts = new Set();
-  let travelled = 0;
-  let previous = massesAt(0);
-  for (let step = 1; step <= 60; step += 1) {
-    room.spin = (step / 60) * Math.PI * 2;
-    const here = massesAt(step * 2);
-    counts.add(here.length);
-    if (here.length === previous.length) travelled += here.reduce((sum, mass, i) => sum + Math.hypot(mass.x - previous[i].x, mass.y - previous[i].y), 0);
-    previous = here;
-  }
-  assert.ok(counts.size > 1, 'every mass is visible at every angle, so none of them goes round the back');
-  assert.ok(travelled > 4, 'the surface never actually flowed');
-});
-
-test('nostromo: reduced motion stills the molten surface without emptying the room', async () => {
+test('nostromo: reduced motion stills the sun without emptying the room', async () => {
   const room = { ...fakeRoom(), reduced: true };
-  const { run, calls } = await nostromoRenderer(room);
-  // With the body held at one angle, nothing on the face may move for someone who asked for
-  // stillness. The star still breathes with the room's heartbeat; the rock does not crawl.
-  const face = (t) => {
-    calls.length = 0;
-    run(t);
-    // To a thousandth of a pixel: what moves is the rock, not the last bits of a float.
-    return calls.filter((c) => c.name === 'drawImage').map((c) => `${Number(c.args[1]).toFixed(3)}:${Number(c.args[2]).toFixed(3)}`).join('|');
-  };
-  const first = face(0);
-  assert.ok(first.length > 0, 'a still room still draws its surface');
-  for (const t of [25, 140]) assert.equal(face(t), first, `the surface churned at ${t}s for someone who asked for stillness`);
+  const { run, offscreen } = await nostromoRenderer(room);
+  run(0);
+  const first = sunFace(offscreen);
+  assert.ok(first.length > 0, 'a still room still draws its sun');
+  for (const t of [25, 140]) { run(t); assert.equal(sunFace(offscreen), first, `the sun turned at ${t}s for someone who asked for stillness`); }
 });
 
 test('nostromo: a room in lockdown turns faster, and an alarm swells the body', async () => {
@@ -386,49 +304,11 @@ test('nostromo: the core lights itself, so it has no dark side and no highlight'
   assert.equal(calls.filter((c) => c.name === 'createConicGradient').length, 0, 'the limb is still being lit from one side');
 });
 
-test('nostromo: the surface boils, and turning the star moves the grain across its face', async () => {
-  const room = fakeRoom();
-  const { run, calls, offscreen } = await nostromoRenderer(room);
-  run(0);
-
-  // The granulation is built once, into a strip twice as wide as it is used, so the window can
-  // slide along it without ever meeting a seam. The memories build their own, one per class of
-  // star and not one per memory, so a crowded archive pays for four and no more.
-  const strip = offscreen[0];
-  assert.ok(offscreen.length <= 1 + 4, `skins should be shared by class, saw ${offscreen.length}`);
-  assert.ok(strip.width >= strip.height * 2, 'the strip is not wide enough to wrap the body');
-  assert.ok(strip.calls.filter((c) => c.name === 'arc').length > 3000, 'the surface has too few cells to boil');
-
-  // It is built once and no more: a second frame must not pay for it again.
-  const before = strip.calls.length;
-  const built = offscreen.length;
-  run(1);
-  assert.equal(offscreen.length, built, 'a skin was rebuilt mid-flight');
-  assert.equal(strip.calls.length, before, 'the grain was repainted mid-flight');
-
-  // Turning the star slides the window along the strip. Same rows, different source.
-  const windows = (spin) => {
-    room.spin = spin;
-    calls.length = 0;
-    run(2);
-    return calls.filter((c) => c.name === 'drawImage' && Math.abs(c.args[5]) < 104 * 1.6 && Math.abs(c.args[6]) < 104 * 1.6).map((c) => c.args[1]);
-  };
-  const first = windows(0);
-  assert.ok(first.length > 60, `the face should be drawn in rows and pieces, saw ${first.length}`);
-  const turned = windows(Math.PI / 2);
-  assert.equal(first.length, turned.length, 'the face changed shape as it turned');
-  assert.ok(first.some((value, i) => Math.abs(value - turned[i]) > 1), 'the grain did not move when the star turned');
-
-  // A quarter turn and a quarter turn past a full one land on the same place: the strip wraps.
-  const round = windows(Math.PI / 2 + Math.PI * 2);
-  for (let i = 0; i < first.length; i += 1) assert.ok(Math.abs(turned[i] - round[i]) < 1e-6, 'the wrap does not come back round');
-});
-
 test('nostromo: a star with no canvas to build its grain in still draws', async () => {
   // Some engines refuse a second canvas. The room has to lose the texture and keep the star.
   const { run, calls } = await nostromoRenderer(fakeRoom(), { noCanvas: true });
   run(0.3);
-  assert.equal(calls.filter((c) => c.name === 'drawImage').length, 0, 'it drew a texture it never built');
+  assert.equal(calls.filter((c) => c.name === 'drawImage').length, 0, 'it drew a face it never built');
   assert.ok(calls.length > 600, 'the star vanished along with its grain');
   for (const call of calls) {
     for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
@@ -909,7 +789,7 @@ test('nostromo: the sky is weather behind the room, and never the subject of it'
   const paints = source.indexOf('drawNebula(ctx, t, w, h, cam);');
   assert.ok(paints > 0, 'the sky is never painted');
   assert.ok(paints < source.indexOf('// Stars, with a little parallax'), 'the sky is painted over the stars');
-  assert.ok(paints < source.indexOf("// MOTHER's core") || paints < source.indexOf('---- The body'), 'the sky is painted over the core');
+  assert.ok(paints < source.indexOf("// ---- MOTHER's core"), 'the sky is painted over the core');
 
   // In colours nothing in the foreground uses. The room burns red, gold, white, green and blue;
   // the sky is indigo and violet, which is how it stays behind without being dark on dark.

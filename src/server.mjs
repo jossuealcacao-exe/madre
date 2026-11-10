@@ -2623,7 +2623,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -2996,7 +2996,7 @@ export async function createPulseServer({
       // folders (Sec-Fetch-Site) or to add one (Origin), and so is any host name but this Mac's
       // own, so a name pointed at it from outside reaches nothing. Folders are listed inside the
       // home folder only; what is listed is names, never what a file says.
-      if (url.pathname === '/api/salas/folders' || url.pathname === '/api/salas/suggestions' || url.pathname === '/api/salas/projects' || url.pathname === '/api/salas/new' || url.pathname === '/api/salas/work' || url.pathname === '/api/salas/decisions') {
+      if (url.pathname === '/api/salas/folders' || url.pathname === '/api/salas/suggestions' || url.pathname === '/api/salas/peek' || url.pathname === '/api/salas/projects' || url.pathname === '/api/salas/new' || url.pathname === '/api/salas/work' || url.pathname === '/api/salas/decisions') {
         const host = String(request.headers.host ?? '');
         const localHost = /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host);
         const site = request.headers['sec-fetch-site'];
@@ -3011,6 +3011,16 @@ export async function createPulseServer({
         }
         if (request.method === 'GET' && url.pathname === '/api/salas/suggestions') {
           return sendJson(response, 200, { suggestions: await suggestProjects({ home, stateRoot: root }) });
+        }
+        // What the first level of a project Home knows holds, by name only (2026-11-10): the end of
+        // the welcome writes its first ideas for what is in that folder (public/starters.js).
+        if (request.method === 'GET' && url.pathname === '/api/salas/peek') {
+          const asked = url.searchParams.get('room');
+          const room = (await knownRooms(root)).find((one) => one.id === asked && one.root);
+          if (!room) return sendJson(response, 404, { error: t('That folder is not there.') });
+          const listing = await listDirectory(room.root, '.');
+          if (listing.status !== 200) return sendJson(response, listing.status, { error: listing.error });
+          return sendJson(response, 200, { entries: listing.entries.map(({ name, kind }) => ({ name, kind })) });
         }
         // WHAT WAS WORKED ON LAST: the newest conversations of every room the lobby knows (read from
         // their folders, open or asleep), and MADRE's summary of them with its local model. The

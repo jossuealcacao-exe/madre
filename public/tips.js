@@ -2,9 +2,10 @@
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // TIPS (2026-11-07): one small, solid label for every key that explains itself, in Home and in every
 // project, instead of the browser's own (late, and drawn differently by each one). A key keeps
-// saying what it says through `title`: when the pointer rests on it or the keyboard lands on it,
-// the words move to `data-tip` for as long as the tip shows (so the browser's tip does not show
-// too) and go back after. A key with no words of its own keeps them as its accessible name.
+// saying what it says through `title`: the moment the pointer reaches it or the keyboard lands on it,
+// the words move to `data-tip` until the pointer leaves (so the browser's own tip, which comes
+// sooner, never shows first: 2026-11-10) and go back after. Anything with a `title` gets MADRE's tip,
+// not only keys. A key with no words of its own keeps them as its accessible name.
 //
 // One element for the whole page, under the key or over it when there is no room, never under the
 // pointer's way, gone at the first press, scroll or key. Nothing shows on touch.
@@ -23,7 +24,7 @@ let pending = null;   // the key a tip is waiting to show for
 
 // A key that already shows its own label (an agent's sphere in the crew's column) says `data-tip-off`.
 const keyOf = (target) => {
-  const key = target?.closest?.('button[title], [role="button"][title], a[title], label[title], summary[title], [data-tip]') ?? null;
+  const key = target?.closest?.('[title]:not(iframe, html, body), [data-tip]') ?? null;
   return key && !key.closest('[data-tip-off]') ? key : null;
 };
 
@@ -50,7 +51,8 @@ function words(key) {
 
 function restore(key) {
   if (!key?.dataset?.tip) return;
-  key.setAttribute('title', key.dataset.tip);
+  // Words the page gave it while the pointer was on it win over the ones it had.
+  if (!key.hasAttribute('title')) key.setAttribute('title', key.dataset.tip);
   delete key.dataset.tip;
 }
 
@@ -80,6 +82,7 @@ function show(key) {
 export function hideTip() {
   clearTimeout(timer);
   timer = null;
+  if (pending) restore(pending);
   pending = null;
   if (current) { restore(current); hiddenAt = performance.now(); }
   current = null;
@@ -90,6 +93,8 @@ function arm(key) {
   if (key === current) return;
   hideTip();
   const soon = performance.now() - hiddenAt < AGAIN_WITHIN;
+  // Its words leave `title` now, not when the tip shows: the browser's would come first.
+  if (!words(key)) return;
   pending = key;
   const after = Number(key.closest('[data-tip-after]')?.dataset.tipAfter) || SHOW_AFTER;
   timer = setTimeout(() => { pending = null; show(key); }, soon ? 0 : after);
