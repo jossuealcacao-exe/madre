@@ -63,7 +63,8 @@ export async function appInvite({ root, novelty, version, platform, env, fetchIm
   const kept = await readKept(root);
   if (!appInviteDue({ platform, env, novelty, version, answeredFor: kept.answered ?? null, installed })) return { show: false };
   const available = await appAvailable({ root, fetchImpl });
-  return available ? { show: true, url: APP_PAGE } : { show: false };
+  // The page can be another for a test on this Mac (PULSE_APP_PAGE_URL), as the manifest can.
+  return available ? { show: true, url: env?.PULSE_APP_PAGE_URL ?? process.env.PULSE_APP_PAGE_URL ?? APP_PAGE } : { show: false };
 }
 
 // «Download» or «Stay in the browser» spends it for this version; «shown» only counts.
