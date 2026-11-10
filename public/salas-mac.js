@@ -6644,9 +6644,25 @@ function sideRow(icon, label, run, { here = false } = {}) {
   if (here) row.setAttribute('aria-current', 'page');
   return row;
 }
+// What makes way for the sidebar glides by its left edge, as a project's room does (app.js,
+// layoutPanels): the page takes its new width at once and each part of it comes from where it was,
+// in the sidebar's time and curve. Its margin animated instead, and the page shrank and grew
+// line by line under the sliding sidebar (2026-11-09).
+const SIDE_GLIDE = 420;
+function glideAside(change) {
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches || window.matchMedia(SHELL_NARROW).matches;
+  const parts = still ? [] : [...document.body.children].filter((node) => node !== homeShell.side && node !== homeShell.scrim && node.getClientRects().length && !/fixed|absolute/.test(getComputedStyle(node).position));
+  const before = parts.map((node) => node.getBoundingClientRect().left);
+  change();
+  parts.forEach((node, i) => {
+    const dx = before[i] - node.getBoundingClientRect().left;
+    if (Math.abs(dx) < 1) return;
+    node.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: SIDE_GLIDE * (Number(getComputedStyle(root).getPropertyValue('--motion-scale')) || 1), easing: 'cubic-bezier(.22, 1, .36, 1)' });
+  });
+}
 function setSide(open, { keep = true } = {}) {
   homeShell.open = open;
-  root.classList.toggle('home-side', open);
+  if (root.classList.contains('home-side') !== open) glideAside(() => root.classList.toggle('home-side', open));
   homeShell.side?.toggleAttribute('inert', !open);
   if (keep && !window.matchMedia(SHELL_NARROW).matches) { try { localStorage.setItem(SIDE_KEY, open ? 'open' : 'shut'); } catch { /* as long as the page lasts */ } }
 }

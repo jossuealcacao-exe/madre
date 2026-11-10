@@ -13127,3 +13127,20 @@ html.chat-shell .composer .point-quote { margin-left: 0; }
 /* A short room (a low window, or the app's terminal open beneath it): the line under the box gives
    its height to the conversation, which kept only a few lines between the bar and the questions. */
 .shell.room-short > :is(.safety, .colophon) { display: none !important; }
+/* A suggestion over the box, the same in any width (2026-11-09): what it says on a line of its own,
+   whole, and its keys together in a row under it, at the right (its badge, if any, at the left).
+   Squeezed beside its keys it was a column of two words per line. */
+.free-offer:not([hidden]) { flex-wrap: wrap; row-gap: 8px; }
+.free-offer > .free-what { flex: 1 0 100%; }
+.free-offer > .free-what + :is(.free-later, .free-go), .free-offer > .intent-basis + .free-later { margin-left: auto; }
+/* Where it was pointed stands over the line you write on, in its own row of the box, as an answer's
+   quote does: it fell to the box's last row, under the agent and its choices. */
+html.chat-shell .shell > .composer {
+  grid-template-areas:
+    "top top top top top top top"
+    "quote quote quote quote quote quote quote"
+    "point point point point point point point"
+    "editor editor editor editor editor editor editor"
+    "picker options create ash attach . send";
+}
+html.chat-shell .composer .point-quote { grid-area: point; margin: 0 0 4px 4px; }

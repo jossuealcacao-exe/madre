@@ -2491,5 +2491,6 @@ summary.sm-logs-group-head::before { content: '▸'; margin-right: 2px; }
    layoutPanels: 420 ms, --ease-glide), so going from one to the other feels like one motion. */
 html.home-shell .sm-side { transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)), visibility 0s linear calc(420ms * var(--motion-scale, 1)); }
 html.home-shell.home-side .sm-side { transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)); }
-html.home-shell body.salas-mac { transition: padding-left calc(420ms * var(--motion-scale, 1)) var(--ease-glide, cubic-bezier(.22, 1, .36, 1)); }
+/* The page takes its new width at once; its parts glide there (salas-mac.js, glideAside). */
+html.home-shell body.salas-mac { transition: none; }
 @media (prefers-reduced-motion: reduce) { html.home-shell :is(.sm-side, body.salas-mac) { transition: none !important; } }
