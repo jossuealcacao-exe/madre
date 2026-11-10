@@ -49,3 +49,13 @@ test('inside the app, MADRE knows its channel: it updates itself, never by npm o
   assert.equal(updateCommand('app', '@jossuealcala/madre', '1.2.0'), null);
   assert.equal(applyCommand({ install: 'app', name: '@jossuealcala/madre', version: '1.2.0', port: 4317, projectRoot: '/x' }), null);
 });
+
+// Restarting MADRE from its own page inside the app (2026-11-10): the new Home keeps the app's pipe.
+// Given none, it read the app as gone the moment it started, closed, and MADRE did not come back.
+test('inside the app, a restarted Home keeps the app\'s pipe', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  const restart = server.slice(server.indexOf('function restartSelf(port) {'), server.indexOf('// How many memories of each kind'));
+  assert.match(restart, /const watched = process\.env\.MADRE_APP === '1' && salasRoom;/);
+  assert.match(restart, /stdio: \[watched \? 'inherit' : 'ignore', log, log\]/);
+});

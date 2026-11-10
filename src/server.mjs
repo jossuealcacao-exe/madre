@@ -437,7 +437,10 @@ export async function createPulseServer({
         try { log = openPrivateLog(join(roomDir, 'restart.log')); } catch { /* no witness, still restart */ }
         const env = { ...process.env, PULSE_RESTARTED: '1' };
         delete env.PULSE_UPDATE_RESTART;
-        const child = spawn(process.execPath, [...process.execArgv, ...next], { cwd: process.cwd(), detached: process.platform !== 'win32', windowsHide: true, stdio: ['ignore', log, log], env });
+        // Inside the app the new process keeps the app's pipe (the watch below): given none, it read
+        // the app as gone the moment it started and closed, and MADRE did not come back (2026-11-10).
+        const watched = process.env.MADRE_APP === '1' && salasRoom;
+        const child = spawn(process.execPath, [...process.execArgv, ...next], { cwd: process.cwd(), detached: process.platform !== 'win32', windowsHide: true, stdio: [watched ? 'inherit' : 'ignore', log, log], env });
         child.unref();
         setTimeout(() => process.exit(0), 200);
       });
