@@ -1988,8 +1988,13 @@ function adoptFinder() {
   if (parts.some((node) => !node)) return;
   code.search.remove();
   code.list.remove();
+  // Its keys in one row with the search (2026-11-09): find, a new file, refresh and fold, side by
+  // side; the head that held two of them on a row of their own over it goes.
   const refresh = document.querySelector('#tree-refresh');
-  if (refresh) code.explorer.querySelector('.code-files-head')?.querySelector('.code-files-fold')?.before(refresh);
+  const head = code.explorer.querySelector('.code-files-head');
+  const fold = head?.querySelector('.code-files-fold');
+  parts[0].append(...[refresh, fold].filter(Boolean));
+  if (head) head.hidden = true;
   code.explorer.append(...parts);
   code.explorer.classList.add('finder');
   // The open files ride in the head, beside Read and Edit: one row less over the code.
@@ -5801,22 +5806,8 @@ function quoteHead(reply) {
 }
 
 function renderPointQuote() {
-  if (!els.replyQuote?.before) return;
-  let box = document.getElementById?.('point-quote');
-  if (!box) {
-    box = el('div', 'point-quote');
-    box.id = 'point-quote';
-    els.replyQuote.before(box);
-  }
-  box.hidden = !state.point;
-  if (!state.point) { box.replaceChildren(); autosize(); return; }
-  const drop = closeMark('button', 'drop');
-  drop.title = t('Ask without the place pointed at');
-  drop.setAttribute('aria-label', t('Ask without the place pointed at'));
-  drop.addEventListener('click', () => { state.point = null; renderPointQuote(); els.input.focus(); });
-  const said = el('span', 'said', state.point.brief);
-  said.title = state.point.line;
-  box.replaceChildren(el('b', null, '⌖'), said, drop);
+  if (!els.attachments?.replaceChildren) return;
+  renderPendingAttachments();
   autosize();
 }
 
@@ -14156,7 +14147,23 @@ document.querySelector('#stop-all')?.addEventListener('click', stopAll);
 
 function renderPendingAttachments() {
   els.attachments.replaceChildren();
-  els.attachments.hidden = state.pending.length === 0;
+  els.attachments.hidden = state.pending.length === 0 && !state.point;
+  // Where it was pointed (Apuntar) goes first in the same row, as one more thing the message
+  // carries: one row for all of it, not a card for each part of the box (2026-11-09).
+  if (state.point) {
+    const chip = el('span', 'attachment-chip point');
+    chip.append(el('span', 'kind', '⌖'));
+    const said = el('span', 'name', state.point.brief);
+    chip.title = state.point.line;
+    chip.append(said);
+    const drop = closeMark('button', 'remove');
+    drop.type = 'button';
+    drop.title = t('Ask without the place pointed at');
+    drop.setAttribute('aria-label', drop.title);
+    drop.addEventListener('click', () => { state.point = null; renderPendingAttachments(); autosize(); els.input.focus(); });
+    chip.append(drop);
+    els.attachments.append(chip);
+  }
   for (const item of state.pending) {
     const chip = el('span', `attachment-chip${item.uploading ? ' uploading' : ''}`);
     if (item.previewUrl) { const img = el('img'); img.src = item.previewUrl; img.alt = item.name; chip.append(img); }

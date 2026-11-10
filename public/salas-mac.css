@@ -2494,3 +2494,12 @@ html.home-shell.home-side .sm-side { transition: transform calc(420ms * var(--mo
 /* The page takes its new width at once; its parts glide there (salas-mac.js, glideAside). */
 html.home-shell body.salas-mac { transition: none; }
 @media (prefers-reduced-motion: reduce) { html.home-shell :is(.sm-side, body.salas-mac) { transition: none !important; } }
+
+/* Home's sidebar has a handle on its inner edge, as a project's has (salas-mac.js, gripHomeSide):
+   the same mark on hover, and nothing glides while it is pulled. */
+html.home-shell .sm-side-grip { position: absolute; top: 0; bottom: 0; right: -6px; z-index: 2; width: 12px; cursor: col-resize; touch-action: none; }
+html.home-shell .sm-side-grip::after { content: ''; position: absolute; top: 50%; left: 4px; width: 3px; height: 40px; border-radius: 3px; background: var(--line-2, var(--cs-line)); opacity: 0; transform: translateY(-50%) scaleY(.6); transition: opacity .16s ease, transform .16s ease; }
+html.home-shell .sm-side:hover > .sm-side-grip::after, html.home-shell.side-resizing .sm-side-grip::after { opacity: .8; transform: translateY(-50%) scaleY(.8); }
+html.home-shell.side-resizing, html.home-shell.side-resizing * { cursor: col-resize !important; user-select: none; }
+html.home-shell.side-resizing :is(.sm-side, body.salas-mac) { transition: none !important; }
+@media (max-width: 960px) { html.home-shell .sm-side-grip { display: none; } }
