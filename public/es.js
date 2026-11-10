@@ -7346,7 +7346,7 @@ export const ES = {
   "I will stay here": "Me quedo aquí",
   "Nothing changes for you.": "Para ti nada cambia.",
   "If you want it some other day, it is at madre.run.": "Si un día la quieres, está en madre.run.",
-  "It lets you know when an AI finishes, even if you are doing something else.": "Te avisa cuando una IA termina, aunque estés en otra cosa.",
+  "It tells you when an AI finishes.": "Te avisa cuando una IA termina.",
   // Actualizar una copia instalada con sudo (Q-22).
   "MADRE was installed with administrator permission, so it cannot update itself. In a terminal, run: {command}": "MADRE se instaló con permiso de administrador, así que no puede actualizarse sola. En una terminal, escribe: {command}",
 };

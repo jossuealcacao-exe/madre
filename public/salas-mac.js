@@ -7105,7 +7105,7 @@ async function offerApp(said, { preview = false } = {}, tries = 0) {
     return card;
   };
   const stay = option('stay', 'globe', t('I will stay here'), [t('Nothing changes for you.'), t('If you want it some other day, it is at madre.run.')], () => { answer('later'); dialog.close(); });
-  const take = option('take', 'download', words.take(), [words.open(), t('It lets you know when an AI finishes, even if you are doing something else.')], () => {
+  const take = option('take', 'download', words.take(), [words.open(), t('It tells you when an AI finishes.')], () => {
     answer('open');
     if (!preview) window.open(said.url, '_blank', 'noopener');
     dialog.close();
