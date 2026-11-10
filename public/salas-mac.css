@@ -2508,8 +2508,8 @@ html.home-shell.side-resizing :is(.sm-side, body.salas-mac) { transition: none !
    browser. The app's own icon rises over a soft ground in the brand's green; under it two cards, the
    browser and the app, side by side, the app's lit a little. */
 dialog.sm-app-choice { --sm-sheet-w: 580px; }
-dialog.sm-app-choice > .sm-sheet-body { padding: 0 28px 26px; text-align: center; }
-.sm-app-hero { position: relative; display: grid; place-items: center; height: 176px; margin: 0 -28px 20px; overflow: hidden; background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--phosphor) 20%, transparent), transparent 72%); }
+dialog.sm-app-choice > .sm-sheet-body { padding: 0 28px 26px; border-width: 0; text-align: center; }
+.sm-app-hero { position: relative; display: grid; place-items: center; height: 176px; margin: 0 -28px 6px; overflow: hidden; background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--phosphor) 20%, transparent), transparent 72%); }
 .sm-app-glow { position: absolute; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--phosphor) 26%, transparent), transparent 66%); }
 .sm-app-icon { position: relative; width: 108px; height: 108px; border-radius: 25px; box-shadow: 0 22px 44px -18px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(0, 0, 0, .14); animation: sm-app-rise 720ms var(--ease-out, cubic-bezier(.2, .8, .2, 1)) both; }
 @keyframes sm-app-rise { from { transform: translateY(16px) scale(.92); opacity: 0; } }

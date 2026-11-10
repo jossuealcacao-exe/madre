@@ -7092,6 +7092,9 @@ async function offerApp(said, tries = 0) {
   dialog.addEventListener('close', () => { answer('later'); dialog.remove(); });
   document.body.append(dialog);
   dialog.showModal();
+  // Neither card is chosen for the person: the window holds the focus, and Tab reaches the cards.
+  dialog.tabIndex = -1;
+  dialog.focus({ preventScroll: true });
   void tellApp('shown');
 }
 void fetch('/api/invite/app', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((said) => { if (said?.show && said.url) setTimeout(() => void offerApp(said), 900); }).catch(() => null);
