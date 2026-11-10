@@ -13079,8 +13079,6 @@ html.chat-shell .tree.chats.leaving { animation: side-slide-out calc(420ms * var
 @keyframes beside-drop-in { from { opacity: 0; transform: scale(.985); } }
 @media (prefers-reduced-motion: reduce) { .beside-drop { animation: none; } }
 
-/* «This project's servers», one line between each, as the files' rows have (2026-11-09). */
-html.chat-shell .browser-start-list > * + * { border-top: 1px solid var(--cs-line); }
 
 /* WHAT THE AGENT DID SO FAR (2026-11-09, app.js showSteps): under the working bubble, quiet cards —
    a small drawing and the step in a few words — the last few, older ones counted. No frame, a soft
