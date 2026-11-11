@@ -7524,4 +7524,13 @@ export const ES = {
   "Ask for a fix of all": "Pedir arreglo de todos",
   "The page {url} shows an error: {error}. Find the cause in the project and propose the fix.": "La página {url} muestra un error: {error}. Busca la causa en el proyecto y propón el arreglo.",
   "The page {url} shows these errors. Find their cause in the project and propose the fix:": "La página {url} muestra estos errores. Busca su causa en el proyecto y propón el arreglo:",
+  // «Qué cambió»: la tarjeta bajo cada respuesta que tocó el proyecto (public/changes.js).
+  "What changed": "Qué cambió",
+  "See": "Ver",
+  "Puts your project back as it was before this reply.": "Deja tu proyecto como estaba antes de esta respuesta.",
+  "Files ({n})": "Archivos ({n})",
+  "created {files}": "creé {files}",
+  "changed {files}": "cambié {files}",
+  "deleted {files}": "borré {files}",
+  "renamed {files}": "cambié el nombre de {files}",
 };

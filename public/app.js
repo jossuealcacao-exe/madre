@@ -38,6 +38,7 @@ import { startersFor } from './starters.js';
 import { providerPick } from './provider-pick.js';
 import { drawNotifications, inMacApp, notify, wants } from './notifications.js';
 import { tellFailures } from './page-errors.js';
+import { changeSentence, changedFiles, fileToSee } from './changes.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
 import { createNewsScene } from './news-scenes.js';
@@ -6065,6 +6066,9 @@ function renderAssistantMessage(event) {
   }
   if (event.payload.subagents?.length) bubble.append(subagentFold(event.payload.subagents, mode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
+  if (event.payload.changes) turnChangeNotes.set(messageId, event.payload.changes);
+  const createdCard = event.payload.artifacts?.length ? changesCard({ messageId, files: event.payload.artifacts, summary: event.payload.changes?.summary ?? null, checkpointId: event.payload.changes?.checkpointId ?? null }) : null;
+  if (createdCard) bubble.append(createdCard);
   // An answer to several marks (Apuntar) says, under it, which numbers are settled (pointChecks).
   const asked = delegated ? null : state.userMessages.get(parentMessageId);
   const pointedAsk = asked ? parsePointed(asked.text) : null;
@@ -7680,6 +7684,89 @@ function artifactTiles(files) {
   return wrap;
 }
 
+/* ---------- «What changed»: under each reply that touched the project (2026-11-11) ---------- */
+// One short card inside the reply: what changed in the person's words (the agent's own line, or
+// said from the files alone — public/changes.js), «See» to open it, «Undo» to go back to the restore
+// point taken before the turn, and the files folded under it for whoever wants the detail. It takes
+// the place of the EDIT card that folded into a dot: one card per reply, and one way back.
+const turnChangeNotes = new Map(); // reply's messageId → { summary, checkpointId } from message.created
+const CHANGE_WORDS = { created: 'added', changed: 'modified', deleted: 'deleted', renamed: 'renamed' };
+function changesCard({ messageId, files = [], summary = null, checkpointId = null, notes = [] }) {
+  const list = changedFiles(files);
+  if (!list.length) return null;
+  const card = el('div', 'turn-changes');
+  card.dataset.message = messageId;
+  // The id the EDIT card had: when the project goes back, control.reverted finds this one.
+  if (checkpointId) card.id = `control-${checkpointId}`;
+  card.append(el('span', 'turn-changes-kicker', t('What changed')), el('p', 'turn-changes-said', changeSentence({ summary, files })));
+  const acts = el('div', 'turn-changes-acts');
+  const first = fileToSee(files);
+  if (first) {
+    const see = el('button', 'turn-changes-see', t('See'));
+    see.type = 'button';
+    see.title = first.path;
+    see.addEventListener('click', () => void openViewer({ root: 'project', path: first.path, label: `/${first.path}` }));
+    acts.append(see);
+  }
+  if (checkpointId) {
+    const undo = el('button', 'undo', t('Undo'));
+    undo.type = 'button';
+    undo.title = t('Puts your project back as it was before this reply.');
+    undo.addEventListener('click', async () => {
+      undo.disabled = true;
+      try {
+        const response = await fetch(`/api/control/${checkpointId}/undo`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        undo.textContent = t('RESTORED');
+      } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); undo.disabled = false; }
+    });
+    acts.append(undo);
+  }
+  card.append(acts);
+  const fold = el('details', 'turn-changes-files');
+  fold.append(el('summary', null, t('Files ({n})', { n: list.length })));
+  const rows = el('ul', 'files');
+  for (const file of list.slice(0, 40)) {
+    const item = el('li');
+    item.append(el('span', `st ${file.kind}`, t(CHANGE_WORDS[file.kind])));
+    const link = el('button', 'file-ref', file.path);
+    link.type = 'button';
+    if (file.kind !== 'deleted') link.addEventListener('click', () => void openViewer({ root: 'project', path: file.path, label: `/${file.path}` }));
+    else link.disabled = true;
+    item.append(link);
+    rows.append(item);
+  }
+  if (list.length > 40) rows.append(el('li', null, t('… and {n} more', { n: list.length - 40 })));
+  fold.append(rows, ...notes);
+  card.append(fold);
+  return card;
+}
+// Into the reply, above its foot, after what it created.
+function placeChangesCard(bubble, card) {
+  if (!bubble || !card || bubble.querySelector(':scope > .turn-changes')) return false;
+  const foot = bubble.querySelector(':scope > .bubble-foot');
+  if (foot && typeof bubble.insertBefore === 'function') bubble.insertBefore(card, foot); else bubble.append(card);
+  return true;
+}
+// An EDIT turn's changes arrive after its reply. True when the card took the EDIT card's place.
+function attachControlChanges(event) {
+  const { responseMessageId, files = [], checkpointId, unreadable = null } = event.payload ?? {};
+  if (!responseMessageId || !files.length || unreadable) return false;
+  const bubble = document.getElementById(`msg-${responseMessageId}`)?.querySelector('.bubble');
+  if (!bubble) return false;
+  // What MADRE put back or could not hold travels with the files, in the EDIT card's own words.
+  const { forbiddenReverted = [], outsideRestore = [], outsideCreated = [], outsideModified = [] } = event.payload;
+  let notes = [];
+  if (forbiddenReverted.length || outsideRestore.length || outsideCreated.length || outsideModified.length) {
+    const said = state.lastSender;
+    notes = [...renderControlChanged(event).querySelectorAll('.forbidden')];
+    state.lastSender = said;
+  }
+  const told = turnChangeNotes.get(responseMessageId);
+  return placeChangesCard(bubble, changesCard({ messageId: responseMessageId, files, summary: told?.summary ?? null, checkpointId, notes }));
+}
+
 // An agent handing a decision back. The options are buttons because a decision between three
 // things is a decision, not a paragraph to answer in prose — and because the room can then show
 // exactly what was offered, in the ledger, instead of a sentence somebody has to re-read.
@@ -8988,7 +9075,7 @@ function renderEventNode(event) {
     case 'bishop.order.proposed': node = renderBishopProposal(event); break;
     case 'bishop.answer': node = renderBishopAnswer(event); break;
     case 'create.missing': node = renderCreateMissing(event); break;
-    case 'control.changed': markTouched(event.payload.agent, event.payload.files, event.timestamp); node = renderControlChanged(event); if (!replaying) { ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); } break;
+    case 'control.changed': markTouched(event.payload.agent, event.payload.files, event.timestamp); node = attachControlChanges(event) ? null : renderControlChanged(event); if (!replaying) { ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); } break;
     case 'control.reverted': node = renderControlReverted(event); if (!replaying) treeFollowWrites(); break;
     case 'mode.granted':
     case 'mode.denied': settleModeRequest(event); return;
