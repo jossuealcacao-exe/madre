@@ -2,6 +2,7 @@
 id: mensajes-a-clientes
 name: { es: "Mensajes y correos a clientes", en: "Messages and emails to customers" }
 line: { es: "Correos y WhatsApp a clientes, listos para copiar y mandar.", en: "Emails and WhatsApp messages to customers, ready to copy and send." }
+icon: chat
 when: { es: "La persona pide escribir o contestar un correo, mail, email, mensaje, whatsapp, respuesta, recordatorio de pago, cobro, disculpa o aviso para un cliente, clienta, proveedor o contacto.", en: "The person asks to write or answer an email, mail, message, whatsapp, reply, payment reminder, apology or notice for a customer, client, supplier or contact." }
 version: 1.0.0
 minMadre: 1.1.4

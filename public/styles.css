@@ -13393,3 +13393,13 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 .mk-skill-shelf { display: grid; gap: 10px; }
 .mk-skill-shelf-title { margin: 0; font: 600 16px/1.3 var(--read); color: var(--text); }
 .mk-skill-shelf-about { margin: -4px 0 4px; font: 450 13px/1.45 var(--read); color: var(--text-3); }
+
+/* The shelf of skills (2026-11-10): two columns, each skill with its drawing on a soft square. */
+.mk-skills .mk-skill-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.mk-skills .mk-skill-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.mk-skills .mk-skill-row > .mk-empty { grid-column: 1 / -1; }
+.mk-skills .mk-skill-list > .mk-empty { grid-column: 1 / -1; margin: 0; }
+.mk-skill-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: color-mix(in srgb, var(--phosphor) 80%, var(--text)); }
+.mk-skill-icon svg { width: 20px; height: 20px; }
+.mk-skills .mk-skill-line { margin: 2px 0 0; }
+@media (max-width: 760px) { .mk-skills .mk-skill-list { grid-template-columns: minmax(0, 1fr); } }

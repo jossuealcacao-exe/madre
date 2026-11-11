@@ -2,6 +2,7 @@
 id: publicaciones-para-redes
 name: { es: "Publicaciones para redes", en: "Social media posts" }
 line: { es: "Ideas y textos para tus redes que no suenan a anuncio genérico.", en: "Ideas and texts for your social media that do not sound like a generic ad." }
+icon: image
 when: { es: "La persona pide ideas o textos para redes sociales: publicación, publicaciones, post, posts, instagram, facebook, tiktok, linkedin, historias, reels, hashtags, caption, anuncio, calendario de publicaciones, contenido.", en: "The person asks for ideas or texts for social media: post, posts, instagram, facebook, tiktok, linkedin, stories, reels, hashtags, caption, ad, posting calendar, content." }
 version: 1.0.0
 minMadre: 1.1.4

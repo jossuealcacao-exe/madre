@@ -2,6 +2,7 @@
 id: resumen-y-pendientes
 name: { es: "Resúmenes y pendientes", en: "Summaries and to-dos" }
 line: { es: "Convierte lo largo en lo decidido, lo pendiente y las dudas.", en: "Turns something long into what was decided, what is pending and what is open." }
+icon: list
 when: { es: "La persona pide un resumen, resumir, resume, resúmeme, pendientes, decisiones, puntos importantes, minuta, junta, reunión, notas o ponerse al día con algo largo.", en: "The person asks for a summary, summarize, sum up, to-dos, decisions, key points, minutes, meeting, notes or catching up on something long." }
 version: 1.0.0
 minMadre: 1.1.4

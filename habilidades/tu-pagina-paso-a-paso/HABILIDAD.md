@@ -2,6 +2,7 @@
 id: tu-pagina-paso-a-paso
 name: { es: "Tu página, paso a paso", en: "Your website, step by step" }
 line: { es: "Cambia tu página web en pasos pequeños, sin que tengas que programar.", en: "Changes your website in small steps, without you having to code." }
+icon: globe
 when: { es: "La persona quiere hacer o cambiar su página, página web, sitio, tienda en línea, landing, sección, botón, colores, fotos, textos de la página, formulario o que se vea bien en el celular, sin saber programar.", en: "The person wants to make or change their page, website, site, online store, landing, section, button, colours, photos, page texts, form or how it looks on a phone, without knowing how to code." }
 version: 1.0.0
 minMadre: 1.1.4

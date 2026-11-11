@@ -3071,7 +3071,8 @@ function welcomeHome() {
       const at = here.findIndex((one) => !seen[one.id]);
       if (at < 0) return;
       const one = here[at];
-      const shown = !document.querySelector('dialog[open]') && await homeTour.hint(one.id, one.anchor(), {
+      // Not over the Market either (it covers Home without being a dialog).
+      const shown = !document.querySelector('dialog[open]') && !document.documentElement.classList.contains('mk-open') && await homeTour.hint(one.id, one.anchor(), {
         title: one.title(),
         text: one.text(),
         step: at + 1,

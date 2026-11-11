@@ -15,7 +15,7 @@
 // `openProject(projectId, item)` (Home), `toast(text)` and `changed()`.
 
 import { t, language } from './i18n.js';
-import { appIcon, communityOf, forSale, includedSkills, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, marketSkills, moduleFace, remoteEntry, skillHere } from './market.js';
+import { appIcon, communityOf, forSale, includedSkills, yourSkills, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, marketSkills, moduleFace, remoteEntry, skillHere } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
 import { trazo } from './icons.js';
 
@@ -695,6 +695,33 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // Getting one is two steps, as a module's is: MADRE fetches every file and checks it against the
   // signature, shows what it says and what it carries, and only then — on the very seal that was
   // read — keeps it. Nothing of it runs: a program it carries could only ever run inside #4.
+  // The shelf of skills (2026-11-10, the author): a search, then what you already keep, what comes
+  // with MADRE, and what the community made; two columns, each skill with its drawing.
+  const SKILL_ICON_GUESS = [[/client|correo|mensaje|whatsapp|mail/i, 'chat'], [/red|post|instagram|social/i, 'image'], [/hoja|excel|tabla|sheet|cálculo/i, 'bars'], [/página|web|sitio|page|site/i, 'globe'], [/resum|pendiente|summar|todo/i, 'list'], [/explic|aprend|learn|explain/i, 'help'], [/cotiza|precio|quote|price/i, 'note'], [/código|code|program/i, 'code']];
+  const skillIcon = (skill) => skill.icon ?? SKILL_ICON_GUESS.find(([test]) => test.test(`${skill.id} ${skill.name}`))?.[1] ?? 'spark';
+  const skillRow = (skill, { tag = null, key = null } = {}) => {
+    const row = el('article', 'mk-skill-row');
+    const mark = el('span', 'mk-skill-icon');
+    mark.setAttribute('aria-hidden', 'true');
+    mark.innerHTML = trazo(skillIcon(skill)); // trusted: our own SVG strings
+    const words = el('div', 'mk-skill-words');
+    const top = el('div', 'mk-skill-top');
+    top.append(el('b', null, skill.name));
+    if (tag) top.append(tag);
+    words.append(top, el('p', 'mk-skill-line', skill.line || skill.summary || ''));
+    row.append(mark, words);
+    if (key) row.append(key);
+    return row;
+  };
+  const skillShelf = (title, about, rows) => {
+    const shelf = el('section', 'mk-skill-shelf');
+    shelf.append(el('h3', 'mk-skill-shelf-title', title));
+    if (about) shelf.append(el('p', 'mk-skill-shelf-about', about));
+    const list = el('div', 'mk-skill-list');
+    list.append(...rows);
+    shelf.append(list);
+    return shelf;
+  };
   const skillsPage = (focus) => {
     const page = el('div', 'mk-page mk-skills');
     const all = marketSkills();
@@ -707,46 +734,21 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     // looked for it (2026-11-08): the shelf of skills offers it too, where a project can take it.
     if (host.importSkills) head.append(button('mk-get mk-skill-import', t('Bring over what you already have'), () => host.importSkills()));
     page.append(head);
-    // The ones that come with MADRE (1.1.4), for whoever is starting out with AI: already on, nothing
-    // to get; each comes in when what is asked fits it, and is turned off in MODULES → Skills.
-    const mine = includedSkills();
-    if (mine.length) {
-      const shelf = el('section', 'mk-skill-shelf');
-      shelf.append(el('h3', 'mk-skill-shelf-title', t('They come with MADRE')), el('p', 'mk-skill-shelf-about', t('Already on: each one comes in by itself when what you ask fits it.')));
-      const list = el('div', 'mk-skill-list');
-      for (const skill of mine) {
-        const row = el('article', 'mk-skill-row');
-        const words = el('div', 'mk-skill-words');
-        const top = el('div', 'mk-skill-top');
-        top.append(el('b', null, skill.name), el('span', 'mk-skill-tag', t('Included')));
-        words.append(top, el('p', 'mk-skill-line', skill.line));
-        row.append(words);
-        list.append(row);
-      }
-      shelf.append(list);
-      page.append(shelf);
-    }
-    if (!all.length) {
-      page.append(el('p', 'mk-empty', t('None in the Market yet. You can write your own: type /habilidad in the conversation.')));
-      return page;
-    }
-    const list = el('div', 'mk-skill-list');
-    for (const skill of all) {
-      const row = el('article', 'mk-skill-row');
-      const words = el('div', 'mk-skill-words');
-      const top = el('div', 'mk-skill-top');
-      top.append(el('b', null, skill.name));
-      if (skill.community && skill.author?.name) top.append(communityTag(), el('span', 'mk-skill-by', t('by {name}', { name: skill.author.name })));
-      if (skill.version) top.append(el('span', 'mk-skill-tag', skill.version));
-      words.append(top, el('p', 'mk-skill-line', skill.line || skill.summary));
-      const have = skillHere(skill.id);
-      const key = have
-        ? button('mk-get on', t('Yours'), () => go({ tab: 'skills', focus: skill.id }))
-        : button('mk-get', t('Read it'), () => go({ tab: 'skills', focus: skill.id }));
-      row.append(words, key);
-      list.append(row);
-    }
-    page.append(list);
+    const words = input.value.trim().toLocaleLowerCase(language());
+    const fits = (skill) => !words || `${skill.name} ${skill.line ?? ''} ${skill.summary ?? ''}`.toLocaleLowerCase(language()).includes(words);
+    const mine = yourSkills().filter(fits);
+    const included = includedSkills().filter(fits);
+    const shared = all.filter((skill) => !mine.some((have) => have.id === skill.id)).filter(fits);
+    const community = shared.filter((skill) => skill.community);
+    const market = shared.filter((skill) => !skill.community);
+    const marketRow = (skill) => skillRow(skill, {
+      tag: skill.community && skill.author?.name ? el('span', 'mk-skill-by', t('by {name}', { name: skill.author.name })) : skill.version ? el('span', 'mk-skill-tag', skill.version) : null,
+      key: skillHere(skill.id) ? button('mk-get on', t('Yours'), () => go({ tab: 'skills', focus: skill.id })) : button('mk-get', t('Read it'), () => go({ tab: 'skills', focus: skill.id })),
+    });
+    if (mine.length) page.append(skillShelf(t('Your skills'), t('The ones you already keep: your own, brought over from your agents, or got here. You switch them in MODULES → Skills.'), mine.map((skill) => skillRow(skill, { tag: el('span', 'mk-skill-tag', skill.origin === 'project' ? t('this project') : t('Yours')) }))));
+    if (included.length) page.append(skillShelf(t('They come with MADRE'), t('Already on: each one comes in by itself when what you ask fits it.'), included.map((skill) => skillRow(skill, { tag: el('span', 'mk-skill-tag', t('Included')) }))));
+    if (market.length) page.append(skillShelf(t('In the Market'), null, market.map(marketRow)));
+    page.append(skillShelf(t('Made by the community'), t('Skills other people wrote and the author of MADRE reviewed. Read what each one tells your agents before you keep it.'), community.length ? community.map(marketRow) : [el('p', 'mk-empty', words ? t('No skill matches «{query}».', { query: input.value.trim() }) : t('None yet. You can write your own: type /habilidad in the conversation, and send it from MODULES → Skills.'))]));
     return page;
   };
 
@@ -810,7 +812,9 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   const render = () => {
     if (!current) return;
     for (const [id, key] of Object.entries(tabs)) key.setAttribute('aria-selected', String(id === view.tab));
-    search.hidden = view.tab === 'mine' || view.tab === 'skills' || Boolean(view.focus);
+    search.hidden = view.tab === 'mine' || Boolean(view.focus);
+    input.placeholder = view.tab === 'skills' ? t('Search a skill, or what it does') : t('Search a module, or what it does');
+    input.setAttribute('aria-label', input.placeholder);
     const item = view.focus ? items.find((one) => one.id === view.focus) : null;
     const page = view.tab === 'skills' ? skillsPage(view.focus) : view.tab === 'mine' ? mine(view.focus) : item ? detail(item, { choose: view.choose }) : shop();
     main.replaceChildren(page);
@@ -834,7 +838,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     setTimeout(() => root.remove(), reducedMotion() ? 0 : 220);
     before?.focus?.();
   };
-  input.addEventListener('input', () => { if (!view.focus && view.tab === 'shop') { const at = input.selectionStart; render(); input.focus(); input.setSelectionRange(at, at); } });
+  input.addEventListener('input', () => { if (!view.focus && (view.tab === 'shop' || view.tab === 'skills')) { const at = input.selectionStart; render(); input.focus(); input.setSelectionRange(at, at); } });
   root.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     event.stopPropagation();

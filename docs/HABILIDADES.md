@@ -51,6 +51,7 @@ que se pide les queda, y se apagan en MÓDULOS › Habilidades; no se borran. Un
 | `minMadre` | La MADRE más vieja con la que sirve |
 | `credit` | De quién fue la idea, si no fue tuya |
 | `license` | La licencia de tu texto, si la quieres decir |
+| `icon` | Su dibujo en el estante de habilidades: el nombre de uno de los íconos de MADRE (`chat`, `bars`, `globe`, `list`…) |
 
 Un campo que MADRE no conoce no se ignora en silencio: se te dice al leerla.
 

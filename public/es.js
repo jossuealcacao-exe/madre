@@ -6154,7 +6154,6 @@ export const ES = {
   'Say in one line what your skill is for and press «Propose changes».': 'Di en una línea para qué sirve tu habilidad y pulsa «Propose changes».',
   'MADRE did not answer.': 'MADRE no respondió.',
   // La pestaña de Habilidades del Mercado (H-8).
-  'None in the Market yet. You can write your own: type /habilidad in the conversation.': 'Todavía ninguna en el Mercado. Puedes escribir la tuya: escribe /habilidad en la conversación.',
   'by {name}': 'de {name}',
   'Read it': 'Léela',
   'You have it, version {version}. It comes in when it fits; you decide that in MODULES → Skills.': 'La tienes, versión {version}. Entra cuando venga al caso; eso lo decides en MÓDULOS → Habilidades.',
@@ -7447,4 +7446,12 @@ export const ES = {
   "Tools that give your AIs new things to do: see your page, check your payments, remind you of what is pending. One button turns each on, with no terminal; you choose for every project or only one.": "Herramientas que le dan a tus IAs cosas nuevas que hacer: ver tu página, revisar tus pagos, recordarte lo pendiente. Cada una se enciende con un botón, sin terminal; tú eliges si para todos tus proyectos o solo uno.",
   "Tools that give your AIs new things to do: see your page, check your payments, remind you of what is pending. One button turns each on, with no terminal; what you get here is for this project.": "Herramientas que le dan a tus IAs cosas nuevas que hacer: ver tu página, revisar tus pagos, recordarte lo pendiente. Cada una se enciende con un botón, sin terminal; lo que tomes aquí es para este proyecto.",
   "What you have on, and in which projects. A change here reaches each project with its next message.": "Lo que tienes encendido y en qué proyectos. Un cambio aquí llega a cada proyecto con su siguiente mensaje.",
+  "Your skills": "Tus habilidades",
+  "The ones you already keep: your own, brought over from your agents, or got here. You switch them in MODULES → Skills.": "Las que ya tienes: tuyas, traídas de tus agentes o tomadas de aquí. Las enciendes o apagas en MÓDULOS → Habilidades.",
+  "In the Market": "En el Mercado",
+  "Made by the community": "Creadas por la comunidad",
+  "Skills other people wrote and the author of MADRE reviewed. Read what each one tells your agents before you keep it.": "Habilidades que escribió otra gente y que revisó el autor de MADRE. Lee lo que le dice a tus agentes antes de quedártela.",
+  "No skill matches «{query}».": "Ninguna habilidad coincide con «{query}».",
+  "None yet. You can write your own: type /habilidad in the conversation, and send it from MODULES → Skills.": "Todavía ninguna. Puedes escribir la tuya: escribe /habilidad en la conversación y mándala desde MÓDULOS → Habilidades.",
+  "Search a skill, or what it does": "Busca una habilidad, o lo que hace",
 };

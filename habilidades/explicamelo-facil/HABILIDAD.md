@@ -2,6 +2,7 @@
 id: explicamelo-facil
 name: { es: "Explícamelo fácil", en: "Explain it simply" }
 line: { es: "Te explica cualquier cosa con palabras de todos los días, sin tecnicismos.", en: "Explains anything in everyday words, without jargon." }
+icon: help
 when: { es: "La persona no entiende algo y pide que se lo expliquen: explícame, explícamelo, explica, explicación, entiendo, entiende, entender, significa, significado, ¿qué es?, ¿cómo funciona?, ¿para qué sirve?, soy nueva, soy nuevo, principiante, no sé programar. Solo para explicar.", en: "The person does not understand something and asks for an explanation: explain, explanation, understand, means, meaning, what is it, how does it work, what is it for, beginner, new to this, cannot code. Only to explain." }
 version: 1.0.0
 minMadre: 1.1.4

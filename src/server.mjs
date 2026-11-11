@@ -5345,7 +5345,7 @@ export async function createPulseServer({
         const { loaded, failures, folders } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
         const fromMarket = await installedSkills(root);
         const skills = loaded.map((skill) => ({
-          id: skill.id, name: skill.name, when: skill.when, line: skill.line, version: skill.version, minMadre: skill.minMadre,
+          id: skill.id, name: skill.name, when: skill.when, line: skill.line, icon: skill.icon, version: skill.version, minMadre: skill.minMadre,
           credit: skill.credit, license: skill.license, origin: skill.origin, dir: skill.dir, unknown: skill.unknown,
           // What it says, whole: it is a page, and a person can actually read it before turning it on.
           body: skill.body, declares: skillDeclares(skill),
@@ -5474,10 +5474,12 @@ export async function createPulseServer({
         const read = kept ? (void syncMarket().catch(() => null), { catalog: kept }) : await syncMarket().catch(() => ({ catalog: null }));
         // The skills that come with MADRE (1.1.4), shown on the Market's shelf of skills as already here.
         const speak = (value) => (value && typeof value === 'object' ? value[roomLanguage()] ?? value.es ?? value.en ?? '' : String(value ?? ''));
-        const included = (await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot }).catch(() => ({ loaded: [] }))).loaded
-          .filter((one) => one.origin === 'madre')
-          .map((one) => ({ id: one.id, name: speak(one.name), line: speak(one.line) || speak(one.when), version: one.version, body: one.body }));
-        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), skills: await installedSkills(root), included, licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
+        // And the ones this person already keeps (theirs, brought over, or got from the Market).
+        const local = (await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot }).catch(() => ({ loaded: [] }))).loaded;
+        const shown = (one) => ({ id: one.id, name: speak(one.name), line: speak(one.line) || speak(one.when), version: one.version, icon: one.icon ?? null, origin: one.origin });
+        const included = local.filter((one) => one.origin === 'madre').map(shown);
+        const yours = local.filter((one) => one.origin !== 'madre').map(shown);
+        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), skills: await installedSkills(root), included, yours, licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
       }
       if (request.method === 'POST' && url.pathname === '/api/market/seen') {
         await marketNewsSeen(root);

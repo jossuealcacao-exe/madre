@@ -149,6 +149,8 @@ const KEYS = {
   credit: ['credit', 'credito', 'crédito'], license: ['license', 'licencia'],
   line: ['line', 'linea', 'línea'], summary: ['summary', 'resumen'], shelf: ['shelf', 'estante'],
   author: ['author', 'autor', 'autora'],
+  // Its drawing on the shelf of skills: the name of one of MADRE's Trazo icons (public/icons.js).
+  icon: ['icon', 'icono', 'ícono'],
 };
 export const KNOWN = new Set(Object.values(KEYS).flat());
 const field = (fields, key) => KEYS[key].map((name) => fields[name]).find((value) => String(value ?? '').trim());
@@ -181,6 +183,7 @@ export function readSkillText(text, { id = null } = {}) {
     line: words(field(fields, 'line'), 140),
     summary: words(field(fields, 'summary'), 1200),
     shelf: unquote(field(fields, 'shelf') ?? '') || null,
+    icon: /^[a-z][a-z0-9-]{1,30}$/.test(unquote(field(fields, 'icon') ?? '')) ? unquote(field(fields, 'icon')) : null,
     author: author(field(fields, 'author')),
     body,
     // Said, never ignored in silence, as a module's unknown fields are said when it is installed.
