@@ -212,7 +212,7 @@ const COMMAND_ALIASES = { coordinador: 'bishop', coordinator: 'bishop', detener:
 function spokenCommand(item) {
   const said = COMMAND_NAMES[language()]?.[item.name];
   if (!said || said === item.name) return item;
-  return { ...item, name: said, usage: item.usage ? item.usage.replace(`/${item.name}`, `/${said}`) : item.usage };
+  return { ...item, id: item.name, name: said, usage: item.usage ? item.usage.replace(`/${item.name}`, `/${said}`) : item.usage };
 }
 const CLIENT_COMMANDS = [
   // /create went away (2026-10-27): choosing #2 on the mode chip is the same thing, said once.
@@ -12560,7 +12560,8 @@ function startCarry(agent) {
   if (!here?.messages) { toast(t('There is nothing to summarize yet in this conversation.')); return { handled: true }; }
   if (here.working || carrying) { toast(t('Wait for the answer in progress, then summarize.')); return { handled: true }; }
   if (!agent) { toast(t('Choose the agent that should write the summary.')); return { handled: true }; }
-  carrying = { chat: chats.active, agent, at: Date.now() };
+  // Its name as it is now: an unnamed one would take the summary request as its name.
+  carrying = { chat: chats.active, agent, at: Date.now(), title: here.named === false ? null : here.title };
   if (state.mode !== 1) setMode(1);
   toast(t('@{agent} is writing the summary. A new conversation opens with it when it is done.', { agent }), { tone: 'note' });
   return { handled: false, target: agent, text: t('Summarize this conversation so it can continue in a new one, where another agent may pick it up without reading what came before. Only the summary, no greeting, in four short parts: «What we are after», «What was decided», «What is left», «Key files and facts». Say a file by its path and a decision in one line.') };
@@ -12570,7 +12571,7 @@ async function finishCarry(payload) {
   carrying = null;
   const summary = String(payload.text ?? '').trim();
   if (payload.status === 'error' || summary.length < 40) { toast(t('The summary did not come out. Try /resumir again, or with another agent.')); return; }
-  const response = await reach(`/api/chats/${job.chat}/carry`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ summary }) });
+  const response = await reach(`/api/chats/${job.chat}/carry`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ summary, title: job.title }) });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) { toast(`${t('Diagnostics › ')}${result.error ? resay(result.error) : t('the new conversation was not started.')}`); return; }
   const fresh = emptyTemplate || els.column.querySelector('.empty') ? await fetch('/api/state').then((one) => one.json()).catch(() => null) : null;
@@ -14572,7 +14573,7 @@ function renderMenu() {
     // Grouped and in that order: the room's own commands, then what the modules add, then what
     // cannot run here — so the arrows walk them as they are read.
     : allCommands().filter((item) => item.name.startsWith(found.query) || found.query.startsWith(item.name))
-      .map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? t(item.summary ?? '') : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available, glyph: item.name, module: item.module, group: !item.available ? 'off' : item.client ? 'room' : 'modules' }))
+      .map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? t(item.summary ?? '') : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available, glyph: item.id ?? item.name, module: item.module, group: !item.available ? 'off' : item.client ? 'room' : 'modules' }))
       .sort((a, b) => COMMAND_GROUPS.indexOf(a.group) - COMMAND_GROUPS.indexOf(b.group));
   if (found.kind === '/' && items.length === 1 && items[0].insert === '/module ') return showMenu([...items, ...moduleStarters()], { ...found, hint: t('MODULE · ↑↓ · TAB OR ENTER · pick one and edit it') });
   if (!items.length) return closeMenu();
@@ -14610,6 +14611,9 @@ const COMMAND_GLYPHS = {
   module: trazoDrawing('puzzle'),
   image: trazoDrawing('image'),
   stopall: trazoDrawing('stop-key'),
+  // Every command of the room with a drawing of its own (2026-11-11): the slash was standing in for three.
+  habilidad: trazoDrawing('spark'),
+  carry: trazoDrawing('list'),
   git: trazoDrawing('git'),
   ahp: trazoDrawing('guard'),
   // The Coordinator: one in the middle, the others around it.

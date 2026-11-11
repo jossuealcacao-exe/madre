@@ -4839,9 +4839,13 @@ export async function createPulseServer({
         const payload = await body(request).catch(() => ({}));
         const index = await chatIndex(roomDir);
         const before = index.chats[carryMatch[1]];
+        // Its name as the page saw it before the summary was asked for: an unnamed conversation took
+        // the request itself as its name, and gets it back empty.
+        const named = typeof payload.title === 'string' ? payload.title.trim().slice(0, 80) || null : (before?.title ?? null);
+        if (before && typeof payload.title !== 'undefined' && !named) await renameChat(roomDir, carryMatch[1], '');
         // One that already continued another keeps one «· continued», not a chain of them.
-        const title = before?.title ? t('{title} · continued', { title: String(before.title).replace(/ · (?:continued|sigue)$/, '').slice(0, 60) }) : null;
-        const made = await carryChat(roomDir, carryMatch[1], { title, summary: payload.summary });
+        const title = named ? t('{title} · continued', { title: named.replace(/ · (?:continued|sigue)$/, '').slice(0, 60) }) : null;
+        const made = await carryChat(roomDir, carryMatch[1], { title, summary: payload.summary, from: named });
         if (!made) return sendJson(response, 400, { error: t('There was no summary to carry.') });
         const mounted = await mountChat(made.id);
         if (mounted.error) return sendJson(response, 409, mounted);

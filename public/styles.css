@@ -6314,8 +6314,11 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .mods-submit-warn { margin: 0; color: var(--amber, var(--text)); }
 
 /* The way of working this turn went in with, said in the room beside the answer. */
-.turn-skills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
-.turn-skill { padding: 2px 10px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--phosphor); font-family: var(--read); font-size: 11.5px; cursor: pointer; }
+/* In the answer's column, as the subagents and the steps are (2026-11-11: in the avatar's, every
+   chip was a word wide and its name stacked one word a line). One line each, never broken. */
+.turn-skills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; min-width: 0; }
+#messages .row:is(.thinking, .assistant) > .turn-skills { grid-column: 2; }
+.turn-skill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--phosphor); font: 500 12px/1 var(--read); white-space: nowrap; cursor: pointer; }
 .turn-skill:hover { background: color-mix(in srgb, var(--phosphor) 22%, transparent); }
 
 /* HABILIDADES (H-3). A skill is a row, not a tile: what matters about it is a sentence and a page. */
@@ -13206,6 +13209,10 @@ html.chat-shell .shell > .composer > :is(.free-offer, .intent-offer.free-offer):
 html.chat-shell[data-scheme="dark"] .shell > .composer > :is(.free-offer, .intent-offer.free-offer):not([hidden]) { background: color-mix(in srgb, var(--phosphor) 10%, transparent) !important; box-shadow: none !important; }
 /* The place pointed at, shaped as a file of the row: its mark where a file shows its kind. */
 .attachment-chip.point .kind { font-family: var(--read); font-size: 15px; letter-spacing: 0; }
+/* The summary a conversation brings (summarize and continue): its drawing in the same square as a
+   file's kind, its words in the reading letter. */
+.attachment-chip.carry .kind svg { width: 16px; height: 16px; }
+.attachment-chip.carry .name { max-width: 30ch; font-family: var(--read); }
 .attachment-chip.point .name { max-width: 26ch; }
 /* The files' keys in one row with their search (app.js, adoptFinder): the same size and look each. */
 html.chat-shell .code-files.finder .code-files-head[hidden] { display: none; }

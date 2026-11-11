@@ -114,13 +114,13 @@ export const CARRY_MAX = 12000;
 export function carryChat(roomDir, ...rest) {
   return indexTurn(roomDir, () => carryChatNow(roomDir, ...rest));
 }
-async function carryChatNow(roomDir, from, { title = null, summary = '', now = new Date().toISOString() } = {}) {
+async function carryChatNow(roomDir, from, { title = null, summary = '', from: named, now = new Date().toISOString() } = {}) {
   const index = await chatIndex(roomDir);
   const source = index.chats[from];
   const said = String(summary ?? '').trim().slice(0, CARRY_MAX);
   if (!source || !said) return null;
   const id = randomUUID().replace(/-/g, '').slice(0, 16);
-  const before = withoutRelayHeader(source.title) || null;
+  const before = named === undefined ? withoutRelayHeader(source.title) || null : named;
   index.chats[id] = { title: title ? String(title).slice(0, CHAT_TITLE_MAX) : null, createdAt: now, updatedAt: now, messages: 0, preview: null, carried: { from, title: before, summary: said } };
   index.active = id;
   await mkdir(join(roomDir, 'chats', id), { recursive: true });
