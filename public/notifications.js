@@ -2,14 +2,16 @@
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // NOTIFICATIONS OF THE SYSTEM (2026-11-10, asked by the author). The one place a page hands something to
 // macOS (in the Mac app) or to the browser: a conversation that finished, a notice from MADRE's author,
-// a new version, and what a module has to say. Each kind is the person's to turn off (Settings ›
-// Notifications, /api/notifications), except the author's security notices, which always go out. A
+// a new version, and what a module has to say. A new version and every notice from MADRE's author
+// always go out (2026-11-10, the author: they are how a copy hears it must update); what is the
+// person's to turn off (Settings › Notifications, /api/notifications) is the rest. A
 // module never reaches the system: it declares `notifies` and this decides. Whether the system lets
 // MADRE at all is macOS's (or the browser's) to say; the row above the switches says which, and where.
 
 import { t } from './i18n.js';
 
 let prefs = null;
+const ALWAYS = new Set(['security', 'notices', 'updates']);
 let asked = null;
 const NOTIFIED = 'pulse.notified';
 
@@ -28,7 +30,8 @@ export const inMacApp = () => typeof Notification === 'function' && typeof Notif
 // Whether this kind goes out: 'security', 'conversations', 'notices', 'updates' or 'module:<id>'.
 export function wants(kind) {
   if (systemState() !== 'granted') return false;
-  if (kind === 'security') return true;
+  // Always: a new version and what MADRE's author says (security and every other notice).
+  if (ALWAYS.has(kind)) return true;
   if (kind.startsWith('module:')) return (prefs?.modules ?? []).find((one) => one.id === kind.slice(7))?.on ?? true;
   return prefs?.prefs?.[kind] ?? true;
 }
@@ -64,7 +67,7 @@ export async function drawNotifications(block, ui, { onChange = null } = {}) {
     ? (settingsAt ? t('macOS has them turned off for MADRE. Turn them on in System Settings › Notifications › MADRE; this row follows as soon as you come back.') : t('This browser blocked them for this page; allow them in its site settings.'))
     : state === 'unsupported' ? t('This browser does not offer notifications.')
       : state === 'default' ? t('MADRE asks once. Then you choose below what it may tell you.')
-        : t('On. Below, what MADRE may tell you.'), key);
+        : t('On. A new version and MADRE\'s notices always come; below, the rest.'), key);
   const answer = await loadNotificationPrefs({ again: true });
   const off = state !== 'granted';
   const save = async (patch) => {
@@ -75,9 +78,7 @@ export async function drawNotifications(block, ui, { onChange = null } = {}) {
     const box = ui.sxSwitch(fixed || on, async (next, input) => { input.disabled = true; await change(next); input.disabled = false; }, { disabled: fixed || off, label: title });
     ui.sxRow(block, title, about, box, { off });
   };
-  row(t('Security notices from MADRE'), t('Always on: it is how MADRE\'s author tells you to update when something is wrong.'), true, () => {}, { fixed: true });
-  row(t('Other notices from MADRE'), t('A new version, a fix, a service stop: what MADRE\'s author tells every copy.'), answer?.prefs?.notices !== false, (on) => save({ notices: on }));
+  // A new version and the author's notices are not here: they always go out.
   row(t('A conversation finished'), t('When an AI finishes in a conversation you are not looking at.'), answer?.prefs?.conversations !== false, (on) => save({ conversations: on }));
-  row(t('A new version of MADRE'), t('Once per version, when it is out.'), answer?.prefs?.updates !== false, (on) => save({ updates: on }));
   for (const module of answer?.modules ?? []) row(module.name, [module.about, module.note].filter(Boolean).join(' · '), module.on, (on) => save({ modules: { [module.id]: on } }));
 }

@@ -124,7 +124,9 @@ const CLOSE_KEYS = '.x-close, .surface-mode.close';
     Dialog.prototype.showModal = function showModal(...args) {
       const done = open.apply(this, args);
       const now = globalThis.document?.activeElement;
-      if (now && now !== this && this.contains(now) && now.matches?.(CLOSE_KEYS)) {
+      // Not only the ×: any key the browser lit on its own (2026-11-10, «Copy all» in what the project
+      // sends opened marked). A field keeps the focus; a key the page focuses itself after this does too.
+      if (now && now !== this && this.contains(now) && (now.matches?.(CLOSE_KEYS) || (!now.matches?.('input, textarea, select, [contenteditable="true"]') && !now.hasAttribute?.('autofocus')))) {
         if (!this.hasAttribute('tabindex')) this.tabIndex = -1;
         this.focus({ preventScroll: true });
       }
@@ -132,6 +134,11 @@ const CLOSE_KEYS = '.x-close, .surface-mode.close';
     };
     Dialog.prototype.showModal.madreQuiet = true;
   }
+  // A file picker put away with «Cancel» says `cancel`, and that event climbs to the window it sits
+  // in, which took it as its own and closed (2026-11-10: Modules shut when the Finder was cancelled).
+  globalThis.document?.addEventListener?.('cancel', (event) => {
+    if (event.target?.matches?.('input[type="file"]')) event.stopPropagation();
+  }, true);
 }
 
 // The page is ready (2026-10-30): the ground put over it before its first frame (index.html,

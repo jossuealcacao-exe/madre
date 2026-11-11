@@ -10305,8 +10305,8 @@ dialog.viewer.code > .viewer-head { flex-wrap: wrap-reverse; row-gap: 6px; justi
 @media (prefers-reduced-motion: reduce) { .tree-body .node .caret svg, .card-fold > summary .caret-mark svg { transition: none; } }
 
 .ask-card .ask-crew .ask-agent { transition: opacity var(--motion-fast) var(--ease-out), filter var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out); }
-.ask-card .ask-crew .ask-agent[aria-checked="false"] { opacity: .4; filter: grayscale(.9); box-shadow: none !important; }
-.ask-card .ask-crew .ask-agent[aria-checked="false"]:is(:hover, :focus-visible) { opacity: .75; filter: grayscale(.35); }
+.ask-card .ask-crew .ask-agent[aria-checked="false"] { opacity: .78; filter: grayscale(.25) brightness(1.08); box-shadow: none !important; }
+.ask-card .ask-crew .ask-agent[aria-checked="false"]:is(:hover, :focus-visible) { opacity: 1; filter: brightness(1.12); }
 .ask-card .ask-crew .ask-agent[aria-checked="true"] { opacity: 1; filter: none; box-shadow: 0 0 0 2px var(--surface, var(--panel)), 0 0 0 3.5px var(--agent), 0 0 14px -2px color-mix(in srgb, var(--agent) 55%, transparent) !important; }
 @media (prefers-reduced-motion: reduce) { .ask-card .ask-crew .ask-agent { transition: none; } }
 
@@ -13374,3 +13374,17 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 @keyframes login-wait { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .login-wait-dot { animation: none; } }
 .sx-slot:has(.login-ask:not([hidden]) .login-steps) .login-log { display: none; }
+
+/* The plain chips in a message's head (the effort it ran at, and the like) on a dark ground
+   (2026-11-10): their edge was almost the ground itself. */
+:root:not([data-scheme="light"]) #messages .who .badge:not(.mode, .ash, .model, .lease) { border-color: color-mix(in srgb, var(--text) 30%, transparent) !important; color: color-mix(in srgb, var(--text) 78%, transparent); }
+/* A window key that has no room to act (beside the conversation in a narrow window): there, and quiet. */
+.surface-modes .surface-mode:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+/* Help under a field of the room's question (a new file's folder and format, 2026-11-10). */
+.room-ask-hints { display: grid; gap: 6px; margin-top: -2px; }
+.room-ask-hints[hidden] { display: none; }
+.room-ask-hint-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.room-ask-hint-title { font: 500 11.5px var(--read); color: var(--text-3); margin-right: 2px; }
+.room-ask-hint { height: 24px; padding: 0 9px; border: 0; border-radius: 7px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-2); font: 500 12px var(--mono); cursor: pointer; }
+.room-ask-hint:hover { background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--text); }

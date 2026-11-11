@@ -93,9 +93,9 @@ import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, c
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
-// The kinds of notification of the system a person turns on or off (/api/notifications); the
-// author's security notices are not among them: they always go out.
-const NOTIFICATION_KINDS = ['conversations', 'notices', 'updates'];
+// The kinds of notification of the system a person turns on or off (/api/notifications). A new
+// version and the author's notices are not among them: they always go out (public/notifications.js).
+const NOTIFICATION_KINDS = ['conversations'];
 // @madre is offered a test once agents answered this many real questions in a conversation, and
 // offered again after these days while it has not been measured (offerLocalTry).
 const LOCAL_TRY_MIN = 6;
@@ -758,9 +758,11 @@ export async function createPulseServer({
   }
   async function homeWidget(kind) {
     // The author's error log (src/madre-logs.mjs): read from this disk every time, so Home shows it
-    // as agents add and close errors. Only in the copy run from source, and only Home serves it.
+    // as agents add and close errors. Only in the author's copy run from source, and only Home serves it.
     if (kind === 'madrelogs') {
-      if (!FROM_SOURCE || !salasRoom) return null;
+      // And only in the author's own copy, with the author's token (2026-11-10): a clean copy run from
+      // this same source (a test house, the Mac app pointed at it) showed it too.
+      if (!FROM_SOURCE || !salasRoom || !(await readSecret(root, OWNER_VAULT, 'usage').catch(() => null))) return null;
       const { keepSync, readLogs, syncDiagnostics, syncSentinel } = await import('./madre-logs.mjs');
       // The diagnostics filed on their own (src/madre-logs.mjs, syncDiagnostics): every ten minutes
       // while the widget is read, with the author's token, never waited for by the reading.
@@ -4680,7 +4682,7 @@ export async function createPulseServer({
         return sendJson(response, 200, { ok: true });
       }
       // NOTIFICATIONS OF THE SYSTEM (2026-11-10, asked by the author): which kinds this computer hands
-      // to macOS (or the browser). The author's security notices always do; the rest are the person's.
+      // to macOS (or the browser). A new version and the author's notices always do; the rest are the person's.
       // A module never reaches the system: it declares `notifies` (its permission) and MADRE's page
       // decides, with this, whether what it has to say goes out (public/notifications.js).
       if (url.pathname === '/api/notifications' && (request.method === 'GET' || request.method === 'POST')) {

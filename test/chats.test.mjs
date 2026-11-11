@@ -697,7 +697,10 @@ test('chat shell: Code shows the text, both or what it makes; the preview is siz
   assert.match(app, /code\.share = share > 0\.94 \? 1 : Math\.max\(0\.2, Math\.min\(1, share\)\);/);
   assert.match(css, /grid-template-columns: minmax\(0, 1fr\) calc\(var\(--share, \.46\) \* 100%\);/);
   // Reading asks to understand and offers to cite or edit; editing asks to change.
-  assert.match(app, /actions: !shell \? CODE_ACTIONS : reading \? CODE_READ_ACTIONS : CODE_EDIT_ACTIONS,/);
+  assert.match(app, /actions: !shell \? CODE_ACTIONS : codeActionsFor\(viewerUI\.path \?\? '', familyOf\(viewerUI\.path \?\? ''\)\?\.id \?\? null, reading\),/);
+  // Plain ones for whoever does not program, and the file's own (2026-11-10).
+  assert.match(app, /\['In simple words', /);
+  assert.match(app, /const CODE_FAMILY_ACTIONS = \{/);
   assert.match(app, /askAboutCode\(\{ runs, text, anchor, dirty: false, reading: true \}\);/);
   // «Reference copied» only once it is on the clipboard.
   assert.match(app, /tools\.push\(\[t\('Copy reference'\), async \(\) => \{[\s\S]{0,260}await navigator\.clipboard\.writeText/);

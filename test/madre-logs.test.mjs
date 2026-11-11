@@ -41,7 +41,7 @@ test('madre-logs · Home reads what is to fix, what waits to be verified and the
   }
   // Home serves it only in the author's copy run from source, every few seconds, never to a phone.
   const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
-  assert.match(server, /if \(kind === 'madrelogs'\) \{\n\s*if \(!FROM_SOURCE \|\| !salasRoom\) return null;[\s\S]{0,1200}return readLogs\(\);/);
+  assert.match(server, /if \(kind === 'madrelogs'\) \{[\s\S]{0,400}if \(!FROM_SOURCE \|\| !salasRoom \|\| !\(await readSecret\(root, OWNER_VAULT, 'usage'\)\.catch\(\(\) => null\)\)\) return null;[\s\S]{0,1200}return readLogs\(\);/);
   const page = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
   assert.match(page, /'w-madrelogs': \{ kind: 'madrelogs', owner: true, every: 5000,/);
 });

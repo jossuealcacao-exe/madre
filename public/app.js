@@ -1141,6 +1141,31 @@ function roomAsk({ title, body = '', choices, input = null, command = null, icon
     sheet.field.querySelector('.k').textContent = inConsole ? t('DESIGNATION ›') : (input?.label ?? t('Project'));
     sheet.input.value = '';
     sheet.input.placeholder = input?.placeholder ?? '';
+    // Help to fill it in, under the field (2026-11-10, a new file: its folder and its format): keys that
+    // complete what is written, drawn again as it changes. `input.hints(value)` → [{ label, value }].
+    if (!sheet.hints) { sheet.hints = el('div', 'room-ask-hints'); sheet.field.after(sheet.hints); }
+    sheet.hints.replaceChildren();
+    sheet.hints.hidden = !input?.hints;
+    sheet.input.oninput = null;
+    if (input?.hints) {
+      const paint = () => {
+        sheet.hints.replaceChildren();
+        for (const group of input.hints(sheet.input.value)) {
+          if (!group.items.length) continue;
+          const row = el('div', 'room-ask-hint-row');
+          row.append(el('span', 'room-ask-hint-title', group.title));
+          for (const item of group.items) {
+            const key = el('button', 'room-ask-hint', item.label);
+            key.type = 'button';
+            key.addEventListener('click', () => { sheet.input.value = item.value; sheet.input.focus(); sheet.input.setSelectionRange?.(item.value.length, item.value.length); paint(); });
+            row.append(key);
+          }
+          sheet.hints.append(row);
+        }
+      };
+      sheet.input.oninput = paint;
+      paint();
+    }
     sheet.actions.replaceChildren();
     let first = null;
     const submit = choices.find((choice) => choice.submit)?.value ?? null;
@@ -1208,6 +1233,8 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
   const crew = el('div', 'ask-crew');
   crew.setAttribute('role', 'radiogroup');
   crew.setAttribute('aria-label', t('Agent'));
+  // Its name comes quickly here: a row of faces is read by their names (2026-11-10).
+  crew.dataset.tipAfter = '350';
   for (const agent of ready) {
     const pick = avatar(agent.id, { size: 26 });
     pick.classList.add('ask-agent');
@@ -1326,6 +1353,12 @@ function codeSuggestions(text, family, path = '') {
   if (/\bawait\b|\.then\(|Promise\.(all|race|any)/.test(code)) found.push(t('Can these awaits race, or leave something half done?'));
   if (/new RegExp\(|\/(?:\\.|[^/\n])+\/[dgimsuy]*\.(?:test|exec)\(|\.(?:match|replace|split)\(\s*\//.test(code)) found.push(t('Explain this regular expression with examples that match and that do not'));
   if (named) found.push(t('Who calls {name}, and what breaks if it changes?', { name: named }));
+  // A Shopify theme or a template (2026-11-10): what the customer sees, and how to change it.
+  if (/\.liquid$/i.test(path)) {
+    found.push(t('What does the customer see here, and on which page?'));
+    found.push(t('How do I change the text the customer sees here?'));
+  }
+  if (family === 'md') found.push(t('What is still to be decided in this text?'));
   if (family === 'css') found.push(t('Why might this style not apply, and what overrides it?'));
   if (family === 'html') found.push(t('Is this accessible? Check labels, contrast and focus'));
   if (family === 'json') found.push(t('What does this configure, and what reads it?'));
@@ -1496,7 +1529,7 @@ function askAboutCode({ from, to, runs = [[from, to]], text, anchor, dirty, read
     // Reading, nothing in the list asks to write: tests are offered while editing.
     suggestions: codeSuggestions(text, familyOf(viewerUI.path ?? '')?.id ?? null, viewerUI.path ?? '').filter((words) => !(shell && reading && words === t('Write tests for this'))),
     about: `${viewerUI.path ?? ''} ${text}`,
-    actions: !shell ? CODE_ACTIONS : reading ? CODE_READ_ACTIONS : CODE_EDIT_ACTIONS,
+    actions: !shell ? CODE_ACTIONS : codeActionsFor(viewerUI.path ?? '', familyOf(viewerUI.path ?? '')?.id ?? null, reading),
     tools,
     onAsk: (agentId, prompt) => askAboutLines({ runs, prompt, dirty, agentId }),
   });
@@ -1611,14 +1644,33 @@ const CODE_ACTIONS = [
 // what is written; editing, to change it.
 const CODE_READ_ACTIONS = [
   ['Explain', 'Explain what this does'],
+  ['In simple words', 'Explain this to me in simple words, as to someone who does not program: what it does and what it changes on the page'],
   ['Where it is used', 'Where is this used, and what depends on it?'],
   ['Find bugs', 'Find bugs or edge cases here'],
 ];
 const CODE_EDIT_ACTIONS = [
   ['Improve', 'Improve this without changing what it does'],
   ['Fix', 'Find and fix the bugs here'],
+  ['Change a text', 'Change the text this shows to: '],
   ['Write tests', 'Write tests for this'],
 ];
+// What a file of each kind is asked most by someone who does not program (2026-11-10, the author):
+// added after the ones above, for pages, styles, documents and settings.
+const CODE_FAMILY_ACTIONS = {
+  html: { read: [['What it shows', 'What does this show to the visitor, and where on the page?']], edit: [['Make it look better', 'Make this look cleaner and more modern without changing what it says']] },
+  css: { read: [['What it changes', 'Which part of the page does this style change, and how?']], edit: [['Make it look better', 'Make this look cleaner and more modern without changing what it says']] },
+  md: { read: [['Summarize', 'Summarize this in three points']], edit: [['Fix spelling', 'Fix the spelling and make it read better, without changing what it says'], ['Translate', 'Translate this into English, keeping the format']] },
+  json: { read: [['What it configures', 'What does this configure, and what changes if I edit it?']], edit: [] },
+  yaml: { read: [['What it configures', 'What does this configure, and what changes if I edit it?']], edit: [] },
+};
+// A Shopify theme or a template (.liquid) reads as a page.
+const familyForAsk = (path, family) => (/\.liquid$/i.test(path) ? 'html' : family);
+function codeActionsFor(path, family, reading) {
+  const own = CODE_FAMILY_ACTIONS[familyForAsk(path, family)]?.[reading ? 'read' : 'edit'] ?? [];
+  // Tests are for code: a page, a style or a document has none to write.
+  const base = (reading ? CODE_READ_ACTIONS : CODE_EDIT_ACTIONS).filter(([label]) => !(label === 'Write tests' && ['html', 'css', 'md', 'json', 'yaml'].includes(familyForAsk(path, family))));
+  return [...base, ...own].slice(0, 6);
+}
 
 // Where it lives in the viewer: the tabs and the path under its header, the files beside its body.
 (() => {
@@ -11385,6 +11437,9 @@ const OVERLAP = 24;
 const deskVeil = el('div', 'desk-veil');
 deskVeil.setAttribute('aria-hidden', 'true');
 document.body.append(deskVeil);
+// A notice is what is in focus when it speaks (2026-11-10, the author): it lives over the veil, not
+// in the room the veil blurs.
+if (els.toast && els.toast.parentElement !== document.body) document.body.append(els.toast);
 function covers(a, b) {
   const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
   const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
@@ -11967,14 +12022,31 @@ function modeButtons({ side = 'right', split, window: floating, close = null }) 
   function paint() {
     const splitOn = Boolean(split.on());
     const windowOn = Boolean(floating.on());
+    // Beside the conversation only when there is room for it (2026-11-10): in a narrow window the
+    // key waits, saying why, and comes back as soon as the window is widened.
+    const roomless = !splitOn && typeof split.fits === 'function' && !split.fits();
+    splitButton.disabled = roomless;
     splitButton.setAttribute('aria-pressed', String(splitOn));
     windowButton.setAttribute('aria-pressed', String(windowOn));
-    splitButton.setAttribute('aria-label', split.label(splitOn));
+    splitButton.setAttribute('aria-label', roomless ? t('Widen the window to put it beside the conversation') : split.label(splitOn));
     windowButton.setAttribute('aria-label', floating.label(windowOn));
   }
   paint();
+  modePaints.add(paint);
   joinClose(group, close);
   return { group, paint };
+}
+// Every window's keys, painted again when the window of the app or the browser changes size.
+const modePaints = new Set();
+let modeFrame = 0;
+globalThis.addEventListener?.('resize', () => {
+  cancelAnimationFrame(modeFrame);
+  modeFrame = requestAnimationFrame(() => { for (const paint of modePaints) paint(); });
+});
+// Whether this panel fits beside the conversation with what already stands there.
+function sideFits(surface) {
+  const others = besideNow().filter((one) => one.key !== surface.key);
+  return others.reduce((sum, one) => sum + one.floor, COLUMN_MIN) + SIDE_MIN + (chatShellOn() ? 0 : 2 * SIDE_GAP) <= window.innerWidth;
 }
 
 function surfaceButtons(surface) {
@@ -11986,7 +12058,7 @@ function surfaceButtons(surface) {
   const { group, paint } = modeButtons({
     close: before,
     side: surface.side,
-    split: { on: () => isSplit(surface), run: () => setSurfaceMode(surface, isSplit(surface) ? 'base' : 'split'), label: (on) => (on ? t('Give it back its place') : t('Split the screen with it')) },
+    split: { on: () => isSplit(surface), fits: () => sideFits(surface), run: () => setSurfaceMode(surface, isSplit(surface) ? 'base' : 'split'), label: (on) => (on ? t('Give it back its place') : t('Split the screen with it')) },
     window: { on: () => isWindow(surface), run: () => setSurfaceMode(surface, isWindow(surface) ? 'base' : 'window'), label: (on) => (on ? t('Give it back its place') : t('Float it as a window')) },
   });
   anchor.replaceWith(group);
@@ -12133,11 +12205,27 @@ document.querySelector('#tree-refresh')?.addEventListener('click', (event) => {
 });
 els.treeButton?.addEventListener('click', () => setTree(!tree.open || atTheEdge(els.tree)));
 // A new file from the Finder: its path asked in the room's alert, made empty, opened in the viewer.
+// Its folder and its format offered as it is written (2026-11-10): the project's own folders, and the
+// usual endings for a name that has none yet.
+const NEW_FILE_FORMATS = ['.md', '.txt', '.html', '.css', '.js', '.json', '.csv'];
+function newFileHints(folders, value) {
+  const typed = String(value ?? '');
+  const slash = typed.lastIndexOf('/');
+  const dir = slash >= 0 ? typed.slice(0, slash + 1) : '';
+  const name = typed.slice(slash + 1);
+  const where = folders.filter((one) => `${one}/`.startsWith(dir) && `${one}/` !== dir && (!dir || one.length > dir.length)).filter((one) => !name || one.slice(dir.length).toLowerCase().startsWith(name.toLowerCase())).slice(0, 6);
+  const formats = name && !name.includes('.') ? [...(folders.some((one) => /^(sections|snippets|templates)$/.test(one)) ? ['.liquid'] : []), ...NEW_FILE_FORMATS].slice(0, 7) : [];
+  return [
+    { title: t('Folder'), items: where.map((one) => ({ label: `${one}/`, value: `${one}/${name}` })) },
+    { title: t('Format'), items: formats.map((ending) => ({ label: ending, value: `${typed}${ending}` })) },
+  ];
+}
 document.querySelector('#tree-new')?.addEventListener('click', async () => {
+  const folders = await fetch('/api/tree?path=.').then((response) => response.json()).then((data) => (data.entries ?? []).filter((one) => one.kind === 'dir' && !one.name.startsWith('.')).map((one) => one.name)).catch(() => []);
   const path = await roomAsk({
     title: t('New file'),
     body: t('Its path from the project root. Missing folders are made; an existing file is never touched.'),
-    input: { label: t('Path'), placeholder: 'src/notes.md' },
+    input: { label: t('Path'), placeholder: t('folder/name.md'), hints: (value) => newFileHints(folders, value) },
     icon: 'file',
     choices: [{ value: 'no', label: t('Cancel') }, { value: 'make', label: t('Create'), tone: 'primary', submit: true }],
   });

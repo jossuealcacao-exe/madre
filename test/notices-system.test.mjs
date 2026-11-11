@@ -37,13 +37,13 @@ test('notifications: each kind the person\'s, security always, a module only thr
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
     const first = await fetch(`${base}/api/notifications`).then((response) => response.json());
-    assert.deepEqual(first.prefs, { conversations: true, notices: true, updates: true });
+    assert.deepEqual(first.prefs, { conversations: true });
     assert.ok(first.modules.some((one) => one.id === 'reminders' && one.on), 'Reminders does not ask to notify');
-    const saved = await fetch(`${base}/api/notifications`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ conversations: false, security: false, modules: { reminders: false, ash: true } }) }).then((response) => response.json());
+    const saved = await fetch(`${base}/api/notifications`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ conversations: false, security: false, updates: false, notices: false, modules: { reminders: false, ash: true } }) }).then((response) => response.json());
     assert.equal(saved.prefs.conversations, false);
     assert.equal(saved.modules.find((one) => one.id === 'reminders').on, false);
     const config = JSON.parse(await read(join(state, 'config.json'), 'utf8'));
-    assert.equal(config.notifications.security, undefined, 'security notices became the person\'s to turn off');
+    for (const always of ['security', 'updates', 'notices']) assert.equal(config.notifications[always], undefined, `${always} became the person's to turn off`);
     assert.equal(config.notifications.modules.ash, undefined, 'a module that never asked to notify was let in');
   } finally {
     await new Promise((resolve) => server.close(resolve));
@@ -51,7 +51,8 @@ test('notifications: each kind the person\'s, security always, a module only thr
     await rm(project, { recursive: true, force: true });
   }
   const page = await pub('notifications.js');
-  assert.match(page, /if \(kind === 'security'\) return true;/);
+  assert.match(page, /const ALWAYS = new Set\(\['security', 'notices', 'updates'\]\);/);
+  assert.match(page, /if \(ALWAYS\.has\(kind\)\) return true;/);
   const home = await pub('salas-mac.js');
   assert.match(home, /notify\('module:reminders', t\('Reminder'\), one\.text/);
   assert.match(home, /notify\('updates', /);
