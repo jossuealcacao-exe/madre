@@ -1511,7 +1511,7 @@ dialog.viewer { border: 0; padding: 0; width: min(1100px, 96vw); max-width: 96vw
 /* No height of its own: it already spans every row of the shell, and asking for 100dvh on top of
    that made the grid satisfy it by starving the rows in the other column — which is how the
    conversations panel ended up two pixels tall and the thread lost its end. */
-.browser-dock { position: relative; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); min-width: 0; min-height: 0; background: var(--panel); border-left: 1px solid var(--line); }
+.browser-dock { position: relative; display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-width: 0; min-height: 0; background: var(--panel); border-left: 1px solid var(--line); }
 /* The dock is a fixed grid track, so anything inside it that refuses to shrink pushes the whole
    page wider and hands the human a horizontal scrollbar for a layout that was supposed to fit.
    Its own container query decides what the header can afford. */
@@ -3503,20 +3503,28 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 @media (prefers-reduced-motion: reduce) { .browser-down, .browser-down.leaving { animation: none; } }
 
 /* ================= the browser as a window ================= */
-#browser-body { position: relative; grid-row: -2 / -1; }
-/* What went wrong in a page of your servers (N4): a strip between the bar and the page, never over
-   it (the app's page is drawn above all of the room's HTML). */
-.browser-errors { grid-row: -3 / -2; display: grid; gap: 4px; padding: 8px 12px 10px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--danger) 6%, var(--panel)); max-height: 40%; overflow: auto; }
-.browser-errors[hidden] { display: none; }
-.browser-errors-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 600 12.5px var(--read, inherit); color: var(--danger); }
-.browser-errors-clear { width: 24px; height: 24px; border: 0; border-radius: 7px; background: none; color: var(--text-3); cursor: pointer; }
-.browser-errors-clear:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
-.browser-error { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.browser-error .words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; flex: 1 1 auto; min-width: 0; font: 450 12.5px/1.4 var(--read, inherit); }
-.browser-error .kind { flex: none; padding: 0 6px; border-radius: 6px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); font-size: 11px; }
-.browser-error .msg { color: var(--text); overflow-wrap: anywhere; }
-.browser-error .where { color: var(--text-3); font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
-.browser-error .sx-btn { flex: none; }
+#browser-body { position: relative; }
+/* What went wrong in a page of your servers (N4): a key in the bar, red, with how many; its menu
+   lists them like «Your servers» lists the servers. */
+#browser #browser-errors-key { order: 4; }
+#browser .errors-key { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; color: var(--danger) !important; font: 600 12px var(--read, inherit); }
+#browser .errors-key[hidden] { display: none !important; }
+#browser .errors-key .dot { display: inline-block; flex: none; width: 7px !important; height: 7px !important; min-width: 0; padding: 0; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
+.browser-errors-menu { left: auto !important; right: 10px !important; width: min(440px, calc(100cqw - 24px)); padding: 4px !important; gap: 0 !important; }
+.browser-errors-menu .be-head { padding: 8px 10px 6px; font: 600 12.5px var(--read, inherit); color: var(--text); }
+.browser-errors-menu .be-list { display: grid; max-height: min(320px, 50vh); overflow: auto; }
+.browser-errors-menu .be-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 9px; }
+.browser-errors-menu .be-row:hover { background: var(--cs-hover, color-mix(in srgb, var(--text) 6%, transparent)); }
+.browser-errors-menu .be-words { display: grid; gap: 3px; flex: 1 1 auto; min-width: 0; }
+.browser-errors-menu .be-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.browser-errors-menu .be-kind { flex: none; padding: 1px 7px; border-radius: 6px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); font: 500 11px var(--read, inherit); }
+.browser-errors-menu .be-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font: 400 11px var(--mono); }
+.browser-errors-menu .be-msg { color: var(--text); font: 450 12.5px/1.4 var(--read, inherit); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.browser-errors-menu :is(.be-ask, .be-all, .be-clear) { flex: none; height: 26px; padding: 0 10px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font: 500 12px var(--read, inherit); cursor: pointer; white-space: nowrap; }
+.browser-errors-menu :is(.be-ask, .be-all, .be-clear):hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.browser-errors-menu .be-all { background: var(--text); color: var(--panel); }
+.browser-errors-menu .be-all:hover { background: color-mix(in srgb, var(--text) 85%, transparent); }
+.browser-errors-menu .be-foot { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 10px 6px; border-top: 1px solid var(--cs-line, var(--line)); margin-top: 4px; }
 .browser-dock.window .browser-head { cursor: grab; }
 .browser-dock .browser-head :is(button, input, a, select) { cursor: pointer; }
 .browser-dock.window {

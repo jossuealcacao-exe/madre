@@ -3289,6 +3289,22 @@ if (nativeBrowser() && browser.point) {
   browser.show.setAttribute('aria-label', browser.show.title);
   browser.show.addEventListener('click', () => void browserShowToAgent());
   browser.point.after(browser.show);
+  // The page's errors: a key that only shows while there are some, and its menu.
+  browser.errorsKey = el('button', 'nav errors-key');
+  browser.errorsKey.id = 'browser-errors-key';
+  browser.errorsKey.type = 'button';
+  browser.errorsKey.hidden = true;
+  browser.errorsKey.setAttribute('aria-haspopup', 'menu');
+  browser.errorsKey.setAttribute('aria-expanded', 'false');
+  browser.errorsKey.append(el('span', 'dot'), el('span', 'count', '0'));
+  browser.errorsKey.addEventListener('click', (event) => { event.stopPropagation(); browserErrorsMenu(browser.errorsMenu.hidden); });
+  browser.show.after(browser.errorsKey);
+  browser.errorsMenu = el('div', 'ports-menu browser-errors-menu');
+  browser.errorsMenu.setAttribute('role', 'menu');
+  browser.errorsMenu.hidden = true;
+  browser.portsMenu?.after(browser.errorsMenu);
+  document.addEventListener('pointerdown', (event) => { if (!browser.errorsMenu.hidden && !browser.errorsMenu.contains(event.target) && !browser.errorsKey.contains(event.target)) browserErrorsMenu(false); }, true);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !browser.errorsMenu.hidden) browserErrorsMenu(false); });
 }
 document.addEventListener?.('keydown', (event) => {
   if (!pointing.on || event.key !== 'Escape') return;
@@ -3420,46 +3436,79 @@ function browserNativeSaid(said = {}) {
   browserRenderTabs();
 }
 // WHAT WENT WRONG IN THE PAGE (N4 of the app's browser, 2026-11-11): the app reads each page's
-// errors (JavaScript, console.error, a request that failed); a page of one of your servers shows
-// them in a strip over it, each with «Ask for a fix». Another site's are its own business: not shown.
+// errors (JavaScript, console.error, a request that failed); a page of one of your servers lights a
+// key in the bar with how many, and the key opens them as a menu, each with «Ask for a fix». Never a
+// strip over the page: the app's page is drawn above the room, and a menu of the room is what N3
+// already knows to lay its picture under. Another site's errors are its own business: not shown.
 const BROWSER_KIND_WORDS = { js: 'JavaScript', console: 'Console', network: 'Request', load: 'Did not load' };
 function browserTakeErrors(tab, errors) {
   if (!browserPortOf(tab.url)) return;
   tab.errors = [...(tab.errors ?? []), ...errors.filter((one) => one && one.message).map((one) => ({ kind: String(one.kind ?? 'js'), message: String(one.message).slice(0, 400), source: String(one.source ?? ''), line: Number(one.line) || 0 }))].slice(-20);
   if (tab.id === browser.active) browserPaintErrors();
 }
-function browserPaintErrors() {
+const browserErrorWhere = (one) => (one.source ? `${one.source.replace(/^https?:\/\/[^/]+/, '') || one.source}${one.line ? `:${one.line}` : ''}` : '');
+const browserErrorLine = (one) => `${t(BROWSER_KIND_WORDS[one.kind] ?? 'Error')}: ${one.message}${browserErrorWhere(one) ? ` (${browserErrorWhere(one)})` : ''}`;
+function browserAskFix(tab, errors) {
+  els.input.value = errors.length === 1
+    ? t('The page {url} shows an error: {error}. Find the cause in the project and propose the fix.', { url: tab.url, error: browserErrorLine(errors[0]) })
+    : `${t('The page {url} shows these errors. Find their cause in the project and propose the fix:', { url: tab.url })}\n${errors.map((one) => `- ${browserErrorLine(one)}`).join('\n')}`;
+  browserErrorsMenu(false);
+  autosize();
+  els.input.focus();
+}
+function browserErrorsMenu(open) {
+  const menu = browser.errorsMenu;
+  if (!menu) return;
+  menu.hidden = !open;
+  browser.errorsKey?.setAttribute('aria-expanded', String(open));
+  if (!open) return;
   const tab = browserTab();
   const errors = tab?.errors ?? [];
-  if (!errors.length) { if (browser.errors) browser.errors.hidden = true; return; }
-  if (!browser.errors) {
-    browser.errors = el('div', 'browser-errors');
-    browser.errors.setAttribute('role', 'status');
-    browser.body?.before(browser.errors);
+  menu.replaceChildren();
+  const head = el('div', 'be-head');
+  head.append(el('b', null, errors.length === 1 ? t('1 error on this page') : t('{n} errors on this page', { n: errors.length })));
+  menu.append(head);
+  const list = el('div', 'be-list');
+  for (const one of [...errors].reverse()) {
+    const row = el('div', 'be-row');
+    const words = el('div', 'be-words');
+    const top = el('div', 'be-top');
+    top.append(el('span', `be-kind ${one.kind}`, t(BROWSER_KIND_WORDS[one.kind] ?? 'Error')));
+    if (browserErrorWhere(one)) top.append(el('span', 'be-where', browserErrorWhere(one)));
+    words.append(top, el('span', 'be-msg', one.message));
+    const ask = el('button', 'be-ask', t('Ask for a fix'));
+    ask.type = 'button';
+    ask.addEventListener('click', () => browserAskFix(tab, [one]));
+    row.append(words, ask);
+    list.append(row);
   }
-  const strip = browser.errors;
-  strip.replaceChildren();
-  const head = el('div', 'browser-errors-head');
-  head.append(el('b', null, errors.length === 1 ? t('The page has 1 error') : t('The page has {n} errors', { n: errors.length })));
-  const clear = closeMark('button', 'browser-errors-clear', t('Clear the errors'));
-  clear.addEventListener('click', () => { tab.errors = []; browserPaintErrors(); });
-  head.append(clear);
-  strip.append(head);
-  for (const one of errors.slice(-3).reverse()) {
-    const where = one.source ? `${one.source.replace(/^https?:\/\/[^/]+/, '') || one.source}${one.line ? `:${one.line}` : ''}` : '';
-    const line = el('div', 'browser-error');
-    const words = el('span', 'words');
-    words.append(el('span', 'kind', t(BROWSER_KIND_WORDS[one.kind] ?? 'Error')), el('span', 'msg', one.message));
-    if (where) words.append(el('span', 'where', where));
-    const ask = sxButton(t('Ask for a fix'), () => {
-      els.input.value = t('The page {url} shows an error ({kind}): {message}{where}. Find the cause in the project and propose the fix.', { url: tab.url, kind: t(BROWSER_KIND_WORDS[one.kind] ?? 'Error'), message: one.message, where: where ? ` · ${where}` : '' });
-      autosize();
-      els.input.focus();
-    });
-    line.append(words, ask);
-    strip.append(line);
+  menu.append(list);
+  const foot = el('div', 'be-foot');
+  const clear = el('button', 'be-clear', t('Clear'));
+  clear.type = 'button';
+  clear.addEventListener('click', () => { tab.errors = []; browserErrorsMenu(false); browserPaintErrors(); });
+  foot.append(clear);
+  if (errors.length > 1) {
+    const all = el('button', 'be-all', t('Ask for a fix of all'));
+    all.type = 'button';
+    all.addEventListener('click', () => browserAskFix(tab, errors.slice(-10)));
+    foot.append(all);
   }
-  strip.hidden = false;
+  menu.append(foot);
+  const key = browser.errorsKey.getBoundingClientRect();
+  const holder = (menu.offsetParent ?? browser.dialog).getBoundingClientRect();
+  menu.style.top = `${Math.round(key.bottom - holder.top + 6)}px`;
+}
+function browserPaintErrors() {
+  const key = browser.errorsKey;
+  if (!key) return;
+  const count = browserTab()?.errors?.length ?? 0;
+  key.hidden = !count;
+  key.querySelector('.count').textContent = String(count);
+  key.title = count === 1 ? t('1 error on this page') : t('{n} errors on this page', { n: count });
+  key.setAttribute('aria-label', key.title);
+  if (!count) browserErrorsMenu(false);
+  else if (!browser.errorsMenu?.hidden) browserErrorsMenu(true);
 }
 
 // SHOW IT TO AN AGENT (N4): the page as it looks and what it says, attached to the box, as an
