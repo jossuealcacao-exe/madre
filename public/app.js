@@ -4175,8 +4175,9 @@ async function toggleModelMenu(id, anchor) {
     const brief = modelBrief(info, name ?? info.default);
     if (brief) body.append(el('span', 'hint', brief));
     button.append(body);
-    if (current) button.append(menuCheck());
+    // The star first, then the check: side by side, never one over the other.
     if (favoring && name) button.append(favoriteKey(name));
+    if (current) button.append(menuCheck());
     button.addEventListener('click', () => { rememberModel(id, isDefault ? null : name); closeModelMenu(); renderPicker(); focusComposer(); });
     return button;
   };
@@ -12495,6 +12496,7 @@ document.body.append(chatMenu);
 function openChatMenu(event, chat, name) {
   event.preventDefault();
   event.stopPropagation();
+  window.getSelection?.()?.removeAllRanges?.();
   chatMenu.replaceChildren();
   const add = (label, run) => {
     const button = el('button', null, label);
@@ -12532,7 +12534,21 @@ function renameChatInPlace(chat, name) {
   field.placeholder = chat.title;
   field.maxLength = 80;
   field.setAttribute('aria-label', t('Name of this conversation'));
-  name.replaceChildren(field);
+  // In the row, in place of its key and drawn like it (an input inside a button takes neither
+  // spaces nor clicks well): its bubble, then the name being written.
+  const open = name.closest('button.chat');
+  const row = name.closest('.chat-row');
+  if (open && row) {
+    const holder = el('div', `${open.className} chat-renaming`);
+    const glyph = open.querySelector('.chat-glyph')?.cloneNode(true);
+    if (glyph) holder.append(glyph);
+    const spot = el('span', 'name');
+    spot.append(field);
+    holder.append(spot);
+    open.hidden = true;
+    open.after(holder);
+    row.classList.add('renaming');
+  } else name.replaceChildren(field);
   field.focus();
   field.select();
   let done = false;

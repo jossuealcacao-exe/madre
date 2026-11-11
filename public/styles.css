@@ -2230,7 +2230,13 @@ dialog.intents-window { width: 760px; height: 640px; }
 html.chat-shell .chat-menu { min-width: 170px; padding: 4px; border: 1px solid var(--cs-line, var(--line-2)); border-radius: 12px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
 html.chat-shell .chat-menu button { padding: 7px 10px; border-radius: 8px; font: 450 13px var(--read); }
 html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(--cs-hover); outline: 0; }
-.chats-body .chat-rename { width: 100%; min-width: 0; padding: 1px 4px; margin: -2px 0; border: 1px solid var(--line-2); border-radius: 6px; outline: 0; background: var(--panel); color: var(--text); font: inherit; }
+/* Renaming happens in the row (2026-11-11): the row goes hollow like every field, its keys step
+   aside, and the name is written where it was, in its own letter. A right click selects nothing. */
+.chats-body .chat { -webkit-user-select: none; user-select: none; }
+.chats-body .chat-row.renaming { grid-template-columns: minmax(0, 1fr) !important; }
+.chats-body .chat[hidden] { display: none !important; }
+.chats-body .chat-row.renaming :is(.chat-drop, .chat-beside, .when) { display: none !important; }
+.chats-body .chat-rename { display: block; width: 100%; min-width: 0; padding: 0; margin: 0; border: 0; outline: 0; background: none; color: var(--text); font: inherit; caret-color: var(--phosphor); }
 .chats-body .chat-pin { display: inline-grid; place-items: center; color: var(--text-3); }
 .chats-body .chat-pin svg { width: 12px; height: 12px; }
 .tree-menu .note { padding: 5px 10px 6px; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0; color: var(--text-3); }
@@ -13058,7 +13064,9 @@ dialog.room-ask:not(.console) .room-ask-choice:not(.primary):not(.danger):active
    Settings' does (.settings-search): a quiet well with a faint inner shadow, deeper while it has
    the cursor. The conversations' had a border and a flat grey, the files' had lost its well. */
 html.chat-shell .chats-search input,
-html.chat-shell .tree-search .tree-find {
+html.chat-shell .tree-search .tree-find,
+html.chat-shell .model-search-field,
+html.chat-shell #chats .chat-row.renaming {
   border: 0 !important; border-radius: 10px !important; outline: none !important;
   background: color-mix(in srgb, var(--text) 6%, transparent) !important;
   box-shadow: inset 0 1px 2px rgba(20, 30, 20, .1) !important;
@@ -13066,13 +13074,18 @@ html.chat-shell .tree-search .tree-find {
 }
 html.chat-shell .chats-search input { height: 32px; padding: 0 11px; font: 450 13px var(--read); color: var(--text); }
 html.chat-shell .chats-search input:focus,
-html.chat-shell .tree-search .tree-find:focus-within {
+html.chat-shell .tree-search .tree-find:focus-within,
+html.chat-shell .model-search-field:focus-within,
+html.chat-shell #chats .chat-row.renaming {
   background: color-mix(in srgb, var(--text) 4%, transparent) !important;
   box-shadow: inset 0 2px 5px rgba(20, 30, 20, .12), inset 0 1px 1.5px rgba(20, 30, 20, .1) !important;
 }
 html.chat-shell[data-scheme="dark"] .chats-search input,
+html.chat-shell[data-scheme="dark"] .model-search-field,
 html.chat-shell[data-scheme="dark"] .tree-search .tree-find { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3) !important; }
 html.chat-shell[data-scheme="dark"] .chats-search input:focus,
+html.chat-shell[data-scheme="dark"] .model-search-field:focus-within,
+html.chat-shell[data-scheme="dark"] #chats .chat-row.renaming,
 html.chat-shell[data-scheme="dark"] .tree-search .tree-find:focus-within { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .35), inset 0 1px 1.5px rgba(0, 0, 0, .3) !important; }
 
 /* ONE «FILES» (2026-11-09): the panel's tab says it; the list's head keeps its keys without saying
@@ -13373,13 +13386,14 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
    A star at the end of each row, seen when the row is pointed at or when it is a favourite; the
    favourites at the top, under their own head. */
 .model-option { position: relative; }
-.model-fav { position: absolute; right: 8px; top: 50%; display: grid; place-items: center; width: 22px; height: 22px; margin-top: -11px; border-radius: 6px; color: var(--text-3); opacity: 0; cursor: pointer; }
+/* The star sits in the row before the check (2026-11-11: on the chosen one they were drawn one on
+   top of the other), its place kept while hidden so every row lines up. */
+.model-fav { flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-left: auto; border-radius: 6px; color: var(--text-3); opacity: 0; cursor: pointer; }
 .model-fav svg { width: 14px; height: 14px; }
 .model-option:is(:hover, :focus-visible) .model-fav, .model-fav.on { opacity: 1; }
 .model-fav:hover { background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); }
 .model-fav.on { color: #f5b301; }
-.model-option:has(.model-fav) { padding-right: 34px; }
-.model-option:has(.model-fav) .menu-check { margin-right: 4px; }
+.model-option:has(.model-fav) .menu-check { margin-left: -4px; }
 .model-group.favorites b { color: var(--text); }
 
 /* ---------- A sign-in as steps (2026-11-10) ----------
