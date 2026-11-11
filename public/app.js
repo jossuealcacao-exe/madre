@@ -2522,6 +2522,7 @@ function browserTitleFor(url) {
 }
 
 function browserRenderTabs() {
+  browserPaintErrors();
   if (!browser.tabsBar) return;
   browser.tabsBar.replaceChildren();
   for (const tab of browser.tabs) {
@@ -3279,6 +3280,16 @@ async function pointSend(agentId, prompt) {
   els.input.setSelectionRange(els.input.value.length, els.input.value.length);
 }
 browser.point?.addEventListener('click', () => setPointing(!pointing.on));
+if (nativeBrowser() && browser.point) {
+  browser.show = el('button', 'nav show-agent');
+  browser.show.id = 'browser-show';
+  browser.show.type = 'button';
+  browser.show.innerHTML = trazo('agents'); // trusted: our own SVG string
+  browser.show.title = t('Show this page to an agent: its picture and its text go to the box');
+  browser.show.setAttribute('aria-label', browser.show.title);
+  browser.show.addEventListener('click', () => void browserShowToAgent());
+  browser.point.after(browser.show);
+}
 document.addEventListener?.('keydown', (event) => {
   if (!pointing.on || event.key !== 'Escape') return;
   // Esc takes back the newest mark first, one at a time; with nothing marked, it puts the tool away.
@@ -3392,8 +3403,10 @@ function browserNativeSaid(said = {}) {
   if (said.newTab) { browserShow(); browserNewTab(said.newTab); return; }
   const tab = browser.tabs.find((one) => one.id === said.tab);
   if (!tab) return;
+  if (Array.isArray(said.errors)) { browserTakeErrors(tab, said.errors); return; }
   if (said.url && /^https?:/.test(said.url)) {
-    if (tab.url !== said.url) { tab.url = said.url; if (!said.title) tab.title = browserTitleFor(said.url); }
+    // Another page: the errors were the last one's.
+    if (tab.url !== said.url) { tab.url = said.url; tab.errors = []; if (!said.title) tab.title = browserTitleFor(said.url); }
     if (tab.history.at(-1) !== said.url) tab.history.push(said.url);
   }
   if (said.title) tab.title = String(said.title).slice(0, 80);
@@ -3406,6 +3419,72 @@ function browserNativeSaid(said = {}) {
   browser.reload?.classList.toggle('loading', Boolean(tab.loading));
   browserRenderTabs();
 }
+// WHAT WENT WRONG IN THE PAGE (N4 of the app's browser, 2026-11-11): the app reads each page's
+// errors (JavaScript, console.error, a request that failed); a page of one of your servers shows
+// them in a strip over it, each with «Ask for a fix». Another site's are its own business: not shown.
+const BROWSER_KIND_WORDS = { js: 'JavaScript', console: 'Console', network: 'Request', load: 'Did not load' };
+function browserTakeErrors(tab, errors) {
+  if (!browserPortOf(tab.url)) return;
+  tab.errors = [...(tab.errors ?? []), ...errors.filter((one) => one && one.message).map((one) => ({ kind: String(one.kind ?? 'js'), message: String(one.message).slice(0, 400), source: String(one.source ?? ''), line: Number(one.line) || 0 }))].slice(-20);
+  if (tab.id === browser.active) browserPaintErrors();
+}
+function browserPaintErrors() {
+  const tab = browserTab();
+  const errors = tab?.errors ?? [];
+  if (!errors.length) { if (browser.errors) browser.errors.hidden = true; return; }
+  if (!browser.errors) {
+    browser.errors = el('div', 'browser-errors');
+    browser.errors.setAttribute('role', 'status');
+    browser.body?.before(browser.errors);
+  }
+  const strip = browser.errors;
+  strip.replaceChildren();
+  const head = el('div', 'browser-errors-head');
+  head.append(el('b', null, errors.length === 1 ? t('The page has 1 error') : t('The page has {n} errors', { n: errors.length })));
+  const clear = closeMark('button', 'browser-errors-clear', t('Clear the errors'));
+  clear.addEventListener('click', () => { tab.errors = []; browserPaintErrors(); });
+  head.append(clear);
+  strip.append(head);
+  for (const one of errors.slice(-3).reverse()) {
+    const where = one.source ? `${one.source.replace(/^https?:\/\/[^/]+/, '') || one.source}${one.line ? `:${one.line}` : ''}` : '';
+    const line = el('div', 'browser-error');
+    const words = el('span', 'words');
+    words.append(el('span', 'kind', t(BROWSER_KIND_WORDS[one.kind] ?? 'Error')), el('span', 'msg', one.message));
+    if (where) words.append(el('span', 'where', where));
+    const ask = sxButton(t('Ask for a fix'), () => {
+      els.input.value = t('The page {url} shows an error ({kind}): {message}{where}. Find the cause in the project and propose the fix.', { url: tab.url, kind: t(BROWSER_KIND_WORDS[one.kind] ?? 'Error'), message: one.message, where: where ? ` · ${where}` : '' });
+      autosize();
+      els.input.focus();
+    });
+    line.append(words, ask);
+    strip.append(line);
+  }
+  strip.hidden = false;
+}
+
+// SHOW IT TO AN AGENT (N4): the page as it looks and what it says, attached to the box, as an
+// agent with eyes on a browser gets it. Only in the app, whose browser can take both.
+async function browserShowToAgent() {
+  const tab = browserTab();
+  const native = nativeBrowser();
+  if (!tab?.url || !native?.snapshot) return;
+  const key = browser.show;
+  if (key) key.disabled = true;
+  try {
+    const [src, page] = await Promise.all([native.snapshot(tab.id), native.read?.(tab.id, 'text') ?? null]);
+    const files = [];
+    const stamp = Date.now();
+    if (src) files.push(new File([await (await fetch(src)).blob()], `madre-pagina-${stamp}.jpg`, { type: 'image/jpeg' }));
+    if (page?.text) files.push(new File([`${page.title ?? ''}\n${page.url ?? tab.url}\n\n${page.text}`], `madre-pagina-${stamp}.txt`, { type: 'text/plain' }));
+    if (!files.length) { toast(t('The page could not be read. Reload it and try again.')); return; }
+    await addFiles(files);
+    if (!els.input.value.trim()) els.input.value = t('Look at this page ({url}): ', { url: tab.url });
+    autosize();
+    els.input.focus();
+    els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+  } finally { if (key) key.disabled = false; }
+}
+
 window.__madreRoomBrowser = {
   said: browserNativeSaid,
   go: (url) => { browserShow(); const tab = browserTab(); if (!tab) browserNewTab(url); else void browserOpen(url, { tab }); },
