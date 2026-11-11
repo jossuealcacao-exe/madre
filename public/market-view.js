@@ -663,7 +663,10 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       const foot = el('div', 'mk-card-foot');
       const chips = el('div', 'mk-chips');
       for (const id of scopeOf(item)?.on ?? []) chips.append(el('span', 'mk-chip on', projectName(id)));
-      foot.append(chips, button('mk-get', t('Install in another'), () => go({ tab: 'shop', focus: item.id })));
+      foot.append(chips);
+      // Only while there is a project left to put it in (2026-11-10: it was offered with every one taken).
+      const placed = scopeOf(item)?.on ?? [];
+      if (scope.projects.some((project) => !placed.includes(project.id))) foot.append(button('mk-get', t('Install in another'), () => go({ tab: 'shop', focus: item.id })));
       box.append(foot);
     } else {
       const mineScope = scopeOf(item) ?? { all: false, on: [], everywhere: false };

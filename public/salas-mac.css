@@ -1899,6 +1899,10 @@ html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-chips:empty { display: non
 html.home-shell .mk.flat .mk-mine .mk-card-foot { align-items: center; row-gap: 8px; }
 html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-get { display: inline-flex; align-items: center; height: 26px; margin-left: auto; padding: 0 11px; font: 500 12px/1 var(--read); }
 html.home-shell .mk.flat .mk-mine .mk-said:empty { display: none; }
+/* The projects at the foot of every card, on one line across the row (2026-11-10): a card whose words
+   took one line had them higher than its neighbours'. */
+html.home-shell .mk.flat .mk-mine .mk-card { display: flex; flex-direction: column; }
+html.home-shell .mk.flat .mk-mine .mk-card > :is(.mk-chips, .mk-card-foot) { margin-top: auto; }
 
 /* The Coordinator's summary before there is one (2026-10-28): what will come there, in the middle of
    its box, with a drawing of it — not an empty box with a line at its foot. */
