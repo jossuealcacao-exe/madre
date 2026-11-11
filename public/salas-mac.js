@@ -7072,7 +7072,10 @@ startReviewAsk({ busy: () => busy.size > 0 || pins.editing || Boolean(pins.drag)
 const noticesHost = el('div', 'sm-notices');
 noticesHost.hidden = true;
 document.querySelector('.sm-hero')?.append(noticesHost);
-const askNoticesAgain = mountNotices(noticesHost);
+// In the Mac app, Home also hands each notice to macOS once (notices.js, `system`); asked again as soon as
+// the app knows macOS lets it.
+const askNoticesAgain = mountNotices(noticesHost, { system: true });
+globalThis.addEventListener?.('madre-notifications', () => askNoticesAgain());
 // THE CHOICE OF THE APP (2026-11-10, src/app-invite.mjs, asked by the author): whoever updated MADRE and
 // uses it in the browser is asked once per version, in a window of its own, whether to stay in the
 // browser or to download the app for their computer — once there is one for it. The server decides

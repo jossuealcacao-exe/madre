@@ -16,15 +16,33 @@ const el = (tag, className = null, text = null) => {
 const pickWords = (pair) => (pair && typeof pair === 'object' ? pair[language()] ?? pair.es ?? pair.en ?? '' : String(pair ?? ''));
 const LEVEL_WORDS = { info: () => t('Notice from MADRE'), important: () => t('Important notice from MADRE'), security: () => t('Security notice from MADRE') };
 
+// In the Mac app, a notice also comes as a notification of the system (2026-11-10, asked by the author:
+// «the ones I send»), once each, from Home only so several open pages do not say it several times.
+const NOTIFIED = 'pulse.notices.notified';
+const systemOn = () => typeof Notification === 'function' && Notification.permission === 'granted' && typeof Notification.openSettings === 'function';
+function notifySystem(notice) {
+  let told = [];
+  try { told = JSON.parse(localStorage.getItem(NOTIFIED) ?? '[]'); } catch { told = []; }
+  if (!Array.isArray(told) || told.includes(notice.id)) return;
+  try {
+    const title = pickWords(notice.title);
+    const body = pickWords(notice.body);
+    new Notification(LEVEL_WORDS[notice.level]?.() ?? LEVEL_WORDS.info(), { body: [title, body].filter(Boolean).join(' · '), tag: `notice-${notice.id}` });
+    localStorage.setItem(NOTIFIED, JSON.stringify([...told, notice.id].slice(-100)));
+  } catch { /* not offered here */ }
+}
+
 // Draws the notices into `host` and asks again every few minutes while the page is open.
-// `levels`: which ones this page shows. Returns a function that asks again at once.
-export function mountNotices(host, { levels = ['info', 'important', 'security'], every = 5 * 60_000 } = {}) {
+// `levels`: which ones this page shows; `system`: whether this page also tells the system (Home).
+// Returns a function that asks again at once.
+export function mountNotices(host, { levels = ['info', 'important', 'security'], every = 5 * 60_000, system = false } = {}) {
   if (!host) return () => {};
   host.classList.add('madre-notices');
   host.setAttribute('aria-live', 'polite');
   let drawn = '';
   const draw = (notices) => {
     const shown = notices.filter((one) => !one.seen && levels.includes(one.level));
+    if (system && systemOn()) for (const notice of shown) notifySystem(notice);
     const key = JSON.stringify(shown.map((one) => one.id)) + language();
     if (key === drawn) return;
     drawn = key;

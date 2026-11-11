@@ -12402,10 +12402,12 @@ function onChatActivity({ chatId, working, finished } = {}) {
     const said = finished.ok
       ? t('Diagnostics › @{agent} finished in «{chat}».', { agent: finished.agent ?? '?', chat: title })
       : t('Diagnostics › @{agent} could not finish in «{chat}».', { agent: finished.agent ?? '?', chat: title });
-    if (elsewhere) { chats.unread.add(chatId); showNotice({ agent: finished.agent, ok: finished.ok, chatId, chat: title }); }
-    // A notification for whoever is not looking at it: another conversation, or this one while the
-    // tab is behind something else. Pressing it brings the room back, at that conversation.
-    notifyFinished(said.replace(/^MU\/TH\/UR › /, ''), chatId);
+    // One voice per place (2026-11-10, the author: they came twice). In the Mac app, macOS's own
+    // notification says it; in a browser, MADRE's card, and the browser's notification only while the
+    // tab is behind something else. Pressing either brings the room back, at that conversation.
+    const system = systemNotices();
+    if (elsewhere) { chats.unread.add(chatId); if (!system) showNotice({ agent: finished.agent, ok: finished.ok, chatId, chat: title }); }
+    if (system || away) notifyFinished(said.replace(/^MU\/TH\/UR › /, ''), chatId);
   }
   renderChats();
 }
@@ -12477,6 +12479,10 @@ function showNotice({ agent, ok, chatId, chat }) {
   arm();
 }
 
+// The Mac app's notifications (it hands `Notification.openSettings`), on: they speak instead of MADRE's cards.
+function systemNotices() {
+  return notificationsState() === 'granted' && typeof Notification.openSettings === 'function';
+}
 function notificationsState() {
   if (typeof Notification !== 'function') return 'unsupported';
   return Notification.permission;   // 'default' · 'granted' · 'denied'
