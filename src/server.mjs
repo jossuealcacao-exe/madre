@@ -141,7 +141,7 @@ import { qrSvg } from './bridge/qr.mjs';
 import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
-import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
+import { moduleOnIn, scopeView, settingsIn, switchIn } from './module-scope.mjs';
 import { chooseSkills, declaredBy as skillDeclares, installSkill, isSkillFile, loadSkills, readSkillText, removeSkill, shareSkill, skillState, skillStateIn, skillIdOf, SKILL_FILES, SKILL_STATES } from './skills.mjs';
 import { findSkills, importSkills } from './skills-import.mjs';
 import { ASKS as SKILL_ASKS, SKILL_LICENSES, SKILL_SHELVES, submissionDraft as skillDraft, writeSubmission as writeSkillSubmission } from './skill-check.mjs';
@@ -2663,7 +2663,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/auto-open.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -3133,6 +3133,13 @@ export async function createPulseServer({
           if (payload.sample === true) {
             const sample = await createSampleProject({ home, stateRoot: root, language: payload.language === 'en' ? 'en' : 'es' });
             if (sample.error) return sendJson(response, 422, { error: t('The project to try MADRE could not be made.'), code: sample.error });
+            // Its page is the point (2026-11-11): the first change opens beside the conversation as
+            // the page it is, so Preview is on in this project — unless the person already said
+            // otherwise, for every project or for this one.
+            const ripleyBlock = (await readConfig(root)).modules?.ripley ?? {};
+            if (sample.id && typeof ripleyBlock.enabled !== 'boolean' && typeof ripleyBlock.rooms?.[sample.id] !== 'boolean') {
+              await updateConfig(root, { modules: { ripley: switchIn(ripleyBlock, sample.id, true) } }).catch(() => {});
+            }
             diagnostics.count('project.sample');
             return sendJson(response, 200, { added: [sample] });
           }
