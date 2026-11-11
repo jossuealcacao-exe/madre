@@ -79,7 +79,10 @@ test('auto-open: a sheet is read into rows, quotes and semicolons included', () 
 test('auto-open: the room opens what an answer made and what an edit changed, never over what is on screen', async () => {
   const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
   // Both doors: a CREATE answer's files and an EDIT's.
-  assert.match(app, /function attachArtifacts[\s\S]*?if \(!replaying\) autoOpenMade\(files\);/);
+  // Before the tiles' early return: an answer brings its tiles drawn, and CREATE never opened.
+  const attach = app.slice(app.indexOf('function attachArtifacts('), app.indexOf('function autoOpenMade('));
+  assert.ok(attach.indexOf('if (!replaying) autoOpenMade(files);') > 0, 'a CREATE answer opens nothing');
+  assert.ok(attach.indexOf('if (!replaying) autoOpenMade(files);') < attach.indexOf("querySelector('.artifacts')) return;"), 'the opening sits after the return that skips it');
   assert.match(app, /case 'control\.changed':[^\n]*autoOpenMade\(event\.payload\.files\)/);
   const body = app.slice(app.indexOf('function autoOpenMade('), app.indexOf('function firstMadeSeen('));
   assert.match(body, /if \(!autoOpenOn\(\)\) return;/, 'the switch in Settings is not read');

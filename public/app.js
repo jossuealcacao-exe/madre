@@ -7681,14 +7681,15 @@ function renderLease(event) {
 
 function attachArtifacts(event) {
   const { responseMessageId, files = [] } = event.payload;
+  // Something new exists in the project: it opens beside the conversation (autoOpenMade). Live
+  // events only: a conversation read again opens nothing. Before the tiles' early return: the
+  // answer usually brings its tiles already drawn, and the opening was never reached.
+  if (!replaying) autoOpenMade(files);
   const bubble = document.getElementById(`msg-${responseMessageId}`)?.querySelector('.bubble');
   if (!bubble || bubble.querySelector('.artifacts')) return;
   // Above the reply's foot, with the rest of what it says.
   const foot = bubble.querySelector('.bubble-foot');
   if (foot && foot.parentNode === bubble && typeof bubble.insertBefore === 'function') bubble.insertBefore(artifactTiles(files), foot); else bubble.append(artifactTiles(files));
-  // Something new exists in the project: it opens beside the conversation (autoOpenMade). Live
-  // events only: a conversation read again opens nothing.
-  if (!replaying) autoOpenMade(files);
 }
 
 // LO QUE SE CREA, SE ABRE SOLO (2026-11-11). What an answer made or changed that can be looked at
