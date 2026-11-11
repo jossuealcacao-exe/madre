@@ -79,6 +79,8 @@ const shape = (id, entry, active) => ({
   preview: withoutRelayHeader(entry.preview) ?? null,
   pinned: Boolean(entry.pinned),
   archived: Boolean(entry.archived),
+  // What it brought from the conversation it continues (2026-11-11), until its first message uses it.
+  carried: entry.carried && !Number(entry.messages ?? 0) ? { from: entry.carried.from, title: entry.carried.title, summary: entry.carried.summary } : null,
   active: id === active,
 });
 
@@ -101,6 +103,26 @@ async function createChatNow(roomDir, { title = null, now = new Date().toISOStri
   index.chats[id] = { title: title ? String(title).slice(0, CHAT_TITLE_MAX) : null, createdAt: now, updatedAt: now, messages: 0, preview: null };
   // A conversation started from a phone is the phone's: the room keeps the one it had open.
   if (activate) index.active = id;
+  await mkdir(join(roomDir, 'chats', id), { recursive: true });
+  await writeIndex(roomDir, index);
+  return shape(id, index.chats[id], index.active);
+}
+
+// SUMMARIZE AND CONTINUE: a new conversation that carries what another one decided and left open,
+// written by the agent that was in it. Its first message takes it along; MADRE adds nothing to it.
+export const CARRY_MAX = 12000;
+export function carryChat(roomDir, ...rest) {
+  return indexTurn(roomDir, () => carryChatNow(roomDir, ...rest));
+}
+async function carryChatNow(roomDir, from, { title = null, summary = '', now = new Date().toISOString() } = {}) {
+  const index = await chatIndex(roomDir);
+  const source = index.chats[from];
+  const said = String(summary ?? '').trim().slice(0, CARRY_MAX);
+  if (!source || !said) return null;
+  const id = randomUUID().replace(/-/g, '').slice(0, 16);
+  const before = withoutRelayHeader(source.title) || null;
+  index.chats[id] = { title: title ? String(title).slice(0, CHAT_TITLE_MAX) : null, createdAt: now, updatedAt: now, messages: 0, preview: null, carried: { from, title: before, summary: said } };
+  index.active = id;
   await mkdir(join(roomDir, 'chats', id), { recursive: true });
   await writeIndex(roomDir, index);
   return shape(id, index.chats[id], index.active);

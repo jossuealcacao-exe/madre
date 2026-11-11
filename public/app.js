@@ -206,8 +206,9 @@ const els = {
 // server (/api/commands) and run there, read-only, as fact cards.
 // The names a person reads (QA 1.1.0, NUE-28): «/bishop» was the Coordinator's old internal name and
 // «/stopall» English. The menu offers them in the room's language; the old names still work.
-const COMMAND_NAMES = { es: { bishop: 'coordinador', stopall: 'detener' }, en: { bishop: 'coordinator', stopall: 'stopall' } };
-const COMMAND_ALIASES = { coordinador: 'bishop', coordinator: 'bishop', detener: 'stopall', stop: 'stopall' };
+const COMMAND_NAMES = { es: { bishop: 'coordinador', stopall: 'detener', carry: 'resumir' }, en: { bishop: 'coordinator', stopall: 'stopall', carry: 'summarize' } };
+// /compact is what the CLIs call it in a session of their own (2026-11-11): here it summarizes and continues.
+const COMMAND_ALIASES = { coordinador: 'bishop', coordinator: 'bishop', detener: 'stopall', stop: 'stopall', resumir: 'carry', summarize: 'carry', compact: 'carry', compactar: 'carry' };
 function spokenCommand(item) {
   const said = COMMAND_NAMES[language()]?.[item.name];
   if (!said || said === item.name) return item;
@@ -219,6 +220,10 @@ const CLIENT_COMMANDS = [
   // Calls one of your skills by name, or writes a new one (2026-11-10): «/habilidad explicamelo-facil …»,
   // «/habilidad nueva <how you work>». The menu lists every skill this project has.
   { name: 'habilidad', title: 'SKILL', usage: `/habilidad ${t('<skill> <message>')}`, summary: t('Use one of your skills in this message, or write a new one with «nueva».'), available: true, client: true },
+  // Summarize and continue (2026-11-11): the agent writes what was decided and what is left, and a new
+  // conversation starts with it. MADRE runs each message as a new run of the CLI, so there is no session
+  // of its own to compact.
+  { name: 'carry', title: 'SUMMARIZE', usage: '/carry', summary: t('Summarize this conversation and continue in a new one: what was decided, what is left and the key files.'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: `/image ${t('<what to draw>')}`, summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
   // Notes and Reminders through an agent (2026-10-20): the message goes to the agent chosen, and
@@ -8683,6 +8688,7 @@ function renderEventNode(event) {
       if (event.payload.role === 'user' && event.payload.sender === 'you') markChoiceAnswered(event.payload.text);
       if (event.payload.role !== 'user') attachCrossReads(event.payload.messageId, node);
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
+      if (event.payload.role !== 'user' && !replaying && carrying && event.payload.sender === carrying.agent) void finishCarry(event.payload);
       // The first thing said names a conversation; the tab and the list learn the name from the room.
       if (event.payload.role === 'user' && !replaying) setTimeout(() => void loadChats(), 600);
       // The room refused to hand this agent a model that is not its own. Forget it here too, or
@@ -12522,6 +12528,7 @@ function openChatMenu(event, chat, name) {
     chatMenu.append(button);
   };
   add(t('Rename'), () => renameChatInPlace(chat, name));
+  if (chat.id === chats.active && chat.messages > 0) add(t('Summarize and continue'), () => { els.input.value = `/${COMMAND_NAMES[language()]?.carry ?? 'carry'}`; els.composer.requestSubmit(); });
   if (!chat.archived) add(chat.pinned ? t('Unpin') : t('Pin to the top'), () => void changeChat(chat.id, { pinned: !chat.pinned }));
   add(chat.archived ? t('Take out of the archive') : t('Archive'), () => void archiveChatNow(chat));
   chatMenu.hidden = false;
@@ -12540,6 +12547,48 @@ async function changeChat(id, change) {
   chats.list = namedChats(result.chats) ?? chats.list;
   renderChats();
   return true;
+}
+
+// SUMMARIZE AND CONTINUE (2026-11-11, asked by a person for /compact): the agent of this
+// conversation writes a short summary in a turn of its own, at #1; when it answers, a new conversation
+// opens carrying it, and its first message takes it along (chats.mjs, carryChat). Nothing is lost:
+// the conversation before stays as it was.
+let carrying = null;
+const carryDropped = new Set();
+function startCarry(agent) {
+  const here = chats.list.find((chat) => chat.id === chats.active);
+  if (!here?.messages) { toast(t('There is nothing to summarize yet in this conversation.')); return { handled: true }; }
+  if (here.working || carrying) { toast(t('Wait for the answer in progress, then summarize.')); return { handled: true }; }
+  if (!agent) { toast(t('Choose the agent that should write the summary.')); return { handled: true }; }
+  carrying = { chat: chats.active, agent, at: Date.now() };
+  if (state.mode !== 1) setMode(1);
+  toast(t('@{agent} is writing the summary. A new conversation opens with it when it is done.', { agent }), { tone: 'note' });
+  return { handled: false, target: agent, text: t('Summarize this conversation so it can continue in a new one, where another agent may pick it up without reading what came before. Only the summary, no greeting, in four short parts: «What we are after», «What was decided», «What is left», «Key files and facts». Say a file by its path and a decision in one line.') };
+}
+async function finishCarry(payload) {
+  const job = carrying;
+  carrying = null;
+  const summary = String(payload.text ?? '').trim();
+  if (payload.status === 'error' || summary.length < 40) { toast(t('The summary did not come out. Try /resumir again, or with another agent.')); return; }
+  const response = await reach(`/api/chats/${job.chat}/carry`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ summary }) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(`${t('Diagnostics › ')}${result.error ? resay(result.error) : t('the new conversation was not started.')}`); return; }
+  const fresh = emptyTemplate || els.column.querySelector('.empty') ? await fetch('/api/state').then((one) => one.json()).catch(() => null) : null;
+  if (!fresh) { window.location.reload(); return; }
+  chatSwitch += 1;
+  await morph('new', () => paintConversation(fresh));
+  await loadChats();
+  toast(t('We continue here, with the summary on top. Write what comes next.'), { tone: 'done' });
+  focusComposer();
+}
+const carryHead = (carry) => `${t('Summary of the conversation before ({title}), to continue from it:', { title: carry.title ?? '—' })}\n${carry.summary}\n\n---\n`;
+// The open conversation still waiting for its first message, with what it was given: on its card.
+function syncCarry() {
+  const here = chats.list.find((chat) => chat.id === chats.active);
+  const carry = here?.carried && !carryDropped.has(here.id) ? { chat: here.id, title: here.carried.title ? chatTitle(here.carried.title) : null, summary: here.carried.summary } : null;
+  if ((carry?.chat ?? null) === (state.carry?.chat ?? null)) return;
+  state.carry = carry;
+  renderPendingAttachments();
 }
 
 // Archived, it leaves the list and keeps everything; the one on screen hands the screen to the next.
@@ -12727,6 +12776,7 @@ async function loadChats() {
     const payload = await fetch('/api/chats').then((response) => response.json());
     chats.list = namedChats(payload.chats) ?? [];
     chats.active = payload.active ?? null;
+    syncCarry();
     if (split.chat && !chats.list.some((chat) => chat.id === split.chat)) closeSplit();
     for (const id of [...convWindows.keys()]) if (!chats.list.some((chat) => chat.id === id)) closeConvWindow(id);
     renderChats();
@@ -14668,6 +14718,7 @@ async function runSlashCommand(text) {
   // An alias goes to the server under the command's own name.
   if (name !== match[1].toLowerCase()) text = `/${name}${rest ? ` ${rest}` : ''}`;
   if (name === 'stopall') { await stopAll(); return { handled: true }; }
+  if (name === 'carry') return startCarry(els.target.value);
   // «/habilidad <yours> <message>»: sent as written, and the room brings that skill into the turn
   // (src/server.mjs, skillsForTurn). «/habilidad nueva …» writes one, with #2 armed as for /module.
   if (name === 'habilidad' || name === 'skill') {
@@ -14762,7 +14813,22 @@ document.querySelector('#stop-all')?.addEventListener('click', stopAll);
 
 function renderPendingAttachments() {
   els.attachments.replaceChildren();
-  els.attachments.hidden = state.pending.length === 0 && !state.point;
+  els.attachments.hidden = state.pending.length === 0 && !state.point && !state.carry;
+  // Where this conversation comes from (summarize and continue): first, as one more thing it carries.
+  if (state.carry) {
+    const chip = el('span', 'attachment-chip carry');
+    const mark = el('span', 'kind');
+    mark.innerHTML = trazo('list'); // trusted: our own SVG string
+    chip.append(mark, el('span', 'name', state.carry.title ? t('Summary of «{title}»', { title: state.carry.title }) : t('Summary of the conversation before')));
+    chip.title = state.carry.summary;
+    const drop = closeMark('button', 'remove');
+    drop.type = 'button';
+    drop.title = t('Start without the summary');
+    drop.setAttribute('aria-label', drop.title);
+    drop.addEventListener('click', () => { carryDropped.add(state.carry.chat); state.carry = null; renderPendingAttachments(); autosize(); els.input.focus(); });
+    chip.append(drop);
+    els.attachments.append(chip);
+  }
   // Where it was pointed (Apuntar) goes first in the same row, as one more thing the message
   // carries: one row for all of it, not a card for each part of the box (2026-11-09).
   if (state.point) {
@@ -15075,6 +15141,9 @@ els.composer.addEventListener('submit', async (event) => {
     } else setMode(wanted);
   }
   if (state.point && !text.startsWith('/')) outgoing = `${state.point.line}\n${outgoing}`;
+  // What the conversation before this one left, ahead of the first message here (summarize and continue).
+  const carried = state.carry && !text.startsWith('/') ? state.carry : null;
+  if (carried) outgoing = `${carryHead(carried)}${outgoing}`;
   if (quoting && !text.startsWith('/')) outgoing = `${quoteHead(quoting)}${outgoing}`;
   if (text.startsWith('/')) {
     els.input.disabled = true;
@@ -15177,6 +15246,7 @@ els.composer.addEventListener('submit', async (event) => {
       state.replyTo = null;
       renderReplyQuote();
       if (state.point) { state.point = null; renderPointQuote(); }
+      if (carried && state.carry === carried) { state.carry = null; renderPendingAttachments(); }
       offerModule(outgoing);
       state.pending = [];
       renderPendingAttachments();

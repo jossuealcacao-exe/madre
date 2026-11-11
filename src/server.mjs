@@ -103,7 +103,7 @@ const LOCAL_TRY_AGAIN_MS = 3 * 24 * 60 * 60 * 1000;
 import { moduleUpdate } from './modules/updates.mjs';
 import { ACTIVITY_SOON_MS, recentInProject } from './activity.mjs';
 import { readReminders } from './modules/reminders.mjs';
-import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, archiveChat, pinChat, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
+import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, archiveChat, carryChat, pinChat, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
@@ -4828,6 +4828,21 @@ export async function createPulseServer({
           return sendJson(response, 200, { ...(await chatsView()), opened: made.id });
         }
         const made = await createChat(roomDir, { title: typeof payload.title === 'string' ? payload.title : null });
+        const mounted = await mountChat(made.id);
+        if (mounted.error) return sendJson(response, 409, mounted);
+        return sendJson(response, 200, { ...(await chatsView()), opened: made.id });
+      }
+      // Summarize and continue (2026-11-11): the summary its agent wrote opens a new conversation.
+      const carryMatch = url.pathname.match(/^\/api\/chats\/([a-z0-9]+)\/carry$/);
+      if (carryMatch && request.method === 'POST') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const index = await chatIndex(roomDir);
+        const before = index.chats[carryMatch[1]];
+        // One that already continued another keeps one «· continued», not a chain of them.
+        const title = before?.title ? t('{title} · continued', { title: String(before.title).replace(/ · (?:continued|sigue)$/, '').slice(0, 60) }) : null;
+        const made = await carryChat(roomDir, carryMatch[1], { title, summary: payload.summary });
+        if (!made) return sendJson(response, 400, { error: t('There was no summary to carry.') });
         const mounted = await mountChat(made.id);
         if (mounted.error) return sendJson(response, 409, mounted);
         return sendJson(response, 200, { ...(await chatsView()), opened: made.id });

@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import vm from 'node:vm';
-import { chatIndex, chatLedger, createChat, deleteChat, isChatId, lastSequenceOf, listChats, openChat, archiveChat, pinChat, projectFloor, renameChat, touchChat, adoptStrays, MAIN_CHAT } from '../src/chats.mjs';
+import { chatIndex, chatLedger, createChat, deleteChat, isChatId, lastSequenceOf, listChats, openChat, archiveChat, carryChat, pinChat, projectFloor, renameChat, touchChat, adoptStrays, MAIN_CHAT } from '../src/chats.mjs';
 import { EventStore } from '../src/event-store.mjs';
 
 const room = () => mkdtemp(join(tmpdir(), 'pulse-chats-'));
@@ -68,6 +68,13 @@ test('chats: a conversation takes its name from the first thing said in it, and 
     assert.equal(kept.archived, true);
     assert.equal(kept.pinned, false);
     assert.equal((await archiveChat(dir, made.id, false)).archived, false);
+    // Summarize and continue: a new conversation, open, carrying what the other left until its first message.
+    assert.equal(await carryChat(dir, made.id, { summary: '   ' }), null, 'an empty summary opens nothing');
+    const next = await carryChat(dir, made.id, { title: 'Webhooks · sigue', summary: 'Qué se decidió: verificar antes de parsear.' });
+    assert.equal(next.active, true);
+    assert.deepEqual(next.carried, { from: made.id, title: 'Later still', summary: 'Qué se decidió: verificar antes de parsear.' });
+    await touchChat(dir, next.id, { text: 'Sigamos con los reembolsos' });
+    assert.equal((await listChats(dir)).chats.find((one) => one.id === next.id).carried, null, 'its first message took it');
   } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
