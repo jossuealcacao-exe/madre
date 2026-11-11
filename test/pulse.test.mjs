@@ -3103,7 +3103,7 @@ test('Gemini signed in with Google: its quota from Code Assist, the tightest mod
   }
 });
 
-test('OpenCode: Copilot\'s premium requests and OpenRouter\'s limit or credits, the tightest of them (2026-11-10)', async () => {
+test('OpenCode: the quota of the provider it answers with, Copilot\'s premium requests or OpenRouter\'s limit or credits (2026-11-11)', async () => {
   const now = Date.parse('2026-11-10T12:00:00Z');
   const asked = [];
   const fetchImpl = async (url, init) => {
@@ -3114,21 +3114,26 @@ test('OpenCode: Copilot\'s premium requests and OpenRouter\'s limit or credits, 
     return { ok: false, status: 404 };
   };
   const auth = { 'github-copilot': { type: 'oauth', refresh: 'gho_x', access: 'tid', expires: 0 }, openrouter: { type: 'api', key: 'sk-or-x' }, anthropic: { type: 'api', key: 'sk-ant' } };
-  const quota = await readOpenCodeQuota({ authReader: async () => auth, fetchImpl, now });
+  const quota = await readOpenCodeQuota({ authReader: async () => auth, fetchImpl, now, model: 'github-copilot/gpt-5' });
   assert.equal(quota.agent, 'opencode');
   assert.equal(quota.provider, 'github-copilot');
   assert.equal(quota.usedPercent, 70);
   assert.equal(quota.resetAt, '2026-12-01T00:00:00.000Z');
-  // Each with what OpenCode signed in with for it, and nobody else's: Anthropic publishes nothing.
-  assert.deepEqual(asked.map(([url, auth]) => [new URL(url).host, auth]), [['api.github.com', 'token gho_x'], ['openrouter.ai', 'Bearer sk-or-x'], ['openrouter.ai', 'Bearer sk-or-x']]);
-  // OpenRouter alone: its credits.
-  const alone = await readOpenCodeQuota({ authReader: async () => ({ openrouter: auth.openrouter }), fetchImpl, now });
+  // Only the provider it answers with, with what OpenCode signed in with for it.
+  assert.deepEqual(asked.map(([url, auth]) => [new URL(url).host, auth]), [['api.github.com', 'token gho_x']]);
+  // OpenRouter: its credits.
+  const alone = await readOpenCodeQuota({ authReader: async () => auth, fetchImpl, now, model: 'openrouter/anthropic/claude-sonnet-4.5' });
   assert.equal(alone.provider, 'openrouter');
   assert.equal(alone.usedPercent, 40);
   // A Copilot plan without a monthly cap, or nothing signed in: nothing to say.
   const unlimited = async () => ({ ok: true, status: 200, json: async () => ({ quota_snapshots: { premium_interactions: { unlimited: true } } }) });
-  assert.equal(await readOpenCodeQuota({ authReader: async () => ({ 'github-copilot': auth['github-copilot'] }), fetchImpl: unlimited, now }), null);
-  assert.equal(await readOpenCodeQuota({ authReader: async () => ({}), fetchImpl, now }), null);
+  assert.equal(await readOpenCodeQuota({ authReader: async () => ({ 'github-copilot': auth['github-copilot'] }), fetchImpl: unlimited, now, model: 'github-copilot/gpt-5' }), null);
+  assert.equal(await readOpenCodeQuota({ authReader: async () => ({}), fetchImpl, now, model: 'openai/gpt-5.4' }), null);
+  // Answering with a key of its own (OpenAI) while Copilot is out of premium requests: not spent.
+  const own = await readOpenCodeQuota({ authReader: async () => auth, fetchImpl, now, model: 'openai/gpt-5.4' });
+  assert.equal(own.usedPercent, 0);
+  assert.equal(own.stale, true);
+  assert.equal(own.provider, null);
 });
 
 test('readClaudeUsage reads five-hour and seven-day windows with the CLI token, and fails loudly on a rejected token', async () => {

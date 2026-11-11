@@ -28,8 +28,10 @@ const execFileAsync = promisify(execFile);
 //   opencode  By its provider (2026-11-10), from OpenCode's own auth.json: a GitHub Copilot sign-in
 //           asks GitHub how many premium requests are left this month (the same endpoint the
 //           editors use, copilot_internal/user); an OpenRouter key asks OpenRouter how much of its
-//           limit or of the account's credits is spent (/api/v1/key, /api/v1/credits). The
-//           tightest of the two is OpenCode's. Others publish nothing: the room's window.
+//           limit or of the account's credits is spent (/api/v1/key, /api/v1/credits). Only the
+//           provider of the model OpenCode is answering with counts (2026-11-11: a Copilot sign-in
+//           out of premium requests marked OpenCode as spent while it answered with an OpenAI key).
+//           Others publish nothing: the room's window.
 //
 // A window whose resets_at is already in the past is reported as fresh
 // (0 % used, stale: true): the CLI only rewrites the file when it runs again,
@@ -249,14 +251,21 @@ export async function readOpenRouterQuota(entry, { fetchImpl = fetch, now = Date
   return { provider: 'openrouter', ...interpretWindow({ usedPercent: (Number(credits.total_usage ?? 0) / Number(credits.total_credits)) * 100, resetAt: null, windowMinutes: null }, now) };
 }
 
-export async function readOpenCodeQuota({ authReader = readOpenCodeAuth, fetchImpl = fetch, now = Date.now() } = {}) {
+// The model OpenCode answered with last (room.mjs notes it on every OpenCode turn), or the one chosen
+// for every project in Settings.
+let openCodeModel = null;
+export function noteOpenCodeModel(model) { if (typeof model === 'string' && model.includes('/')) openCodeModel = model; }
+const OPENCODE_READERS = { 'github-copilot': readCopilotQuota, openrouter: readOpenRouterQuota };
+
+export async function readOpenCodeQuota({ authReader = readOpenCodeAuth, fetchImpl = fetch, now = Date.now(), model = openCodeModel ?? process.env.PULSE_OPENCODE_MODEL ?? null } = {}) {
   const auth = await authReader();
-  const readings = (await Promise.all([
-    auth['github-copilot'] ? readCopilotQuota(auth['github-copilot'], { fetchImpl, now }).catch(() => null) : null,
-    auth.openrouter ? readOpenRouterQuota(auth.openrouter, { fetchImpl, now }).catch(() => null) : null,
-  ])).filter(Boolean);
-  if (!readings.length) return null;
-  const tightest = readings.reduce((high, one) => (one.usedPercent > high.usedPercent ? one : high));
+  const measurable = Object.keys(OPENCODE_READERS).filter((provider) => auth[provider]);
+  if (!measurable.length) return null;
+  const provider = String(model ?? '').split('/')[0];
+  const tightest = measurable.includes(provider) ? await OPENCODE_READERS[provider](auth[provider], { fetchImpl, now }).catch(() => null) : null;
+  // Answering through a provider that publishes nothing: what another one has left is not
+  // OpenCode's. Said as an empty, unmeasured window, so a reading kept from before stops warning.
+  if (!tightest) return measurable.includes(provider) ? null : { agent: 'opencode', usedPercent: 0, resetAt: null, stale: true, provider: null, windows: null, observedAt: new Date(now).toISOString() };
   return {
     agent: 'opencode',
     usedPercent: tightest.usedPercent,

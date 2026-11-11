@@ -829,7 +829,7 @@ test('chat shell: a lower box that grows upward, a quiet «/» menu, no /create 
   assert.match(app, /if \(name === 'image' \|\| name === 'module'\) \{/);
 });
 
-test('the flat store: the chat shell\'s canvas, flat icons, featured cards that peek, shelves three rows deep', async () => {
+test('the flat store: the chat shell\'s canvas, flat icons, featured cards that peek, shelves two to a row', async () => {
   const view = await readFile(new URL('../public/market-view.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(view, /const root = el\('div', globalThis\.location\?\.port === '4316' \? 'mk' : 'mk flat'\);/);
@@ -837,7 +837,9 @@ test('the flat store: the chat shell\'s canvas, flat icons, featured cards that 
   assert.match(view, /track\.scrollTo\(\{ left: startOf\(index\),/);
   assert.match(css, /\.mk\.flat :is\(\.mk-icon, \.mk-slide, \.mk-shot\), html\.chat-shell \.mk-icon \{ --mk-flat: color-mix\(in oklab,/);
   assert.match(css, /\.mk\.flat \.mk-icon \{ background: var\(--mk-flat\);/);
-  assert.match(css, /\.mk\.flat \.mk-shelf \.mk-list \{\n  grid-template-columns: none; grid-template-rows: repeat\(3, auto\); grid-auto-flow: column;/);
+  // Two to a row (2026-11-11), one only in a very narrow window.
+  assert.match(css, /\.mk\.flat \.mk-shelf \.mk-list \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); grid-auto-flow: row;/);
+  assert.match(css, /@container mk \(max-width: 600px\) \{\n  \.mk\.flat \.mk-shelf \.mk-list \{ grid-template-columns: minmax\(0, 1fr\); \}/);
 });
 
 test('the SDK: a module draws its own icon, and MADRE fits it to the tile in one of its colors', async () => {

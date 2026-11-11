@@ -14388,8 +14388,9 @@ function renderMenu() {
     const start = caret - asking[1].length;
     const skills = (modules.skills ?? []).filter((skill) => !query || skill.id.includes(query) || skillName(skill).toLowerCase().includes(query));
     const items = [
-      ...skills.map((skill) => ({ key: skill.id, insert: `${skill.id} `, what: `${skillName(skill)} · ${skillWords(skill.line) ?? skillWords(skill.when) ?? ''}`, drawing: trazoDrawing(skill.icon ?? 'spark') })),
-      ...(!query || 'nueva'.startsWith(query) ? [{ key: `nueva ${t('<how you work>')}`, insert: 'nueva ', what: t('Write a new skill: a way of working every agent of this room follows. The agent writes it, you read it and keep it.'), drawing: trazoDrawing('add') }] : []),
+      // MADRE's first, then the person's own and the ones brought over, each under its name.
+      ...[...skills].sort((a, b) => Number(b.origin === 'madre') - Number(a.origin === 'madre')).map((skill) => ({ key: skill.id, insert: `${skill.id} `, what: `${skillName(skill)} · ${skillWords(skill.line) ?? skillWords(skill.when) ?? ''}`, drawing: trazoDrawing(skill.icon ?? 'spark'), group: skill.origin === 'madre' ? 'skills-madre' : 'skills-yours' })),
+      ...(!query || 'nueva'.startsWith(query) ? [{ key: `nueva ${t('<how you work>')}`, insert: 'nueva ', group: 'skills-new', what: t('Write a new skill: a way of working every agent of this room follows. The agent writes it, you read it and keep it.'), drawing: trazoDrawing('add') }] : []),
     ];
     if (!items.length) return closeMenu();
     return showMenu(items, { kind: '/', start, end: caret, hint: t('SKILL · ↑↓ · TAB OR ENTER') });
@@ -14444,7 +14445,7 @@ function moduleStarters() {
 // What each command looks like at a glance: a small drawing, so a list of seven reads as seven
 // different things before a word is read. A module's own command gets the slash.
 const COMMAND_GROUPS = ['room', 'modules', 'off'];
-const COMMAND_GROUP_WORDS = { room: 'THIS PROJECT', modules: 'FROM THE MODULES', off: 'NOT AVAILABLE HERE' };
+const COMMAND_GROUP_WORDS = { room: 'THIS PROJECT', modules: 'FROM THE MODULES', off: 'NOT AVAILABLE HERE', 'skills-madre': 'COME WITH MADRE', 'skills-yours': 'YOURS', 'skills-new': 'WRITE ONE' };
 const COMMAND_GLYPHS = {
   module: trazoDrawing('puzzle'),
   image: trazoDrawing('image'),
@@ -18087,9 +18088,11 @@ async function refreshSkills() {
 }
 
 const SKILL_STATES = () => [
-  ['match', t('When it fits')],
-  ['always', t('Always on')],
-  ['off', t('Off')],
+  // Said as what the person sees happen (2026-11-11, «Cuando venga al caso» said nothing). One that
+  // is off still answers when it is called by its name (skillsForTurn), so off is «only when called».
+  ['match', t('On its own, when you talk about it')],
+  ['always', t('In every message')],
+  ['off', t('Only when you call it')],
 ];
 async function switchSkill(skill, state, scope) {
   const response = await fetch(`/api/skills/${skill.id}/state`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state, scope }) });
@@ -18108,19 +18111,35 @@ function skillWords(value) {
 // WHAT IT SAYS: the whole page, what it carries, and every script marked with the one mode that
 // could run it. The same screen the Market will show before installing one (H-4).
 function openSkillText(skill) {
-  // The same dialog «Create your module» uses, so it looks like the rest of the board.
+  // For a person first (2026-11-11, «no se entiende lo que hacen»): what it does, when it comes in
+  // and how to call it; what it tells the agents, whole, folded underneath for whoever wants it.
   const dialog = el('dialog', 'module-guide skill-text');
   const head = el('header', 'module-guide-head');
   const named = el('div', 'skill-text-name');
-  named.append(el('span', 'custom-title', skillName(skill)), el('span', 'sx-hint', t('What it tells your agents')));
-  const close = el('button', 'module-guide-close', '×');
-  close.type = 'button';
-  close.setAttribute('aria-label', t('CLOSE'));
+  const mark = el('span', 'skill-text-icon');
+  mark.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${trazoDrawing(skill.icon ?? 'spark')}</svg>`; // trusted: our own SVG strings
+  const words = el('div', 'skill-text-words');
+  words.append(el('span', 'custom-title', skillName(skill)), el('span', 'sx-hint', skillWords(skill.line) ?? t('A way of working you keep for your agents.')));
+  named.append(mark, words);
+  const close = closeMark('button', 'surface-mode close', t('Close'));
   close.addEventListener('click', () => dialog.close());
   head.append(named, close);
-  const body = el('div', 'module-guide-body');
-  if (skill.when) body.append(el('p', 'skill-when', `${t('It comes in when:')} ${skillWords(skill.when)}`));
-  body.append(el('pre', 'skill-body', skill.body));
+  const body = el('div', 'module-guide-body skill-text-body');
+  const part = (title, ...nodes) => { const box = el('section', 'skill-part'); box.append(el('b', null, title), ...nodes); body.append(box); };
+  const cues = skillCues(skillWords(skill.when));
+  if (skill.state === 'always') part(t('When it comes in'), el('p', null, t('In every message of this project, whatever you ask.')));
+  else if (skill.state === 'off') part(t('When it comes in'), el('p', null, t('Only when you call it by its name.')));
+  else if (cues) {
+    const chips = el('div', 'skill-cues');
+    for (const cue of cues) chips.append(el('span', null, cue));
+    part(t('When it comes in'), el('p', null, t('On its own, when your message says something like:')), chips);
+  } else part(t('When it comes in'), el('p', null, skill.when ? skillWords(skill.when) : t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
+  const call = el('div', 'skill-call-row');
+  call.append(el('code', 'skill-call', `/habilidad ${skill.id} ${t('<what you need>')}`), sxButton(t('Use it'), () => { dialog.close(); useSkill(skill); }));
+  part(t('To use it now'), el('p', null, t('Write this in the box and what you need after it.')), call);
+  const said = el('details', 'skill-said');
+  said.append(el('summary', null, t('What it tells your agents')), el('pre', 'skill-body', skill.body));
+  body.append(said);
   const carries = skill.declares?.references?.filter((path) => !/^(HABILIDAD|SKILL)\.md$/.test(path)) ?? [];
   if (carries.length) body.append(el('p', 'sx-hint', t('It carries: {list}', { list: carries.join(', ') })));
   if (skill.declares?.scripts?.length) {
@@ -18129,15 +18148,22 @@ function openSkillText(skill) {
     warn.append(el('span', null, ` ${t('MADRE never runs one. Only an agent can, and only in #4 AIRLOCK: in every other mode they do nothing. Read one before you open that mode.')}`));
     body.append(warn);
   }
-  for (const [label, value] of [[t('Version'), skill.version], [t('Idea by'), skill.credit], [t('License'), skill.license], [t('Folder'), skill.dir]]) {
-    if (value) body.append(el('p', 'sx-hint', `${label}: ${value}`));
-  }
+  const foot = [[t('Version'), skill.version], [t('Idea by'), skill.credit], [t('License'), skill.license], [t('Folder'), skill.origin === 'madre' ? null : skill.dir]].filter(([, value]) => value);
+  if (foot.length) body.append(el('p', 'sx-hint skill-text-foot', foot.map(([label, value]) => `${label}: ${value}`).join(' · ')));
   if (skill.unknown?.length) body.append(el('p', 'mods-submit-warn', t('Fields MADRE does not know: {list}', { list: skill.unknown.join(', ') })));
   dialog.append(head, body);
   document.body.append(dialog);
   dialog.addEventListener('close', () => dialog.remove());
   dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
   dialog.showModal();
+}
+
+// The words that bring a skill in, from its «when»: the short pieces of it, not the sentence around
+// them. Null when it is a sentence with no list in it; then the sentence is said as it is.
+function skillCues(when) {
+  const cues = String(when ?? '').split(/[,:;.]|\s+(?:o|or|y|and)\s+/).map((piece) => piece.trim().replace(/^¿|\?$/g, '').trim())
+    .filter((piece) => piece && piece.split(/\s+/).length <= 3 && !/^(la persona|the person|solo|only)\b/i.test(piece));
+  return cues.length >= 3 ? [...new Set(cues)].slice(0, 10) : null;
 }
 
 // Into the box, ready for what the person needs: the board steps aside and the cursor waits after it.

@@ -234,9 +234,12 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // drops into place with the tick on it. Turning one off is only a moment.
   const TICK = trazo('check');
   const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // A chip keeps its words through it: it only fills, then lights (2026-11-11).
+  const isChip = (key) => key.classList.contains('mk-chip');
   const startGetting = (key) => {
     key.classList.add('getting');
     key.dataset.from = String(Date.now());
+    if (isChip(key)) return;
     key.dataset.was = key.textContent;
     key.textContent = t('Getting it…');
   };
@@ -246,6 +249,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const shown = Date.now() - Number(key.dataset.from || 0);
     if (!still() && shown < 700) await new Promise((resolve) => setTimeout(resolve, 700 - shown));
     key.classList.remove('getting');
+    if (isChip(key)) { key.classList.add('on'); key.setAttribute('aria-pressed', 'true'); await new Promise((resolve) => setTimeout(resolve, still() ? 150 : 450)); return; }
     key.classList.add('got');
     key.innerHTML = TICK; // trusted: our own SVG string
     key.append(el('span', null, t('Done')));
@@ -261,7 +265,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   const stopGetting = (key) => {
     if (!key.classList.contains('getting')) return;
     key.classList.remove('getting');
-    key.textContent = key.dataset.was ?? key.textContent;
+    if (!isChip(key)) key.textContent = key.dataset.was ?? key.textContent;
   };
   const turnHere = async (given, on, line, key) => {
     key.disabled = true;

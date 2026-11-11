@@ -28,6 +28,7 @@ import { RunDesk } from './room/runs.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
 import { Escalation } from './room/escalation.mjs';
+import { noteOpenCodeModel } from './quota-sources.mjs';
 import { Budget, budgetTokens } from './room/budget.mjs';
 import { VectorWorker } from './room/vectors.mjs';
 import { Archivist, distillDefaults, LOCAL_DISTILL_MS } from './room/archivist.mjs';
@@ -1831,6 +1832,8 @@ export class Room {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
     // read-only even while the plan holds a lease.
+    // Whose quota is OpenCode's: the provider of the model it answers with (quota-sources.mjs).
+    if (agent.id === 'opencode') noteOpenCodeModel(model ?? process.env.PULSE_OPENCODE_MODEL);
     const agentScopes = this.scopesFor(agent.id);
     const enabled = Object.fromEntries(SCOPES.map((scope) => [scope, agentScopes[scope].enabled && agentScopes[scope].wired]));
     // Web access is a standing scope the human switched on for this agent;
