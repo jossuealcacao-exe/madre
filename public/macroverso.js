@@ -194,8 +194,8 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   canvas.className = 'mv-canvas';
   canvas.tabIndex = 0;
   // Its head is the Memory map's (styles.css, .nostromo-head; 2026-10-10): the name in small mono,
-  // what it holds in a line beside it, its keys at the end, and under them the kinds of memory as
-  // the same stars (nostromo-engine.js, dwarfChip). The two maps read as one family.
+  // what it holds in a line beside it, its keys at the end; the kinds of memory, as the same stars
+  // (nostromo-engine.js, dwarfChip), along the bottom. The two maps read as one family.
   const head = document.createElement('header');
   head.className = 'mv-head nostromo-head';
   const title = document.createElement('h2');
@@ -251,7 +251,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   neuralButton.className = 'mother-close neural-key';
   neuralKey(neuralButton);
   keys.append(neuralButton, recenter, backTrack);
-  head.append(title, sub, legend, keys);
+  head.append(title, sub, keys);
   const card = document.createElement('aside');
   card.className = 'mv-card';
   card.hidden = true;
@@ -259,7 +259,12 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   hint.className = 'mv-hint';
   // A line of words, or the keys to move round it (public/neural.js, mapKeys).
   if (typeof Node === 'function' && words.hint instanceof Node) hint.append(words.hint); else hint.textContent = words.hint;
-  layer.append(canvas, head, card, hint);
+  // The kinds of memory and the ways to move sit along the bottom edge (2026-11-10), as in the
+  // Memory map: the head keeps only the name, what it holds and its keys.
+  const foot = document.createElement('div');
+  foot.className = 'nostromo-foot';
+  foot.append(legend, hint);
+  layer.append(canvas, head, card, foot);
   host.append(layer);
 
   const view = { w: 0, h: 0, dpr: 1 };

@@ -3039,7 +3039,7 @@ test('standing lease: an agent opted in creates files on every turn, and a creat
 });
 
 // ---------- real limits: Codex rollouts, Claude usage endpoint, expired windows ----------
-import { interpretWindow, readClaudeUsage, readCodexRateLimits } from '../src/quota-sources.mjs';
+import { interpretWindow, readClaudeUsage, readCodexRateLimits, readGeminiOauth, readGeminiQuota, defaultQuotaSources } from '../src/quota-sources.mjs';
 
 test('readCodexRateLimits takes the newest populated rate_limits and empties a window whose reset has passed', async () => {
   const home = await mkdtemp(join(tmpdir(), 'pulse-codex-home-'));
@@ -3064,6 +3064,42 @@ test('readCodexRateLimits takes the newest populated rate_limits and empties a w
     assert.deepEqual(interpretWindow({ usedPercent: 50, resetAt: new Date(now + 1000).toISOString() }, now).stale, false);
   } finally {
     await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('Gemini signed in with Google: its quota from Code Assist, the tightest model first; nothing with a key or a stale token (2026-11-10)', async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+  const home = await mkdtemp(join(tmpdir(), 'madre-gemini-quota-'));
+  try {
+    await mkdir(join(home, '.gemini'));
+    const now = Date.parse('2026-11-10T12:00:00Z');
+    await writeFile(join(home, '.gemini', 'settings.json'), JSON.stringify({ selectedType: 'gemini-api-key' }));
+    await writeFile(join(home, '.gemini', 'oauth_creds.json'), JSON.stringify({ access_token: 'tok', expiry_date: now + 3600_000 }));
+    assert.equal(await readGeminiOauth({ home, now, env: {} }), null, 'an API key has no quota to ask about');
+    await writeFile(join(home, '.gemini', 'settings.json'), JSON.stringify({ security: { auth: { selectedType: 'oauth-personal' } } }));
+    assert.deepEqual(await readGeminiOauth({ home, now, env: {} }), { token: 'tok', project: null });
+    assert.equal(await readGeminiOauth({ home, now: now + 3600_000, env: {} }), null, 'a stale token is never refreshed from here');
+    const asked = [];
+    const fetchImpl = async (url, init) => {
+      asked.push([url.split(':').at(-1), JSON.parse(init.body), init.headers.authorization]);
+      if (url.endsWith(':loadCodeAssist')) return { ok: true, status: 200, json: async () => ({ cloudaicompanionProject: 'proj-1' }) };
+      return { ok: true, status: 200, json: async () => ({ buckets: [{ modelId: 'gemini-flash', remainingFraction: 0.9, resetTime: '2026-11-11T00:00:00Z' }, { modelId: 'gemini-pro', remainingFraction: 0.25, resetTime: '2026-11-10T18:00:00Z' }] }) };
+    };
+    const quota = await readGeminiQuota({ fetchImpl, now, oauthReader: async () => ({ token: 'tok', project: null }) });
+    assert.equal(quota.agent, 'gemini');
+    assert.equal(quota.model, 'gemini-pro');
+    assert.equal(quota.usedPercent, 75);
+    assert.equal(quota.resetAt, '2026-11-10T18:00:00Z');
+    assert.deepEqual(asked.map(([method]) => method), ['loadCodeAssist', 'retrieveUserQuota']);
+    assert.deepEqual(asked[1][1], { project: 'proj-1' });
+    assert.equal(asked[1][2], 'Bearer tok');
+    assert.equal(await readGeminiQuota({ oauthReader: async () => null }), null);
+    await assert.rejects(readGeminiQuota({ now, oauthReader: async () => ({ token: 'x', project: 'p' }), fetchImpl: async () => ({ ok: false, status: 401 }) }), /rejected Gemini CLI's sign-in/);
+    // On by default beside Codex's; each can be turned off.
+    assert.deepEqual(defaultQuotaSources({ env: {} }).map((one) => one.id), ['codex-rollout', 'gemini-quota']);
+    assert.deepEqual(defaultQuotaSources({ env: { PULSE_GEMINI_QUOTA: '0' } }).map((one) => one.id), ['codex-rollout']);
+  } finally {
+    await rm(home, { recursive: true, force: true });
   }
 });
 

@@ -187,6 +187,14 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // Gemini CLI's quota (src/quota-sources.mjs, 2026-11-10): only signed in with Google.
+    id: 'gemini-quota', host: 'cloudcode-pa.googleapis.com', to: 'Google · how much of your Gemini plan is left',
+    what: 'The token Gemini CLI keeps when you sign in with Google, to read how much of each model your account has left. Read from where Gemini keeps it, while it is fresh; never stored nor renewed by MADRE.',
+    when: 'every minute while MADRE is open, only when Gemini signs in with Google (never with an API key)',
+    where: 'Settings › Agents › Gemini · or PULSE_GEMINI_QUOTA=0',
+    inside: true,
+  },
+  {
     id: 'ollama', host: null, local: true, to: 'Ollama, on this computer',
     what: 'Memories to embed, exchanges to distil, and whatever you ask @madre. It goes to a port on this machine and stops there.',
     when: 'while Ollama is running',

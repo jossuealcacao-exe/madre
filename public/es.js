@@ -7385,4 +7385,8 @@ export const ES = {
   "MADRE will offer it again in a few days.": "MADRE te lo vuelve a ofrecer en unos días.",
   "Remind me later": "Recordarme después",
   "{agent} cannot do it from MADRE. {others} can.": "{agent} no puede hacerlo desde MADRE. {others}, sí.",
+  "Google · how much of your Gemini plan is left": "Google · cuánto te queda de tu plan de Gemini",
+  "The token Gemini CLI keeps when you sign in with Google, to read how much of each model your account has left. Read from where Gemini keeps it, while it is fresh; never stored nor renewed by MADRE.": "El token que guarda Gemini CLI cuando entras con Google, para leer cuánto le queda a tu cuenta de cada modelo. Se lee de donde Gemini lo guarda, mientras está vigente; MADRE nunca lo guarda ni lo renueva.",
+  "every minute while MADRE is open, only when Gemini signs in with Google (never with an API key)": "cada minuto mientras MADRE está abierta, solo si Gemini entra con Google (nunca con una llave de API)",
+  "Settings › Agents › Gemini · or PULSE_GEMINI_QUOTA=0": "Ajustes › Agentes › Gemini · o PULSE_GEMINI_QUOTA=0",
 };

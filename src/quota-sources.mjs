@@ -19,8 +19,13 @@ const execFileAsync = promisify(execFile);
 //           already keeps in the keychain (macOS) or ~/.claude/.credentials.json.
 //           Read-only; the token never leaves this machine except toward
 //           api.anthropic.com, which is where the CLI sends it anyway.
-//   gemini, opencode  Nothing published locally: the room's own rolling
-//           window stands in.
+//   gemini  Signed in with a Google account (2026-11-10), Gemini CLI asks Code
+//           Assist for the account's quota (v1internal:retrieveUserQuota, one
+//           bucket per model with the fraction left and when it resets). MADRE
+//           asks the same, with the token the CLI keeps in ~/.gemini, only while
+//           that token is fresh: it never refreshes nor writes it. With an API
+//           key Google publishes nothing: the room's window stands in.
+//   opencode  Nothing published locally: the room's own rolling window stands in.
 //
 // A window whose resets_at is already in the past is reported as fresh
 // (0 % used, stale: true): the CLI only rewrites the file when it runs again,
@@ -143,12 +148,72 @@ export const claudeUsageSource = (options = {}) => ({
   read: () => readClaudeUsage(options),
 });
 
+// Gemini CLI's own Google sign-in, as it keeps it: the token only while it is fresh, and only when
+// the CLI is set to sign in with Google (an API key has no quota to ask about).
+export async function readGeminiOauth({ home = homedir(), now = Date.now(), env = process.env } = {}) {
+  const dir = join(home, '.gemini');
+  let settings = {};
+  try { settings = JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8')); } catch { settings = {}; }
+  const kind = settings.security?.auth?.selectedType ?? settings.selectedAuthType ?? settings.selectedType ?? null;
+  if (kind && kind !== 'oauth-personal') return null;
+  let creds = null;
+  try { creds = JSON.parse(await readFile(join(dir, 'oauth_creds.json'), 'utf8')); } catch { return null; }
+  const expires = Number(creds?.expiry_date);
+  if (!creds?.access_token || !Number.isFinite(expires) || expires - now < 60_000) return null;
+  return { token: creds.access_token, project: env.GOOGLE_CLOUD_PROJECT || env.GOOGLE_CLOUD_PROJECT_ID || null };
+}
+
+const CODE_ASSIST = 'https://cloudcode-pa.googleapis.com/v1internal';
+let geminiProject = null;
+export async function readGeminiQuota({ fetchImpl = fetch, oauthReader = readGeminiOauth, now = Date.now() } = {}) {
+  const auth = await oauthReader({ now });
+  if (!auth) return null;
+  const post = async (method, body) => {
+    const response = await fetchImpl(`${CODE_ASSIST}:${method}`, { method: 'POST', headers: { authorization: `Bearer ${auth.token}`, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
+    if (response.status === 401 || response.status === 403) throw new Error(`Google rejected Gemini CLI's sign-in (HTTP ${response.status}); sign in again with gemini.`);
+    if (!response.ok) throw new Error(`Gemini's quota endpoint answered HTTP ${response.status}.`);
+    return response.json();
+  };
+  // The account's Code Assist project, as the CLI finds it; asked once.
+  let project = auth.project ?? geminiProject;
+  if (!project) {
+    const loaded = await post('loadCodeAssist', { metadata: { ideType: 'IDE_UNSPECIFIED', platform: 'PLATFORM_UNSPECIFIED', pluginType: 'GEMINI' } });
+    project = loaded?.cloudaicompanionProject?.id ?? loaded?.cloudaicompanionProject ?? null;
+    if (typeof project !== 'string' || !project) return null;
+    geminiProject = project;
+  }
+  const quota = await post('retrieveUserQuota', { project });
+  // The tightest of its models: the one that runs out first is the one that stops a turn.
+  const buckets = (quota?.buckets ?? []).filter((one) => one?.modelId && Number.isFinite(Number(one.remainingFraction)));
+  if (!buckets.length) return null;
+  const tightest = buckets.reduce((low, one) => (Number(one.remainingFraction) < Number(low.remainingFraction) ? one : low));
+  const primary = interpretWindow({ usedPercent: (1 - Number(tightest.remainingFraction)) * 100, resetAt: tightest.resetTime ?? null, windowMinutes: 1440 }, now);
+  return {
+    agent: 'gemini',
+    usedPercent: primary.usedPercent,
+    resetAt: primary.resetAt,
+    stale: primary.stale,
+    windows: { primary, secondary: null },
+    model: tightest.modelId,
+    observedAt: new Date(now).toISOString(),
+  };
+}
+
+export const geminiQuotaSource = (options = {}) => ({
+  id: 'gemini-quota',
+  agent: 'gemini',
+  read: () => readGeminiQuota(options),
+});
+
 // Codex is on by default: a local file read. Claude's usage endpoint needs
 // the CLI's OAuth token from the keychain, which macOS may ask about, so it is
-// opt-in: PULSE_CLAUDE_USAGE=1. PULSE_OFFICIAL_QUOTA=0 turns everything off.
+// opt-in: PULSE_CLAUDE_USAGE=1. Gemini's is a file read and a question to Google with the CLI's own
+// fresh token, so it is on (PULSE_GEMINI_QUOTA=0 turns it off). PULSE_OFFICIAL_QUOTA=0 turns
+// everything off.
 export function defaultQuotaSources({ env = process.env } = {}) {
   if (env.PULSE_OFFICIAL_QUOTA === '0') return [];
   const sources = [codexRolloutSource()];
+  if (env.PULSE_GEMINI_QUOTA !== '0') sources.push(geminiQuotaSource());
   if (env.PULSE_CLAUDE_USAGE === '1') sources.push(claudeUsageSource());
   return sources;
 }
