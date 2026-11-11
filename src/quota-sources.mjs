@@ -25,7 +25,11 @@ const execFileAsync = promisify(execFile);
 //           asks the same, with the token the CLI keeps in ~/.gemini, only while
 //           that token is fresh: it never refreshes nor writes it. With an API
 //           key Google publishes nothing: the room's window stands in.
-//   opencode  Nothing published locally: the room's own rolling window stands in.
+//   opencode  By its provider (2026-11-10), from OpenCode's own auth.json: a GitHub Copilot sign-in
+//           asks GitHub how many premium requests are left this month (the same endpoint the
+//           editors use, copilot_internal/user); an OpenRouter key asks OpenRouter how much of its
+//           limit or of the account's credits is spent (/api/v1/key, /api/v1/credits). The
+//           tightest of the two is OpenCode's. Others publish nothing: the room's window.
 //
 // A window whose resets_at is already in the past is reported as fresh
 // (0 % used, stale: true): the CLI only rewrites the file when it runs again,
@@ -205,15 +209,82 @@ export const geminiQuotaSource = (options = {}) => ({
   read: () => readGeminiQuota(options),
 });
 
+// OpenCode's providers as its auth.json keeps them (src/credentials.mjs writes the same file).
+export async function readOpenCodeAuth({ home = homedir(), env = process.env } = {}) {
+  const file = join(env.XDG_DATA_HOME || join(home, '.local', 'share'), 'opencode', 'auth.json');
+  try {
+    const auth = JSON.parse(await readFile(file, 'utf8'));
+    return auth && typeof auth === 'object' && !Array.isArray(auth) ? auth : {};
+  } catch { return {}; }
+}
+
+// GitHub Copilot: the premium requests of the month, with the GitHub token OpenCode signed in with.
+export async function readCopilotQuota(entry, { fetchImpl = fetch, now = Date.now() } = {}) {
+  const token = entry?.type === 'oauth' ? entry.refresh : null;
+  if (typeof token !== 'string' || !token) return null;
+  const response = await fetchImpl('https://api.github.com/copilot_internal/user', { headers: { authorization: `token ${token}`, accept: 'application/json', 'x-github-api-version': '2025-04-01' } });
+  if (response.status === 401 || response.status === 403) throw new Error(`GitHub rejected OpenCode's Copilot sign-in (HTTP ${response.status}); sign in again with opencode auth login.`);
+  if (!response.ok) throw new Error(`GitHub's Copilot endpoint answered HTTP ${response.status}.`);
+  const body = await response.json();
+  const premium = body?.quota_snapshots?.premium_interactions;
+  if (!premium || premium.unlimited || !Number.isFinite(Number(premium.percent_remaining))) return null;
+  const resetAt = body.quota_reset_date ? new Date(body.quota_reset_date).toISOString() : null;
+  return { provider: 'github-copilot', ...interpretWindow({ usedPercent: 100 - Number(premium.percent_remaining), resetAt, windowMinutes: null }, now) };
+}
+
+// OpenRouter: the key's own limit when it has one, the account's credits when it does not.
+export async function readOpenRouterQuota(entry, { fetchImpl = fetch, now = Date.now() } = {}) {
+  const key = entry?.type === 'api' ? entry.key : null;
+  if (typeof key !== 'string' || !key) return null;
+  const ask = async (path) => {
+    const response = await fetchImpl(`https://openrouter.ai/api/v1/${path}`, { headers: { authorization: `Bearer ${key}`, accept: 'application/json' } });
+    if (response.status === 401 || response.status === 403) throw new Error(`OpenRouter rejected the key OpenCode has for it (HTTP ${response.status}).`);
+    if (!response.ok) throw new Error(`OpenRouter answered HTTP ${response.status}.`);
+    return (await response.json())?.data ?? null;
+  };
+  const own = await ask('key');
+  if (Number(own?.limit) > 0) return { provider: 'openrouter', ...interpretWindow({ usedPercent: (Number(own.usage ?? 0) / Number(own.limit)) * 100, resetAt: null, windowMinutes: null }, now) };
+  const credits = await ask('credits');
+  if (!(Number(credits?.total_credits) > 0)) return null;
+  return { provider: 'openrouter', ...interpretWindow({ usedPercent: (Number(credits.total_usage ?? 0) / Number(credits.total_credits)) * 100, resetAt: null, windowMinutes: null }, now) };
+}
+
+export async function readOpenCodeQuota({ authReader = readOpenCodeAuth, fetchImpl = fetch, now = Date.now() } = {}) {
+  const auth = await authReader();
+  const readings = (await Promise.all([
+    auth['github-copilot'] ? readCopilotQuota(auth['github-copilot'], { fetchImpl, now }).catch(() => null) : null,
+    auth.openrouter ? readOpenRouterQuota(auth.openrouter, { fetchImpl, now }).catch(() => null) : null,
+  ])).filter(Boolean);
+  if (!readings.length) return null;
+  const tightest = readings.reduce((high, one) => (one.usedPercent > high.usedPercent ? one : high));
+  return {
+    agent: 'opencode',
+    usedPercent: tightest.usedPercent,
+    resetAt: tightest.resetAt,
+    stale: tightest.stale,
+    provider: tightest.provider,
+    windows: { primary: tightest, secondary: null },
+    observedAt: new Date(now).toISOString(),
+  };
+}
+
+export const openCodeQuotaSource = (options = {}) => ({
+  id: 'opencode-quota',
+  agent: 'opencode',
+  read: () => readOpenCodeQuota(options),
+});
+
 // Codex is on by default: a local file read. Claude's usage endpoint needs
 // the CLI's OAuth token from the keychain, which macOS may ask about, so it is
 // opt-in: PULSE_CLAUDE_USAGE=1. Gemini's is a file read and a question to Google with the CLI's own
-// fresh token, so it is on (PULSE_GEMINI_QUOTA=0 turns it off). PULSE_OFFICIAL_QUOTA=0 turns
+// fresh token, and OpenCode's a question to GitHub or OpenRouter with what OpenCode signed in with,
+// so they are on (PULSE_GEMINI_QUOTA=0, PULSE_OPENCODE_QUOTA=0 turn them off). PULSE_OFFICIAL_QUOTA=0 turns
 // everything off.
 export function defaultQuotaSources({ env = process.env } = {}) {
   if (env.PULSE_OFFICIAL_QUOTA === '0') return [];
   const sources = [codexRolloutSource()];
   if (env.PULSE_GEMINI_QUOTA !== '0') sources.push(geminiQuotaSource());
+  if (env.PULSE_OPENCODE_QUOTA !== '0') sources.push(openCodeQuotaSource());
   if (env.PULSE_CLAUDE_USAGE === '1') sources.push(claudeUsageSource());
   return sources;
 }

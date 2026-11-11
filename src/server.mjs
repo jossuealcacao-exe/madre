@@ -1351,6 +1351,11 @@ export async function createPulseServer({
       if (!Array.isArray(patch.opencode.hidden) || patch.opencode.hidden.some((id) => typeof id !== 'string' || !/^[\w.-]{1,60}$/.test(id))) throw new Error(t('Hidden providers must be a list of provider names.'));
       config.opencode = { ...(config.opencode ?? {}), hidden: [...new Set(patch.opencode.hidden)] };
     }
+    // Up to three of OpenCode's models kept at the top of its chooser (2026-11-10), for every project.
+    if (patch.opencode && 'favorites' in patch.opencode) {
+      if (!Array.isArray(patch.opencode.favorites) || patch.opencode.favorites.some((name) => typeof name !== 'string' || !/^[\w.:@/+-]{1,200}$/.test(name))) throw new Error(t('Favourite models must be a list of model names.'));
+      config.opencode = { ...(config.opencode ?? {}), favorites: [...new Set(patch.opencode.favorites)].slice(0, 3) };
+    }
     if (patch.timeouts) {
       const timeouts = { ...room.settings().agentTimeouts };
       for (const [key, value] of Object.entries(patch.timeouts)) {
@@ -5065,7 +5070,10 @@ export async function createPulseServer({
           if (list.models.length) Object.assign(grokModels, { at: Date.now(), list });
           return list;
         };
-        return sendJson(response, 200, { models: await discoverModels({ agents, config: await readConfig(root), listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [], listCursor: url.searchParams.get('cursor') === '1' ? listCursor : async () => [], cursorOnlyAuto, listGemini: url.searchParams.get('gemini') === '1' ? listGemini : async () => [], listGrok: url.searchParams.get('grok') === '1' ? listGrok : async () => ({ models: [], default: null }) }) });
+        const config = await readConfig(root);
+        const found = await discoverModels({ agents, config, listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [], listCursor: url.searchParams.get('cursor') === '1' ? listCursor : async () => [], cursorOnlyAuto, listGemini: url.searchParams.get('gemini') === '1' ? listGemini : async () => [], listGrok: url.searchParams.get('grok') === '1' ? listGrok : async () => ({ models: [], default: null }) });
+        if (found.opencode) found.opencode.favorites = Array.isArray(config.opencode?.favorites) ? config.opencode.favorites.slice(0, 3) : [];
+        return sendJson(response, 200, { models: found });
       }
       // OpenCode's providers for AJUSTES: who has a key or an account, what each offers, which are
       // left out of the chooser. Never a key: only that one is there and of what kind.

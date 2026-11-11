@@ -86,3 +86,32 @@ test('opencode: every provider one key opens is offered, from OpenCode\'s own ca
     assert.equal(providers.find((one) => one.id === 'acme-ai').keyUrl, null, 'only https links are offered');
   } finally { await rm(home, { recursive: true, force: true }); }
 });
+
+// OpenCode's favourite models (2026-11-10): up to three, kept for every project in ~/.pulse/config.json,
+// handed to the chooser with OpenCode's list, and starred in it.
+test('opencode models: up to three favourites, kept with the settings and handed to the chooser', async () => {
+  const { createPulseServer } = await import('../src/server.mjs');
+  const state = await mkdtemp(join(tmpdir(), 'madre-oc-fav-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-oc-fav-p-'));
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  const { server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: roster, invokers: { 'codex-readonly': async () => ({ text: 'ok' }) } });
+  try {
+    const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+    const base = `http://127.0.0.1:${port}`;
+    const save = (favorites) => fetch(`${base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ opencode: { favorites } }) });
+    assert.equal((await save(['anthropic/claude-x', 'openai/gpt-y', 'groq/z', 'xai/w'])).status, 200);
+    const config = JSON.parse(await readFile(join(state, 'config.json'), 'utf8'));
+    assert.deepEqual(config.opencode.favorites, ['anthropic/claude-x', 'openai/gpt-y', 'groq/z'], 'more than three were kept');
+    assert.equal((await save(['bad name with spaces'])).status, 400);
+    assert.equal((await save('anthropic/claude-x')).status, 400);
+    const models = (await fetch(`${base}/api/models`).then((response) => response.json())).models;
+    if (models.opencode) assert.deepEqual(models.opencode.favorites, ['anthropic/claude-x', 'openai/gpt-y', 'groq/z']);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(state, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true });
+  }
+  const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(app, /const favoring = id === 'opencode';/);
+  assert.match(app, /if \(next\.length > 3\) \{ toast\(t\('Up to three favourites: take one out first\.'\)\); return; \}/);
+});

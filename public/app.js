@@ -4121,11 +4121,45 @@ async function toggleModelMenu(id, anchor) {
     if (brief) body.append(el('span', 'hint', brief));
     button.append(body);
     if (current) button.append(menuCheck());
+    if (favoring && name) button.append(favoriteKey(name));
     button.addEventListener('click', () => { rememberModel(id, isDefault ? null : name); closeModelMenu(); renderPicker(); focusComposer(); });
     return button;
   };
   const listed = Array.isArray(info.groups) && info.groups.length ? info.groups.flatMap((group) => group.models) : info.models;
+  // OpenCode's favourites (2026-11-10): up to three, starred on any row, kept at the top of the list
+  // in every project (~/.pulse/config.json, opencode.favorites).
+  const favoring = id === 'opencode';
+  const favorites = favoring ? (info.favorites ?? []).filter((name) => listed.includes(name)) : [];
+  function favoriteKey(name) {
+    const on = favorites.includes(name);
+    const star = el('span', `model-fav${on ? ' on' : ''}`);
+    star.setAttribute('role', 'button');
+    star.setAttribute('aria-pressed', String(on));
+    star.setAttribute('aria-label', on ? t('Take it out of favourites') : t('Keep it among favourites'));
+    star.innerHTML = trazo(on ? 'star-filled' : 'star'); // trusted: our own SVG string
+    star.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const next = on ? favorites.filter((one) => one !== name) : [...favorites, name];
+      if (next.length > 3) { toast(t('Up to three favourites: take one out first.')); return; }
+      try {
+        await saveSettingNow({ opencode: { favorites: next } });
+        info.favorites = next;
+        if (state.models.opencode) state.models.opencode.favorites = next;
+        closeModelMenu();
+        void toggleModelMenu(id, anchor);
+      } catch (error) { toast(t('The setting was not saved: {error}', { error: error.message })); }
+    });
+    return star;
+  }
   if (!info.default || !listed.includes(info.default)) list.append(option(null, info.default ?? t('default'), { isDefault: true }));
+  if (favorites.length) {
+    const top = el('div', 'model-group favorites');
+    top.append(el('b', null, t('Favourites')), el('span', null, t('{n} of 3', { n: favorites.length })));
+    list.append(top);
+    // With its provider beside it: the same model can come through more than one.
+    const providerOf = (name) => (info.groups ?? []).find((group) => group.models.includes(name))?.label ?? null;
+    for (const name of favorites) list.append(option(name, [name.slice(name.indexOf('/') + 1), providerOf(name)].filter(Boolean).join(' · '), { isDefault: name === info.default }));
+  }
   // OpenCode answers through many providers: its models come under the provider they belong to,
   // only the ones with a key or an account and OpenCode's own, the name shown without the prefix.
   if (Array.isArray(info.groups) && info.groups.length) {

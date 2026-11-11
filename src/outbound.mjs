@@ -195,6 +195,21 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // OpenCode's quota by provider (src/quota-sources.mjs, 2026-11-10).
+    id: 'copilot-quota', host: 'api.github.com', match: (url) => url.pathname === '/copilot_internal/user', to: 'GitHub · how many Copilot requests are left',
+    what: 'The GitHub token OpenCode keeps when you sign in to Copilot with it, to read how many premium requests are left this month. Read from OpenCode\'s own file; never stored by MADRE.',
+    when: 'every minute while MADRE is open, only when OpenCode is signed in to GitHub Copilot',
+    where: 'Settings › Agents › OpenCode · or PULSE_OPENCODE_QUOTA=0',
+    inside: true,
+  },
+  {
+    id: 'openrouter-quota', host: 'openrouter.ai', match: (url) => /^\/api\/v1\/(key|credits)$/.test(url.pathname), to: 'OpenRouter · how much of your credit is spent',
+    what: 'The OpenRouter key OpenCode keeps, to read how much of its limit or of your credits is spent. Read from OpenCode\'s own file; never stored by MADRE.',
+    when: 'every minute while MADRE is open, only when OpenCode has an OpenRouter key',
+    where: 'Settings › Agents › OpenCode · or PULSE_OPENCODE_QUOTA=0',
+    inside: true,
+  },
+  {
     id: 'ollama', host: null, local: true, to: 'Ollama, on this computer',
     what: 'Memories to embed, exchanges to distil, and whatever you ask @madre. It goes to a port on this machine and stops there.',
     when: 'while Ollama is running',

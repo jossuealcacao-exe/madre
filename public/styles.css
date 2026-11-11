@@ -13336,3 +13336,16 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 .pp-row.chosen .pp-name { font-weight: 600; }
 .pp-row.chosen::after { content: '✓'; margin-left: auto; color: var(--phosphor); font-size: 12px; }
 .pp-none { margin: 10px 8px; font-size: 12.5px; color: var(--text-3); }
+
+/* ---------- OpenCode's favourite models (2026-11-10) ----------
+   A star at the end of each row, seen when the row is pointed at or when it is a favourite; the
+   favourites at the top, under their own head. */
+.model-option { position: relative; }
+.model-fav { position: absolute; right: 8px; top: 50%; display: grid; place-items: center; width: 22px; height: 22px; margin-top: -11px; border-radius: 6px; color: var(--text-3); opacity: 0; cursor: pointer; }
+.model-fav svg { width: 14px; height: 14px; }
+.model-option:is(:hover, :focus-visible) .model-fav, .model-fav.on { opacity: 1; }
+.model-fav:hover { background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); }
+.model-fav.on { color: #f5b301; }
+.model-option:has(.model-fav) { padding-right: 34px; }
+.model-option:has(.model-fav) .menu-check { margin-right: 4px; }
+.model-group.favorites b { color: var(--text); }

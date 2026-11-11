@@ -3039,7 +3039,7 @@ test('standing lease: an agent opted in creates files on every turn, and a creat
 });
 
 // ---------- real limits: Codex rollouts, Claude usage endpoint, expired windows ----------
-import { interpretWindow, readClaudeUsage, readCodexRateLimits, readGeminiOauth, readGeminiQuota, defaultQuotaSources } from '../src/quota-sources.mjs';
+import { interpretWindow, readClaudeUsage, readCodexRateLimits, readGeminiOauth, readGeminiQuota, readOpenCodeQuota, defaultQuotaSources } from '../src/quota-sources.mjs';
 
 test('readCodexRateLimits takes the newest populated rate_limits and empties a window whose reset has passed', async () => {
   const home = await mkdtemp(join(tmpdir(), 'pulse-codex-home-'));
@@ -3096,11 +3096,39 @@ test('Gemini signed in with Google: its quota from Code Assist, the tightest mod
     assert.equal(await readGeminiQuota({ oauthReader: async () => null }), null);
     await assert.rejects(readGeminiQuota({ now, oauthReader: async () => ({ token: 'x', project: 'p' }), fetchImpl: async () => ({ ok: false, status: 401 }) }), /rejected Gemini CLI's sign-in/);
     // On by default beside Codex's; each can be turned off.
-    assert.deepEqual(defaultQuotaSources({ env: {} }).map((one) => one.id), ['codex-rollout', 'gemini-quota']);
-    assert.deepEqual(defaultQuotaSources({ env: { PULSE_GEMINI_QUOTA: '0' } }).map((one) => one.id), ['codex-rollout']);
+    assert.deepEqual(defaultQuotaSources({ env: {} }).map((one) => one.id), ['codex-rollout', 'gemini-quota', 'opencode-quota']);
+    assert.deepEqual(defaultQuotaSources({ env: { PULSE_GEMINI_QUOTA: '0', PULSE_OPENCODE_QUOTA: '0' } }).map((one) => one.id), ['codex-rollout']);
   } finally {
     await rm(home, { recursive: true, force: true });
   }
+});
+
+test('OpenCode: Copilot\'s premium requests and OpenRouter\'s limit or credits, the tightest of them (2026-11-10)', async () => {
+  const now = Date.parse('2026-11-10T12:00:00Z');
+  const asked = [];
+  const fetchImpl = async (url, init) => {
+    asked.push([url, init.headers.authorization]);
+    if (url.endsWith('/copilot_internal/user')) return { ok: true, status: 200, json: async () => ({ quota_reset_date: '2026-12-01', quota_snapshots: { premium_interactions: { entitlement: 300, remaining: 90, percent_remaining: 30, unlimited: false } } }) };
+    if (url.endsWith('/v1/key')) return { ok: true, status: 200, json: async () => ({ data: { usage: 2, limit: null } }) };
+    if (url.endsWith('/v1/credits')) return { ok: true, status: 200, json: async () => ({ data: { total_credits: 10, total_usage: 4 } }) };
+    return { ok: false, status: 404 };
+  };
+  const auth = { 'github-copilot': { type: 'oauth', refresh: 'gho_x', access: 'tid', expires: 0 }, openrouter: { type: 'api', key: 'sk-or-x' }, anthropic: { type: 'api', key: 'sk-ant' } };
+  const quota = await readOpenCodeQuota({ authReader: async () => auth, fetchImpl, now });
+  assert.equal(quota.agent, 'opencode');
+  assert.equal(quota.provider, 'github-copilot');
+  assert.equal(quota.usedPercent, 70);
+  assert.equal(quota.resetAt, '2026-12-01T00:00:00.000Z');
+  // Each with what OpenCode signed in with for it, and nobody else's: Anthropic publishes nothing.
+  assert.deepEqual(asked.map(([url, auth]) => [new URL(url).host, auth]), [['api.github.com', 'token gho_x'], ['openrouter.ai', 'Bearer sk-or-x'], ['openrouter.ai', 'Bearer sk-or-x']]);
+  // OpenRouter alone: its credits.
+  const alone = await readOpenCodeQuota({ authReader: async () => ({ openrouter: auth.openrouter }), fetchImpl, now });
+  assert.equal(alone.provider, 'openrouter');
+  assert.equal(alone.usedPercent, 40);
+  // A Copilot plan without a monthly cap, or nothing signed in: nothing to say.
+  const unlimited = async () => ({ ok: true, status: 200, json: async () => ({ quota_snapshots: { premium_interactions: { unlimited: true } } }) });
+  assert.equal(await readOpenCodeQuota({ authReader: async () => ({ 'github-copilot': auth['github-copilot'] }), fetchImpl: unlimited, now }), null);
+  assert.equal(await readOpenCodeQuota({ authReader: async () => ({}), fetchImpl, now }), null);
 });
 
 test('readClaudeUsage reads five-hour and seven-day windows with the CLI token, and fails loudly on a rejected token', async () => {
