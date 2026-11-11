@@ -2237,6 +2237,12 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .chats-body .chat[hidden] { display: none !important; }
 .chats-body .chat-row.renaming :is(.chat-drop, .chat-beside, .when) { display: none !important; }
 .chats-body .chat-rename { display: block; width: 100%; min-width: 0; padding: 0; margin: 0; border: 0; outline: 0; background: none; color: var(--text); font: inherit; caret-color: var(--phosphor); }
+.chats-body .chat-archived-fold { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 6px; padding: 6px 10px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: 450 12.5px var(--read); text-align: left; cursor: pointer; }
+.chats-body .chat-archived-fold:hover { color: var(--text-2); background: var(--cs-hover, color-mix(in srgb, var(--text) 6%, transparent)); }
+.chats-body .chat-archived-fold .chevron { display: grid; place-items: center; transform: rotate(-90deg); transition: transform var(--motion-fast, 150ms) var(--ease-out, ease-out); }
+.chats-body .chat-archived-fold.open .chevron { transform: none; }
+.chats-body .chat-archived-fold svg { width: 12px; height: 12px; }
+.chats-body .chat-archived-fold .count { margin-left: auto; font-size: 11.5px; }
 .chats-body .chat-pin { display: inline-grid; place-items: center; color: var(--text-3); }
 .chats-body .chat-pin svg { width: 12px; height: 12px; }
 .tree-menu .note { padding: 5px 10px 6px; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0; color: var(--text-3); }

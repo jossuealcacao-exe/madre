@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import vm from 'node:vm';
-import { chatIndex, chatLedger, createChat, deleteChat, isChatId, lastSequenceOf, listChats, openChat, pinChat, projectFloor, renameChat, touchChat, adoptStrays, MAIN_CHAT } from '../src/chats.mjs';
+import { chatIndex, chatLedger, createChat, deleteChat, isChatId, lastSequenceOf, listChats, openChat, archiveChat, pinChat, projectFloor, renameChat, touchChat, adoptStrays, MAIN_CHAT } from '../src/chats.mjs';
 import { EventStore } from '../src/event-store.mjs';
 
 const room = () => mkdtemp(join(tmpdir(), 'pulse-chats-'));
@@ -62,6 +62,12 @@ test('chats: a conversation takes its name from the first thing said in it, and 
     await pinChat(dir, MAIN_CHAT, false);
     assert.equal((await listChats(dir)).chats[0].id, made.id);
     assert.equal(await pinChat(dir, 'nosuchchat1', true), null);
+    // Archived: kept, marked, and no longer pinned.
+    await pinChat(dir, made.id, true);
+    const kept = await archiveChat(dir, made.id, true);
+    assert.equal(kept.archived, true);
+    assert.equal(kept.pinned, false);
+    assert.equal((await archiveChat(dir, made.id, false)).archived, false);
   } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 

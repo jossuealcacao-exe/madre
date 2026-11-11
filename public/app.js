@@ -12383,7 +12383,8 @@ function renderChats() {
   if (chats.query.trim().length >= 2) { renderChatResults(); paintChatsButton(); paintTitle(); paintConvWindows(); return; }
   const drawing = JSON.stringify([
     document.documentElement.lang, chats.active, split.chat, [...convWindows.keys()], [...chats.unread],
-    chats.list.map((chat) => [chat.id, chat.title, chat.working, chat.messages, whenWords(chat.updatedAt), Boolean(chat.pinned)]),
+    chats.list.map((chat) => [chat.id, chat.title, chat.working, chat.messages, whenWords(chat.updatedAt), Boolean(chat.pinned), Boolean(chat.archived)]),
+    Boolean(chats.showArchived),
   ]);
   if (drawing === chatsDrawn && els.chatsBody.childElementCount) {
     paintChatsButton();
@@ -12396,8 +12397,11 @@ function renderChats() {
   // the panel opened with arrives a row at a time.
   if (els.chatsBody.childElementCount && els.chats && !els.chats.hidden) els.chatsBody.classList.add('steady');
   els.chatsBody.replaceChildren();
-  if (els.chatsCount) els.chatsCount.textContent = chats.list.length ? `· ${chats.list.length}` : '';
-  for (const [index, chat] of chats.list.entries()) {
+  // The archived ones go under their own fold at the end (2026-11-11), closed until asked for.
+  const live = chats.list.filter((chat) => !chat.archived);
+  const archived = chats.list.filter((chat) => chat.archived);
+  if (els.chatsCount) els.chatsCount.textContent = live.length ? `· ${live.length}` : '';
+  const drawRow = (chat, index) => {
     const row = el('div', 'chat-row');
     row.dataset.chat = chat.id;
     row.style.setProperty('--i', String(index));
@@ -12481,6 +12485,18 @@ function renderChats() {
       row.append(open, ways, drop);
     } else row.append(open, drop);
     els.chatsBody.append(row);
+  };
+  live.forEach((chat, index) => drawRow(chat, index));
+  if (archived.length) {
+    const fold = el('button', `chat-archived-fold${chats.showArchived ? ' open' : ''}`);
+    fold.type = 'button';
+    fold.setAttribute('aria-expanded', String(Boolean(chats.showArchived)));
+    const chevron = el('span', 'chevron');
+    chevron.innerHTML = trazo('chevron'); // trusted: our own SVG string
+    fold.append(chevron, el('span', null, t('Archived')), el('span', 'count', String(archived.length)));
+    fold.addEventListener('click', () => { chats.showArchived = !chats.showArchived; renderChats(); });
+    els.chatsBody.append(fold);
+    if (chats.showArchived) archived.forEach((chat, index) => drawRow(chat, live.length + index));
   }
   paintChatsButton();
   paintTitle();
@@ -12506,7 +12522,8 @@ function openChatMenu(event, chat, name) {
     chatMenu.append(button);
   };
   add(t('Rename'), () => renameChatInPlace(chat, name));
-  add(chat.pinned ? t('Unpin') : t('Pin to the top'), () => void changeChat(chat.id, { pinned: !chat.pinned }));
+  if (!chat.archived) add(chat.pinned ? t('Unpin') : t('Pin to the top'), () => void changeChat(chat.id, { pinned: !chat.pinned }));
+  add(chat.archived ? t('Take out of the archive') : t('Archive'), () => void archiveChatNow(chat));
   chatMenu.hidden = false;
   const box = chatMenu.getBoundingClientRect();
   chatMenu.style.left = `${Math.max(6, Math.min(event.clientX, window.innerWidth - box.width - 6))}px`;
@@ -12523,6 +12540,18 @@ async function changeChat(id, change) {
   chats.list = namedChats(result.chats) ?? chats.list;
   renderChats();
   return true;
+}
+
+// Archived, it leaves the list and keeps everything; the one on screen hands the screen to the next.
+async function archiveChatNow(chat) {
+  const archiving = !chat.archived;
+  if (!(await changeChat(chat.id, { archived: archiving }))) return;
+  if (!archiving) { toast(t('«{name}» is back in your chats.', { name: chat.title }), { tone: 'done' }); return; }
+  toast(t('«{name}» is archived. It waits under «Archived», at the end of the list.', { name: chat.title }), { tone: 'done' });
+  if (chat.id === chats.active) {
+    const next = chats.list.find((one) => !one.archived && one.id !== chat.id);
+    if (next) void openChat(next.id);
+  }
 }
 
 // Written over its name: Enter keeps it, Esc leaves it as it was, an empty name gives the automatic one back.

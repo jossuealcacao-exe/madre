@@ -78,6 +78,7 @@ const shape = (id, entry, active) => ({
   messages: Number(entry.messages ?? 0),
   preview: withoutRelayHeader(entry.preview) ?? null,
   pinned: Boolean(entry.pinned),
+  archived: Boolean(entry.archived),
   active: id === active,
 });
 
@@ -128,17 +129,22 @@ async function renameChatNow(roomDir, id, title) {
   return shape(id, index.chats[id], index.active);
 }
 
-// Pinned: kept at the top of the list, whatever came after it.
-export function pinChat(roomDir, ...rest) {
-  return indexTurn(roomDir, () => pinChatNow(roomDir, ...rest));
+// Pinned: kept at the top of the list, whatever came after it. Archived (2026-11-11): out of the
+// list and under «Archived», kept whole; archiving one takes its pin off.
+const FLAGS = new Set(['pinned', 'archived']);
+function flagChat(roomDir, ...rest) {
+  return indexTurn(roomDir, () => flagChatNow(roomDir, ...rest));
 }
-async function pinChatNow(roomDir, id, pinned) {
+async function flagChatNow(roomDir, id, flag, on) {
   const index = await chatIndex(roomDir);
-  if (!index.chats[id]) return null;
-  if (pinned) index.chats[id].pinned = true; else delete index.chats[id].pinned;
+  if (!index.chats[id] || !FLAGS.has(flag)) return null;
+  if (on) index.chats[id][flag] = true; else delete index.chats[id][flag];
+  if (flag === 'archived' && on) delete index.chats[id].pinned;
   await writeIndex(roomDir, index);
   return shape(id, index.chats[id], index.active);
 }
+export const pinChat = (roomDir, id, pinned) => flagChat(roomDir, id, 'pinned', pinned);
+export const archiveChat = (roomDir, id, archived) => flagChat(roomDir, id, 'archived', archived);
 
 // Deleting a conversation takes its transcript and nothing else: whatever the archivist distilled
 // from it is the project's memory, not the conversation's, and it stays. The last conversation

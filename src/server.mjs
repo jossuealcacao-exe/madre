@@ -103,7 +103,7 @@ const LOCAL_TRY_AGAIN_MS = 3 * 24 * 60 * 60 * 1000;
 import { moduleUpdate } from './modules/updates.mjs';
 import { ACTIVITY_SOON_MS, recentInProject } from './activity.mjs';
 import { readReminders } from './modules/reminders.mjs';
-import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, pinChat, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
+import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, archiveChat, pinChat, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
@@ -4845,6 +4845,7 @@ export async function createPulseServer({
         let named = true;
         if ('title' in payload) named = await renameChat(roomDir, chatMatch[1], payload.title);
         if (named && 'pinned' in payload) named = await pinChat(roomDir, chatMatch[1], Boolean(payload.pinned));
+        if (named && 'archived' in payload) named = await archiveChat(roomDir, chatMatch[1], Boolean(payload.archived));
         return named ? sendJson(response, 200, { ...(await chatsView()) }) : sendJson(response, 404, { error: t('No such conversation.') });
       }
       if (chatMatch && request.method === 'DELETE') {

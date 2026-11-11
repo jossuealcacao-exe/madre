@@ -7474,4 +7474,9 @@ export const ES = {
   "Pin to the top": "Fijar arriba",
   "The conversation was not changed.": "La conversación no cambió.",
   "Name of this conversation": "Nombre de esta conversación",
+  "Archived": "Archivados",
+  "Archive": "Archivar",
+  "Take out of the archive": "Sacar del archivo",
+  "«{name}» is back in your chats.": "«{name}» volvió a tus chats.",
+  "«{name}» is archived. It waits under «Archived», at the end of the list.": "«{name}» quedó archivado. Lo encuentras en «Archivados», al final de la lista.",
 };
