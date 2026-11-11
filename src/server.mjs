@@ -93,6 +93,9 @@ import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, c
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
+// The kinds of notification of the system a person turns on or off (/api/notifications); the
+// author's security notices are not among them: they always go out.
+const NOTIFICATION_KINDS = ['conversations', 'notices', 'updates'];
 // @madre is offered a test once agents answered this many real questions in a conversation, and
 // offered again after these days while it has not been measured (offerLocalTry).
 const LOCAL_TRY_MIN = 6;
@@ -2646,7 +2649,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -4675,6 +4678,29 @@ export async function createPulseServer({
         // copies saw a notice, never which.
         diagnostics.count(`notice.${payload.id}`);
         return sendJson(response, 200, { ok: true });
+      }
+      // NOTIFICATIONS OF THE SYSTEM (2026-11-10, asked by the author): which kinds this computer hands
+      // to macOS (or the browser). The author's security notices always do; the rest are the person's.
+      // A module never reaches the system: it declares `notifies` (its permission) and MADRE's page
+      // decides, with this, whether what it has to say goes out (public/notifications.js).
+      if (url.pathname === '/api/notifications' && (request.method === 'GET' || request.method === 'POST')) {
+        if (request.method === 'POST') {
+          const payload = await body(request).catch(() => ({}));
+          const patch = {};
+          for (const key of NOTIFICATION_KINDS) if (typeof payload[key] === 'boolean') patch[key] = payload[key];
+          if (payload.modules && typeof payload.modules === 'object' && !Array.isArray(payload.modules)) {
+            const declared = new Set(MODULES.filter((one) => one.notifies).map((one) => one.id));
+            const current = (await readConfig(root)).notifications?.modules ?? {};
+            const modules = { ...current };
+            for (const [id, on] of Object.entries(payload.modules)) if (declared.has(id) && typeof on === 'boolean') modules[id] = on;
+            patch.modules = modules;
+          }
+          await updateConfig(root, { notifications: patch });
+        }
+        const kept = (await readConfig(root)).notifications ?? {};
+        const prefs = Object.fromEntries(NOTIFICATION_KINDS.map((key) => [key, kept[key] !== false]));
+        const modules = MODULES.filter((one) => one.notifies).map((one) => ({ id: one.id, name: say(one.name), about: say(one.notifies.label), note: one.notifies.note ? say(one.notifies.note) : null, on: kept.modules?.[one.id] !== false }));
+        return sendJson(response, 200, { prefs, modules });
       }
       if (request.method === 'POST' && url.pathname === '/api/notices/settings') {
         const payload = await body(request).catch(() => ({}));

@@ -11,15 +11,48 @@ const pub = (file) => readFile(join(import.meta.dirname, '..', 'public', file), 
 
 test('a finished conversation is said once: by macOS in the app, by MADRE\'s card in a browser', async () => {
   const app = await pub('app.js');
-  assert.match(app, /return notificationsState\(\) === 'granted' && typeof Notification\.openSettings === 'function';/);
+  assert.match(app, /return inMacApp\(\) && wants\('conversations'\);/);
   assert.match(app, /if \(elsewhere\) \{ chats\.unread\.add\(chatId\); if \(!system\) showNotice\(/);
   assert.match(app, /if \(system \|\| away\) notifyFinished\(/);
 });
 
 test('the author\'s notices reach macOS in the app, once each, and only from Home', async () => {
   const [notices, home, app] = await Promise.all([pub('notices.js'), pub('salas-mac.js'), pub('app.js')]);
-  assert.match(notices, /if \(system && systemOn\(\)\) for \(const notice of shown\) notifySystem\(notice\);/);
-  assert.match(notices, /if \(!Array\.isArray\(told\) \|\| told\.includes\(notice\.id\)\) return;/);
+  assert.match(notices, /if \(system && inMacApp\(\)\) for \(const notice of shown\) notifySystem\(notice\);/);
+  assert.match(notices, /notify\(notice\.level === 'security' \? 'security' : 'notices', /);
+  assert.match(notices, /once: `notice-\$\{notice\.id\}`/);
   assert.match(home, /mountNotices\(noticesHost, \{ system: true \}\)/);
   assert.doesNotMatch(app, /mountNotices\([^)]*system: true/);
+});
+
+test('notifications: each kind the person\'s, security always, a module only through its own `notifies`', async () => {
+  const { mkdtemp, rm, readFile: read } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { createPulseServer } = await import('../src/server.mjs');
+  const state = await mkdtemp(join(tmpdir(), 'madre-notify-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-notify-p-'));
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  const { server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: roster, invokers: { 'codex-readonly': async () => ({ text: 'ok' }) } });
+  try {
+    const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+    const base = `http://127.0.0.1:${port}`;
+    const first = await fetch(`${base}/api/notifications`).then((response) => response.json());
+    assert.deepEqual(first.prefs, { conversations: true, notices: true, updates: true });
+    assert.ok(first.modules.some((one) => one.id === 'reminders' && one.on), 'Reminders does not ask to notify');
+    const saved = await fetch(`${base}/api/notifications`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ conversations: false, security: false, modules: { reminders: false, ash: true } }) }).then((response) => response.json());
+    assert.equal(saved.prefs.conversations, false);
+    assert.equal(saved.modules.find((one) => one.id === 'reminders').on, false);
+    const config = JSON.parse(await read(join(state, 'config.json'), 'utf8'));
+    assert.equal(config.notifications.security, undefined, 'security notices became the person\'s to turn off');
+    assert.equal(config.notifications.modules.ash, undefined, 'a module that never asked to notify was let in');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(state, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true });
+  }
+  const page = await pub('notifications.js');
+  assert.match(page, /if \(kind === 'security'\) return true;/);
+  const home = await pub('salas-mac.js');
+  assert.match(home, /notify\('module:reminders', t\('Reminder'\), one\.text/);
+  assert.match(home, /notify\('updates', /);
 });

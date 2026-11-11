@@ -159,6 +159,11 @@ export function defineModule(spec) {
     icon: moduleIconOf(spec),
     // Whose idea it was (2026-10-20, Reminders): said on its card and in the Market.
     credit: typeof spec.credit === 'string' && spec.credit.trim() ? spec.credit.trim().slice(0, 80) : null,
+    // Its permission to speak through MADRE's notifications of the system (2026-11-10): what it says,
+    // in a line, and when. Without it a module has no way to the system at all (public/notifications.js).
+    notifies: spec.notifies && typeof spec.notifies.label === 'string' && spec.notifies.label.trim()
+      ? { label: spec.notifies.label.trim().slice(0, 120), note: typeof spec.notifies.note === 'string' ? spec.notifies.note.trim().slice(0, 200) : null }
+      : null,
     summary: oneWord(spec.summary) ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
     // The settings floor of the card, declared instead of drawn: MADRE renders these and saves

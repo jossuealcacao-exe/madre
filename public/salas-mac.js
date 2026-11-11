@@ -29,6 +29,7 @@ import { remedyKey } from './remedy.js';
 import { loadMarket } from './market.js';
 import { trazo, trazoDrawing } from './icons.js';
 import { providerPick } from './provider-pick.js';
+import { drawNotifications, notify } from './notifications.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
@@ -711,6 +712,8 @@ async function loadVersion() {
   if (answer.available && answer.latest && versionAnnounced !== answer.latest) {
     versionAnnounced = answer.latest;
     toast(t('MADRE {version} is out. Update it from the bar.', { version: answer.latest }), 'look');
+    // Through the system too, once per version, if the person lets it (notifications.js, «A new version»).
+    notify('updates', t('A new version of MADRE'), t('MADRE {version} is out. Update it from Home.', { version: answer.latest }), { once: `version-${answer.latest}` });
   }
   drawAttention();
   drawTopbar();
@@ -776,6 +779,9 @@ async function loadReminders({ opening = false } = {}) {
   remindersSeen = answer.reminders ?? [];
   if (answer.prefs) reminderPrefs = answer.prefs;
   const due = remindersSeen.filter((one) => Date.parse(one.due) <= Date.now());
+  // At its hour, through the system, once per reminder and hour (2026-11-10): Reminders' own
+  // permission (`notifies`), handed out by MADRE, never by the module (notifications.js).
+  for (const one of due) notify('module:reminders', t('Reminder'), one.text, { tag: `reminder-${one.id}`, once: `reminder-${one.id}-${one.due}` });
   // Said when MADRE opens, once: the reminders themselves stay in «Needs you» until settled.
   if (opening && due.length) toast(due.length === 1 ? t('A reminder is due: {what}', { what: due[0].text }) : t('{n} reminders are due. They are in «Needs you».', { n: due.length }), 'done');
   drawAttention();
@@ -6325,6 +6331,18 @@ function fillRelease(host) {
     row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.copyId));
   }
   noticesRow(block);
+  // What MADRE may hand to the system, kind by kind (2026-11-10, public/notifications.js).
+  const told = sxBlock(host, t('Notifications'), t('What MADRE tells you through the system when you are not looking at it.'));
+  const sxSwitch = (on, change, { disabled = false, label = null } = {}) => {
+    const wrap = el('label', 'settings-switch');
+    const box = el('input');
+    box.type = 'checkbox'; box.checked = Boolean(on); box.disabled = disabled;
+    if (label) box.setAttribute('aria-label', label);
+    box.addEventListener('change', () => void change(box.checked, box));
+    wrap.append(box, el('i'));
+    return wrap;
+  };
+  void drawNotifications(told, { sxRow, sxSwitch, sxButton }, { onChange: () => settingsSheet?.sync?.() });
   drawDonate(host);
   if (info?.available) {
     const notes = el('a', 'sx-btn', t('What it brings'));

@@ -36,6 +36,7 @@ import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, cre
 import { trazo, trazoDrawing } from './icons.js';
 import { startersFor } from './starters.js';
 import { providerPick } from './provider-pick.js';
+import { drawNotifications, inMacApp, notify, wants } from './notifications.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
@@ -12481,7 +12482,7 @@ function showNotice({ agent, ok, chatId, chat }) {
 
 // The Mac app's notifications (it hands `Notification.openSettings`), on: they speak instead of MADRE's cards.
 function systemNotices() {
-  return notificationsState() === 'granted' && typeof Notification.openSettings === 'function';
+  return inMacApp() && wants('conversations');
 }
 function notificationsState() {
   if (typeof Notification !== 'function') return 'unsupported';
@@ -12492,12 +12493,9 @@ async function askForNotifications() {
   if (notificationsState() !== 'default') return notificationsState();
   try { return await Notification.requestPermission(); } catch { return notificationsState(); }
 }
+// Through notifications.js, the one door to the system: the person's «A conversation finished».
 function notifyFinished(body, chatId) {
-  if (notificationsState() !== 'granted') return;
-  try {
-    const note = new Notification('MADRE', { body, tag: `chat-${chatId}`, icon: '/assets/brand/madre-favicon.svg' });
-    note.onclick = () => { window.focus(); note.close(); if (chatId !== chats.active) void openChat(chatId); };
-  } catch { /* not offered here */ }
+  notify('conversations', 'MADRE', body, { tag: `chat-${chatId}`, onclick: () => { if (chatId !== chats.active) void openChat(chatId); } });
 }
 
 // The tab says which conversation it is, so a row of MADRE tabs can be told apart.
@@ -23701,18 +23699,10 @@ function renderTurns(section) {
   sxRow(block, t('Several at once'), turns.enabled ? t('Several conversations may work at once.') : t('One conversation at a time; switching away from one at work is refused.'), sxSwitch(turns.enabled, (on) => save({ enabled: on }), { label: t('Several at once') }));
   sxRow(block, t('Conversations at once'), t('How many conversations may be working at the same time.'), sxStepper(turns.chats, { max: 6, disabled: !turns.enabled }, (n) => save({ chats: n })), { off: !turns.enabled });
   sxRow(block, t('Answers per conversation'), t('How many answers may be under way inside one conversation.'), sxStepper(turns.turnsPerChat, { max: 8, disabled: !turns.enabled }, (n) => save({ turnsPerChat: n })), { off: !turns.enabled });
-  const notes = notificationsState();
-  // Where they are turned on, when the page can open it (the Mac app hands `Notification.openSettings`,
-  // 2026-11-10): «Blocked» there was a dead key, and the words spoke of a browser.
-  const settingsAt = typeof Notification === 'function' && typeof Notification.openSettings === 'function' ? Notification.openSettings : null;
-  const ask = notes === 'denied' && settingsAt
-    ? sxButton(t('Open System Settings'), () => settingsAt())
-    : sxButton(notes === 'granted' ? t('On') : notes === 'denied' ? t('Blocked') : notes === 'unsupported' ? t('Not available') : t('Turn on'), async () => { await askForNotifications(); renderMotherSentinel(); }, { tone: notes === 'default' ? 'primary' : null });
-  ask.disabled = notes !== 'default' && !(notes === 'denied' && settingsAt);
-  sxRow(block, t('Notifications'), notes === 'denied'
-    ? (settingsAt ? t('macOS has them turned off for MADRE. Turn them on in System Settings › Notifications › MADRE; this row follows as soon as you come back.') : t('This browser blocked them for this page; allow them in its site settings.'))
-    : notes === 'unsupported' ? t('This browser does not offer notifications.') : t('A system notification when a conversation finishes and you are not looking at it.'), ask);
   sxFoot(block, t('Always: only one conversation at a time may hold EDIT or FULL ACCESS of the project.'));
+  // What MADRE may hand to the system, kind by kind (2026-11-10, public/notifications.js).
+  const told = sxBlock(section, t('Notifications'), t('What MADRE tells you through the system when you are not looking at it.'));
+  void drawNotifications(told, { sxRow, sxSwitch, sxButton }, { onChange: () => renderMotherSentinel() });
 }
 
 // The Mac app says when macOS changed its answer (the person turned them on in System Settings).

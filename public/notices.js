@@ -6,6 +6,7 @@
 // madre.run (the server checked the signature and the link before it came here).
 
 import { language, t } from './i18n.js';
+import { inMacApp, notify } from './notifications.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -18,18 +19,11 @@ const LEVEL_WORDS = { info: () => t('Notice from MADRE'), important: () => t('Im
 
 // In the Mac app, a notice also comes as a notification of the system (2026-11-10, asked by the author:
 // «the ones I send»), once each, from Home only so several open pages do not say it several times.
-const NOTIFIED = 'pulse.notices.notified';
-const systemOn = () => typeof Notification === 'function' && Notification.permission === 'granted' && typeof Notification.openSettings === 'function';
+// Security ones always; the others as the person chose (notifications.js, «Other notices from MADRE»).
 function notifySystem(notice) {
-  let told = [];
-  try { told = JSON.parse(localStorage.getItem(NOTIFIED) ?? '[]'); } catch { told = []; }
-  if (!Array.isArray(told) || told.includes(notice.id)) return;
-  try {
-    const title = pickWords(notice.title);
-    const body = pickWords(notice.body);
-    new Notification(LEVEL_WORDS[notice.level]?.() ?? LEVEL_WORDS.info(), { body: [title, body].filter(Boolean).join(' · '), tag: `notice-${notice.id}` });
-    localStorage.setItem(NOTIFIED, JSON.stringify([...told, notice.id].slice(-100)));
-  } catch { /* not offered here */ }
+  const title = pickWords(notice.title);
+  const body = pickWords(notice.body);
+  notify(notice.level === 'security' ? 'security' : 'notices', LEVEL_WORDS[notice.level]?.() ?? LEVEL_WORDS.info(), [title, body].filter(Boolean).join(' · '), { tag: `notice-${notice.id}`, once: `notice-${notice.id}` });
 }
 
 // Draws the notices into `host` and asks again every few minutes while the page is open.
@@ -42,7 +36,7 @@ export function mountNotices(host, { levels = ['info', 'important', 'security'],
   let drawn = '';
   const draw = (notices) => {
     const shown = notices.filter((one) => !one.seen && levels.includes(one.level));
-    if (system && systemOn()) for (const notice of shown) notifySystem(notice);
+    if (system && inMacApp()) for (const notice of shown) notifySystem(notice);
     const key = JSON.stringify(shown.map((one) => one.id)) + language();
     if (key === drawn) return;
     drawn = key;

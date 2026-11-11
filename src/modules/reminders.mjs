@@ -469,6 +469,9 @@ export default {
   summary: 'Notices what you say you still have to do, or what you ask for every day, and offers to remind you with one press. Reminders show in Home and in the project they came from. Read on your computer, with the local AI when you have it; no agent is asked.',
   creates: ['nothing in the project', 'a reminders.json file in ~/.pulse, one for the whole computer'],
   settings: { enabled: false, offer: true, habits: true, local: true, hour: '9', snooze: '60' },
+  // Its permission to speak through MADRE's notifications (2026-11-10): what it says and when. MADRE's
+  // page hands it to the system, if the person lets it (Settings › Notifications); it never does.
+  notifies: { label: 'A reminder falls due', note: 'At its hour, with what you asked to remember.' },
   controls: [
     { key: 'offer', type: 'switch', label: 'Offer a reminder when you write something pending', note: 'A card under your message, with the time already chosen. Nothing is set without your click.' },
     { key: 'habits', type: 'switch', label: 'Notice what you ask for often', note: 'The same request on three different days is offered as a daily reminder.' },
