@@ -576,38 +576,29 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     }
     const mine = scopeOf(item) ?? { all: on, on: [], everywhere: false, rooms: {} };
     const everywhere = mine.everywhere || (mine.all && !ids.length);
-    if (everywhere) {
-      const off = button('mk-get big quiet', t('Turn off in every project'), () => turnScope(item, { all: false }, line, off));
-      keys.append(off);
-    } else {
-      // Where it goes, asked as a question with its two answers side by side (2026-10-20): every
-      // project — the ones added later too — or one, chosen by its name. Three keys in a row with
-      // no question («for all», «or only in», «only in this one», «project by project») read as one
-      // choice said three ways.
-      const where = el('div', 'mk-where');
-      where.append(el('b', 'mk-where-title', t('Where do you want it?')));
-      const options = el('div', 'mk-where-options');
-      const everyBox = el('div', 'mk-where-option');
-      const all = button('mk-get big', t('In all my projects'), async () => { if (await turnScope(item, { all: true }, line, all)) notice(t('{name} is on in all your projects.', { name: nameOf(item) })); });
-      everyBox.append(all, el('small', null, t('Also in the ones you add later.')));
-      options.append(everyBox);
-      const left = ids.filter((id) => !mine.on.includes(id));
-      if (left.length) {
-        const oneBox = el('div', 'mk-where-option');
-        const pick = el('div', 'mk-only');
-        const select = projectPicker(left);
-        const key = button('mk-get big quiet', t('Only in one'), async () => { const name = projectName(select.value); if (await turnScope(item, { rooms: { [select.value]: true } }, line, key)) notice(t('{name} is on in {project}.', { name: nameOf(item), project: name })); });
-        pick.append(key, select);
-        oneBox.append(pick, el('small', null, t('Choose which one. The others stay as they are.')));
-        options.append(oneBox);
-      }
-      where.append(options);
-      if (ids.length > 1) where.append(button('mk-link', t('Or decide project by project'), () => go({ tab: 'mine', focus: item.id })));
-      keys.append(where);
-      if (choose) requestAnimationFrame(() => all.focus());
-      return;
+    // Where it is on, said once and changed in the same place (2026-11-10, the author: «confusing»):
+    // a chip for all your projects and one for each, lit where it is on; a press turns it on or off
+    // there. The same chips as in Modules.
+    const where = el('div', 'mk-where');
+    where.append(el('b', 'mk-where-title', everywhere || mine.on.length ? t('It is on in') : t('Turn it on in')));
+    const chips = el('div', 'mk-chips mk-where-chips');
+    const allChip = button(`mk-chip all${everywhere ? ' on' : ''}`, t('All my projects'), async () => {
+      if (await turnScope(item, { all: !everywhere }, line, allChip) && !everywhere) notice(t('{name} is on in all your projects.', { name: nameOf(item) }));
+    });
+    allChip.setAttribute('aria-pressed', String(everywhere));
+    chips.append(allChip);
+    for (const id of ids) {
+      const here = everywhere || mine.on.includes(id);
+      const chip = button(`mk-chip${here ? ' on' : ''}`, projectName(id), async () => {
+        if (await turnScope(item, { rooms: { [id]: !here } }, line, chip) && !here) notice(t('{name} is on in {project}.', { name: nameOf(item), project: projectName(id) }));
+      });
+      chip.setAttribute('aria-pressed', String(here));
+      chip.title = here ? t('On in {project}. Press to turn it off there.', { project: projectName(id) }) : t('Off in {project}. Press to turn it on there.', { project: projectName(id) });
+      chips.append(chip);
     }
-    if (ids.length) keys.append(button('mk-link', t('Choose project by project'), () => go({ tab: 'mine', focus: item.id })));
+    where.append(chips, el('small', 'mk-where-note', t('«All my projects» includes the ones you add later.')));
+    keys.append(where);
+    if (choose) requestAnimationFrame(() => allChip.focus());
   };
 
   // MODULES, in Home: what is on and where, a switch for every project and one for each.
@@ -648,7 +639,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     box.id = `mk-card-${item.id}`;
     const head = el('header', 'mk-card-head');
     const words = el('div', 'mk-card-words');
-    words.append(el('b', null, nameOf(item)), el('span', null, reach(item)));
+    // What it does, in a person's words (2026-11-10): where it is on, the chips below say.
+    words.append(el('b', null, nameOf(item)), el('span', null, lineOf(item)));
     const open = button('mk-card-open', null, () => go({ tab: 'shop', focus: item.id }));
     open.append(appIcon(item, 44), words);
     head.append(open);
@@ -662,11 +654,16 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       // key and the project read as two keys of different sizes, one under the other.
       const foot = el('div', 'mk-card-foot');
       const chips = el('div', 'mk-chips');
-      for (const id of scopeOf(item)?.on ?? []) chips.append(el('span', 'mk-chip on', projectName(id)));
-      foot.append(chips);
-      // Only while there is a project left to put it in (2026-11-10: it was offered with every one taken).
+      // Every project: lit where it is installed; one without it is a chip that leads to installing it
+      // there (it installs from that project, where MADRE shows the commands first).
       const placed = scopeOf(item)?.on ?? [];
-      if (scope.projects.some((project) => !placed.includes(project.id))) foot.append(button('mk-get', t('Install in another'), () => go({ tab: 'shop', focus: item.id })));
+      for (const project of scope.projects) {
+        if (placed.includes(project.id)) { chips.append(el('span', 'mk-chip on', project.name)); continue; }
+        const chip = button('mk-chip', project.name, async () => { chip.disabled = true; await host.openProject?.(project.id, item); chip.disabled = false; });
+        chip.title = t('Not in {project}. Press to install it there.', { project: project.name });
+        chips.append(chip);
+      }
+      foot.append(chips);
       box.append(foot);
     } else {
       const mineScope = scopeOf(item) ?? { all: false, on: [], everywhere: false };

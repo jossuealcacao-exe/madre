@@ -71,7 +71,10 @@ export function wantsModule(text) {
 // reason: missing it costs the human one more sentence, and sending it always costs every turn that
 // was never about one. Wider than a verb list on purpose — «créame una habilidad» does not contain
 // the word «crea», and no list of conjugations is ever finished.
-export function wantsSkill(text) {
+// `/habilidad <one of yours> …` USES that skill (2026-11-10): the guide for writing one stays out.
+export function wantsSkill(text, skills = []) {
+  const called = /^\s*\/(?:habilidad|skill)\s+([\w-]+)/i.exec(String(text ?? ''))?.[1]?.toLowerCase();
+  if (called && skills.some((skill) => skill.id === called)) return false;
   return /\/(?:habilidad|skill)\b|\bhabilidad(?:es)?\b|\bskills?\b/i.test(String(text ?? ''));
 }
 
@@ -138,7 +141,7 @@ export function promptParts({
       : null },
     // WRITING ONE (H-6). Right after the skills of this project, because the best thing an agent
     // writing a skill can read is one that is already here.
-    { id: 'skill-sdk', text: lease && skillGuide && wantsSkill(text)
+    { id: 'skill-sdk', text: lease && skillGuide && wantsSkill(text, skills)
       ? `Writing a MADRE skill: a skill tells every agent of this room how the human works — not a module, no code, no buttons. Read the guide at ${skillGuide}. Then write ONE file named <id>.habilidad.md in ${lease.scratchDir ? `${lease.outDir}/${lease.scratchDir}` : lease.outDir}: a header between two «---» lines (id, name, when, version 1.0.0, minMadre) and, under it, the instructions themselves, in the human's language. Do not touch ~/.pulse/habilidades or .madre/habilidades: MADRE shows the human a card and they decide. «when» is the one field worth thinking about — it is what brings the skill into a turn, matched by words against what was asked, so name the words people actually use ("cotización, presupuesto, precio, cuánto cobrar") and not a paragraph about users asking for things. Keep the instructions under 8000 characters, say what to do rather than who to be, and remember what a skill can never do: it gives no permission, it does not raise anyone's mode, and it cannot ask an agent to hide anything from the human.`
       : null },
     { id: 'ash', text: ash ? 'Ash: answer in compact prose. Say it once, drop the preamble and the summary of what you are about to say, and keep names, negation, numbers, paths, safety details and any ```pulse block exactly as they are. Brevity is in how you write, never in what you leave out.' : null },

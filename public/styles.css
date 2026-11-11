@@ -6307,6 +6307,7 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .skill-words { display: grid; gap: 4px; min-width: 0; }
 .skill-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .skill-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.skill-call { padding: 1px 7px; border-radius: 6px; font: 500 11px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); background: color-mix(in srgb, var(--text) 6%, transparent); user-select: all; }
 .skill-tag { padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--text-2); background: color-mix(in srgb, var(--text) 8%, transparent); }
 .skill-tag.warn { color: #d9a90f; background: color-mix(in srgb, #f2c94c 16%, transparent); }
 .skill-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -10554,16 +10555,13 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; margin-top: 8px; }
 .mk-state { color: var(--text-2); font-size: 13.5px; }
 .mk-only { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-2); font-size: 13.5px; }
-/* Where a module goes (market-view.js, drawKeys): one question, its two answers side by side, each
-   with the line that says what it means. */
+/* Where a module is on (market-view.js, drawKeys): a chip for all the projects and one for each, lit
+   where it is on. */
 .mk-where { display: grid; gap: 10px; width: 100%; }
 .mk-where-title { font-size: 14px; font-weight: 650; color: var(--text); }
-.mk-where-options { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; }
-.mk-where-option { display: grid; gap: 6px; justify-items: start; }
-.mk-where-option > small { color: var(--text-2); font-size: 12.5px; }
-.mk-where-option .mk-only { gap: 8px; }
-.mk-where-option .mk-select { height: 40px; }
-.mk-where > .mk-link { justify-self: start; }
+.mk-where .mk-where-chips { padding-left: 0; }
+.mk-where-chips .mk-chip.all { font-weight: 600; }
+.mk-where-note { color: var(--text-2); font-size: 12.5px; }
 /* Getting it (market-view.js, landed): the key fills as a download does, a tick when it is done,
    and the module's icon drops into place with the tick on it. */
 .mk-get.getting, .mk-get.got { position: relative; isolation: isolate; overflow: hidden; opacity: 1 !important; cursor: progress; }

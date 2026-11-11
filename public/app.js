@@ -216,7 +216,9 @@ function spokenCommand(item) {
 const CLIENT_COMMANDS = [
   // /create went away (2026-10-27): choosing #2 on the mode chip is the same thing, said once.
   { name: 'module', title: 'MODULE', usage: `/module ${t('<what it should do>')}`, summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
-  { name: 'habilidad', title: 'SKILL', usage: `/habilidad ${t('<how you work>')}`, summary: t('Write one skill: a way of working every agent of this room follows. The agent writes it, you read it and keep it.'), available: true, client: true },
+  // Calls one of your skills by name, or writes a new one (2026-11-10): «/habilidad explicamelo-facil …»,
+  // «/habilidad nueva <how you work>». The menu lists every skill this project has.
+  { name: 'habilidad', title: 'SKILL', usage: `/habilidad ${t('<skill> <message>')}`, summary: t('Use one of your skills in this message, or write a new one with «nueva».'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: `/image ${t('<what to draw>')}`, summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
   // Notes and Reminders through an agent (2026-10-20): the message goes to the agent chosen, and
@@ -13949,8 +13951,16 @@ if (typeof ResizeObserver === 'function') {
 // `/habilidad` asks for exactly what `/module` asks for — #2 CREATE and a draft folder of its own —
 // so it wears the same clothes in the composer.
 const MODULE_COMMAND = /^\/(?:module|habilidad|skill)(?:\s|$)/i;
+// «/habilidad <one of yours>» uses it and writes nothing: only a new one asks for CREATE.
+const SKILL_NEW = new Set(['nueva', 'nuevo', 'new']);
+function writesSkill(text) {
+  const word = /^\/(?:habilidad|skill)\s+([\w-]+)/i.exec(String(text ?? '').trimStart())?.[1]?.toLowerCase();
+  if (!word) return false;
+  return SKILL_NEW.has(word) || !(modules.skills ?? []).some((skill) => skill.id === word);
+}
 function syncModuleComposer() {
-  const active = MODULE_COMMAND.test(els.input.value.trimStart());
+  const typed = els.input.value.trimStart();
+  const active = MODULE_COMMAND.test(typed) && (!/^\/(?:habilidad|skill)/i.test(typed) || writesSkill(typed));
   if (state.moduleCommand === active) return;
   state.moduleCommand = active;
   els.composer.classList.toggle('module-command', active);
@@ -14370,6 +14380,20 @@ function fileMenu(found) {
   }, 120);
 }
 function renderMenu() {
+  // «/habilidad » and then a name: your skills, MADRE's and the ones brought over, and a new one.
+  const caret = els.input.selectionStart ?? els.input.value.length;
+  const asking = /^\s*\/(?:habilidad|skill)\s+([\w-]*)$/i.exec(els.input.value.slice(0, caret));
+  if (asking) {
+    const query = asking[1].toLowerCase();
+    const start = caret - asking[1].length;
+    const skills = (modules.skills ?? []).filter((skill) => !query || skill.id.includes(query) || skillName(skill).toLowerCase().includes(query));
+    const items = [
+      ...skills.map((skill) => ({ key: skill.id, insert: `${skill.id} `, what: `${skillName(skill)} · ${skillWords(skill.line) ?? skillWords(skill.when) ?? ''}`, drawing: trazoDrawing(skill.icon ?? 'spark') })),
+      ...(!query || 'nueva'.startsWith(query) ? [{ key: `nueva ${t('<how you work>')}`, insert: 'nueva ', what: t('Write a new skill: a way of working every agent of this room follows. The agent writes it, you read it and keep it.'), drawing: trazoDrawing('add') }] : []),
+    ];
+    if (!items.length) return closeMenu();
+    return showMenu(items, { kind: '/', start, end: caret, hint: t('SKILL · ↑↓ · TAB OR ENTER') });
+  }
   const found = menuQuery();
   if (!found) return closeMenu();
   if (found.kind === '!') return fileMenu(found);
@@ -14468,6 +14492,7 @@ function showMenu(items, found) {
       let glyph;
       if (item.agent) { glyph = el('span', 'glyph agent'); glyph.append(avatar(item.agent, { size: 22 })); }
       else if (Number.isInteger(item.mode)) { glyph = el('span', `glyph mode m${item.mode}`, `#${item.mode}`); }
+      else if (item.drawing) { glyph = el('span', 'glyph'); glyph.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${item.drawing}</svg>`; } // trusted: our own SVG strings
       else glyph = commandGlyph(item.glyph ?? '', item.module);
       const head = el('span', 'line');
       head.append(el('span', 'key', name));
@@ -14532,6 +14557,15 @@ async function runSlashCommand(text) {
   // An alias goes to the server under the command's own name.
   if (name !== match[1].toLowerCase()) text = `/${name}${rest ? ` ${rest}` : ''}`;
   if (name === 'stopall') { await stopAll(); return { handled: true }; }
+  // «/habilidad <yours> <message>»: sent as written, and the room brings that skill into the turn
+  // (src/server.mjs, skillsForTurn). «/habilidad nueva …» writes one, with #2 armed as for /module.
+  if (name === 'habilidad' || name === 'skill') {
+    if (!rest) { toast(t('Write the name of one of your skills after /habilidad, or «nueva» to write one.')); return { handled: true }; }
+    if (writesSkill(text)) { if (!state.create) setMode(2); return { handled: false, text, target: els.target.value }; }
+    const [, ...message] = rest.split(/\s+/);
+    if (!message.join(' ').trim()) { toast(t('Say what you need after the skill\'s name.')); return { handled: true }; }
+    return { handled: false, text, target: els.target.value };
+  }
   if (name === 'image' || name === 'module') {
     if (!rest) {
       toast(name === 'module'
@@ -18106,6 +18140,17 @@ function openSkillText(skill) {
   dialog.showModal();
 }
 
+// Into the box, ready for what the person needs: the board steps aside and the cursor waits after it.
+function useSkill(skill) {
+  if (modules.open) openModuleSheet(null);
+  const rest = els.input.value.replace(/^\s*\/(?:habilidad|skill)\s+[\w-]*\s*/i, '').trim();
+  els.input.value = `/habilidad ${skill.id} ${rest}`;
+  autosize();
+  els.input.focus();
+  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+  syncModuleComposer();
+}
+
 function skillRow(skill) {
   const row = el('article', `skill-row is-${skill.state}`);
   const words = el('div', 'skill-words');
@@ -18116,6 +18161,8 @@ function skillRow(skill) {
   const included = skill.origin === 'madre';
   if (included) top.append(el('span', 'skill-tag', t('Comes with MADRE')));
   if (skill.version) top.append(el('span', 'skill-tag', skill.version));
+  // How it is called, on its row (2026-11-10): one a person writes or brings over is called the same way.
+  top.append(el('code', 'skill-call', `/habilidad ${skill.id}`));
   if (skill.declares?.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: skill.declares.scripts.length })));
   words.append(top);
   // Its sentence for the person when it has one (MADRE's own do); else when it comes in.
@@ -18123,6 +18170,7 @@ function skillRow(skill) {
   const keys = el('div', 'skill-keys');
   const choose = sxSelect(SKILL_STATES(), skill.state, (value) => void switchSkill(skill, value, 'project'), t('When this skill comes in'));
   keys.append(choose);
+  keys.append(sxButton(t('Use it'), () => useSkill(skill), { title: t('Writes /habilidad {id} in the box: add what you need and send.', { id: skill.id }) }));
   keys.append(sxButton(t('What it says'), () => openSkillText(skill)));
   const gone = sxButton(t('Remove'), async () => {
     const answer = await roomAsk({
@@ -19189,6 +19237,8 @@ const modulesSearch = document.querySelector('#modules-search');
 modulesSearch?.addEventListener('input', () => { modules.query = modulesSearch.value; renderModules(); });
 modules.dialog.addEventListener('close', () => modules.button.setAttribute('aria-pressed', 'false'));
 void refreshModules();
+// The skills too, so «/habilidad » lists them before Modules is ever opened (2026-11-10).
+void refreshSkills();
 
 /* ---------- agent spheres: click to expand session usage ---------- */
 

@@ -160,13 +160,35 @@ compartirla**: el Mercado la rechaza sola.
 **Los agentes nunca escriben en esas carpetas.** Proponen; la persona instala. En MÓDULOS, cada
 habilidad tiene su fila: cuándo entra, «Qué dice» con el texto completo, y «Quitar».
 
+## Llamarla por su nombre
+
+Una habilidad entra sola cuando lo que pides tiene sus palabras («cuándo»). Para usarla a propósito,
+llámala por su nombre en el compositor:
+
+```
+/habilidad explicamelo-facil qué es un dominio y para qué lo necesito
+```
+
+- `/habilidad` con un espacio abre la lista de tus habilidades —las de MADRE, las tuyas y las que
+  importaste— con su dibujo y lo que hace; flechas y Tab o Enter la ponen en la caja.
+- `/habilidad <nombre> <mensaje>` manda el mensaje con esa habilidad, aunque esté en «Cuando
+  encaje» y el mensaje no tenga sus palabras. Solo para ese mensaje.
+- En MÓDULOS, cada fila dice cómo se llama (`/habilidad <nombre>`) y su botón **«Usar»** la escribe
+  en la caja.
+
+Se llama igual una de fábrica, una que escribiste o una que trajiste: el nombre es su `id`, el de su
+carpeta.
+
 ## Que la escriba tu IA, en la sala
 
-Escribe en el compositor:
+Escribe en el compositor `/habilidad nueva` y cómo trabajas:
 
 ```
-/habilidad cuando te pida una cotización, usa mi plantilla y pon el IVA aparte
+/habilidad nueva cuando te pida una cotización, usa mi plantilla y pon el IVA aparte
 ```
+
+Si la palabra después de `/habilidad` no es el nombre de una que ya tienes, MADRE entiende que quieres
+escribir una nueva, igual que con «nueva».
 
 Hace falta **#2 CREATE**: el agente escribe **un solo archivo** `<id>.habilidad.md` en su carpeta de
 borrador, no puede instalarlo, y MADRE pone una tarjeta en la sala para que tú decidas. También

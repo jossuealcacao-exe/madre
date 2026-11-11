@@ -1245,7 +1245,12 @@ export async function createPulseServer({
     skillsForTurn: async (turn) => {
       const { loaded, failures } = await loadSkills({ stateRoot: root, projectRoot: canonicalProjectRoot });
       for (const one of failures) console.error(`MADRE skills: ${one.dir} was not read (${one.error})`);
-      return chooseSkills({ skills: loaded, text: turn.text, config: await readConfig(root), roomId: scopeRoom }).chosen;
+      // Called by its name (2026-11-10, the author): «/habilidad explicamelo-facil …» brings that one
+      // into this turn whatever its switch says; the rest are still chosen by what was asked.
+      const called = /^\s*\/(?:habilidad|skill)\s+([a-z][a-z0-9-]{1,39})\b/i.exec(String(turn.text ?? ''))?.[1]?.toLowerCase();
+      const named = called ? loaded.find((one) => one.id === called) : null;
+      const rest = chooseSkills({ skills: named ? loaded.filter((one) => one !== named) : loaded, text: turn.text, config: await readConfig(root), roomId: scopeRoom }).chosen;
+      return named ? [{ ...named, state: 'always', why: [`/habilidad ${named.id}`] }, ...rest].slice(0, 3) : rest;
     },
     // What BISHOP reads for a turn is recorded in that turn's conversation, not the open one.
     bishopForTurn: salasRoom ? async (turn) => moduleById('bishop').promptForTurn({ ...(await moduleContext()), record: (type, payload) => ((turn.turn && liveRooms().find((one) => one.runningTurn?.(turn.turn))) || room).record(type, payload) }, turn) : null,

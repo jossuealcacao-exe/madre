@@ -384,6 +384,9 @@ test('skills · «/habilidad» hands the agent the guide, and only when the turn
   // need, and that is the cheap mistake. The expensive one is an agent writing a skill blind.
   assert.equal(wantsSkill('qué habilidades tengo'), true);
   for (const said of ['arregla el login', 'hazme un módulo', '']) assert.equal(wantsSkill(said), false, said);
+  // Calling one that exists uses it; the guide for writing one is for a name nobody has yet.
+  assert.equal(wantsSkill('/habilidad explicamelo-facil qué es un dominio', [{ id: 'explicamelo-facil' }]), false);
+  assert.equal(wantsSkill('/habilidad nueva cuando cotice, pon el IVA aparte', [{ id: 'explicamelo-facil' }]), true);
   const base = { agent: { id: 'codex' }, text: '/habilidad cotiza siempre igual', requester: 'you', depth: 0, allowDelegation: false, context: { messages: [] }, mode: 2, skillGuide: skillGuide() };
   // No lease, no guide: an agent that cannot write a file is not told how to write one.
   assert.ok(!promptParts(base).some((part) => part.id === 'skill-sdk'));
