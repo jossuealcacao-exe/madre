@@ -19320,31 +19320,45 @@ function loginAskSlot(agentId) {
   return box;
 }
 function repaintLoginAsk() { for (const box of document.querySelectorAll('.login-ask')) fillLoginAsk(box); }
+// The sign-in as steps (2026-11-10, the author: «order it»): the code to copy, the page to open, a
+// code to paste back when the CLI asks for one, and one line that says it is waiting, with the way
+// out beside it. The CLI's own lines stay out of sight while the steps say the same.
 function fillLoginAsk(box) {
   const agentId = box.dataset.agent;
   box.replaceChildren();
   const live = loginNow.agent === agentId;
   box.hidden = !live;
   if (!live) return;
-  if (loginNow.url) {
-    const open = el('a', 'sx-btn primary', t('Open the sign-in page'));
-    open.href = loginNow.url;
-    open.target = '_blank';
-    open.rel = 'noopener noreferrer';
-    box.append(open);
-  }
-  // A device sign-in (GitHub Copilot through OpenCode): the code is MADRE's to show, the page's
-  // to be typed into. Nothing comes back here; the sign-in ends on its own once it is typed.
-  if (loginNow.deviceCode) {
-    const said = el('div', 'login-device');
-    said.append(el('span', null, t('Type this code on that page:')), el('code', null, loginNow.deviceCode));
+  const steps = el('ol', 'login-steps');
+  const step = (title, ...rest) => { const item = el('li', 'login-step'); item.append(el('b', null, title), ...rest); steps.append(item); return item; };
+  const copyKey = () => {
     const copy = el('button', 'sx-btn', t('Copy'));
     copy.type = 'button';
     copy.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(loginNow.deviceCode ?? ''); copy.textContent = t('Copied'); } catch { copy.textContent = t('Select it'); }
     });
-    said.append(copy);
-    box.append(said);
+    return copy;
+  };
+  const openKey = () => {
+    const open = el('a', 'sx-btn primary', t('Open the sign-in page'));
+    open.href = loginNow.url;
+    open.target = '_blank';
+    open.rel = 'noopener noreferrer';
+    // The code goes with it: on the page it only has to be pasted.
+    if (loginNow.deviceCode) open.addEventListener('click', () => { void navigator.clipboard?.writeText(loginNow.deviceCode).catch(() => {}); });
+    return open;
+  };
+  // A device sign-in (GitHub Copilot through OpenCode): the code is MADRE's to show, the page's
+  // to be typed into. Nothing comes back here; the sign-in ends on its own once it is typed.
+  if (loginNow.deviceCode) {
+    const code = el('div', 'login-device');
+    code.append(el('code', null, loginNow.deviceCode), copyKey());
+    step(t('Copy this code'), code);
+    if (loginNow.url) { const row = el('div', 'login-row'); row.append(openKey()); step(t('Open the page and paste it there'), row); }
+  } else if (loginNow.url) {
+    const row = el('div', 'login-row');
+    row.append(openKey());
+    step(t('Open the page and sign in'), row);
   }
   if (loginNow.asksForCode || loginNow.awaiting) {
     const form = el('form', 'login-code');
@@ -19374,12 +19388,16 @@ function fillLoginAsk(box) {
         said.className = 'key-said bad';
       } finally { send.disabled = false; }
     });
-    box.append(form);
+    step(t('Paste here the code the page gives you'), form);
   }
-  const stop = el('button', 'sx-btn', t('Cancel the sign-in'));
+  const foot = el('div', 'login-wait');
+  foot.append(el('span', 'login-wait-dot'), el('span', null, loginNow.url || loginNow.deviceCode ? t('Waiting for you to finish on the page…') : t('Getting the sign-in ready…')));
+  const stop = el('button', 'sx-btn ghost', t('Cancel'));
   stop.type = 'button';
   stop.addEventListener('click', async () => { stop.disabled = true; await fetch(`/api/agents/${agentId}/login/cancel`, { method: 'POST' }).catch(() => {}); });
-  box.append(stop);
+  foot.append(stop);
+  if (steps.children.length) box.append(steps);
+  box.append(foot);
 }
 // One door or two: Claude's CLI knows the subscription and the Console, and only the human can
 // say which account is paying. `null` is the single flow every other CLI has.
@@ -20862,7 +20880,9 @@ function connectionCard(agent) {
     install.disabled = Boolean(settingsUI.data.loggingIn);
     acts.append(install);
   }
-  if (agent.detected && agent.login?.headless) {
+  // While its sign-in runs, the steps below are the only keys: «Sign in again» and «Check again» wait.
+  const signingIn = loginNow.agent === agent.id;
+  if (agent.detected && agent.login?.headless && !signingIn) {
     const signedIn = session?.state === 'signed-in';
     // One button per account the CLI can sign in with. Which one is paying is the human's to say.
     for (const door of loginDoors(agent, signedIn)) {
@@ -20877,21 +20897,23 @@ function connectionCard(agent) {
       acts.append(login);
     }
   }
-  acts.append(recheck);
+  if (!signingIn) acts.append(recheck);
   const slot = el('div', 'sx-slot');
   // OpenCode's keys are its providers', added in the block under its settings, one row for all.
   // Gemini takes its key with or without its CLI: the key alone is how it answers through its API.
   if ((agent.detected || agent.id === 'gemini') && agent.key && agent.id !== 'opencode') slot.append(keyForm(agent, { onDone: () => { void loadSettings(); renderOnboarding(); } }));
   // Gemini's key is its way in (agent.key.first): the field before the Google door.
   if (agent.key?.first && slot.firstChild) { const first = el('div', 'sx-slot'); first.append(slot.firstChild); body.append(first); }
-  body.append(acts);
+  if (acts.children.length) body.append(acts);
   if (agent.detected && agent.login?.headless) slot.append(loginAskSlot(agent.id));
   // The same, typed in a terminal, folded for whoever prefers it. Signed in, OpenCode's providers
   // are added in its block below; its terminal is for a first sign-in.
   const way = !agent.detected || agent.viaApi ? installTerminalWay(agent) : agent.id === 'opencode' && session?.state === 'signed-in' ? null : signInTerminalWay(agent);
   if (way) slot.append(way);
   const log = state.loginLogs.get(agent.id) ?? [];
-  if (log.length || busy) {
+  // The CLI's own lines, unless the steps above already say them (a page and a code to follow).
+  const stepsSay = signingIn && Boolean(loginNow.url || loginNow.deviceCode);
+  if ((log.length || busy) && !stepsSay) {
     const box = el('div', 'login-log');
     box.id = `login-log-${agent.id}`;
     for (const entry of log) box.append(loginLine(entry));
@@ -23674,14 +23696,21 @@ function renderTurns(section) {
   sxRow(block, t('Conversations at once'), t('How many conversations may be working at the same time.'), sxStepper(turns.chats, { max: 6, disabled: !turns.enabled }, (n) => save({ chats: n })), { off: !turns.enabled });
   sxRow(block, t('Answers per conversation'), t('How many answers may be under way inside one conversation.'), sxStepper(turns.turnsPerChat, { max: 8, disabled: !turns.enabled }, (n) => save({ turnsPerChat: n })), { off: !turns.enabled });
   const notes = notificationsState();
-  const ask = sxButton(notes === 'granted' ? t('On') : notes === 'denied' ? t('Blocked') : notes === 'unsupported' ? t('Not available') : t('Turn on'), async () => { await askForNotifications(); renderMotherSentinel(); }, { tone: notes === 'default' ? 'primary' : null });
-  ask.disabled = notes !== 'default';
+  // Where they are turned on, when the page can open it (the Mac app hands `Notification.openSettings`,
+  // 2026-11-10): «Blocked» there was a dead key, and the words spoke of a browser.
+  const settingsAt = typeof Notification === 'function' && typeof Notification.openSettings === 'function' ? Notification.openSettings : null;
+  const ask = notes === 'denied' && settingsAt
+    ? sxButton(t('Open System Settings'), () => settingsAt())
+    : sxButton(notes === 'granted' ? t('On') : notes === 'denied' ? t('Blocked') : notes === 'unsupported' ? t('Not available') : t('Turn on'), async () => { await askForNotifications(); renderMotherSentinel(); }, { tone: notes === 'default' ? 'primary' : null });
+  ask.disabled = notes !== 'default' && !(notes === 'denied' && settingsAt);
   sxRow(block, t('Notifications'), notes === 'denied'
-    ? t('This browser blocked them for this page; allow them in its site settings.')
+    ? (settingsAt ? t('macOS has them turned off for MADRE. Turn them on in System Settings › Notifications › MADRE; this row follows as soon as you come back.') : t('This browser blocked them for this page; allow them in its site settings.'))
     : notes === 'unsupported' ? t('This browser does not offer notifications.') : t('A system notification when a conversation finishes and you are not looking at it.'), ask);
   sxFoot(block, t('Always: only one conversation at a time may hold EDIT or FULL ACCESS of the project.'));
 }
 
+// The Mac app says when macOS changed its answer (the person turned them on in System Settings).
+globalThis.addEventListener?.('madre-notifications', () => renderMotherSentinel());
 function renderMotherSentinel() {
   const turnsTarget = state.settingsTargets.turns;
   if (turnsTarget?.isConnected) { turnsTarget.replaceChildren(); renderTurns(turnsTarget); }

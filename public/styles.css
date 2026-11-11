@@ -2567,7 +2567,7 @@ dialog.intents-window { width: 760px; height: 640px; }
 /* The second half of a browser sign-in. The CLI opens a page and then waits to be told the code
    that page gives back; this is where the address stays put and where the code is typed. It used
    to be nowhere, so the only thing on screen was a heartbeat and the sign-in died of its clock. */
-.login-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.login-ask { display: grid; gap: 10px; }
 .login-ask[hidden] { display: none; }
 .login-device { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .login-device code { font-family: var(--mono); font-size: 15px; letter-spacing: .12em; color: var(--text); user-select: all; }
@@ -13349,3 +13349,22 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 .model-option:has(.model-fav) { padding-right: 34px; }
 .model-option:has(.model-fav) .menu-check { margin-right: 4px; }
 .model-group.favorites b { color: var(--text); }
+
+/* ---------- A sign-in as steps (2026-11-10) ----------
+   Numbered, one under the other, each with its title and its one key; the code large enough to read
+   across a room; one waiting line with the way out at its end. While the steps show, the CLI's own
+   lines (which say the same) stay out of sight. */
+.login-steps { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; counter-reset: login-step; }
+.login-step { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 10px; row-gap: 8px; align-items: center; counter-increment: login-step; }
+.login-step::before { content: counter(login-step); grid-row: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--phosphor); font: 600 11.5px/1 var(--read); }
+.login-step > b { grid-column: 2; font: 550 13.5px/1.3 var(--read); color: var(--text); }
+.login-step > :not(b) { grid-column: 2; }
+.login-step .login-device { gap: 10px; }
+.login-step .login-device code { padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, var(--text) 7%, transparent); font-size: 20px; font-weight: 600; letter-spacing: .14em; }
+.login-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.login-wait { display: flex; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font: 450 12.5px/1.4 var(--read); color: var(--text-2); }
+.login-wait > span:nth-child(2) { flex: 1; }
+.login-wait-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--phosphor); animation: login-wait 1.4s ease-in-out infinite; }
+@keyframes login-wait { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .login-wait-dot { animation: none; } }
+.sx-slot:has(.login-ask:not([hidden]) .login-steps) .login-log { display: none; }

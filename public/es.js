@@ -4494,13 +4494,11 @@ export const ES = {
   // OpenCode con GitHub Copilot: un código que MADRE muestra y la persona escribe en GitHub.
   'Gives you a code to type at github.com/login/device: the work goes against your Copilot subscription (Pro, Pro+, Business or Enterprise).':
     'Te da un código para escribir en github.com/login/device: el uso se descuenta de tu suscripción de Copilot (Pro, Pro+, Business o Enterprise).',
-  'Type this code on that page:': 'Escribe este código en esa página:',
   'Pick a provider, then paste its key or sign in with its account. GitHub Enterprise and the other providers are in its list.':
     'Elige un proveedor y pega su llave o entra con su cuenta. GitHub Enterprise y los demás proveedores están en su lista.',
   'Send the code': 'Enviar el código',
   'Sent. The sign-in finishes on its own.': 'Enviado. El inicio de sesión termina solo.',
   'The code was not accepted.': 'No se aceptó el código. Revísalo e inténtalo de nuevo.',
-  'Cancel the sign-in': 'Cancelar el inicio de sesión',
   'Anthropic API key': 'Llave de API de Anthropic',
   'The key is written where the Claude CLI looks for it, readable only by you. MADRE keeps no copy. It becomes the account Claude Code uses on this computer, here and in your own terminal, until you remove it.':
     'La llave de API se escribe donde la lee la app de Claude Code, y solo tú puedes leerla. MADRE no guarda copia. Se vuelve la cuenta que Claude Code usa en esta computadora, aquí y en tu propia terminal, hasta que la quites.',
@@ -7402,4 +7400,12 @@ export const ES = {
   "Favourites": "Favoritos",
   "{n} of 3": "{n} de 3",
   "Favourite models must be a list of model names.": "Los modelos favoritos deben ser una lista de nombres de modelo.",
+  "Open System Settings": "Abrir Ajustes del Sistema",
+  "macOS has them turned off for MADRE. Turn them on in System Settings › Notifications › MADRE; this row follows as soon as you come back.": "macOS las tiene apagadas para MADRE. Actívalas en Ajustes del Sistema › Notificaciones › MADRE; esta fila se actualiza en cuanto regresas.",
+  "Copy this code": "Copia este código",
+  "Open the page and paste it there": "Abre la página y pégalo ahí",
+  "Open the page and sign in": "Abre la página e inicia sesión",
+  "Paste here the code the page gives you": "Pega aquí el código que te dé la página",
+  "Waiting for you to finish on the page…": "Esperando a que termines en la página…",
+  "Getting the sign-in ready…": "Preparando el inicio de sesión…",
 };

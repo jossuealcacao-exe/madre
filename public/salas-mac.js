@@ -5213,24 +5213,31 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
   // back is typed here. Without it the sign-in could only wait until its clock killed it.
   const askBlock = (agent) => {
     if (!live || live.agent !== agent.id) return null;
-    const box = el('div', 'sm-agent-ask');
-    if (live.url) {
+    // As steps, the same as a project's Settings (2026-11-10): the code to copy, the page to open, a
+    // code to paste back when asked, and one waiting line with the way out (styles.css, .login-steps).
+    const box = el('div', 'sm-agent-ask login-ask');
+    const steps = el('ol', 'login-steps');
+    const step = (title, ...rest) => { const item = el('li', 'login-step'); item.append(el('b', null, title), ...rest); steps.append(item); };
+    const openKey = () => {
       const open = el('a', 'sm-btn primary small', t('Open the sign-in page'));
       open.href = live.url;
       open.target = '_blank';
       open.rel = 'noopener';
-      box.append(open);
-    }
+      if (live.deviceCode) { const code = live.deviceCode; open.addEventListener('click', () => { void navigator.clipboard?.writeText(code).catch(() => {}); }); }
+      const row = el('div', 'login-row');
+      row.append(open);
+      return row;
+    };
     // A device sign-in (GitHub Copilot through OpenCode) shows its code instead of asking for one.
     if (live.deviceCode) {
-      const said = el('div', 'sm-agent-device');
-      said.append(el('span', null, t('Type this code on that page:')), el('code', null, live.deviceCode));
+      const said = el('div', 'login-device');
       const copy = button('sm-btn small', t('Copy'), async () => {
         try { await navigator.clipboard.writeText(live?.deviceCode ?? ''); copy.textContent = t('Copied'); } catch { copy.textContent = t('Select it'); }
       });
-      said.append(copy);
-      box.append(said);
-    }
+      said.append(el('code', null, live.deviceCode), copy);
+      step(t('Copy this code'), said);
+      if (live.url) step(t('Open the page and paste it there'), openKey());
+    } else if (live.url) step(t('Open the page and sign in'), openKey());
     if (live.asksForCode || live.awaitingCode) {
       const form = el('form', 'sm-agent-code');
       const input = el('input');
@@ -5251,9 +5258,13 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
         else said.textContent = answer.body.error ?? t('The code was not accepted.');
         send.disabled = false;
       });
-      box.append(form);
+      step(t('Paste here the code the page gives you'), form);
     }
-    box.append(button('sm-btn ghost small', t('Cancel the sign-in'), async (event) => { event.currentTarget.disabled = true; await post(`/api/agents/${agent.id}/login/cancel`); void paint(); }));
+    const foot = el('div', 'login-wait');
+    foot.append(el('span', 'login-wait-dot'), el('span', null, live.url || live.deviceCode ? t('Waiting for you to finish on the page…') : t('Getting the sign-in ready…')));
+    foot.append(button('sm-btn ghost small', t('Cancel'), async (event) => { event.currentTarget.disabled = true; await post(`/api/agents/${agent.id}/login/cancel`); void paint(); }));
+    if (steps.children.length) box.append(steps);
+    box.append(foot);
     return box;
   };
 
