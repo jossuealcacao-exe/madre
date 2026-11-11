@@ -4079,7 +4079,7 @@ function modelNick(name) {
 /* ---------- model menu: which model answers this request ---------- */
 
 const modelMenu = el('div', 'model-menu');
-// The composer's menus mark what is in use with a check, and the model's searches behind a magnifier.
+// The composer's menus mark what is in use with a check; the model's has its search open on top.
 const MENU_CHECK = trazo('check');
 const MENU_SEARCH = trazo('search');
 // What a model can do, in one short line: whether it reads images, how much it holds at once and how
@@ -4139,23 +4139,23 @@ async function toggleModelMenu(id, anchor) {
   const info = await ensureModels(id);
   if (modelMenuFor !== id) return;
   modelMenu.replaceChildren();
-  // The head: who, and a magnifier at its right. Pressed, it opens into the search, which also
-  // takes a name the list does not have (2026-10-26: it was a field of its own under the list).
+  // The head: who, and under it the search, open and with the cursor in it (2026-11-11, asked by a
+  // person: «write the model without pressing the magnifier»). It also takes a name the list does
+  // not have.
   const head = el('div', 'model-menu-head');
   const title = el('div', 'model-menu-title');
   title.append(el('b', null, `@${id}`), t(' · model for this request'));
+  const field = el('label', 'model-search-field');
+  const glass = el('span', 'model-search-glass');
+  glass.innerHTML = MENU_SEARCH; // trusted: our own SVG string
   const search = el('input', 'model-search');
   search.type = 'search';
   search.placeholder = t('Search or write a model…');
   search.spellcheck = false;
+  search.autocomplete = 'off';
   search.setAttribute('aria-label', t('Search models'));
-  search.hidden = true;
-  const find = el('button', 'model-find');
-  find.type = 'button';
-  find.title = t('Search models');
-  find.setAttribute('aria-label', t('Search models'));
-  find.innerHTML = MENU_SEARCH; // trusted: our own SVG string
-  head.append(title, search, find);
+  field.append(glass, search);
+  head.append(title, field);
   modelMenu.append(head);
   const list = el('div', 'model-list');
   const chosen = state.chosenModel[id] ?? null;
@@ -4181,9 +4181,9 @@ async function toggleModelMenu(id, anchor) {
     return button;
   };
   const listed = Array.isArray(info.groups) && info.groups.length ? info.groups.flatMap((group) => group.models) : info.models;
-  // OpenCode's favourites (2026-11-10): up to three, starred on any row, kept at the top of the list
-  // in every project (~/.pulse/config.json, opencode.favorites).
-  const favoring = id === 'opencode';
+  // Favourites (OpenCode 2026-11-10, every agent 2026-11-11): up to three, starred on any row, kept
+  // at the top of the list in every project (~/.pulse/config.json: opencode.favorites, favorites.<agent>).
+  const favoring = listed.length > 1;
   const favorites = favoring ? (info.favorites ?? []).filter((name) => listed.includes(name)) : [];
   function favoriteKey(name) {
     const on = favorites.includes(name);
@@ -4197,9 +4197,9 @@ async function toggleModelMenu(id, anchor) {
       const next = on ? favorites.filter((one) => one !== name) : [...favorites, name];
       if (next.length > 3) { toast(t('Up to three favourites: take one out first.')); return; }
       try {
-        await saveSettingNow({ opencode: { favorites: next } });
+        await saveSettingNow(id === 'opencode' ? { opencode: { favorites: next } } : { favorites: { agent: id, models: next } });
         info.favorites = next;
-        if (state.models.opencode) state.models.opencode.favorites = next;
+        if (state.models[id]) state.models[id].favorites = next;
         closeModelMenu();
         void toggleModelMenu(id, anchor);
       } catch (error) { toast(t('The setting was not saved: {error}', { error: error.message })); }
@@ -4253,15 +4253,6 @@ async function toggleModelMenu(id, anchor) {
     typed.hidden = !query || found;
     typed.textContent = t('Use «{name}»', { name: search.value.trim() });
   };
-  const open = (on) => {
-    head.classList.toggle('searching', on);
-    title.hidden = on;
-    search.hidden = !on;
-    find.setAttribute('aria-expanded', String(on));
-    if (on) search.focus({ preventScroll: true });
-    else { search.value = ''; filter(); }
-  };
-  find.addEventListener('click', () => open(search.hidden));
   search.addEventListener('input', filter);
   search.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && search.value) { event.stopPropagation(); search.value = ''; filter(); }
@@ -4277,6 +4268,8 @@ async function toggleModelMenu(id, anchor) {
     modelMenu.append(manage);
   } else if (info.note) modelMenu.append(el('div', 'model-note', t(info.note)));
   placeModelMenu(anchor);
+  // Ready to write in; on a phone the keyboard waits to be asked for.
+  if (!state.device) search.focus({ preventScroll: true });
 }
 function placeModelMenu(anchor) {
   const rect = anchor.getBoundingClientRect();
@@ -12389,7 +12382,7 @@ function renderChats() {
   if (chats.query.trim().length >= 2) { renderChatResults(); paintChatsButton(); paintTitle(); paintConvWindows(); return; }
   const drawing = JSON.stringify([
     document.documentElement.lang, chats.active, split.chat, [...convWindows.keys()], [...chats.unread],
-    chats.list.map((chat) => [chat.id, chat.title, chat.working, chat.messages, whenWords(chat.updatedAt)]),
+    chats.list.map((chat) => [chat.id, chat.title, chat.working, chat.messages, whenWords(chat.updatedAt), Boolean(chat.pinned)]),
   ]);
   if (drawing === chatsDrawn && els.chatsBody.childElementCount) {
     paintChatsButton();
@@ -12405,6 +12398,7 @@ function renderChats() {
   if (els.chatsCount) els.chatsCount.textContent = chats.list.length ? `· ${chats.list.length}` : '';
   for (const [index, chat] of chats.list.entries()) {
     const row = el('div', 'chat-row');
+    row.dataset.chat = chat.id;
     row.style.setProperty('--i', String(index));
     const open = el('button', `chat${chat.id === chats.active ? ' on' : ''}${chat.working ? ' working' : ''}${chats.unread.has(chat.id) ? ' unread' : ''}`);
     open.type = 'button';
@@ -12417,7 +12411,13 @@ function renderChats() {
     const name = el('span', 'name');
     name.append(chat.title);
     open.append(glyph, name);
-    open.append(el('span', 'when', whenWords(chat.updatedAt)));
+    // Pinned: a pin where its date was (2026-11-11); it stays at the top whatever came after it.
+    if (chat.pinned) { const pin = el('span', 'when chat-pin'); pin.innerHTML = trazo('pin'); pin.setAttribute('aria-label', t('Pinned')); open.append(pin); } // trusted: our own SVG string
+    else open.append(el('span', 'when', whenWords(chat.updatedAt)));
+    // Its name is changed where it is written (double click) or from its menu (right click).
+    // The first click of the two may have opened it and drawn the list again: its name is found anew.
+    open.addEventListener('dblclick', (event) => { event.preventDefault(); requestAnimationFrame(() => renameChatInPlace(chat, els.chatsBody.querySelector(`.chat-row[data-chat="${chat.id}"] .name`) ?? name)); });
+    open.addEventListener('contextmenu', (event) => openChatMenu(event, chat, name));
     // Its count and date for a screen reader, not as a tip over the list (2026-11-10).
     open.setAttribute('aria-description', `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`);
     open.addEventListener('click', (event) => {
@@ -12485,6 +12485,71 @@ function renderChats() {
   paintTitle();
   paintConvWindows();
   paintSplit();
+}
+
+// A CONVERSATION'S OWN MENU (2026-11-11, asked by a person): rename it and pin it to the top.
+const chatMenu = el('div', 'tree-menu chat-menu');
+chatMenu.setAttribute('role', 'menu');
+chatMenu.hidden = true;
+document.body.append(chatMenu);
+function openChatMenu(event, chat, name) {
+  event.preventDefault();
+  event.stopPropagation();
+  chatMenu.replaceChildren();
+  const add = (label, run) => {
+    const button = el('button', null, label);
+    button.type = 'button';
+    button.setAttribute('role', 'menuitem');
+    button.addEventListener('click', () => { chatMenu.hidden = true; run(); });
+    chatMenu.append(button);
+  };
+  add(t('Rename'), () => renameChatInPlace(chat, name));
+  add(chat.pinned ? t('Unpin') : t('Pin to the top'), () => void changeChat(chat.id, { pinned: !chat.pinned }));
+  chatMenu.hidden = false;
+  const box = chatMenu.getBoundingClientRect();
+  chatMenu.style.left = `${Math.max(6, Math.min(event.clientX, window.innerWidth - box.width - 6))}px`;
+  chatMenu.style.top = `${Math.max(6, Math.min(event.clientY, window.innerHeight - box.height - 6))}px`;
+  chatMenu.querySelector('button')?.focus({ preventScroll: true });
+}
+document.addEventListener('pointerdown', (event) => { if (!chatMenu.hidden && !chatMenu.contains(event.target)) chatMenu.hidden = true; }, true);
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !chatMenu.hidden) chatMenu.hidden = true; });
+
+async function changeChat(id, change) {
+  const response = await fetch(`/api/chats/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(change) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(result.error ?? t('The conversation was not changed.')); return false; }
+  chats.list = namedChats(result.chats) ?? chats.list;
+  renderChats();
+  return true;
+}
+
+// Written over its name: Enter keeps it, Esc leaves it as it was, an empty name gives the automatic one back.
+function renameChatInPlace(chat, name) {
+  if (name.querySelector('input')) return;
+  const field = el('input', 'chat-rename');
+  field.type = 'text';
+  field.value = chat.named === false ? '' : chat.title;
+  field.placeholder = chat.title;
+  field.maxLength = 80;
+  field.setAttribute('aria-label', t('Name of this conversation'));
+  name.replaceChildren(field);
+  field.focus();
+  field.select();
+  let done = false;
+  const finish = async (keep) => {
+    if (done) return;
+    done = true;
+    const title = field.value.trim();
+    if (!keep || title === chat.title) { chatsDrawn = ''; renderChats(); return; }
+    if (!(await changeChat(chat.id, { title }))) { chatsDrawn = ''; renderChats(); }
+  };
+  for (const type of ['click', 'dblclick', 'pointerdown']) field.addEventListener(type, (event) => event.stopPropagation());
+  field.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') { event.preventDefault(); void finish(true); }
+    if (event.key === 'Escape') { event.preventDefault(); void finish(false); }
+  });
+  field.addEventListener('blur', () => void finish(true));
 }
 
 // Something is happening in a conversation, said live by the server whichever one is on screen.

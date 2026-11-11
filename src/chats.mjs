@@ -77,15 +77,17 @@ const shape = (id, entry, active) => ({
   updatedAt: entry.updatedAt ?? entry.createdAt ?? null,
   messages: Number(entry.messages ?? 0),
   preview: withoutRelayHeader(entry.preview) ?? null,
+  pinned: Boolean(entry.pinned),
   active: id === active,
 });
 
-// Newest first, because that is the order a person looks for a conversation in.
+// Newest first, because that is the order a person looks for a conversation in; the ones the person
+// pinned above the rest (2026-11-11), newest first among themselves too.
 export async function listChats(roomDir) {
   const index = await chatIndex(roomDir);
   const chats = Object.entries(index.chats)
     .map(([id, entry]) => shape(id, entry, index.active))
-    .sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
   return { active: index.active, chats };
 }
 
@@ -122,6 +124,18 @@ async function renameChatNow(roomDir, id, title) {
   if (!index.chats[id]) return null;
   const named = String(title ?? '').trim().slice(0, CHAT_TITLE_MAX);
   index.chats[id].title = named || null;
+  await writeIndex(roomDir, index);
+  return shape(id, index.chats[id], index.active);
+}
+
+// Pinned: kept at the top of the list, whatever came after it.
+export function pinChat(roomDir, ...rest) {
+  return indexTurn(roomDir, () => pinChatNow(roomDir, ...rest));
+}
+async function pinChatNow(roomDir, id, pinned) {
+  const index = await chatIndex(roomDir);
+  if (!index.chats[id]) return null;
+  if (pinned) index.chats[id].pinned = true; else delete index.chats[id].pinned;
   await writeIndex(roomDir, index);
   return shape(id, index.chats[id], index.active);
 }

@@ -2225,6 +2225,14 @@ dialog.intents-window { width: 760px; height: 640px; }
 .stop-turn:hover { color: var(--terror); border-color: var(--terror); }
 .stop-turn:disabled { opacity: .7; cursor: default; color: var(--text-3); border-color: var(--line-2); }
 
+/* A conversation's menu (rename, pin): where the hand is, above the room. */
+.chat-menu { position: fixed; z-index: 80; }
+html.chat-shell .chat-menu { min-width: 170px; padding: 4px; border: 1px solid var(--cs-line, var(--line-2)); border-radius: 12px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
+html.chat-shell .chat-menu button { padding: 7px 10px; border-radius: 8px; font: 450 13px var(--read); }
+html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(--cs-hover); outline: 0; }
+.chats-body .chat-rename { width: 100%; min-width: 0; padding: 1px 4px; margin: -2px 0; border: 1px solid var(--line-2); border-radius: 6px; outline: 0; background: var(--panel); color: var(--text); font: inherit; }
+.chats-body .chat-pin { display: inline-grid; place-items: center; color: var(--text-3); }
+.chats-body .chat-pin svg { width: 12px; height: 12px; }
 .tree-menu .note { padding: 5px 10px 6px; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0; color: var(--text-3); }
 
 @keyframes panel-in-right { from { opacity: 0; transform: translateX(22px) scale(.985); } to { opacity: 1; transform: none; } }
@@ -11378,16 +11386,15 @@ html.chat-shell .model-menu.mode-menu .mode-option .tag.raise { padding: 2px 8px
 html.chat-shell .model-menu.mode-menu .mode-option .tag .dot { display: none; }
 html.chat-shell .model-menu.mode-menu .mode-option.locked :is(.name, .hint) { color: var(--text-3) !important; }
 
-/* The models: their names in the reading face, the default with a light badge, search behind a
-   magnifier at the head's right. */
-.model-menu-head { display: flex; align-items: center; gap: 6px; }
-.model-menu-head .model-menu-title { flex: 1 1 auto; min-width: 0; }
-.model-find { flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer; }
-.model-find svg { width: 16px; height: 16px; }
-.model-find:hover, .model-find[aria-expanded="true"] { color: var(--text); }
-.model-search { flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; outline: 0; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font: 400 13px var(--read); }
+/* The models: their names in the reading face, the default with a light badge, the search open
+   under the head with the cursor in it. */
+.model-menu-head { display: grid; gap: 4px; }
+.model-menu-head .model-menu-title { min-width: 0; }
+.model-search-field { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text-3); cursor: text; }
+.model-search-glass { display: grid; place-items: center; flex: none; }
+.model-search-glass svg { width: 14px; height: 14px; }
+.model-search { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: none; color: var(--text); font: 400 13px var(--read); }
 .model-search::-webkit-search-cancel-button { display: none; }
-.model-menu-head.searching { margin: 2px 0 4px 2px; }
 .model-option { display: flex; align-items: center; gap: 8px; }
 .model-option .model-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-option[hidden], .model-group[hidden] { display: none; }

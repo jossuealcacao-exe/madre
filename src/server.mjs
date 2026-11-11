@@ -103,7 +103,7 @@ const LOCAL_TRY_AGAIN_MS = 3 * 24 * 60 * 60 * 1000;
 import { moduleUpdate } from './modules/updates.mjs';
 import { ACTIVITY_SOON_MS, recentInProject } from './activity.mjs';
 import { readReminders } from './modules/reminders.mjs';
-import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
+import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, pinChat, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
@@ -1365,6 +1365,13 @@ export async function createPulseServer({
     if (patch.opencode && 'favorites' in patch.opencode) {
       if (!Array.isArray(patch.opencode.favorites) || patch.opencode.favorites.some((name) => typeof name !== 'string' || !/^[\w.:@/+-]{1,200}$/.test(name))) throw new Error(t('Favourite models must be a list of model names.'));
       config.opencode = { ...(config.opencode ?? {}), favorites: [...new Set(patch.opencode.favorites)].slice(0, 3) };
+    }
+    // Every other agent's, the same way (2026-11-11): { agent, models }.
+    if (patch.favorites) {
+      const { agent, models } = patch.favorites;
+      if (typeof agent !== 'string' || !/^[a-z][\w-]{0,30}$/.test(agent) || agent === 'opencode') throw new Error(t('Favourite models must be a list of model names.'));
+      if (!Array.isArray(models) || models.some((name) => typeof name !== 'string' || !/^[\w.:@/+-]{1,200}$/.test(name))) throw new Error(t('Favourite models must be a list of model names.'));
+      config.favorites = { ...(config.favorites ?? {}), [agent]: [...new Set(models)].slice(0, 3) };
     }
     if (patch.timeouts) {
       const timeouts = { ...room.settings().agentTimeouts };
@@ -4834,7 +4841,10 @@ export async function createPulseServer({
       }
       if (chatMatch && request.method === 'PATCH') {
         const payload = await body(request).catch(() => ({}));
-        const named = await renameChat(roomDir, chatMatch[1], payload.title);
+        // Its name, or whether it is pinned (2026-11-11), or both.
+        let named = true;
+        if ('title' in payload) named = await renameChat(roomDir, chatMatch[1], payload.title);
+        if (named && 'pinned' in payload) named = await pinChat(roomDir, chatMatch[1], Boolean(payload.pinned));
         return named ? sendJson(response, 200, { ...(await chatsView()) }) : sendJson(response, 404, { error: t('No such conversation.') });
       }
       if (chatMatch && request.method === 'DELETE') {
@@ -5105,7 +5115,10 @@ export async function createPulseServer({
         };
         const config = await readConfig(root);
         const found = await discoverModels({ agents, config, listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [], listCursor: url.searchParams.get('cursor') === '1' ? listCursor : async () => [], cursorOnlyAuto, listGemini: url.searchParams.get('gemini') === '1' ? listGemini : async () => [], listGrok: url.searchParams.get('grok') === '1' ? listGrok : async () => ({ models: [], default: null }) });
-        if (found.opencode) found.opencode.favorites = Array.isArray(config.opencode?.favorites) ? config.opencode.favorites.slice(0, 3) : [];
+        for (const [agent, list] of Object.entries(found)) {
+          const kept = agent === 'opencode' ? config.opencode?.favorites : config.favorites?.[agent];
+          if (list && typeof list === 'object') list.favorites = Array.isArray(kept) ? kept.slice(0, 3) : [];
+        }
         return sendJson(response, 200, { models: found });
       }
       // OpenCode's providers for AJUSTES: who has a key or an account, what each offers, which are

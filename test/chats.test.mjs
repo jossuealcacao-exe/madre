@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import vm from 'node:vm';
-import { chatIndex, chatLedger, createChat, deleteChat, isChatId, lastSequenceOf, listChats, openChat, projectFloor, renameChat, touchChat, adoptStrays, MAIN_CHAT } from '../src/chats.mjs';
+import { chatIndex, chatLedger, createChat, deleteChat, isChatId, lastSequenceOf, listChats, openChat, pinChat, projectFloor, renameChat, touchChat, adoptStrays, MAIN_CHAT } from '../src/chats.mjs';
 import { EventStore } from '../src/event-store.mjs';
 
 const room = () => mkdtemp(join(tmpdir(), 'pulse-chats-'));
@@ -53,6 +53,15 @@ test('chats: a conversation takes its name from the first thing said in it, and 
     assert.equal(named.named, true);
     // An empty name gives it back to the room rather than leaving a blank row.
     assert.equal((await renameChat(dir, made.id, '   ')).named, false);
+    // Pinned (2026-11-11): at the top of the list whatever was said after it, until unpinned.
+    await pinChat(dir, MAIN_CHAT, true);
+    await touchChat(dir, made.id, { text: 'Later still' });
+    const pinned = await listChats(dir);
+    assert.equal(pinned.chats[0].id, MAIN_CHAT);
+    assert.equal(pinned.chats[0].pinned, true);
+    await pinChat(dir, MAIN_CHAT, false);
+    assert.equal((await listChats(dir)).chats[0].id, made.id);
+    assert.equal(await pinChat(dir, 'nosuchchat1', true), null);
   } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
@@ -638,7 +647,7 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.match(app, /t\(EFFORT_WORDS\[level\]\?\.brief \?\? EFFORT_WORDS\[level\]\?\.hint \?\? ''\)/);
   assert.match(css, /\.effort-option \.hint \{ display: block; white-space: nowrap;/);
   assert.match(app, /if \(isDefault && label !== t\('default'\)\) nameLine\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
-  assert.match(app, /find\.innerHTML = MENU_SEARCH;/);
+  assert.match(app, /glass\.innerHTML = MENU_SEARCH;/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
   assert.match(app, /for \(const family of \['project', 'madre', 'apps'\]\)/);
   assert.match(css, /> \.bar-extra \{ order: 26; \}/);

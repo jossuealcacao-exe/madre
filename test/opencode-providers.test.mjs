@@ -106,12 +106,19 @@ test('opencode models: up to three favourites, kept with the settings and handed
     assert.equal((await save('anthropic/claude-x')).status, 400);
     const models = (await fetch(`${base}/api/models`).then((response) => response.json())).models;
     if (models.opencode) assert.deepEqual(models.opencode.favorites, ['anthropic/claude-x', 'openai/gpt-y', 'groq/z']);
+    // Every other agent's the same way (2026-11-11), each kept apart.
+    const keep = (agent, list) => fetch(`${base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ favorites: { agent, models: list } }) });
+    assert.equal((await keep('codex', ['gpt-5.5', 'gpt-5.4-mini', 'a', 'b'])).status, 200);
+    assert.deepEqual(JSON.parse(await readFile(join(state, 'config.json'), 'utf8')).favorites, { codex: ['gpt-5.5', 'gpt-5.4-mini', 'a'] });
+    assert.equal((await keep('Bad Agent', ['x'])).status, 400);
+    const after = (await fetch(`${base}/api/models`).then((response) => response.json())).models;
+    if (after.codex) assert.deepEqual(after.codex.favorites, ['gpt-5.5', 'gpt-5.4-mini', 'a']);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(state, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(project, { recursive: true, force: true });
   }
   const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
-  assert.match(app, /const favoring = id === 'opencode';/);
+  assert.match(app, /const favoring = listed\.length > 1;/);
   assert.match(app, /if \(next\.length > 3\) \{ toast\(t\('Up to three favourites: take one out first\.'\)\); return; \}/);
 });

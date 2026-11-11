@@ -7469,4 +7469,9 @@ export const ES = {
   "<what you need>": "<lo que necesitas>",
   "To use it now": "Para usarla ahora",
   "Write this in the box and what you need after it.": "Escribe esto en la caja y, después, lo que necesitas.",
+  "Pinned": "Fijado",
+  "Unpin": "Quitar de arriba",
+  "Pin to the top": "Fijar arriba",
+  "The conversation was not changed.": "La conversación no cambió.",
+  "Name of this conversation": "Nombre de esta conversación",
 };
