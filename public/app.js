@@ -5488,8 +5488,13 @@ function signInTerminalWay(agent) {
 
 /* ---------- thread rendering ---------- */
 
+// The blank page of a conversation, kept as it was first drawn (already in the room's language), so
+// a new conversation shows it again without reloading the page (2026-11-10).
+let emptyTemplate = null;
 function removeEmpty() {
-  els.column.querySelector('.empty')?.remove();
+  const blank = els.column.querySelector('.empty');
+  if (typeof blank?.cloneNode === 'function' && !emptyTemplate) emptyTemplate = blank.cloneNode(true);
+  blank?.remove();
   // The suggestion goes with the blank page.
   const pair = els.column.querySelector('.empty-pair');
   if (pair) { pair.querySelector('.empty-suggest')?.remove(); pair.replaceWith(...pair.children); }
@@ -11395,7 +11400,10 @@ function paintDepth() {
     if (depth) one.style.setProperty('--depth', String(depth)); else one.style.removeProperty('--depth');
     one.classList.toggle('behind', depth > 0);
   });
-  const desk = deskFocus || !open.length ? 0 : Math.min(3, open.length);
+  // Notes sit on the canvas like paper on a desk (2026-11-10, the author): they do not blur what is
+  // behind them. Every other window still does.
+  const desking = open.filter((one) => !one.classList.contains('note-window'));
+  const desk = deskFocus || !desking.length ? 0 : Math.min(3, desking.length);
   // How deep is the veil's own: a variable on the root is inherited by every element of the page,
   // and changing it restyled all of them — a long file in Code included — each time a window
   // opened, closed or stopped overlapping another.
@@ -12667,7 +12675,16 @@ els.chatsNew?.addEventListener('click', async () => {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) { toast(`${t('Diagnostics › ')}${result.error ?? 'the conversation was not started.'}`); els.chatsNew.disabled = false; return; }
   if (state.device && result.opened) { globalThis.location.href = phoneChatAddress(result.opened); return; }
-  window.location.reload();
+  // Painted in place, with the same passage as going to another conversation (2026-11-10): the
+  // whole page used to reload, a white flash and the bar drawn again. Without its blank page to hand
+  // (a page opened on a conversation already started), the reload is still the way.
+  const payload = emptyTemplate || els.column.querySelector('.empty') ? await fetch('/api/state').then((one) => one.json()).catch(() => null) : null;
+  if (!payload) { window.location.reload(); return; }
+  chatSwitch += 1;
+  await morph('new', () => paintConversation(payload));
+  els.chatsNew.disabled = false;
+  if (!chatsStay()) setChats(false);
+  focusComposer();
 });
 try { if (!SPLIT_CHAT && localStorage.getItem('pulse.chats') === 'open') setChats(true); } catch { /* no storage */ }
 
@@ -13761,6 +13778,8 @@ function forgetConversation() {
   state.loginLogs.clear();
   for (const clock of thinkingClocks) clearInterval(clock);
   thinkingClocks.clear();
+  const blank = els.column.querySelector('.empty');
+  if (typeof blank?.cloneNode === 'function' && !emptyTemplate) emptyTemplate = blank.cloneNode(true);
   els.column.replaceChildren();
   renderReplyQuote();
   paintMotherBadge();
@@ -13780,6 +13799,13 @@ async function paintConversation(payload) {
   const mark = document.querySelector('.project.chat-here');
   if (mark) mark.textContent = here && chats.list.length > 1 ? here.title : '';
   drawRecord(payload.events ?? []);
+  // A conversation with nothing said yet gets its blank page back, with its first ideas.
+  if (emptyTemplate && !(payload.events ?? []).some((event) => event.type === 'message.created') && !els.column.querySelector('.empty')) {
+    const blank = emptyTemplate.cloneNode(true);
+    els.column.prepend(blank);
+    els.emptyStarts = blank.querySelector('#empty-starts');
+    renderEmptyStarts();
+  }
   renderAgents();
   renderPicker();
   renderOnboarding();

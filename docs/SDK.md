@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## Lo que un módulo puede declarar
 
-Esta tabla es **el contrato completo**: 41 campos, ni uno más. Cualquier otro que escribas MADRE
+Esta tabla es **el contrato completo**: 42 campos, ni uno más. Cualquier otro que escribas MADRE
 te lo dice al instalar («no entendí estos campos») en vez de ignorarlo en silencio. Una prueba de
 la suite compara esta tabla contra el código, así que si alguna vez se separan, es un fallo.
 
