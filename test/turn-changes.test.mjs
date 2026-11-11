@@ -171,6 +171,11 @@ test('what changed: the page draws one card inside the reply, in place of the ED
   assert.match(card, /fetch\(`\/api\/control\/\$\{checkpointId\}\/undo`, \{ method: 'POST' \}\)/);
   assert.match(card, /card\.id = `control-\$\{checkpointId\}`/);
   assert.match(card, /el\('button', 'undo', t\('Undo'\)\)/);
+  // And it asks first: the first press says «Sure? Undo», only the second goes back.
+  const press = card.slice(card.indexOf("undo.addEventListener('click'"));
+  assert.ok(press.indexOf("t('Sure? Undo')") < press.indexOf('/undo`'), 'Undo goes back on the first press');
+  assert.match(press, /if \(!sure\) \{[\s\S]*?return;\s*\}/);
+  assert.match(press, /setTimeout\(\(\) => \{ sure = null; undo\.textContent = t\('Undo'\)/, 'the question does not stay up forever');
   // See opens the file the way the file list does; the files are folded.
   assert.match(card, /openViewer\(\{ root: 'project', path: first\.path/);
   assert.match(card, /el\('details', 'turn-changes-files'\)/);

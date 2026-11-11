@@ -7533,4 +7533,5 @@ export const ES = {
   "changed {files}": "cambié {files}",
   "deleted {files}": "borré {files}",
   "renamed {files}": "cambié el nombre de {files}",
+  "Sure? Undo": "¿Seguro? Deshacer",
 };

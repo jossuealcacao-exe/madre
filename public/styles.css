@@ -1806,6 +1806,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bubble .turn-changes-acts button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .bubble .turn-changes-acts .turn-changes-see:hover { background: color-mix(in srgb, var(--phosphor) 16%, transparent); }
 .bubble .turn-changes-acts button:disabled { opacity: .5; cursor: default; }
+.bubble .turn-changes-acts .undo.sure { border-color: color-mix(in srgb, var(--danger) 60%, transparent); color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .bubble .turn-changes-acts .outcome { font-size: 12px; color: var(--phosphor); }
 .bubble .turn-changes-files > summary { cursor: pointer; font-size: 12px; color: var(--text-3); width: max-content; list-style-position: inside; }
 .bubble .turn-changes-files > summary:hover { color: var(--text-2); }

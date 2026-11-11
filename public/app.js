@@ -7712,14 +7712,26 @@ function changesCard({ messageId, files = [], summary = null, checkpointId = nul
     const undo = el('button', 'undo', t('Undo'));
     undo.type = 'button';
     undo.title = t('Puts your project back as it was before this reply.');
+    // A second press goes back, the first one asks (as «Sure? Take back» does in Home): what the
+    // agent wrote does not come back once undone, and a stray click should not cost it.
+    let sure = null;
     undo.addEventListener('click', async () => {
+      if (!sure) {
+        undo.textContent = t('Sure? Undo');
+        undo.classList.add('sure');
+        sure = setTimeout(() => { sure = null; undo.textContent = t('Undo'); undo.classList.remove('sure'); }, 5000);
+        return;
+      }
+      clearTimeout(sure);
+      sure = null;
+      undo.classList.remove('sure');
       undo.disabled = true;
       try {
         const response = await fetch(`/api/control/${checkpointId}/undo`, { method: 'POST' });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
         undo.textContent = t('RESTORED');
-      } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); undo.disabled = false; }
+      } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); undo.textContent = t('Undo'); undo.disabled = false; }
     });
     acts.append(undo);
   }
