@@ -6909,7 +6909,8 @@ dialog.surface.window:is(.settings-window, .module-window).lifted { background-c
    ground the key had with the focus (2026-11-10). */
 .surface-modes .surface-mode.close:is(:hover, :focus-visible) { box-shadow: var(--key-rest); background: var(--surface, var(--panel)); }
 /* A window that took the focus itself (loader.js) shows no ring around itself. */
-dialog[tabindex="-1"]:focus { outline: none; }
+/* A window itself is never a key: focus coming back to it (from Diagnostics, 2026-11-10) drew the system's blue ring round the whole of it. */
+dialog:is(:focus, :focus-visible), dialog [role="document"]:focus { outline: none; }
 /* The selectors: a pressed track, the chosen option raised. */
 :is(.sx-seg, .settings-seg, .sx-stepper, .sx-look .custom-seg) { background: transparent !important; box-shadow: var(--key-track); }
 :is(.sx-seg button[aria-checked="true"], .settings-seg button.on, .sx-look .custom-seg .seg-option[aria-checked="true"]) { background: var(--surface, var(--panel)) !important; box-shadow: var(--key-rest) !important; }
@@ -8858,9 +8859,10 @@ dialog.room-ask.review-ask:not(.console) .review-ask-note { margin: 0; font-size
    apart, left-aligned to be read; the way into Modules in the accent, «No, thanks» quiet. */
 /* Since 2026-11-10 it is a card of its own under the blank page: no border, a shadow barely there. */
 #messages .empty-pair { display: grid; width: min(540px, 100%); margin: 12px auto 0; }
+#messages#messages .ahp-offer { width: min(540px, 100%); margin: 14px auto; }
 #messages#messages .empty-pair > * { width: auto; max-width: none; margin: 0 !important; min-width: 0; }
-#messages#messages .empty-pair .empty-suggest { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 16px 18px; border: 0; border-radius: 18px; text-align: left; color: var(--text-2); background-color: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8); box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 28px -16px rgba(0, 0, 0, .22); }
-:root[data-scheme="light"] #messages#messages .empty-pair .empty-suggest { background-color: rgba(255, 255, 255, .8); box-shadow: 0 1px 2px rgba(20, 30, 20, .04), 0 10px 28px -18px rgba(20, 30, 20, .16); }
+#messages#messages :is(.empty-pair .empty-suggest, .ahp-offer) { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 16px 18px; border: 0; border-radius: 18px; text-align: left; color: var(--text-2); background-color: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8); box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 28px -16px rgba(0, 0, 0, .22); }
+:root[data-scheme="light"] #messages#messages :is(.empty-pair .empty-suggest, .ahp-offer) { background-color: rgba(255, 255, 255, .8); box-shadow: 0 1px 2px rgba(20, 30, 20, .04), 0 10px 28px -18px rgba(20, 30, 20, .16); }
 .empty-suggest-head { display: grid; gap: 2px; }
 .empty-suggest-eyebrow { font-family: var(--sans); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-3); }
 #messages .empty-suggest-head b { font-size: 14px; font-weight: 650; color: var(--text); }

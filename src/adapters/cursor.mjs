@@ -59,13 +59,15 @@ export function cursorConfigFor(lease = null) {
   };
 }
 
-export function buildCursorArgs({ projectRoot, prompt, model = process.env.PULSE_CURSOR_MODEL || null, lease = null }) {
+export function buildCursorArgs({ projectRoot, prompt, model = process.env.PULSE_CURSOR_MODEL || null, lease = null, scopes = null }) {
   return [
     '--print',
     '--output-format', 'stream-json',
     // Reading: Cursor's own ask mode. Writing: its agent mode, with the changes applied (`--force`)
-    // under the turn's configuration above.
-    ...(lease ? ['--force'] : ['--mode', 'ask']),
+    // under the turn's configuration above. Reading with Web access on: ask mode with `--force`, so its
+    // search and page reader run without an approval nobody could give; the configuration still denies
+    // every command and every write (tried 2026-11-10: it searched, wrote nothing, ran nothing).
+    ...(lease ? ['--force'] : ['--mode', 'ask', ...(scopes?.web ? ['--force'] : [])]),
     // A headless run cannot answer the «trust this folder?» question; the project is the human's.
     '--trust',
     '--workspace', projectRoot,
@@ -118,14 +120,14 @@ export const ONLY_AUTO = /Free plans can only use Auto|Named models unavailable/
 let onlyAuto = false;
 export const cursorOnlyAuto = () => onlyAuto;
 
-export async function invokeCursor({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, lease = null, onProgress = null }) {
+export async function invokeCursor({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, lease = null, scopes = null, onProgress = null }) {
   const configDir = await mkdtemp(join(tmpdir(), 'madre-cursor-'));
   try {
     await writeFile(join(configDir, 'cli-config.json'), `${JSON.stringify(cursorConfigFor(lease), null, 2)}\n`);
     const run = (named) => runReadonlyProcess({
       onProgress: onProgress ? (out) => onProgress({ chars: out.length, steps: cursorSteps(out, { root: projectRoot }) }) : null,
       executable,
-      args: buildCursorArgs({ projectRoot, prompt, lease, ...(named ? { model: named } : {}) }),
+      args: buildCursorArgs({ projectRoot, prompt, lease, scopes, ...(named ? { model: named } : {}) }),
       cwd: projectRoot,
       env: cursorEnvironment(process.env, { configDir }),
       timeoutMs,

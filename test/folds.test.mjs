@@ -27,9 +27,9 @@ test('mother: a window like AJUSTES, with the answer first and the list beside i
   // Both columns keep to their width: a long title is cut, the agent and the code stay in view.
   assert.match(css, /\.mother-list \{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(css, /\.remedy-rows \{ display: grid; grid-template-columns: minmax\(0, 1fr\);/);
-  // «Ask MU/TH/UR how» lands on a remedy: its own, the permission's general one, or a search by its name.
-  assert.match(app, /conditionById\(conditionId\) \?\? conditionById\(conditionId\.replace\(\/\^scope-\[\^-\]\+-\/, 'scope-'\)\)/);
-  assert.match(app, /askMotherAbout\(`scope-\$\{agent\.id\}-\$\{key\}`, labelText\)/);
+  // What an agent cannot do is said with who can, not sent to Diagnostics (2026-11-10).
+  assert.match(app, /t\('\{agent\} cannot do it from MADRE\. \{others\} can\.'/);
+  assert.doesNotMatch(app, /function askMotherAbout\(/);
 });
 
 test('settings: a new version is said once, in amber, where the version lives', async () => {

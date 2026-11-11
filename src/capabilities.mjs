@@ -42,7 +42,10 @@ export const CAPABILITIES = {
     imageIn: false,
     write: { how: 'agent mode with --force under a configuration made for the turn', note: 'Writes where the turn allows; commands only at #4. MADRE locks and puts back .env, .git and its own folders, and at #2 what existed.' },
     imageGen: false,
-    web: false,
+    // Its own WebSearch and WebFetch (2026-11-10, tried against the real CLI): in print mode they wait
+    // for an approval nobody gives, so a reading turn with the web on runs ask mode with --force, while
+    // the turn's configuration still denies every command and every write (nothing was written or run).
+    web: { how: '--mode ask --force, Shell(*) and Write(**) denied', note: 'Off until turned on in Settings › Agents › Web access.' },
   },
   // Grok (adapters/grok.mjs, 2026-11-06): reads, and from the same day writes at #2 and #3 and runs
   // commands at #4, each mode tried against the real CLI first. Attachments are named in the briefing.

@@ -982,7 +982,6 @@ export const ES = {
   'Applies to its next CREATE.': 'Se aplica la próxima vez que use «Crear».',
   'That permission was not saved: {error}': 'Ese permiso no se guardó: {error}',
   'not wired yet': 'todavía no está conectado en MADRE',
-  'How could @{agent} get "{what}"?': '¿Cómo podría @{agent} tener «{what}»?',
   'MAX MODE': 'PERMISO MÁXIMO',
   '@{agent} is now capped at #{n} {label}.': '@{agent} queda con permiso máximo «#{n} {label}».',
   'The max mode was not saved: {error}': 'El permiso máximo no se guardó: {error}',
@@ -3421,7 +3420,6 @@ export const ES = {
   'This agent can\'t do this.': 'Este agente no puede hacerlo.',
   'Not available yet.': 'Todavía no disponible.',
   'Off.': 'Apagado.',
-  'Ask Diagnostics how': 'Preguntarle a Diagnóstico cómo',
   'Max mode': 'Permiso máximo',
   'Starting mode': 'Permiso al empezar',
   'Time limit': 'Tiempo límite',
@@ -7386,4 +7384,5 @@ export const ES = {
   "@madre, the AI on this computer, can now help in this project. Before you give it work, try it: it answers again up to 12 questions your agents already answered here, and MADRE compares the answers. It takes a few minutes and spends nothing.": "@madre, la IA de tu computadora, ya puede ayudarte en este proyecto. Antes de darle trabajo, pruébala: vuelve a contestar hasta 12 preguntas que tus agentes ya contestaron aquí y MADRE compara las respuestas. Tarda unos minutos y no gasta nada.",
   "MADRE will offer it again in a few days.": "MADRE te lo vuelve a ofrecer en unos días.",
   "Remind me later": "Recordarme después",
+  "{agent} cannot do it from MADRE. {others} can.": "{agent} no puede hacerlo desde MADRE. {others}, sí.",
 };

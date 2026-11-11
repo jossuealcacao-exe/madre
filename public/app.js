@@ -4051,12 +4051,15 @@ modelMenu.hidden = true;
 document.body.append(modelMenu);
 let modelMenuFor = null;
 
+// The agents whose models are read only when their chooser opens: each asks its CLI or its maker.
+const LISTED_ON_ASK = ['opencode', 'cursor', 'gemini', 'grok'];
 async function ensureModels(id) {
   if (state.models[id]) return state.models[id];
   try {
-    // OpenCode, Cursor, Gemini and Grok are asked for their own lists only when their chooser opens: each asks its CLI or its maker.
-    const data = await fetch(`/api/models${['opencode', 'cursor', 'gemini', 'grok'].includes(id) ? `?${id}=1` : ''}`).then((response) => response.json());
-    state.models = { ...state.models, ...(data.models ?? {}) };
+    const data = await fetch(`/api/models${LISTED_ON_ASK.includes(id) ? `?${id}=1` : ''}`).then((response) => response.json());
+    // Only the list asked for, of the ones read on asking: the others come empty in this answer, and
+    // kept, they hid their models for good (2026-11-10: Grok and OpenCode showed none in the box).
+    state.models = { ...state.models, ...Object.fromEntries(Object.entries(data.models ?? {}).filter(([agent]) => agent === id || !LISTED_ON_ASK.includes(agent))) };
     takeEfforts(data.models);
   } catch { /* offline: fall back to whatever we know */ }
   return state.models[id] ?? { models: [], default: null, note: '' };
@@ -5138,40 +5141,79 @@ const AHP_SUGGESTION_KEY = 'pulse.suggest.ahp';
 function ahpSuggestionDeclined() {
   try { return JSON.parse(localStorage.getItem(AHP_SUGGESTION_KEY) ?? '[]').includes(state.projectRoot); } catch { return false; }
 }
+// Put off with «Remind me later» (2026-11-10): per project, until when.
+const AHP_LATER_KEY = 'pulse.suggest.ahp.later';
+const AHP_LATER_MS = 3 * 24 * 60 * 60 * 1000;
+function ahpSuggestionLater() {
+  try { return Number(JSON.parse(localStorage.getItem(AHP_LATER_KEY) ?? '{}')[state.projectRoot]) > Date.now(); } catch { return false; }
+}
+function putAhpOff(ms) {
+  try {
+    const kept = JSON.parse(localStorage.getItem(AHP_LATER_KEY) ?? '{}');
+    const fresh = Object.fromEntries(Object.entries(kept).filter(([, until]) => Number(until) > Date.now()));
+    localStorage.setItem(AHP_LATER_KEY, JSON.stringify({ ...fresh, [state.projectRoot]: Date.now() + ms }));
+  } catch { /* a private window asks again next time; no harm */ }
+}
+// The card itself: on a new project's blank page, or in the conversation once it started.
+function ahpCard({ talking = false } = {}) {
+  const box = el('aside', `empty-suggest${talking ? ' ahp-offer' : ''}`);
+  box.setAttribute('aria-label', t('Suggestion'));
+  const head = el('div', 'empty-suggest-head');
+  head.append(el('span', 'empty-suggest-eyebrow', t('Suggestion')), el('b', null, t('Continuity: no agent starts from scratch')));
+  const gains = el('ul', 'empty-suggest-gains');
+  for (const words of [
+    // Said as what the person gains (2026-10-30), not as what it stores.
+    t('Your project remembers where it left off: what was decided, what is pending and what was already tried, kept beside your code.'),
+    t('Change agent, editor or computer, and the next one picks up the thread on its own, without you explaining everything again.'),
+    t('It works in MADRE and outside it: Claude Code, Codex and OpenCode read it on their own.'),
+  ]) gains.append(el('li', null, words));
+  const note = el('p', 'empty-suggest-note', t('It needs a project with git and at least one saved version. Before you install it, Modules shows you everything it writes.'));
+  const acts = el('div', 'empty-suggest-acts');
+  const open = el('button', 'empty-suggest-open', t('See it in Modules'));
+  open.type = 'button';
+  open.addEventListener('click', async () => { openModules(); await refreshModules(); openModuleSheet('ahp'); });
+  acts.append(open);
+  if (talking) {
+    const later = el('button', 'empty-suggest-no', t('Remind me later'));
+    later.type = 'button';
+    later.addEventListener('click', () => { putAhpOff(AHP_LATER_MS); box.remove(); });
+    acts.append(later);
+  }
+  const no = el('button', 'empty-suggest-no', t('No, thanks'));
+  no.type = 'button';
+  no.addEventListener('click', () => {
+    try {
+      const declined = JSON.parse(localStorage.getItem(AHP_SUGGESTION_KEY) ?? '[]');
+      localStorage.setItem(AHP_SUGGESTION_KEY, JSON.stringify([...new Set([...declined, state.projectRoot])].slice(-200)));
+    } catch { /* a private window asks again next time; no harm */ }
+    box.remove();
+  });
+  acts.append(no);
+  box.append(head, gains, note, acts);
+  return box;
+}
 function renderAhpSuggestion() {
   const welcome = els.emptyStarts?.closest('.empty');
-  if (!welcome || state.salas || state.device || ahpSuggestionDeclined()) { els.column.querySelector('.empty-suggest')?.remove(); return; }
+  if (!welcome || state.salas || state.device || ahpSuggestionDeclined()) { els.column.querySelector('.empty > .empty-suggest, .empty-pair .empty-suggest')?.remove(); return; }
   void installedModules().then((list) => {
     const ahp = list.find((item) => item.id === 'ahp');
     if (!ahp || ahp.status?.installed || ahpSuggestionDeclined() || !welcome.isConnected || els.column.querySelector('.empty-suggest')) return;
-    const box = el('aside', 'empty-suggest');
-    box.setAttribute('aria-label', t('Suggestion'));
-    const head = el('div', 'empty-suggest-head');
-    head.append(el('span', 'empty-suggest-eyebrow', t('Suggestion')), el('b', null, t('Continuity: no agent starts from scratch')));
-    const gains = el('ul', 'empty-suggest-gains');
-    for (const words of [
-      // Said as what the person gains (2026-10-30), not as what it stores.
-      t('Your project remembers where it left off: what was decided, what is pending and what was already tried, kept beside your code.'),
-      t('Change agent, editor or computer, and the next one picks up the thread on its own, without you explaining everything again.'),
-      t('It works in MADRE and outside it: Claude Code, Codex and OpenCode read it on their own.'),
-    ]) gains.append(el('li', null, words));
-    const note = el('p', 'empty-suggest-note', t('It needs a project with git and at least one saved version. Before you install it, Modules shows you everything it writes.'));
-    const acts = el('div', 'empty-suggest-acts');
-    const open = el('button', 'empty-suggest-open', t('See it in Modules'));
-    open.type = 'button';
-    open.addEventListener('click', async () => { openModules(); await refreshModules(); openModuleSheet('ahp'); });
-    const no = el('button', 'empty-suggest-no', t('No, thanks'));
-    no.type = 'button';
-    no.addEventListener('click', () => {
-      try {
-        const declined = JSON.parse(localStorage.getItem(AHP_SUGGESTION_KEY) ?? '[]');
-        localStorage.setItem(AHP_SUGGESTION_KEY, JSON.stringify([...new Set([...declined, state.projectRoot])].slice(-200)));
-      } catch { /* a private window asks again next time; no harm */ }
-      box.remove();
-    });
-    acts.append(open, no);
-    box.append(head, gains, note, acts);
-    welcomePair()?.prepend(box);
+    welcomePair()?.prepend(ahpCard());
+  });
+}
+// A project whose first message was sent from the welcome never showed its blank page, so it never
+// heard of Continuity (2026-11-10, the author: «it is important»). After an agent's answer it is
+// offered in the conversation, at most once a day, «Remind me later» for three days, «No, thanks»
+// for good, and never once it is installed.
+function offerAhpInConversation() {
+  if (state.salas || state.device || els.column.querySelector('.empty, .empty-suggest') || ahpSuggestionDeclined() || ahpSuggestionLater()) return;
+  void installedModules().then((list) => {
+    const ahp = list.find((item) => item.id === 'ahp');
+    if (!ahp || ahp.status?.installed || els.column.querySelector('.empty, .empty-suggest') || ahpSuggestionLater()) return;
+    putAhpOff(24 * 60 * 60 * 1000);
+    const stick = pinnedToEnd;
+    els.column.append(tidySystemLine(ahpCard({ talking: true })));
+    if (stick) scrollToEnd();
   });
 }
 
@@ -8591,7 +8633,7 @@ function renderEventNode(event) {
       if (open && !replaying) void paintAshEconomy(open);
       return;
     }
-    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { treeFollowWrites(); void notesAfterTurn(); } return;
+    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { treeFollowWrites(); void notesAfterTurn(); offerAhpInConversation(); } return;
     case 'files.touched': markTouched(event.payload.agent, event.payload.files, event.timestamp); if (!replaying) treeFollowWrites(); return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
@@ -17770,9 +17812,11 @@ function drawPartsTarget() {
   for (const [cat, ids] of Object.entries(SETTINGS_PARTS)) {
     const target = state.settingsTargets[`parts-${cat}`];
     if (!target?.isConnected) continue;
-    const items = ids.map((id) => modules.items.find((one) => one.id === id)).filter(Boolean);
-    if (!items.length) continue;
+    // A part that is always on and has nothing to set (options, commands) is not shown (2026-11-10):
+    // a card saying «Always on» asked nothing of anyone.
+    const items = ids.map((id) => modules.items.find((one) => one.id === id)).filter((one) => one && !one.fixed);
     target.replaceChildren();
+    if (!items.length) continue;
     // What a part reads (the effort it learned) wears the same rows as in its sheet of before.
     target.classList.add('mods-detail');
     for (const item of items) moduleSheet(target, item, { inSettings: true });
@@ -20726,12 +20770,13 @@ function connectionCard(agent) {
     }, { disabled: !usable, label: labelText });
     const row = sxRow(abilities, labelText, why(scope.enabled), toggle, { off: !usable });
     const hint = row.querySelector('.sx-hint');
+    // What it cannot do, said with who can (2026-11-10): «Ask Diagnostics how» led to a page with
+    // nothing about it.
     if (!scope.capable) {
-      const assist = el('button', 'sx-link', t('Ask Diagnostics how'));
-      assist.type = 'button';
-      assist.title = t('How could @{agent} get "{what}"?', { agent: agent.id, what: labelText.toLowerCase() });
-      assist.addEventListener('click', () => askMotherAbout(`scope-${agent.id}-${key}`, labelText));
-      hint.after(assist);
+      const able = Object.entries(settingsUI.data.settings.capabilities ?? {})
+        .filter(([id, one]) => id !== agent.id && id !== 'madre' && one.scopes?.[key]?.capable && one.scopes?.[key]?.wired)
+        .map(([id]) => state.agents.get(id)?.label ?? id);
+      if (able.length) hint.textContent = t('{agent} cannot do it from MADRE. {others} can.', { agent: agent.label, others: new Intl.ListFormat(language(), { type: 'disjunction' }).format(able) });
     }
   }
   // The ceiling lives with every other agent's in PERMISSIONS: here it is said, and one key goes there.
@@ -21523,21 +21568,6 @@ function conditionActions(condition, agent) {
     actions.push({ label: t('RAISE LOCAL BUDGET TO {n}', { n: formatTokens(budget) }), patch: { room: { softTokenBudget: budget } }, done: t('local budget is now {n} tokens per agent per 5h window.', { n: formatTokens(budget) }) });
   }
   return actions;
-}
-
-function askMotherAbout(conditionId, words = '') {
-  // Opens MU/TH/UR on that remedy: chosen in the list, read in the detail, nothing typed for you.
-  // An agent without a remedy of its own falls back to the permission's general one, and failing
-  // that, to what the permission is called, searched like a symptom.
-  openMother();
-  const found = conditionById(conditionId) ?? conditionById(conditionId.replace(/^scope-[^-]+-/, 'scope-'));
-  if (!found && words) { mother.input.value = words; answerQuery(words); return; }
-  mother.input.value = '';
-  remedies.query = '';
-  remedies.filter = found ? 'all' : null;
-  remedies.selected = found ? { kind: 'condition', id: found.id } : null;
-  paintRemedies();
-  mother.list?.querySelector('.remedy-row.on')?.scrollIntoView?.({ block: 'nearest' });
 }
 
 

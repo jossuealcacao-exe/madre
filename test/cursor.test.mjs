@@ -23,12 +23,12 @@ test('cursor · a reading turn runs headless in ask mode, in the project, never 
   // The turn's own configuration: every command and every write denied, the sandbox off.
   assert.deepEqual(READONLY_CONFIG.permissions, { allow: [], deny: ['Shell(*)', 'Write(**)'] });
   assert.equal(READONLY_CONFIG.sandbox.mode, 'disabled');
-  // From 2026-10-21 it writes at the modes that allow it; no image, no web.
+  // From 2026-10-21 it writes at the modes that allow it; no image. The web since 2026-11-10.
   const can = capabilityOf('cursor');
   assert.equal(can.read, true);
   assert.ok(can.write, 'Cursor is still held at #1');
   assert.equal(can.imageGen, false);
-  assert.equal(can.web, false);
+  assert.ok(can.web, 'Cursor has no web');
 });
 
 test('cursor · every mode: #2 and #3 write and run nothing, #4 runs commands, and no mode writes where nobody writes (2026-10-21)', async () => {
@@ -56,6 +56,12 @@ test('cursor · every mode: #2 and #3 write and run nothing, #4 runs commands, a
   const writing = buildCursorArgs({ projectRoot: '/p', prompt: 'x', lease: { create: true } });
   assert.ok(writing.includes('--force') && !writing.includes('--mode'));
   assert.ok(buildCursorArgs({ projectRoot: '/p', prompt: 'x' }).includes('--mode'));
+  assert.ok(!buildCursorArgs({ projectRoot: '/p', prompt: 'x' }).includes('--force'), 'a reading turn without the web ran with every approval given');
+  // Web access on (2026-11-10): ask mode still, with its search approved; the reading configuration
+  // still denies every command and every write.
+  const web = buildCursorArgs({ projectRoot: '/p', prompt: 'x', scopes: { web: true } });
+  assert.ok(web.includes('--force') && web[web.indexOf('--mode') + 1] === 'ask');
+  assert.deepEqual(cursorConfigFor(null).permissions.deny, ['Shell(*)', 'Write(**)']);
 });
 
 test('cursor · the configuration a writing turn runs under is the one its mode asked for, and goes with the turn', async () => {

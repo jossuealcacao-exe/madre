@@ -883,6 +883,8 @@ test('suggested effort, options, commands and connections are parts of MADRE, se
   assert.match(app, /const IN_SETTINGS = \{ ollama: 'local', intents: 'room', choices: 'room', runs: 'room', enlaces: 'memory' \};/);
   assert.match(app, /if \(id === 'room'\) \{ part\('turns'\); part\('room'\); part\('parts-room'\); \}/);
   assert.match(app, /for \(const item of items\) moduleSheet\(target, item, \{ inSettings: true \}\);/);
+  // Options and commands are always on and have nothing to set: not shown there (2026-11-10).
+  assert.match(app, /\.filter\(\(one\) => one && !one\.fixed\);/);
   // A module's command wears its module's drawing in the «/» menu.
   assert.match(app, /else glyph = commandGlyph\(item\.glyph \?\? '', item\.module\);/);
 });
