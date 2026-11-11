@@ -63,9 +63,11 @@ export function tokenize(args) {
     pieces.push(match[3] !== undefined ? { text: match[3], quoted: false } : { text: match[1] ?? match[2] ?? '', quoted: true });
   }
   const last = pieces[pieces.length - 1];
-  const confirm = Boolean(last && !last.quoted && last.text.toLowerCase() === 'confirm');
+  const confirm = Boolean(last && !last.quoted && ['confirm', 'confirmar'].includes(last.text.toLowerCase()));
   return { pieces: confirm ? pieces.slice(0, -1) : pieces, confirm };
 }
+
+const GH_WORDS = { solicitudes: ['pr'], solicitud: ['pr'], proponer: ['pr', 'create'], pruebas: ['ci'], pendientes: ['issues'], pendiente: ['issue'], comentar: ['comment'] };
 
 // A title and an optional body: quoted pieces when there are any, the bare words otherwise.
 function titleAndBody(pieces) {
@@ -202,7 +204,9 @@ async function openIssue(ctx, { project, auth, env, log }, pieces, confirm) {
 }
 
 export async function runGh(ctx, args = []) {
-  const { pieces, confirm } = tokenize(args);
+  const { pieces: said, confirm } = tokenize(args);
+  // Said in Spanish too (2026-11-11): «/gh pruebas», «/gh proponer "…"», «/gh pendiente "…" confirmar».
+  const pieces = said[0] && !said[0].quoted && GH_WORDS[said[0].text.toLowerCase()] ? [...GH_WORDS[said[0].text.toLowerCase()].map((text) => ({ text, quoted: false })), ...said.slice(1)] : said;
   const what = (pieces[0]?.quoted ? '' : pieces[0]?.text ?? '').toLowerCase();
   const facts = await where(ctx);
   const problems = problemsOf(facts);

@@ -14543,6 +14543,18 @@ function fileMenu(found) {
 function renderMenu() {
   // «/habilidad » and then a name: your skills, MADRE's and the ones brought over, and a new one.
   const caret = els.input.selectionStart ?? els.input.value.length;
+  // What /git and /gh can do, one row each with what it does (2026-11-11: a line of brackets said it).
+  const sub = /^\s*\/(git|gh)\s+([\w-]*)$/i.exec(els.input.value.slice(0, caret));
+  if (sub && SUBCOMMANDS[sub[1].toLowerCase()]) {
+    const query = sub[2].toLowerCase();
+    const start = caret - sub[2].length;
+    const spanish = language() === 'es';
+    const items = SUBCOMMANDS[sub[1].toLowerCase()].map((one) => ({ ...one, word: spanish ? one.es : one.en }))
+      .filter((one) => !query || one.word.startsWith(query))
+      .map((one) => ({ key: one.args ? `${one.word} ${t(one.args)}` : one.word, insert: `${one.word} `, what: t(one.what), drawing: trazoDrawing(one.icon) }));
+    if (!items.length) return closeMenu();
+    return showMenu(items, { kind: '/', start, end: caret, hint: t('COMMAND · ↑↓ · TAB OR ENTER') });
+  }
   const asking = /^\s*\/(?:habilidad|skill)\s+([\w-]*)$/i.exec(els.input.value.slice(0, caret));
   if (asking) {
     const query = asking[1].toLowerCase();
@@ -14573,7 +14585,7 @@ function renderMenu() {
     // Grouped and in that order: the room's own commands, then what the modules add, then what
     // cannot run here — so the arrows walk them as they are read.
     : allCommands().filter((item) => item.name.startsWith(found.query) || found.query.startsWith(item.name))
-      .map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? t(item.summary ?? '') : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available, glyph: item.id ?? item.name, module: item.module, group: !item.available ? 'off' : item.client ? 'room' : 'modules' }))
+      .map((item) => ({ key: SUBCOMMANDS[item.name] ? `/${item.name} ${t('<what>')}` : item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? t(item.summary ?? '') : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available, glyph: item.id ?? item.name, module: item.module, group: !item.available ? 'off' : item.client ? 'room' : 'modules' }))
       .sort((a, b) => COMMAND_GROUPS.indexOf(a.group) - COMMAND_GROUPS.indexOf(b.group));
   if (found.kind === '/' && items.length === 1 && items[0].insert === '/module ') return showMenu([...items, ...moduleStarters()], { ...found, hint: t('MODULE · ↑↓ · TAB OR ENTER · pick one and edit it') });
   if (!items.length) return closeMenu();
@@ -14606,6 +14618,26 @@ function moduleStarters() {
 // What each command looks like at a glance: a small drawing, so a list of seven reads as seven
 // different things before a word is read. A module's own command gets the slash.
 const COMMAND_GROUPS = ['room', 'modules', 'off'];
+// The words /git and /gh take, in each language, and what each does. The room takes both.
+const SUBCOMMANDS = {
+  git: [
+    { es: 'estado', en: 'status', icon: 'git', what: 'Your branch, what is not saved yet and the last versions.' },
+    { es: 'historial', en: 'log', icon: 'list', what: 'The recent versions and what changed in each.' },
+    { es: 'cambios', en: 'diff', icon: 'pencil', what: 'What changed and is not saved as a version yet.' },
+    { es: 'ramas', en: 'branches', icon: 'switch', what: 'The branches of the project.' },
+    { es: 'guardar', en: 'commit', args: '"<message>"', icon: 'check', what: 'Saves everything changed as one version, on this computer.' },
+    { es: 'subir', en: 'push', icon: 'out', what: 'Shows what would go to GitHub; add «confirmar» to send it.' },
+  ],
+  gh: [
+    { es: 'solicitudes', en: 'pr', icon: 'git', what: 'The open pull requests; with a number, that one.' },
+    { es: 'pruebas', en: 'ci', icon: 'check', what: 'How the checks of your branch are going.' },
+    { es: 'pendientes', en: 'issues', icon: 'list', what: 'The open issues.' },
+    { es: 'proponer', en: 'pr create', args: '"<title>"', icon: 'out', what: 'Opens a pull request from your branch: shown first, posted with «confirmar».' },
+    { es: 'pendiente', en: 'issue', args: '"<title>"', icon: 'add', what: 'Opens a new issue: shown first, posted with «confirmar».' },
+    { es: 'comentar', en: 'comment', args: '<n> "<text>"', icon: 'comment', what: 'Comments on an issue or a pull request: shown first, posted with «confirmar».' },
+  ],
+};
+
 const COMMAND_GROUP_WORDS = { room: 'THIS PROJECT', modules: 'FROM THE MODULES', off: 'NOT AVAILABLE HERE', 'skills-madre': 'COME WITH MADRE', 'skills-yours': 'YOURS', 'skills-new': 'WRITE ONE' };
 const COMMAND_GLYPHS = {
   module: trazoDrawing('puzzle'),

@@ -33,7 +33,8 @@ export const COMMANDS = [
       return exists(join(projectRoot, '.git'));
     },
     async execute({ projectRoot, args }) {
-      const what = (args[0] ?? 'status').toLowerCase();
+      // Said in Spanish too (2026-11-11): «/git estado», «/git guardar "…"», «/git subir confirmar».
+      const what = GIT_WORDS[(args[0] ?? 'status').toLowerCase()] ?? (args[0] ?? 'status').toLowerCase();
       const sections = [];
       const add = async (title, gitArgs) => {
         const result = await run('git', gitArgs, projectRoot);
@@ -73,7 +74,7 @@ export const COMMANDS = [
         const ahead = await run('git', ['-c', 'color.ui=never', 'log', '--oneline', '@{u}..HEAD'], projectRoot);
         const commits = ahead.text ? ahead.text.split('\n').filter(Boolean) : [];
         if (!commits.length) return { ok: true, title: 'Git · push', text: `Nothing to push: ${upstream.text} already has everything.` };
-        if ((args[1] ?? '').toLowerCase() !== 'confirm') {
+        if (!['confirm', 'confirmar'].includes((args[1] ?? '').toLowerCase())) {
           return { ok: true, title: 'Git · push · preview', text: `## would leave for ${upstream.text}\n${commits.join('\n')}\n\nThis leaves the machine and cannot be undone by MADRE. Send it with: /git push confirm` };
         }
         const pushed = await run('git', ['-c', 'color.ui=never', 'push'], projectRoot, 120000);
@@ -106,6 +107,8 @@ export const COMMANDS = [
     },
   },
 ];
+
+export const GIT_WORDS = { estado: 'status', historial: 'log', cambios: 'diff', ramas: 'branches', guardar: 'commit', subir: 'push' };
 
 export const commandByName = (name) => COMMANDS.find((command) => command.name === String(name ?? '').toLowerCase()) ?? null;
 

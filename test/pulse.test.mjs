@@ -2736,6 +2736,9 @@ test('Git Pulse runs read-only in a git project and is unavailable elsewhere', a
     assert.equal(status.ok, true);
     assert.match(status.text, /## changes[\s\S]*\?\? b\.txt/);
     assert.match(status.text, /## last commits[\s\S]*first/);
+    // Said in Spanish, the same thing (2026-11-11).
+    assert.equal((await gitPulse.execute({ projectRoot: repo, args: ['estado'] })).text, status.text);
+    assert.match((await gitPulse.execute({ projectRoot: repo, args: ['ramas'] })).title, /branches/);
     const bad = await gitPulse.execute({ projectRoot: repo, args: ['rm'] });
     assert.equal(bad.ok, false);
     const listed = await listCommands({ projectRoot: plain });
