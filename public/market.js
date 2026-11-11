@@ -238,6 +238,9 @@ export const marketSkills = () => (Array.isArray(remote?.skills) ? remote.skills
 let skillsHere = {};
 export const setMarketSkills = (installed) => { skillsHere = installed && typeof installed === 'object' ? installed : {}; };
 export const skillHere = (id) => skillsHere[id] ?? null;
+// The skills that come with MADRE (1.1.4): already here, nothing to get.
+let skillsIncluded = [];
+export const includedSkills = () => skillsIncluded;
 // THE PAID MODULES (src/market-license.mjs): which ones this computer bought, as /api/market says
 // (never the keys), and whether one still has to be bought before it can be got.
 let bought = {};
@@ -285,6 +288,7 @@ export async function loadMarket({ toast = null, open = null } = {}) {
   setMarketCatalog(answer.catalog);
   setMarketLicensed(answer.licensed);
   setMarketSkills(answer.skills);
+  skillsIncluded = Array.isArray(answer.included) ? answer.included : [];
   if (!toast) return answer;
   const updated = answer.news ?? [];
   if (updated.length) {

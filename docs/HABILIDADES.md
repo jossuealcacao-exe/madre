@@ -32,6 +32,14 @@ Cuando te pidan una cotización:
 Arriba, entre dos líneas `---`, la cabecera. Debajo, las instrucciones: eso es lo que leerá el
 agente, tal cual, en el idioma en que lo escribas.
 
+## Las que vienen con MADRE
+
+Desde 1.1.4, MADRE trae seis para quien apenas empieza con la IA: *Explícamelo fácil*, *Mensajes y
+correos a clientes*, *Publicaciones para redes*, *Tablas y hojas de cálculo*, *Tu página, paso a
+paso* y *Resúmenes y pendientes*. Viven en la carpeta `habilidades/` de MADRE, entran solas cuando lo
+que se pide les queda, y se apagan en MÓDULOS › Habilidades; no se borran. Una tuya con el mismo
+`id` toma su lugar.
+
 ## La cabecera
 
 | Campo | Qué es |

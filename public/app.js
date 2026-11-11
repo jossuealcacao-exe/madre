@@ -18112,10 +18112,14 @@ function skillRow(skill) {
   const top = el('div', 'skill-top');
   top.append(el('b', 'skill-name', skillName(skill)));
   if (skill.origin === 'project') top.append(el('span', 'skill-tag', t('this project only')));
+  // One that comes with MADRE (1.1.4) is turned off, never removed, shared or sent.
+  const included = skill.origin === 'madre';
+  if (included) top.append(el('span', 'skill-tag', t('Comes with MADRE')));
   if (skill.version) top.append(el('span', 'skill-tag', skill.version));
   if (skill.declares?.scripts?.length) top.append(el('span', 'skill-tag warn', t('{n} program(s)', { n: skill.declares.scripts.length })));
   words.append(top);
-  words.append(el('span', 'sx-hint', skillWords(skill.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
+  // Its sentence for the person when it has one (MADRE's own do); else when it comes in.
+  words.append(el('span', 'sx-hint', skillWords(skill.line) ?? skillWords(skill.when) ?? t('It has no sentence saying when it fits, so it only ever comes in switched on.')));
   const keys = el('div', 'skill-keys');
   const choose = sxSelect(SKILL_STATES(), skill.state, (value) => void switchSkill(skill, value, 'project'), t('When this skill comes in'));
   keys.append(choose);
@@ -18133,11 +18137,11 @@ function skillRow(skill) {
     if (!response.ok) { gone.disabled = false; toast(payload.error ?? t('{name} could not be removed.', { name: skillName(skill) })); return; }
     await refreshSkills();
   }, { tone: 'danger' });
-  keys.append(gone);
+  if (!included) keys.append(gone);
   // Sending one's own: only for a skill that is the person's, never for one the Market signed.
   const share = sxButton(t('Share'), () => void shareSkillNow(skill, share), { title: t('MADRE prepares its files for you to send; it sends nothing.') });
-  keys.append(share);
-  if (!skill.market) keys.append(sxButton(t('Send to the Market'), () => openSkillSubmit(skill)));
+  if (!included) keys.append(share);
+  if (!skill.market && !included) keys.append(sxButton(t('Send to the Market'), () => openSkillSubmit(skill)));
   row.append(words, keys);
   // The word for every project, said only when this project has one of its own: otherwise it is
   // the same word twice and the row reads like a puzzle.

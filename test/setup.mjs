@@ -39,3 +39,6 @@ process.env.PULSE_TERMS ??= 'accepted';
 process.env.PULSE_LANGUAGE ??= 'en';
 const { setLanguage } = await import('../src/i18n.mjs');
 setLanguage(process.env.PULSE_LANGUAGE);
+// Nor do the skills that come with MADRE (habilidades/) join the skills a test sets up for itself;
+// test/skills-madre.test.mjs reads them on purpose.
+process.env.PULSE_MADRE_SKILLS ??= '/nonexistent-madre-skills';

@@ -74,7 +74,14 @@ export const safePath = (path) => {
   return said.split(/[\\/]/).every((part) => part && !part.startsWith('.'));
 };
 
+// Three folders, read in this order so the later one wins: the skills that come with MADRE (1.1.4,
+// D-H8: for whoever is starting out with AI), every project's, and this project's. MADRE's own are
+// never written or removed from here: a person turns one off, or keeps a copy of their own with
+// the same id, which stands in for it.
+// PULSE_MADRE_SKILLS points elsewhere (the suite points it at nothing, test/setup.mjs).
+export const MADRE_SKILLS = fileURLToPath(new URL('../habilidades', import.meta.url));
 export const skillFolders = ({ stateRoot, projectRoot }) => ({
+  madre: process.env.PULSE_MADRE_SKILLS || MADRE_SKILLS,
   user: join(stateRoot, 'habilidades'),
   project: join(projectRoot, '.madre', 'habilidades'),
 });

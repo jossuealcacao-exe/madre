@@ -15,7 +15,7 @@
 // `openProject(projectId, item)` (Home), `toast(text)` and `changed()`.
 
 import { t, language } from './i18n.js';
-import { appIcon, communityOf, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, marketSkills, moduleFace, remoteEntry, skillHere } from './market.js';
+import { appIcon, communityOf, forSale, includedSkills, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, marketSkills, moduleFace, remoteEntry, skillHere } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
 import { trazo } from './icons.js';
 
@@ -395,9 +395,10 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       return page;
     }
     const head = el('section', 'mk-head');
+    // What the Market is, in a person's words (2026-11-10, the author: «better copy of what it is»).
     head.append(el('h1', null, t('Market')), el('p', null, home
-      ? t('Modules add what MADRE does: more for your agents, less for the terminal. From Home you choose: every project, or only one.')
-      : t('Modules add what MADRE does: more for your agents, less for the terminal. What you get here is for this project.')));
+      ? t('Tools that give your AIs new things to do: see your page, check your payments, remind you of what is pending. One button turns each on, with no terminal; you choose for every project or only one.')
+      : t('Tools that give your AIs new things to do: see your page, check your payments, remind you of what is pending. One button turns each on, with no terminal; what you get here is for this project.')));
     page.append(head);
     const featured = carousel();
     if (featured) page.append(featured);
@@ -613,7 +614,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   const mine = (focusId = null) => {
     const page = el('div', 'mk-page mk-mine');
     const head = el('section', 'mk-head');
-    head.append(el('h1', null, t('Modules')), el('p', null, t('What you have on or installed, and in which projects. A change here reaches each project with its next message.')));
+    head.append(el('h1', null, t('Modules')), el('p', null, t('What you have on, and in which projects. A change here reaches each project with its next message.')));
     page.append(head);
     // Local AI and the connectors are MADRE's own, set in Settings (2026-10-28), as a project's
     // Modules leaves them out (app.js, IN_SETTINGS): not a module to turn on here.
@@ -699,12 +700,32 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const all = marketSkills();
     const one = focus ? all.find((skill) => skill.id === focus) : null;
     if (one) return skillPage(one);
-    const head = el('header', 'mk-shelf-head');
-    head.append(el('h2', null, t('Skills')), el('p', null, t('Ways of working, handed to whichever agent answers. The same one works for Codex, Claude, Gemini, OpenCode, Cursor and Grok, because MADRE is the one that writes the briefing.')));
+    // The same head as the Market's and Modules' (2026-11-10): one title size, one line under it.
+    const head = el('section', 'mk-head');
+    head.append(el('h1', null, t('Skills')), el('p', null, t('How you like things done, told to your AIs: write a message to a customer, explain something simply, tidy a sheet. One skill works the same for Codex, Claude, Gemini, OpenCode, Cursor and Grok.')));
     // Bringing over the ones your agents already keep was only at the foot of Modules, where nobody
     // looked for it (2026-11-08): the shelf of skills offers it too, where a project can take it.
     if (host.importSkills) head.append(button('mk-get mk-skill-import', t('Bring over what you already have'), () => host.importSkills()));
     page.append(head);
+    // The ones that come with MADRE (1.1.4), for whoever is starting out with AI: already on, nothing
+    // to get; each comes in when what is asked fits it, and is turned off in MODULES → Skills.
+    const mine = includedSkills();
+    if (mine.length) {
+      const shelf = el('section', 'mk-skill-shelf');
+      shelf.append(el('h3', 'mk-skill-shelf-title', t('They come with MADRE')), el('p', 'mk-skill-shelf-about', t('Already on: each one comes in by itself when what you ask fits it.')));
+      const list = el('div', 'mk-skill-list');
+      for (const skill of mine) {
+        const row = el('article', 'mk-skill-row');
+        const words = el('div', 'mk-skill-words');
+        const top = el('div', 'mk-skill-top');
+        top.append(el('b', null, skill.name), el('span', 'mk-skill-tag', t('Included')));
+        words.append(top, el('p', 'mk-skill-line', skill.line));
+        row.append(words);
+        list.append(row);
+      }
+      shelf.append(list);
+      page.append(shelf);
+    }
     if (!all.length) {
       page.append(el('p', 'mk-empty', t('None in the Market yet. You can write your own: type /habilidad in the conversation.')));
       return page;

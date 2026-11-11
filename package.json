@@ -43,6 +43,7 @@
     "!src/madre-logs.mjs",
     "!src/rumbo.mjs",
     "public",
+    "habilidades",
     "!public/assets/manual/*.pdf",
     "README.md",
     "CHANGELOG.md",

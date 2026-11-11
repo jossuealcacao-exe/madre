@@ -1869,9 +1869,9 @@ html.home-shell .mk.window .mk-bar-mid { justify-self: start; }
 
 /* Modules, as a project's Modules window: a board of tiles — the module's flat icon and its switch at
    the top, its name and how far it reaches under them, the projects as chips below. */
+/* Its head is the Market's and the Skills' (2026-11-10, the author: the three tabs read as one): the
+   same title and the same line under it, whichever tab is open. */
 html.home-shell .mk.flat .mk-mine { gap: 18px; }
-html.home-shell .mk.flat .mk-mine .mk-head h1 { font: 600 18px/1.25 var(--read); letter-spacing: -.01em; }
-html.home-shell .mk.flat .mk-mine .mk-head p { margin-top: 4px; font: 450 13px/1.45 var(--read); color: var(--text-3); }
 html.home-shell .mk.flat .mk-mine .mk-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
 html.home-shell .mk.flat .mk-mine .mk-section > h2 { grid-column: 1 / -1; margin: 4px 2px 0; font: 500 12px var(--read); letter-spacing: 0; color: var(--text-3); }
 html.home-shell .mk.flat .mk-mine .mk-card {
