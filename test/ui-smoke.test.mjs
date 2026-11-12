@@ -859,7 +859,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     assert.equal(offer.hidden, false, 'the offer did not appear');
     assert.ok(offer.classList.contains('up'), 'a raise is not drawn as a warning');
     assert.match(offer.textContent, /Parece un diagnóstico/);
-    assert.match(offer.textContent, /Subir a alto/);
+    assert.match(offer.textContent, /Subir a «A fondo»/);
     assert.deepEqual(posted[0][1], { text: 'explica por qué falla la prueba de memoria', agent: 'codex', model: null, effort: 'low', defaultEffort: 'medium', references: 0, attachments: 0, mode: 1 });
     assert.deepEqual(state.intentHint, { agent: 'codex', direction: 'raise' }, 'the chip carries no mark');
 
@@ -882,7 +882,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     registry.get('message').value = '¿dónde está definido el puerto por defecto?';
     await syncIntentOffer();
     assert.equal(offer.hidden, false);
-    assert.match(offer.textContent, /Parece una búsqueda · ALTO suele bastar para esto, pero aún no lo medí en este proyecto/);
+    assert.match(offer.textContent, /Parece una búsqueda · «A fondo» suele bastar para esto, pero aún no lo medí en este proyecto/);
     assert.match(offer.textContent, /Ahora no/);
     const measure = offer.children.find((child) => child.className === 'free-go');
     assert.equal(measure.textContent, 'Medir · 6 preguntas');
@@ -911,7 +911,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     registry.get('message').value = 'explica cómo funciona el destilador de la memoria';
     await syncIntentOffer();
     assert.equal(offer.hidden, false);
-    assert.match(offer.textContent, /Parece una explicación · MEDIO alcanzó en 14 de tus respuestas · cerca de 40% menos tokens/);
+    assert.match(offer.textContent, /Parece una explicación · «Normal» alcanzó en 14 de tus respuestas · cerca de 40% menos tokens/);
     assert.ok(offer.children.some((child) => child.className === 'intent-basis observed' && child.textContent === 'De tu uso'), 'the offer does not say it came from your use');
     assert.ok(!offer.classList.contains('up'), 'a lower level from real use is drawn as a raise');
     // With no level known to start from, it names the level and is still not a warning.
@@ -942,23 +942,23 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     await syncIntentOffer();
     assert.equal(offer.hidden, false);
     assert.equal(posted.at(-1)[1].mode, 1, 'the mode did not reach the suggestion');
-    assert.match(offer.textContent, /Parece una búsqueda\. Quizá no necesita pensarlo tanto: prueba con esfuerzo bajo solo en este mensaje\./);
+    assert.match(offer.textContent, /Parece una búsqueda\. Quizá no necesita pensarlo tanto: prueba con esfuerzo «Rápido» solo en este mensaje\./);
     assert.ok(offer.children.some((child) => child.className === 'intent-basis trial' && child.textContent === 'Solo este mensaje'), 'a try carries no badge');
     assert.ok(!offer.classList.contains('up'));
     const tryKey = offer.children.find((child) => child.className === 'free-go');
-    assert.equal(tryKey.textContent, 'Probar con esfuerzo bajo');
+    assert.equal(tryKey.textContent, 'Probar con esfuerzo «Rápido»');
     assert.equal(offer.children.find((child) => child.className === 'free-later').textContent, 'Ahora no');
     tryKey.listeners.click[0]();
     assert.deepEqual(state.effortOnce, { agent: 'codex', model: null, intent: 'lookup', effort: 'low', from: 'medium' });
     assert.equal(state.chosenEffort.codex, undefined, 'a try was remembered for every message');
     assert.ok(!String(localStorage.getItem('pulse.chosenEffort')).includes('"codex":"low"'));
-    assert.match(offer.textContent, /Este mensaje va con esfuerzo bajo\. Si la respuesta se queda corta, MADRE vuelve a medio en el siguiente\./);
+    assert.match(offer.textContent, /Este mensaje va con esfuerzo «Rápido»\. Si la respuesta se queda corta, MADRE vuelve a «Normal» en el siguiente\./);
     // Edited, still the same kind of request: the try stays.
     registry.get('message').value = '¿dónde está definido el puerto por defecto del servidor?';
     await syncIntentOffer();
     assert.equal(state.effortOnce?.effort, 'low');
-    assert.match(offer.textContent, /Este mensaje va con esfuerzo bajo/);
-    // Sent: it goes at BAJO, it is counted as a try taken, and the next message is back where it was.
+    assert.match(offer.textContent, /Este mensaje va con esfuerzo «Rápido»/);
+    // Sent: it goes at «Rápido», it is counted as a try taken, and the next message is back where it was.
     for (const listener of registry.get('composer').listeners.submit) {
       try { await listener({ preventDefault() {} }); } catch { /* the rest of the room's submit is not under test here */ }
     }
@@ -1004,10 +1004,10 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     registry.get('message').value = '¿cuál es el puerto del archivista de la sala?';
     await syncIntentOffer();
     assert.equal(offer.hidden, false);
-    assert.match(offer.textContent, /Parece una búsqueda · BAJO no alcanzó la última vez/);
+    assert.match(offer.textContent, /Parece una búsqueda · «Rápido» no alcanzó la última vez/);
     assert.ok(offer.classList.contains('up'));
     const back = offer.children.find((child) => child.className === 'free-go');
-    assert.equal(back.textContent, 'Volver a MEDIO');
+    assert.equal(back.textContent, 'Volver a «Normal»');
     back.listeners.click[0]();
     assert.equal(state.chosenEffort.codex, undefined, 'going back to the rung already in use remembered it');
     // A try taken from the CLI's own default: the way back names no rung, and the page says so
@@ -1016,7 +1016,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     registry.get('message').value = '¿cuál es el puerto del vigilante de la sala?';
     await syncIntentOffer();
     assert.equal(offer.hidden, false, 'the way back to the default was not offered');
-    assert.match(offer.textContent, /Parece una búsqueda · BAJO no alcanzó la última vez/);
+    assert.match(offer.textContent, /Parece una búsqueda · «Rápido» no alcanzó la última vez/);
     assert.equal(offer.children.find((child) => child.className === 'free-go').textContent, 'Volver al nivel predeterminado del agente');
     globalThis.fetch = suggestNow;
 
@@ -1031,7 +1031,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     const card = moduleCard(item);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const text = card.textContent;
-    for (const said of ['Lo que se midió aquí', '@codex', 'Búsqueda', 'BAJO', 'Diseño', 'medido · lo necesita', 'Cambio', 'MEDIO', 'visto en 9 respuestas', 'BAJO no fue suficiente · en pausa hasta', 'probando BAJO · 3 de 8 respuestas', 'ninguno fue suficiente las veces necesarias · 10 respuestas', 'Medir más rápido', 'proyecto con alto', 'Hay 10 preguntas listas para hacer.', 'El juez detectó 6 de 6 pruebas de control · confiable', 'Prueba rápida · 12 respuestas', 'Prueba completa · ~40 respuestas', 'Sugerencias aceptadas · 3 de 4']) {
+    for (const said of ['Lo que se midió aquí', '@codex', 'Búsqueda', '«Rápido»', 'Diseño', 'medido · lo necesita', 'Cambio', '«Normal»', 'visto en 9 respuestas', '«Rápido» no fue suficiente · en pausa hasta', 'probando «Rápido» · 3 de 8 respuestas', 'ninguno fue suficiente las veces necesarias · 10 respuestas', 'Medir más rápido', 'proyecto con «A fondo»', 'Hay 10 preguntas listas para hacer.', 'El juez detectó 6 de 6 pruebas de control · confiable', 'Prueba rápida · 12 respuestas', 'Prueba completa · ~40 respuestas', 'Sugerencias aceptadas · 3 de 4']) {
       assert.ok(text.includes(said), `the card does not say "${said}"`);
     }
     // A kind the calibration settled says so, over what real use saw; a short reply nobody sent is left out.
@@ -1068,7 +1068,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     globalThis.__pulse.openIntentsWindow(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const page = registry.get('intents-body');
-    assert.match(page.textContent, /@codex contesta cada pregunta dos veces: en MUY ALTO, el nivel que usas, y en ALTO/);
+    assert.match(page.textContent, /@codex contesta cada pregunta dos veces: en «Muy a fondo», el nivel que usas, y en «A fondo»/);
     assert.match(page.textContent, /Pregunta 3 de 6 · BÚSQUEDA/);
     const same = page.querySelectorAll('.primary').find((button) => button.textContent === 'Igual');
     assert.ok(same, 'there is no way to say the two answers are the same');
@@ -1079,7 +1079,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     view = reading({ last: { kind: 'quick', agent: 'codex', intent: 'lookup', effort: 'high', settled: 'high', ended: 'done', compared: 6, same: 6, worse: 0 } });
     globalThis.__pulse.openIntentsWindow(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.match(page.textContent, /No viste diferencia en 6 de 6 preguntas: ALTO basta para búsquedas en este proyecto/);
+    assert.match(page.textContent, /No viste diferencia en 6 de 6 preguntas: «A fondo» basta para búsquedas en este proyecto/);
     globalThis.__pulse.openIntentsWindow(false);
   } finally {
     globalThis.fetch = previous;

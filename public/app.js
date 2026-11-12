@@ -16,6 +16,7 @@ import { resay } from './resay.js';
 import { mountNotices } from './notices.js';
 import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
+import { markMission } from './missions.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
 import { MARKET_SHELVES, MODULE_ANY, MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
@@ -256,21 +257,24 @@ const MAX_ROWS = 14;
 // Permission modes: chosen per message, capped per agent in Settings › Permissions.
 // Plain names, in the reader's language (2026-10-10): what each one lets an agent do. The agents
 // themselves are told the modes by their old names (src/capabilities.mjs), which is the core's.
+// The modes by what they let the AI do, in plain words and without capitals (2026-11-11, the author:
+// «speak the people's language»; docs/private/TEXTOS-PARA-LA-GENTE.md). The number stays for whoever
+// knows it — in the list and after a #, as before — but the name no longer needs it.
 const MODES = {
-  0: { key: 'ghost', label: t('INCOGNITO'), hint: t('Incognito. Nothing is saved; it is gone when you reload the page.') },
-  1: { key: 'exchange', label: t('CHAT ONLY'), hint: t('Read the project and talk about it, and plan with other agents. Writes nothing.') },
-  2: { key: 'create', label: t('CREATE'), hint: t('Add new files where they belong in the project, and plan with other agents. Existing files stay untouched.') },
-  3: { key: 'control', label: t('EDIT'), hint: t('Edit the project itself, no approval per action, and plan with other agents. Unlock required.') },
-  4: { key: 'airlock', label: t('FULL ACCESS'), hint: t('Run commands, push, deploy, and plan with other agents. What leaves your computer cannot be undone. Confirm twice.') },
+  0: { key: 'ghost', label: t('Not saved'), hint: t('This chat is not saved: it is gone when you reload the page.') },
+  1: { key: 'exchange', label: t('Just chat'), hint: t('Reads your project and answers you, and can plan with your other AIs. It changes nothing.') },
+  2: { key: 'create', label: t('Can create'), hint: t('Makes new files where they belong in your project. The ones you already have are not touched.') },
+  3: { key: 'control', label: t('Can edit'), hint: t('Changes your files without asking you each time. Undo puts them back. It asks you to confirm before turning on.') },
+  4: { key: 'airlock', label: t('Full access'), hint: t('On top of editing, it installs programs, runs commands and can publish online. What leaves your computer cannot be undone, so it asks you twice.') },
 };
 // What each mode lets, in one short line: the chat shell's list says it under the name (2026-10-27).
 // The long hints above stay for the tooltips and the old layout.
 const MODE_BRIEF = {
-  0: t('Nothing is saved.'),
-  1: t('Reads and talks; writes nothing.'),
-  2: t('Adds new files; changes none.'),
-  3: t('Edits the project without asking.'),
-  4: t('Runs commands, pushes and deploys.'),
+  0: t('This chat is not saved.'),
+  1: t('Reads your project and answers. Changes nothing.'),
+  2: t('Makes new files. Leaves yours alone.'),
+  3: t('Changes your files without asking each time. Undo puts them back.'),
+  4: t('Also installs programs and publishes online.'),
 };
 
 // A sign-in in flight. Claude's CLI opens a page and then waits to be told the code that page
@@ -4135,7 +4139,7 @@ function renderPicker() {
     modeChip.type = 'button';
     // And a short word for a box too narrow for the whole one (Q-17, 2026-11-06): «#1» alone told
     // someone new nothing on a phone.
-    modeChip.append(el('b', null, `#${shown}`), el('span', 'word', sentence(MODES[shown].label)), el('span', 'nick', MODE_NICKS[shown]?.() ?? ''), chevron());
+    modeChip.append(el('span', 'word', sentence(MODES[shown].label)), el('span', 'nick', MODE_NICKS[shown]?.() ?? ''), chevron());
     modeChip.title = state.typedPending
       ? t('#{n} {label} is written in the message: you will be asked to confirm it when you send it.', { n: shown, label: sentence(MODES[shown].label) })
       : t('Permission mode for this message · {hint}', { hint: MODES[state.mode].hint });
@@ -4163,7 +4167,7 @@ function renderPicker() {
     if (!current.local && (choices === null || choices.length)) {
       const modelChip = el('button', 'model-chip');
       // And its nickname (opus, sol, astra) for a box too narrow for the whole name (styles.css).
-      modelChip.append(el('span', 'word', chosen ?? t('default model')), el('span', 'nick', modelNick(chosen ?? state.models[current.id]?.default) ?? t('default')), chevron());
+      modelChip.append(el('span', 'word', chosen ?? t('Recommended model')), el('span', 'nick', modelNick(chosen ?? state.models[current.id]?.default) ?? t('default')), chevron());
       modelChip.type = 'button';
       modelChip.title = t('Choose the model for this agent');
       modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
@@ -4426,14 +4430,14 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 // dimmed when MADRE can read it (Codex's config.toml), so the human sees what they will get
 // without having chosen it.
 const EFFORT_WORDS = {
-  none: { label: 'None', hint: 'No reasoning: it answers straight away. For the simplest requests.', brief: 'Answers at once.' },
-  minimal: { label: 'Minimal', hint: 'Answers almost at once. For lookups and one-line edits.', brief: 'For lookups and one-line edits.' },
-  low: { label: 'Low', hint: 'Quick and light. For clear, contained requests.', brief: 'Quick, for clear requests.' },
-  medium: { label: 'Medium', hint: 'The everyday balance of speed and depth.', brief: 'Balances speed and depth.' },
-  high: { label: 'High', hint: 'Thinks it through. For design calls and tricky bugs.', brief: 'For design and tricky bugs.' },
-  xhigh: { label: 'Extra high', hint: 'Longer reasoning for hard, multi-step problems.', brief: 'For long, hard problems.' },
-  max: { label: 'Max', hint: 'Everything it has. The slowest and the most expensive.', brief: 'All it has; slowest and costliest.' },
-  ultra: { label: 'Ultra', hint: 'Its deepest reasoning, and it hands parts of the task out on its own.', brief: 'Deepest; splits the task itself.' },
+  none: { label: 'Instant', hint: 'No reasoning: it answers straight away. For the simplest requests.', brief: 'Answers at once.' },
+  minimal: { label: 'Very quick', hint: 'Answers almost at once. For lookups and one-line edits.', brief: 'For lookups and one-line edits.' },
+  low: { label: 'Fast', hint: 'Quick and light. For clear, contained requests.', brief: 'Quick, for clear requests.' },
+  medium: { label: 'Normal', hint: 'The everyday balance of speed and depth.', brief: 'Balances speed and depth.' },
+  high: { label: 'Thorough', hint: 'Thinks it through. For design calls and tricky bugs.', brief: 'For design and tricky bugs.' },
+  xhigh: { label: 'Very thorough', hint: 'Longer reasoning for hard, multi-step problems.', brief: 'For long, hard problems.' },
+  max: { label: 'Maximum', hint: 'Everything it has. The slowest and the most expensive.', brief: 'All it has; slowest and costliest.' },
+  ultra: { label: 'Full power', hint: 'Its deepest reasoning, and it hands parts of the task out on its own.', brief: 'Full power; it splits the task itself.' },
 };
 const effortMenu = el('div', 'model-menu effort-menu');
 effortMenu.hidden = true;
@@ -4478,6 +4482,9 @@ function effortMeter(levels, level, { ghost = false } = {}) {
 }
 
 function effortLabel(level) { return t(EFFORT_WORDS[level]?.label ?? level); }
+// A level inside a sentence, quoted as it is named (2026-11-11): «Thorough», never «THOROUGH» or
+// «thorough» — the names are words people say, and «raise to a fondo» read as nonsense.
+const effortSaid = (level) => `«${effortLabel(level)}»`;
 
 function renderEffortChip(id) {
   if (!state.efforts[id]) { ensureEfforts(); return null; }
@@ -4489,7 +4496,7 @@ function renderEffortChip(id) {
   const shown = chosen ?? info.default;
   const chip = el('button', `effort-chip${chosen ? ' set' : ''}${once ? ' once' : ''}${shown === info.levels.at(-1) ? ' peak' : ''}`);
   chip.type = 'button';
-  chip.append(effortMeter(info.levels, shown, { ghost: !chosen }), el('span', 'word', chosen ? effortLabel(chosen) : t('effort')));
+  chip.append(effortMeter(info.levels, shown, { ghost: !chosen }), el('span', 'word', chosen ? effortLabel(chosen) : t('How hard it thinks')));
   // Intenciones has something to say about this agent's rung: the arrow says which way, the offer
   // under the box says why.
   if (state.intentHint?.agent === id) chip.append(el('span', `intent-mark${state.intentHint.direction === 'raise' ? ' up' : ''}`, state.intentHint.direction === 'raise' ? '↑' : '↓'));
@@ -5157,7 +5164,7 @@ function openOverride(id, { raise = false, mode = 3, then = null, cancelled = nu
   override.preserveComposer = preserveComposer;
   override.key = overrideKeyFor(mode);
   askOverrideKey(overrideStage(override.key));
-  override.title.textContent = override.copilot ? t('Turn the copilot on for {time}', { time: copilotWindowWords(override.copilot) }) : mode === 4 ? t('Open #4 FULL ACCESS for @{agent}', { agent: id }) : t('Unlock #3 EDIT for @{agent}', { agent: id });
+  override.title.textContent = override.copilot ? t('Turn the copilot on for {time}', { time: copilotWindowWords(override.copilot) }) : mode === 4 ? t('Give @{agent} full access?', { agent: id }) : t('Let @{agent} change your files?', { agent: id });
   override.arm.textContent = override.copilot ? t('Turn on') : mode === 4 ? t('Open') : t('Unlock');
   override.dialog.classList.toggle('m4', mode === 4);
   if (mode === 4) {
@@ -5380,10 +5387,10 @@ function ahpCard({ talking = false } = {}) {
   for (const words of [
     // Said as what the person gains (2026-10-30), not as what it stores.
     t('Your project remembers where it left off: what was decided, what is pending and what was already tried, kept beside your code.'),
-    t('Change agent, editor or computer, and the next one picks up the thread on its own, without you explaining everything again.'),
+    t('Switch AI, app or computer, and the next one picks up the thread on its own, without you explaining everything again.'),
     t('It works in MADRE and outside it: Claude Code, Codex and OpenCode read it on their own.'),
   ]) gains.append(el('li', null, words));
-  const note = el('p', 'empty-suggest-note', t('It needs a project with git and at least one saved version. Before you install it, Modules shows you everything it writes.'));
+  const note = el('p', 'empty-suggest-note', t('It works in projects that keep a version history (git). Before you install it, you see everything it writes.'));
   const acts = el('div', 'empty-suggest-acts');
   const open = el('button', 'empty-suggest-open', t('See it in Modules'));
   open.type = 'button';
@@ -5715,7 +5722,7 @@ const subMark = (one) => {
   else mark.innerHTML = one.status === 'failed' ? SUB_FAILED : SUB_DONE; // trusted: our own SVG strings
   return mark;
 };
-const subMode = (mode) => (Number.isInteger(mode) && MODES[mode] ? sentence(`#${mode} ${MODES[mode].label}`) : '');
+const subMode = (mode) => (Number.isInteger(mode) && MODES[mode] ? sentence(MODES[mode].label) : '');
 // What one subagent did, in full: its task, what it did, what it reported, the files it changed.
 function subDetail(one, mode) {
   const item = el('div', 'sub-item');
@@ -5971,8 +5978,8 @@ function renderUserMessage(event) {
     }
   }
   const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
-  if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, sentence(`#${shownMode} ${MODES[shownMode].label}`)));
-  if (ash?.active) who.append(el('span', 'badge ash', t('Token saver')));
+  if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, sentence(MODES[shownMode].label)));
+  if (ash?.active) who.append(el('span', 'badge ash', t('Short answers')));
   if (event.payload.copilot) who.append(el('span', 'badge copilot', t('COPILOT')));
   col.append(who);
   // Sent to several at once, the names at its start are already said after the arrow.
@@ -5998,7 +6005,7 @@ function renderUserMessage(event) {
   if (attachments.length) bubble.append(fileTiles(attachments));
   col.append(bubble);
   const stamp = paint(el('div', 'stamp'), target);
-  stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}${effort ? ` · ${effortLabel(effort).toLowerCase()}` : ''}`));
+  stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}${effort ? ` · ${effortSaid(effort)}` : ''}`));
   stamp.append(el('span', null, formatTime(event.timestamp)));
   if (reviewed) stamp.append(el('span', null, t('acknowledged, human')));
   col.append(stamp);
@@ -6040,10 +6047,10 @@ function renderAssistantMessage(event) {
     }
     if (status === 'handoff') who.append(el('span', 'badge', t('handoff note')));
     if (model) who.append(el('span', 'badge model', model));
-    if (effort) who.append(el('span', 'badge model effort', t('effort {level}', { level: effortLabel(effort).toLowerCase() })));
-    if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, sentence(`#${mode} ${MODES[mode].label}`)));
+    if (effort) who.append(el('span', 'badge model effort', effortLabel(effort)));
+    if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, sentence(MODES[mode].label)));
     if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
-    if (ash?.active) who.append(el('span', 'badge ash', t('Token saver')));
+    if (ash?.active) who.append(el('span', 'badge ash', t('Short answers')));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${briefQuestion(question.text)}`);
@@ -6501,7 +6508,8 @@ function settleReading(event) {
   // from the cache is money not spent, so it is the part worth naming.
   const brief = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
   badge.textContent = `${brief(cost.input)}↓ ${brief(cost.output)}↑`;
-  badge.title = t("Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.", { input: cost.input.toLocaleString(), output: cost.output.toLocaleString(), cached: cost.cached ? t('. Another {n} were read back from its own cache instead of being charged again', { n: cost.cached.toLocaleString() }) : '' });
+  // What a newcomer reads first (2026-11-11): what the figure is, in words; the detail follows.
+  badge.title = `${t('What this answer used')} · ` + t("Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.", { input: cost.input.toLocaleString(), output: cost.output.toLocaleString(), cached: cost.cached ? t('. Another {n} were read back from its own cache instead of being charged again', { n: cost.cached.toLocaleString() }) : '' });
   // Ash is a property of the turn, not of the room right now: the mark belongs on the reply it
   // applied to, and stays true when the switch changes later.
   badge.classList.toggle('ash', cost.ash === true);
@@ -7443,7 +7451,7 @@ function renderControlStarted(event) {
   return node;
 }
 function renderControlChanged(event) {
-  const { agent, checkpointId, files = [], stat, forbiddenReverted = [], message, unreadable = null, outsideRestore = [], outsideCreated = [], outsideModified = [] } = event.payload;
+  const { agent, checkpointId, files = [], stat, forbiddenReverted = [], unreadable = null, outsideRestore = [], outsideCreated = [], outsideModified = [] } = event.payload;
   const node = el('div', `system control changed${files.length || unreadable || outsideRestore.length || outsideCreated.length ? '' : ' quiet'}`);
   node.id = `control-${checkpointId}`;
   tint(node, agent);
@@ -7466,7 +7474,6 @@ function renderControlChanged(event) {
     }
     if (files.length > 40) list.append(el('li', null, t('… and {n} more', { n: files.length - 40 })));
     node.append(list);
-    if (stat) { const pre = el('pre', 'stat', statWords(stat.split('\n').slice(-1)[0])); pre.title = stat; node.append(pre); }
   }
   if (forbiddenReverted.length) node.append(el('div', 'forbidden', t('{n} writes into forbidden zones reverted: {where}', { n: forbiddenReverted.length, where: forbiddenReverted.join(', ') })));
   // Written where git does not look (L-5, L-5b): newly created files in light ignored folders
@@ -7477,6 +7484,9 @@ function renderControlChanged(event) {
   const left = outsideRestore.filter((path) => !outsideCreated.includes(path));
   const leftShown = left.length ? left : outsideModified;
   if (leftShown.length) node.append(el('div', 'forbidden', t('Outside the restore point, because git ignores them; UNDO does not bring them back: {where}', { where: leftShown.slice(0, 8).join(', ') + (leftShown.length > 8 ? ', …' : '') })));
+  // The foot (2026-11-12, the author: «too tight, badly ordered»): UNDO on the left, how much
+  // changed on the right, in one line under the files instead of three centred lines.
+  const foot = el('div', 'foot');
   if (files.length || unreadable || outsideCreated.length) {
     const undo = el('button', 'undo', t('UNDO · GO BACK TO THE RESTORE POINT'));
     undo.type = 'button';
@@ -7490,9 +7500,11 @@ function renderControlChanged(event) {
         undo.textContent = t('RESTORED');
       } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); undo.disabled = false; }
     });
-    node.append(undo);
+    foot.append(undo);
   }
-  node.title = message;
+  if (files.length && stat) foot.append(el('span', 'stat', statWords(stat.split('\n').slice(-1)[0])));
+  if (foot.childElementCount) node.append(foot);
+  // Its words are on the card: no tip repeating them (the server's sentence was in English).
   state.lastSender = null;
   return node;
 }
@@ -7501,7 +7513,8 @@ function renderControlReverted(event) {
   const node = el('div', 'system control reverted');
   tint(node, agent);
   const { command } = event.payload;
-  node.append(el('b', null, command ? '/run' : sentence(t('EDIT'))), command
+  const created = document.getElementById(`control-${checkpointId}`)?.classList.contains('artifacts');
+  node.append(el('b', null, command ? '/run' : created ? sentence(t('CREATE')) : sentence(t('EDIT'))), command
     ? t('project restored to the restore point before the command · {restored} restored · {removed} removed', { restored: restored.length, removed: removed.length })
     : t("project restored to the restore point before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
   node.title = message;
@@ -7652,7 +7665,28 @@ function attachArtifacts(event) {
   if (!bubble || bubble.querySelector('.artifacts')) return;
   // Above the reply's foot, with the rest of what it says.
   const foot = bubble.querySelector('.bubble-foot');
-  if (foot && foot.parentNode === bubble && typeof bubble.insertBefore === 'function') bubble.insertBefore(artifactTiles(files), foot); else bubble.append(artifactTiles(files));
+  const tiles = artifactTiles(files);
+  // What a CREATE turn made can be taken away with its restore point (2026-11-11): only EDIT had
+  // UNDO, so «nothing breaks for good» was not true of a file it created. Once undone, the key says
+  // so (renderControlReverted finds it by the restore point's id).
+  const { checkpointId = null } = event.payload;
+  if (checkpointId && files.length) {
+    tiles.id = `control-${checkpointId}`;
+    const undo = el('button', 'undo', t('Undo · remove what it created'));
+    undo.type = 'button';
+    undo.title = t('Puts your project back as it was before this answer.');
+    undo.addEventListener('click', async () => {
+      undo.disabled = true;
+      try {
+        const response = await fetch(`/api/control/${checkpointId}/undo`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        undo.textContent = t('RESTORED');
+      } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); undo.disabled = false; }
+    });
+    tiles.append(undo);
+  }
+  if (foot && foot.parentNode === bubble && typeof bubble.insertBefore === 'function') bubble.insertBefore(tiles, foot); else bubble.append(tiles);
   // Something new exists in the project: show it, so the human sees what
   // changed and can quote lines back to an agent. Live events only.
   if (!replaying && files.length && !viewer.dialog.open) {
@@ -8304,7 +8338,7 @@ function renderBishopOrder(event, relayed) {
   if (relayed.kind === 'order') who.append(el('span', 'badge', relayed.auto
     ? t('order {step} of {total} · sent on its own from Home, in the mode you chose', { step: relayed.step, total: relayed.total })
     : t('order {step} of {total} · you sent it from Home', { step: relayed.step, total: relayed.total })));
-  if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
+  if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, sentence(MODES[mode].label)));
   col.append(who);
   const bubble = el('div', 'bubble');
   bubble.append(renderMarkdown(relayed.body));
@@ -8743,6 +8777,22 @@ function tidySystemLine(node) {
   return node;
 }
 
+// THE FIRST WEEK'S MISSIONS, seen happening in the room (missions.js): a page made, the same question
+// to two AIs (one batch, `together`, reaching a second agent), an answer from @madre. Undo and the
+// files are told by their own events below. Live events only: a conversation read back is no news.
+const missionBatches = new Map();
+function missionSeen(event) {
+  const said = event.payload ?? {};
+  if (said.role === 'user' && said.together) {
+    const seen = (missionBatches.get(said.together) ?? 0) + 1;
+    missionBatches.set(said.together, seen);
+    if (seen >= 2) void markMission('two-ais', { say: toast });
+  }
+  if (said.role !== 'user' && said.sender === 'madre') void markMission('local-ai', { say: toast });
+}
+function missionFiles(files) {
+  if ((files ?? []).some((file) => /\.html?$/i.test(String(file?.path ?? file ?? '')))) void markMission('page', { say: toast });
+}
 function renderEvent(event) {
   if (state.seen.has(event.id)) return;
   liveWatcher?.(event);
@@ -8813,6 +8863,7 @@ function renderEventNode(event) {
       return;
     case 'message.created':
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
+      if (!replaying) missionSeen(event);
       if (event.payload.role === 'user' && event.payload.sender === 'you') markChoiceAnswered(event.payload.text);
       if (event.payload.role !== 'user') attachCrossReads(event.payload.messageId, node);
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
@@ -8856,7 +8907,7 @@ function renderEventNode(event) {
       return;
     }
     case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { treeFollowWrites(); void notesAfterTurn(); offerAhpInConversation(); } return;
-    case 'files.touched': markTouched(event.payload.agent, event.payload.files, event.timestamp); if (!replaying) treeFollowWrites(); return;
+    case 'files.touched': markTouched(event.payload.agent, event.payload.files, event.timestamp); if (!replaying) { treeFollowWrites(); missionFiles(event.payload.files); } return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'memory.distilled': node = renderDistilled(event); break;
@@ -8989,11 +9040,11 @@ function renderEventNode(event) {
     case 'bishop.answer': node = renderBishopAnswer(event); break;
     case 'create.missing': node = renderCreateMissing(event); break;
     case 'control.changed': markTouched(event.payload.agent, event.payload.files, event.timestamp); node = renderControlChanged(event); if (!replaying) { ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); } break;
-    case 'control.reverted': node = renderControlReverted(event); if (!replaying) treeFollowWrites(); break;
+    case 'control.reverted': node = renderControlReverted(event); if (!replaying) { treeFollowWrites(); void markMission('undo', { say: toast }); } break;
     case 'mode.granted':
     case 'mode.denied': settleModeRequest(event); return;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
-    case 'artifacts.created': markTouched(event.payload.agent, event.payload.files, event.timestamp); attachArtifacts(event); if (!replaying) { ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); } return;
+    case 'artifacts.created': markTouched(event.payload.agent, event.payload.files, event.timestamp); attachArtifacts(event); if (!replaying) { missionFiles(event.payload.files); ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); } return;
     case 'command.output': {
       const run = event.payload.run;
       if (run) markTouched(run.agent, [...(run.files ?? []), ...(run.touched ?? [])], event.timestamp);
@@ -9061,8 +9112,15 @@ function scheduleFold(node, tries = 0) {
     foldNotice(node);
   }, tries ? 10000 : NOTICE_FOLD_MS);
 }
+// Its words with a space between its parts: textContent ran «Editar», «@claude» and «cambió 1
+// archivo» together as «Editar@claudecambió 1 archivo» (2026-11-12).
+function spacedText(node) {
+  let said = '';
+  for (const child of node.childNodes ?? []) said += child.nodeType === 3 ? child.data : child.nodeType === 1 ? ` ${spacedText(child)} ` : '';
+  return said;
+}
 function noticeWords(node) {
-  return node.textContent.replace(/\s+/g, ' ').trim().slice(0, 220);
+  return spacedText(node).replace(/\s+/g, ' ').replace(/\s+([,.:;])/g, '$1').trim().slice(0, 220);
 }
 function foldNotice(node, { quiet = false } = {}) {
   if (!node.isConnected || node.classList.contains('folded') || !foldableNotice(node)) return;
@@ -9080,7 +9138,8 @@ function foldNotice(node, { quiet = false } = {}) {
     node.classList.toggle('quiet', quiet);
     node.classList.add('folded');
     node.dataset.tone = noticeTone(node);
-    node.title = noticeWords(node);
+    // The row says what it holds (countStrip); a tip on the notice too was a second one over it.
+    node.removeAttribute('title');
     countStrip(strip);
   };
   if (quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
@@ -9490,7 +9549,7 @@ function lookPreview(draft) {
   const agent = paint(el('article', 'row assistant'), 'codex');
   const col = el('div', 'col');
   const who = el('div', 'who');
-  who.append(el('span', null, 'CODEX'), el('span', 'badge mode m2', sentence(`#2 ${MODES[2].label}`)), el('span', 'badge ash', t('Token saver')));
+  who.append(el('span', null, 'CODEX'), el('span', 'badge mode m2', sentence(`#2 ${MODES[2].label}`)), el('span', 'badge ash', t('Short answers')));
   const bubble = el('div', 'bubble');
   const words = el('p');
   words.append(t('The project keeps what you decide. '), el('b', null, t('Bold reads like this')), ' · ', el('code', null, 'npm test'));
@@ -9876,24 +9935,25 @@ function settingsStatus(id) {
     const here = data.agents.filter((agent) => agent.detected);
     const on = here.filter((agent) => data.sessions?.[agent.id]?.state === 'signed-in');
     const off = here.filter((agent) => data.sessions?.[agent.id]?.state === 'signed-out');
-    return { line: t('{n} of {total} signed in', { n: on.length, total: here.length }), warn: off.length ? t('{agents} without a session', { agents: off.map((agent) => agent.label).join(', ') }) : null };
+    return { line: t('{n} of {total} connected', { n: on.length, total: here.length }), warn: off.length ? t('{agents} not connected', { agents: off.map((agent) => agent.label).join(', ') }) : null };
   }
   if (id === 'memory') {
     const mem = data.settings.memory;
     if (!mem) return { line: t('This project has no memory yet') };
-    const who = mem.archivist === 'auto' || !mem.archivist ? t('the cheapest agent') : `@${mem.archivist}`;
+    const who = mem.archivist === 'auto' || !mem.archivist ? t('the AI that costs least') : `@${mem.archivist}`;
     // Who writes the notes and how they are found, in words (1.1): «search: AUTO» told nobody anything.
     const how = { ollama: t('with the AI on your computer'), gemini: t('with Gemini'), off: t('by exact words') }[mem.embedProvider] ?? t('the best way available');
-    return { line: t('Notes by {who} · found {how}', { who, how }) };
+    return { line: t('{who} takes the notes · they are found {how}', { who, how }) };
   }
   if (id === 'permissions') {
     const config = data.settings.override ?? OVERRIDE_DEFAULT;
-    return { line: `#3 ${OVERRIDE_KEY_WORDS[config.keys[3]]().toLowerCase()} · #4 ${OVERRIDE_KEY_WORDS[config.keys[4]]().toLowerCase()}` };
+    // By the modes' names, not their numbers (2026-11-11).
+    return { line: `${sentence(MODES[3].label)}: ${OVERRIDE_KEY_WORDS[config.keys[3]]().toLowerCase()} · ${sentence(MODES[4].label)}: ${OVERRIDE_KEY_WORDS[config.keys[4]]().toLowerCase()}` };
   }
   if (id === 'privacy') {
     const priv = data.settings.privacy;
     if (!priv) return { line: t('Reading…') };
-    return { line: `${priv.terms.length ? t('{n} hidden data items', { n: priv.terms.length }) : t('No hidden data')} · ${priv.secrets !== false ? t('keys hidden') : t('keys visible')}` };
+    return { line: `${priv.terms.length ? t('{n} words you hide', { n: priv.terms.length }) : t('You hide no words of your own')} · ${priv.secrets !== false ? t('your keys stay hidden') : t('your keys are visible')}` };
   }
   if (id === 'release') {
     const info = updateUI.info;
@@ -11172,7 +11232,7 @@ function saidGaveWay(one) {
   try { seen = JSON.parse(localStorage.getItem(LAYOUT_HINTS) ?? '{}') ?? {}; } catch { /* no storage */ }
   if (seen.gaveWay) return;
   try { localStorage.setItem(LAYOUT_HINTS, JSON.stringify({ ...seen, gaveWay: true })); } catch { /* a private window hears it every time */ }
-  const what = { chats: t('Conversations'), tree: t('Files'), viewer: t('The viewer'), modules: t('MODULES'), mother: t('Diagnostics') }[one.surface?.key ?? one.key]
+  const what = { chats: t('Conversations'), tree: t('Files'), viewer: t('The viewer'), modules: t('MODULES'), mother: t('Help') }[one.surface?.key ?? one.key]
     ?? (one.kind === 'dock' ? t('The browser') : t('The second conversation'));
   sayWhenQuiet(() => toast(t('{what} moved to a window so the conversation stays readable. Its split button puts it back beside.', { what }), { tone: 'note' }));
 }
@@ -13686,7 +13746,7 @@ const FIRST_STEPS = [
   { id: 'ask', title: t('Ask your first question'), how: t('Write in the box. With @ you choose who answers.'), show: () => stepsWrite('@') },
   { id: 'team', title: t('Ask the agents for something together'), how: t('Ask one agent for something for everyone: it draws up a plan and hands the steps to the others.'), show: () => stepsWrite(`@${els.target?.value || 'claude'} ${t('ask each agent to introduce itself in one line')}`) },
   { id: 'mother', title: t('Open Diagnostics'), how: t('When something fails, write the symptom there: it says what is going on and how to fix it.'), show: () => openMother() },
-  { id: 'beside', title: t('Open a second conversation'), how: t('From the conversations panel, beside this one or as a window. Both keep working.'), show: () => { const button = document.querySelector('#chats-button'); if (button?.getAttribute('aria-pressed') !== 'true') button?.click(); } },
+  { id: 'beside', title: t('Open a second conversation'), how: t('From the conversations panel, beside this one or as a window. Both keep working.'), show: () => { void stepsBeside(); } },
   { id: 'bar', title: t('Make the bar yours'), how: t('Right-click any key of the bar: choose what is on it and in which order.'), show: () => barEdit(true) },
   { id: 'module', title: t('Open a module'), how: t('Optional powers for this project, like GitHub or a local model. Nothing is installed until you ask.'), show: () => document.querySelector('#modules-button')?.click() },
 ];
@@ -13717,6 +13777,30 @@ function stepsWrite(text) {
   els.input.focus();
   els.input.setSelectionRange?.(els.input.value.length, els.input.value.length);
   els.input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+// «Show me» on the second conversation opens one beside this (2026-11-12, the author: it did not):
+// it only pressed the conversations key, which in the chat layout is already open, so nothing
+// happened. Another conversation goes in the right half; with none, a new one is started here and
+// the one you were in goes beside it. Too narrow for two, the panel opens where they are.
+async function stepsBeside() {
+  stepsClose();
+  const panel = () => { const button = document.querySelector('#chats-button'); if (button?.getAttribute('aria-pressed') !== 'true') button?.click(); };
+  if (SPLIT_CHAT || state.device || !split.box || (window.innerWidth ?? Infinity) < SPLIT_MIN_PX) { panel(); return; }
+  // Asked of the room each time: the page may not know yet which conversation is the open one.
+  await loadChats();
+  const other = chats.list.find((chat) => chat.id !== chats.active && chat.id !== split.chat);
+  if (other) { openSplit(other.id); return; }
+  const before = chats.active;
+  if (!before || !els.chatsNew) { panel(); return; }
+  // Starting one may load the page again (a conversation already started has no blank page to
+  // hand): the split is remembered first, so the reload opens it beside (see the end of this file).
+  try { localStorage.setItem('pulse.split', before); } catch { /* no storage: the reload opens one */ }
+  els.chatsNew.click();
+  // Its key is off while the new one is started and painted, and on again once it is there.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  for (let tries = 0; tries < 60 && els.chatsNew.disabled; tries += 1) await new Promise((resolve) => setTimeout(resolve, 150));
+  await loadChats();
+  if (chats.active && chats.active !== before) openSplit(before);
 }
 function stepDone(id) {
   if (!stepsActive() || steps.record.done.includes(id) || !FIRST_STEPS.some((step) => step.id === id)) return;
@@ -14414,11 +14498,11 @@ function declineTry(said) {
 // Why, in one line: what the request looks like, and what was seen or what gave it away.
 function intentReason(said) {
   // A way back to the CLI's own default names no rung (D-4): reading one here broke the page.
-  const level = said.effort ? effortLabel(said.effort).toUpperCase() : null;
+  const level = said.effort ? effortSaid(said.effort) : null;
   const what = t('Looks like {what}', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation') });
   if (said.basis === 'measured' && said.measured?.needsReference) return `${what} · ${t('below {level} it fell short in {n} measured cases', { level, n: said.measured.n })}`;
   // A try that fell short: the next one of its kind offers the way back, once.
-  if (said.basis === 'tried') return `${what} · ${t('{level} fell short last time', { level: effortLabel(said.tried?.effort).toUpperCase() })}`;
+  if (said.basis === 'tried') return `${what} · ${t('{level} fell short last time', { level: effortSaid(said.tried?.effort) })}`;
   const saving = said.saving > 0 ? ` · ${t('about {pct}% fewer tokens', { pct: Math.round(said.saving * 100) })}` : '';
   if (said.basis === 'measured') return `${what} · ${t('{level} was enough in {n} measured cases', { level, n: said.measured.n })}${saving}`;
   // Learned from the human's own turns: how many times this rung was enough for this kind of request.
@@ -14427,14 +14511,14 @@ function intentReason(said) {
   if (said.signals.includes('heavy')) return `${what} · ${t('there is a lot to read')}`;
   if (said.signals.includes('asked-deep')) return `${what} · ${t('you asked for it to be thought through')}`;
   // With no rung known to start from (the CLI never said its default), the level is named, not compared.
-  if (!said.from) return `${what} · ${t('{level} usually suits it', { level: effortLabel(said.effort).toUpperCase() })}`;
-  return `${what} · ${t('{level} is usually too light for it', { level: effortLabel(said.from).toUpperCase() })}`;
+  if (!said.from) return `${what} · ${t('{level} usually suits it', { level: effortSaid(said.effort) })}`;
+  return `${what} · ${t('{level} is usually too light for it', { level: effortSaid(said.from) })}`;
 }
 
 // An invitation is not advice: the rule thinks a lower rung would do, nobody has measured it here,
 // so what is offered is the measuring. Six real questions from this project, the human judging.
 function paintIntentInvite(box, said) {
-  const level = effortLabel(said.effort).toUpperCase();
+  const level = effortSaid(said.effort);
   box.replaceChildren();
   box.classList.remove('up');
   box.append(el('span', 'free-what', `${t('Looks like {what}', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation') })} · ${t('{level} is usually enough for it, but it has not been measured in this project yet', { level })}`));
@@ -14463,17 +14547,17 @@ function paintIntentInvite(box, said) {
 // see is to run this one message at it. Taken, it applies to this message only; the next one goes
 // at the rung chosen before, and the observation says how it went.
 function paintIntentTry(box, said) {
-  const level = effortLabel(said.effort);
+  const level = effortSaid(said.effort);
   box.replaceChildren();
   box.classList.remove('up');
   // Said as a person would (2026-11-10, the author: «clearer, we build for people»).
-  box.append(el('span', 'free-what', t('This looks like {what}. It may not need so much thinking: try {level} effort on this message only. It answers sooner and spends less.', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation'), level: level.toLowerCase() })));
+  box.append(el('span', 'free-what', t('This looks like {what}. It may not need so much thinking: try {level} effort on this message only. It answers sooner and spends less.', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation'), level })));
   box.append(el('span', 'intent-basis trial', t('Only this message')));
   const later = el('button', 'free-later', t('Not now'));
   later.type = 'button';
   // Declined, it still went out with this message: counted as a try shown and not taken.
   later.addEventListener('click', () => { declineTry(said); hideIntentOffer(); els.input.focus(); });
-  const go = el('button', 'free-go', t('Try {level} effort', { level: level.toLowerCase() }));
+  const go = el('button', 'free-go', t('Try {level} effort', { level }));
   go.type = 'button';
   go.addEventListener('click', () => {
     state.effortOnce = { agent: said.agent, model: said.model ?? null, intent: said.intent, effort: said.effort, from: said.from ?? null };
@@ -14490,11 +14574,11 @@ function paintIntentTry(box, said) {
 
 // The try taken, until the message leaves: which rung this one goes at and what happens next.
 function paintIntentTried(box, once) {
-  const level = effortLabel(once.effort).toLowerCase();
+  const level = effortSaid(once.effort);
   box.replaceChildren();
   box.classList.remove('up');
   box.append(el('span', 'free-what', once.from
-    ? t('This message goes with {level} effort. If the answer falls short, MADRE goes back to {from} on the next one.', { level, from: effortLabel(once.from).toLowerCase() })
+    ? t('This message goes with {level} effort. If the answer falls short, MADRE goes back to {from} on the next one.', { level, from: effortSaid(once.from) })
     : t('This message goes with {level} effort. If the answer falls short, MADRE goes back to the agent\'s usual effort on the next one.', { level })));
   box.append(el('span', 'intent-basis trial', t('Only this message')));
   const undo = el('button', 'free-later', t('Undo'));
@@ -14537,10 +14621,10 @@ function paintIntentAdvice(box, said) {
   if (said.basis === 'measured') box.append(el('span', 'intent-basis', askWords(t('MEASURED'))));
   if (said.basis === 'observed') box.append(el('span', 'intent-basis observed', t('From your use')));
   if (said.basis === 'tried') box.append(el('span', 'intent-basis trial', t('Tried before')));
-  const level = said.effort ? effortLabel(said.effort).toUpperCase() : null;
+  const level = said.effort ? effortSaid(said.effort) : null;
   const words = said.basis === 'tried'
     ? (level ? t('Back to {level}', { level }) : t('Back to the CLI default'))
-    : askWords(raise ? t('RAISE TO {level}', { level }) : t('USE {level}', { level }));
+    : (raise ? t('Raise to {level}', { level }) : t('Use {level}', { level }));
   const go = el('button', 'free-go', words);
   go.type = 'button';
   go.addEventListener('click', () => {
@@ -15122,7 +15206,7 @@ function updatePlaceholder() {
 function setAsh(on, { wink = false } = {}) {
   state.ash = on;
   els.ashToggle.setAttribute('aria-pressed', String(on));
-  els.ashToggle.textContent = t('Token saver');
+  els.ashToggle.textContent = t('Short answers');
   els.composer.classList.toggle('ash-on', on);
   updateCrewLabel();
   updatePlaceholder();
@@ -17480,14 +17564,14 @@ async function paintIntents(box) {
       const below = trial && row.rung && ladder.indexOf(row.rung) <= ladder.indexOf(trial.effort);
       if (trial?.status === 'paused') {
         const until = new Date(trial.cooldownUntil).toLocaleDateString(language(), { day: 'numeric', month: 'short' });
-        status = t('{level} fell short · paused until {date}', { level: effortLabel(trial.effort).toUpperCase(), date: until });
+        status = t('{level} fell short · paused until {date}', { level: effortSaid(trial.effort), date: until });
       } else if (trial?.status === 'trying' && !below) {
-        status = t('trying {level} · {n} of {min} turns', { level: effortLabel(trial.effort).toUpperCase(), n: trial.n, min: trial.needs });
+        status = t('trying {level} · {n} of {min} turns', { level: effortSaid(trial.effort), n: trial.n, min: trial.needs });
       }
       // Prefixed: a card already has a `.state` (its ON/OFF) and the cell must not inherit it.
       table.append(
         el('span', 'intent-kind', t(OBSERVED_ROWS[row.intent] ?? 'Explanation')),
-        el('span', `intent-rung${rung ? ' settled' : ''}`, rung ? effortLabel(rung).toUpperCase() : '—'),
+        el('span', `intent-rung${rung ? ' settled' : ''}`, rung ? effortSaid(rung) : '—'),
         el('span', 'intent-n', String(row.n)),
         el('span', `intent-state${rung ? ' settled' : ''}`, status),
       );
@@ -17497,7 +17581,7 @@ async function paintIntents(box) {
     // Faster, for a price: the tests that ask this project's questions again at two levels.
     const ready = Object.values(agent.cases ?? {}).reduce((sum, n) => sum + (n || 0), 0);
     block.append(el('p', 'intents-sub', t('Measure faster')));
-    block.append(el('p', 'note intents-faster', `${t('Your turns teach for free, a few at a time. A test asks questions from this project again, against {level}, and compares the answers: it is faster, and it spends tokens.', { level: effortLabel(agent.reference).toLowerCase() })} ${ready === 1 ? t('1 question is ready to ask.') : t('{n} questions are ready to ask.', { n: ready })}`));
+    block.append(el('p', 'note intents-faster', `${t('Your turns teach for free, a few at a time. A test asks questions from this project again, against {level}, and compares the answers: it is faster, and it spends tokens.', { level: effortSaid(agent.reference) })} ${ready === 1 ? t('1 question is ready to ask.') : t('{n} questions are ready to ask.', { n: ready })}`));
     const judge = agent.summary.judge;
     if (judge?.controls) block.append(el('p', 'note', t('JUDGE CAUGHT {caught} OF {n} CONTROLS · {status}', { caught: judge.caught, n: judge.controls, status: t(JUDGE_WORDS[judge.status]) })));
     if (agent.spent) block.append(el('p', 'note', t('{n} tokens spent measuring', { n: agent.spent.toLocaleString() })));
@@ -17667,7 +17751,7 @@ function openIntentsWindow(open) {
 // What the run came to, in one sentence a person can act on.
 function intentsOutcome(last) {
   const kinds = t(INTENT_KINDS[last.intent] ?? 'questions like these');
-  const level = last.settled ? effortLabel(last.settled).toUpperCase() : null;
+  const level = last.settled ? effortSaid(last.settled) : null;
   if (last.ended === 'error') return t('The test could not finish: {error}', { error: last.error ?? '' });
   if (last.ended === 'stopped') return t('The test was stopped. What it had not finished does not count.');
   if (last.kind !== 'quick') return t('The full test finished: {n} comparisons. MODULES → INTENCIONES shows what each kind of request needs.', { n: last.compared ?? 0 });
@@ -17710,7 +17794,7 @@ async function paintIntentsWindow() {
       page.append(progress);
     }
     page.append(el('p', 'intents-lead', run.kind === 'quick'
-      ? t('@{agent} answers each question twice: at {from}, the level you use, and at {to}. You do not see which is which. Say whether one of them leaves out something that matters.', { agent: run.agent, from: effortLabel(run.reference).toUpperCase(), to: effortLabel(run.effort ?? run.reference).toUpperCase() })
+      ? t('@{agent} answers each question twice: at {from}, the level you use, and at {to}. You do not see which is which. Say whether one of them leaves out something that matters.', { agent: run.agent, from: effortSaid(run.reference), to: effortSaid(run.effort ?? run.reference) })
       : t('An agent that is not @{agent} is comparing the answers, and is checked before it is believed. It runs on its own: you can close this window.', { agent: run.agent })));
     if (read.pending) page.append(intentsPair(read.pending, repaint));
     else page.append(el('p', 'intents-note', t('ASKING BOTH LEVELS · THE NEXT PAIR IS ON ITS WAY')));
@@ -19531,9 +19615,10 @@ function marketAsWindow({ root, bar, close }) {
     drop: () => { window.removeEventListener('resize', refit); dropWindow(root); },
   };
 }
-function openRoomMarket(focus = null) {
+function openRoomMarket(focus = null, tab = 'shop') {
   return openMarket({
     where: 'room',
+    tab,
     focus,
     project: { name: projectDesignation() || t('this project') },
     host: {
@@ -19583,7 +19668,17 @@ if (/^#escribe=/.test(globalThis.location?.hash ?? '')) {
   let words = '';
   try { words = decodeURIComponent(location.hash.slice(9)).slice(0, 2000); } catch { words = ''; }
   history.replaceState(null, '', location.pathname + location.search);
-  if (words.trim()) setTimeout(() => { els.input.value = words; els.input.focus(); autosize(); renderHighlight(); }, motion(500));
+  // Written as if typed, once the AIs are known (2026-11-11): «@madre …» from a first step left the
+  // picker on the AI it had, because the field's own listeners never heard it.
+  const write = (tries = 0) => {
+    if (!state.agents.size && tries < 20) { setTimeout(() => write(tries + 1), 250); return; }
+    els.input.value = words;
+    els.input.dispatchEvent(new Event('input', { bubbles: true }));
+    els.input.focus();
+    autosize();
+    renderHighlight();
+  };
+  if (words.trim()) setTimeout(write, motion(500));
 }
 // The Market's address in a project: #mercado, or #mercado=<module> on its page.
 if (/^#mercado(=|$)/.test(globalThis.location?.hash ?? '')) {
@@ -23510,6 +23605,16 @@ function roomTour() {
     device: Boolean(state.device) && !SPLIT_CHAT,
     pillSlot: SPLIT_CHAT ? null : document.querySelector('#tour-pill-slot'),
     hidden: () => (state.phonePreview ? [] : ['phone']),
+    // The first week's missions (missions.js): what a mission's key does in a project — the message
+    // written in this box, for the person to send.
+    missions: {
+      // Written as if typed: the field's own listeners draw @madre and #2 as their chips.
+      draft: (text) => { els.input.value = text; els.input.dispatchEvent(new Event('input', { bubbles: true })); autosize(); renderHighlight(); els.input.focus(); els.input.setSelectionRange(text.length, text.length); },
+      agents: () => [...state.agents.entries()].filter(([id, agent]) => id !== 'madre' && agent.ready).map(([id]) => id),
+      localReady: () => Boolean(state.agents.get('madre')?.ready),
+      settings: (part) => openSettingsOn(part === 'local' ? 'local' : 'agents'),
+      market: (tab) => openRoomMarket(null, tab),
+    },
     ready: () => [...state.agents.values()].some((agent) => agent.ready) && !state.running.size && !state.plansRunning.size,
     onChange: (kept) => { welcomeKept = kept; stepsPaint(); },
     go: {
@@ -23553,7 +23658,7 @@ const FIRST_TOUCH = {
   },
   options: {
     button: '#pick-options',
-    title: t('Model and effort'),
+    title: t('Model and how hard it thinks'),
     text: t('Under the box you choose how far the AI may go, which model answers and how hard it thinks. A bigger model and more effort answer better, but take longer.'),
   },
   // Code (1.0.3) said nothing the first time it opened, and nor did Outside tools (2026-10-21).
@@ -24371,7 +24476,7 @@ const BAR_BUILT = {
   // In the chat shell Code and Files are one key, named for what a person looks for (adoptFinder).
   code: { nodes: ['#code-button'], name: () => (chatShellOn() ? t('Files') : t('Code')) },
   modules: { nodes: ['#modules-button'], name: () => t('Modules') },
-  mother: { nodes: ['#mother-button'], name: () => t('Diagnostics') },
+  mother: { nodes: ['#mother-button'], name: () => t('Help') },
   nostromo: { nodes: ['#nostromo-bar'], name: () => t('Memory map') },
   reload: { nodes: ['#reload-button'], name: () => t('Reload') },
   servers: { nodes: ['#browser-button'], name: () => t('Your servers') },

@@ -176,6 +176,23 @@ test('one question to several agents: each gets its own turn, and the record tie
   assert.equal(said.some((event) => event.type === 'turn.subagents'), false);
 });
 
+test('one question to several agents: none of them hands steps to an AI nobody named', async () => {
+  const { mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { EventStore } = await import('../src/event-store.mjs');
+  const { Room } = await import('../src/room.mjs');
+  const root = await mkdtemp(joinPath(tmpdir(), 'madre-together-plan-'));
+  const store = await new EventStore(joinPath(root, 'events.jsonl')).initialize();
+  const agents = ['codex', 'claude', 'gemini'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/fake', version: 'test' }));
+  const asked = [];
+  const invoker = (id) => async ({ prompt }) => { asked.push(id); return { text: id === 'codex' ? 'One idea each.\n\n```pulse\n@gemini: your idea\n@claude: your idea\n```' : `${id} idea.`, usage: null }; };
+  const room = new Room({ store, agents, projectRoot: root, invokers: Object.fromEntries(agents.map((agent) => [agent.adapter, invoker(agent.id)])) });
+  await room.send({ text: '@codex ¿qué mejorarías?', target: 'codex', together: 'batch-two-ais' });
+  await room.send({ text: '@claude ¿qué mejorarías?', target: 'claude', together: 'batch-two-ais' });
+  assert.deepEqual(asked.sort(), ['claude', 'codex']);
+  assert.equal((await store.readAll()).some((event) => event.type === 'plan.created'), false);
+});
+
 test('the page sends one question to every agent named at its start, and shows it once', async () => {
   const app = readFileSync(joinPath(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
   assert.match(app, /function leadingCrew\(text\)/);

@@ -26,7 +26,7 @@ test('tour · kept in ~/.pulse, one change at a time, and a file for another ver
   const state = await scratch('madre-tour-');
   try {
     const first = await readTour(state);
-    assert.deepEqual(first, { version: '1.1', path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before: null, met: null, welcome: { at: null, done: [], skipped: [], finished: null, profile: [] } });
+    assert.deepEqual(first, { version: '1.1', path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before: null, met: null, welcome: { at: null, done: [], skipped: [], finished: null, profile: [] }, missions: {}, missionsHidden: null });
     // One tab holds it while it shows it; only that tab lets go.
     await changeTour(state, { hold: 'tab-aaaaaa' });
     assert.equal((await readTour(state)).held.by, 'tab-aaaaaa');
@@ -437,4 +437,21 @@ test('the invitation to a first project: owed after an update with no project, o
     for (const open of [one, two]) if (open) await new Promise((resolve) => open.server.close(() => resolve()));
     for (const folder of [updated, fresh, project]) await rm(folder, { recursive: true, force: true });
   }
+});
+
+test('tour · the first week\'s missions: kept once each, by their own ids, and put away or back', async () => {
+  const { mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+  const { MISSIONS, changeTour: change, readTour: read } = await import('../src/tour.mjs');
+  const state = await mkdtemp(joinPath(tmpdir(), 'madre-missions-'));
+  assert.deepEqual(MISSIONS, ['page', 'two-ais', 'undo', 'local-ai', 'market']);
+  const first = await change(state, { mission: 'page' });
+  const at = first.missions.page;
+  assert.ok(Date.parse(at));
+  assert.equal((await change(state, { mission: 'page' })).missions.page, at, 'the first time is the one that counts');
+  assert.deepEqual((await change(state, { mission: 'not-a-mission' })), { error: 'mission' });
+  assert.ok((await change(state, { missionsHidden: true })).missionsHidden);
+  assert.equal((await change(state, { missionsHidden: false })).missionsHidden, null);
+  assert.deepEqual(Object.keys((await read(state)).missions), ['page']);
 });

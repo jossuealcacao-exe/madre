@@ -88,3 +88,35 @@ test('ux 7 nov · a connection is one even row, folded, that unfolds in place', 
   assert.match(css, /\.sm-link-summary > \.sm-link-pair \{ grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax\(0, 1fr\) minmax\(70px, 120px\) minmax\(0, 1fr\);/);
   assert.match(css, /\.sm-link-list \{ grid-template-columns: minmax\(0, 1fr\) !important;/);
 });
+
+test('ux 12 nov · a tip inside another: the outer one keeps its words aside, so the browser draws no second tip', () => {
+  const tips = pub('tips.js');
+  assert.match(tips, /function holdAround\(key\)/);
+  assert.match(tips, /  if \(!words\(key\)\) return;\n  holdAround\(key\);/);
+  assert.match(tips, /  current = null;\n  releaseAround\(\);/);
+  // A folded notice has no tip of its own over the row's, and its words keep their spaces.
+  const app = pub('app.js');
+  assert.match(app, /node\.dataset\.tone = noticeTone\(node\);\n[^\n]*\n    node\.removeAttribute\('title'\);/);
+  assert.match(app, /function spacedText\(node\)/);
+});
+
+test('ux 12 nov · the card of changes reads in order: head, files, and UNDO with how much changed in one foot', () => {
+  const app = pub('app.js');
+  assert.match(app, /const foot = el\('div', 'foot'\);/);
+  assert.match(app, /if \(files\.length && stat\) foot\.append\(el\('span', 'stat'/);
+  const css = pub('styles.css');
+  assert.match(css, /\.system\.control\.changed \{ display: grid; gap: 10px; justify-items: stretch; text-align: left;/);
+  assert.match(css, /\.system\.control\.changed \.foot \{ display: flex;/);
+  assert.match(css, /\.sys-dots\.open > \.system\.control\.changed\.folded \{ display: grid !important;/);
+});
+
+test('ux 12 nov · «Show me» on the second conversation opens one beside, and Settings keeps its place when drawn again', () => {
+  const app = pub('app.js');
+  assert.match(app, /show: \(\) => \{ void stepsBeside\(\); \}/);
+  assert.match(app, /if \(other\) \{ openSplit\(other\.id\); return; \}/);
+  assert.match(app, /localStorage\.setItem\('pulse\.split', before\)/);
+  const home = pub('salas-mac.js');
+  assert.match(home, /const top = scroll\.scrollTop;/);
+  assert.match(home, /scroll\.scrollTop = top;/);
+  assert.match(pub('styles.css'), /\.sx-more > \.sx-hint \{ margin: 10px 16px 16px; \}/);
+});

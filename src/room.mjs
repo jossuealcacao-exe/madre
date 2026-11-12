@@ -1361,8 +1361,11 @@ export class Room {
       return { messageId, responseMessageId: null };
     }
     // An order never delegates, so a plan already running here has nothing to warn about.
-    let allowDelegation = !order;
-    if (!order && this.#plans.size > 0) {
+    // The same question to several AIs at once (`together`): each answers for itself. Left free to
+    // hand out steps, one of them read «one idea each» as a job for the whole crew and brought in an
+    // AI nobody named (2026-11-12, the author on the «two AIs» first step).
+    let allowDelegation = !order && !(typeof together === 'string' && together);
+    if (!order && allowDelegation && this.#plans.size > 0) {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
@@ -2129,7 +2132,8 @@ export class Room {
       }
       if (guarded.hits) await this.#emit('privacy.redacted', { agent: agent.id, messageId, responseMessageId, hits: guarded.hits, kinds: guarded.kinds, marker: this.#privacy.marker });
       if (artifacts.length) {
-        await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });
+        // A CREATE turn's restore point goes with what it made: UNDO takes it away again (2026-11-11).
+        await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts, checkpointId: createChanges?.checkpointId ?? undefined });
         // A <id>.module.mjs is an agent proposing a module: the human installs it from the room, or not.
         for (const file of artifacts.filter((item) => isModuleFile(item.path))) {
           await this.#emit('module.proposed', { agent: agent.id, messageId, responseMessageId, path: file.path, name: file.name });

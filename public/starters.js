@@ -77,18 +77,20 @@ const ANY = (project) => [
   ['list', 'Make a list of what is in {project}, folder by folder.', { project }],
 ];
 
-// A folder with nothing in it: what the person uses MADRE for (the welcome's `profile`).
+// A folder with nothing in it: what the person uses MADRE for (the welcome's `profile`). Since
+// 2026-11-11 every one is whole (the author: «"I want to start an app:…" should help more»): it
+// says what to make and asks the AI to ask first, so whoever does not know how to begin can send it.
 const BORN = {
-  business: [['globe', 'I want a page for my business: ', {}], ['calendar', 'Make me a list of what to do this week to get my business going.', {}]],
-  social: [['image', 'Plan my posts for this month about: ', {}], ['calendar', 'Make me a calendar of posts for the next two weeks.', {}]],
+  business: [['globe', 'Make me a simple page for my business with what I sell, my opening hours and a WhatsApp button. Ask me first for the details you need.', {}], ['calendar', 'Make me a list of what to do this week to get my business going.', {}]],
+  social: [['image', 'Plan my posts for this month: ask me what I sell and who it is for, and give me one idea a week with its text ready to publish.', {}], ['calendar', 'Make me a calendar of posts for the next two weeks.', {}]],
   numbers: [['bars', 'Make me a sheet to keep my sales and expenses for the month.', {}]],
-  office: [['note', 'Help me put together a report about: ', {}], ['card', 'Make me the outline of a presentation about: ', {}]],
-  study: [['book', 'I want to learn about: ', {}], ['list', 'Make me a study plan for this week with what I have to learn.', {}]],
-  notes: [['note', 'I want to put my ideas in order in a document: ', {}]],
-  code: [['code', 'I want to start an app: ', {}], ['compose', 'Before writing anything, ask me what I want to build and propose a plan in steps.', {}]],
+  office: [['note', 'Help me put together a clear report: ask me the topic, who will read it and what they need to decide.', {}], ['card', 'Make me the outline of a ten-slide presentation: ask me first the topic and who it is for.', {}]],
+  study: [['book', 'I want to learn something new step by step: ask me what and how much I already know, and make me a plan for the week.', {}], ['list', 'Make me a study plan for this week with what I have to learn.', {}]],
+  notes: [['note', 'Help me put my ideas in order: I will paste them and you group them by topic in a document, with a title for each.', {}]],
+  code: [['code', 'I want to start an app. Ask me what it should do and who will use it, and propose the simplest first version we can build today.', {}], ['compose', 'Before writing anything, ask me what I want to build and propose a plan in steps.', {}]],
   curious: [['spark', 'What could you do for me in an empty folder? Give me three ideas.', {}]],
 };
-const BORN_ANY = [['compose', 'I want to start a project: ', {}], ['spark', 'What could you do for me in an empty folder? Give me three ideas.', {}], ['compose', 'Before writing anything, ask me what I want to build and propose a plan in steps.', {}]];
+const BORN_ANY = [['compose', 'I want to start a project here. Ask me three questions about what I want to achieve, and then propose the first three steps.', {}], ['spark', 'What could you do for me in an empty folder? Give me three ideas.', {}], ['compose', 'Before writing anything, ask me what I want to build and propose a plan in steps.', {}]];
 
 // Round and round the groups, the first chip of each, then the second…, until there are `count`.
 function weave(groups, count) {

@@ -27,8 +27,11 @@ test('starters: what the folder holds decides them, and they name its own files'
 
 test('starters: a folder with nothing yet follows what the person said MADRE is for', () => {
   const business = startersFor({ entries: files('.git/'), profile: ['business', 'numbers'] });
-  assert.equal(business[0].text, 'I want a page for my business: ');
-  assert.equal(business[0].open, true, 'an open one is for the person to finish');
+  assert.match(business[0].text, /^Make me a simple page for my business/);
+  // A born folder's chips are whole messages (2026-11-11): each can be sent as it is, none waits to be finished.
+  for (const profile of [['business'], ['social'], ['office'], ['study'], ['notes'], ['code'], []]) {
+    for (const chip of startersFor({ entries: [], profile })) assert.equal(chip.open, false, chip.text);
+  }
   assert.match(business[1].text, /sales and expenses/);
   const nobody = startersFor({ entries: [], profile: [] });
   assert.equal(nobody.length, 3);

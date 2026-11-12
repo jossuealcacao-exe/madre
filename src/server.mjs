@@ -89,7 +89,7 @@ import { canReplace, checkForUpdate, detectInstall, updateCommand, releaseUrl, a
 import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAppInvite, appInvite } from './app-invite.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
-import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
+import { CHAPTERS, HINTS, MISSIONS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
@@ -153,7 +153,7 @@ import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedF
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
 import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
-import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
+import { acceptTerms, cameFromBefore, readTerms, termsLinks } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { UNIT_NAME, disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
@@ -2497,6 +2497,15 @@ export async function createPulseServer({
     };
   }
 
+  // One of the first steps (public/missions.js): something got from the Market. Seen here, where
+  // every way of getting one ends (the Market, MODULES, Settings), and counted the first time only.
+  // The local AI has its own step, so turning it on is not this one.
+  async function marketUsed() {
+    const before = await readTour(root).catch(() => null);
+    if (!before || before.missions?.market) return;
+    await changeTour(root, { mission: 'market' }).catch(() => null);
+    diagnostics.count('mission.market');
+  }
   async function installExtension(id, payload = {}) {
     const { confirm } = payload;
     const extension = extensionById(id);
@@ -2663,7 +2672,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/missions.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -4154,7 +4163,7 @@ export async function createPulseServer({
       if (url.pathname === '/api/terms' && request.method === 'GET') {
         const terms = viaPhone ? { accepted: true, version: null } : await readTerms(root);
         const before = !terms.accepted && ((await cameFromBefore(root)) || (hadInstallId && !existsSync(join(root, 'lifecycle.json'))));
-        return sendJson(response, 200, { ...terms, before, language: roomLanguage(), languageChosen, diagnostics: await diagnosticsNow(), diagnosticsFixed: process.env.PULSE_TELEMETRY === '0', links: TERMS_LINKS });
+        return sendJson(response, 200, { ...terms, before, language: roomLanguage(), languageChosen, diagnostics: await diagnosticsNow(), diagnosticsFixed: process.env.PULSE_TELEMETRY === '0', links: termsLinks() });
       }
       if (url.pathname === '/api/terms' && request.method === 'POST') {
         const site = request.headers['sec-fetch-site'];
@@ -4592,6 +4601,7 @@ export async function createPulseServer({
         if (viaPhone || !fromHere || (request.method === 'POST' && request.headers.origin !== `http://${host}`)) return sendJson(response, 403, { error: t('This is done on the Mac.') });
         if (request.method === 'POST' && url.pathname === '/api/tour') {
           const change = await body(request).catch(() => null);
+          const already = MISSIONS.includes(change?.mission) && Boolean((await readTour(root)).missions?.[change.mission]);
           const changed = await changeTour(root, change);
           if (changed.error) return sendJson(response, 422, { error: t('That is not a change to the tour.') });
           // How far people get in the welcome, and what they leave for later (2026-11-01): 90 of 147
@@ -4603,6 +4613,8 @@ export async function createPulseServer({
             if (WELCOME_STEPS.includes(step.skipped)) diagnostics.count(`welcome.skip.${step.skipped}`);
             if (step.finished === true) diagnostics.count('welcome.finished');
           }
+          // Which of the first steps people do (2026-11-11): the mission's id, nothing else.
+          if (MISSIONS.includes(change?.mission) && !already) diagnostics.count(`mission.${change.mission}`);
           return sendJson(response, 200, { state: changed });
         }
         if (request.method === 'GET' && url.pathname === '/api/tour/projects') {
@@ -5499,7 +5511,7 @@ export async function createPulseServer({
             stateRoot: root, projectRoot: canonicalProjectRoot, madre: PACKAGE.version, fetchImpl: marketFetch,
             id: String(payload.id ?? ''), catalog, review: payload.review === true, accept: payload.accept ?? null,
           });
-          if (!done.review) await room.record('skill.installed', { id: done.id, version: done.version ?? null, from: 'market' });
+          if (!done.review) { await room.record('skill.installed', { id: done.id, version: done.version ?? null, from: 'market' }); await marketUsed(); }
           return sendJson(response, 200, done);
         } catch (error) {
           return sendJson(response, error.code === 'REVIEW_FIRST' ? 409 : 400, { error: error.message, code: error.code ?? null });
@@ -5626,6 +5638,7 @@ export async function createPulseServer({
         const payload = await body(request).catch(() => ({}));
         const result = await module.scope(await moduleContext(), { all: payload.all, rooms: payload.rooms, confirm: payload.confirm });
         for (const held of parked.values()) await applyRoomSettings(held.room, null);
+        if (result.status < 300 && (payload.all === true || Object.values(payload.rooms ?? {}).includes(true))) await marketUsed();
         return sendJson(response, result.status, result.body);
       }
       // The human installs a module file an agent wrote (or they did): checked first, then copied into the chosen folder.
@@ -5693,6 +5706,7 @@ export async function createPulseServer({
         // A phone switches MADRE's own modules; installing one runs commands in the project.
         if (viaPhone && !extensionById(installMatch[1])?.toggle) return sendJson(response, 403, { error: t('This is done on the Mac.') });
         const result = await installExtension(installMatch[1], await body(request));
+        if (result.status < 300 && result.body?.enabled !== false && installMatch[1] !== 'ollama') await marketUsed();
         return sendJson(response, result.status, result.body);
       }
       if (request.method === 'POST' && /^\/api\/control\/[\w-]+\/undo$/.test(url.pathname)) {

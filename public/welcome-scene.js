@@ -15,7 +15,8 @@
 //   project   threads from the edge, one per folder chosen, gathering into a ring round the dot
 //   ai        the points fall in a slow spiral into a core while it downloads, a fine arc saying how
 //             much; once there, they settle in three quiet orbits
-//   ready     the points draw the logo's pulse, flat, one beat, flat, and end in the dot
+//   ready     the points draw the logo's pulse, whole, into the dot, fed from the edge; then a
+//             message bubble opens beside the dot and its words are written in, the caret waiting
 //
 // MADRE's own style, from its brand book (madre-landing/brand-kit): the phosphor is the only colour
 // and means something; nothing spins fast, bounces or glows like neon; changes take about 0.4 s and
@@ -131,6 +132,96 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
   // the dot in the same place, a little above the middle, so the eye has one place to rest.
   const centre = () => ({ cx: w * 0.5, cy: h * 0.44, R: Math.min(h * 0.32, w * 0.16) });
   const drift = (p, t, k = 1) => [Math.sin(t * 0.5 + p.seed * 40) * 3 * k * p.z, Math.cos(t * 0.42 + p.seed2 * 40) * 2.4 * k * p.z];
+  // The `ready` picture's line: flat, the beat, flat, into the dot. `at(u)` walks it by its length.
+  const ON_LINE = 204;
+  function pulseLine() {
+    const { cx, cy } = centre();
+    const x0 = Math.max(18, w * 0.07);
+    const x1 = cx - 11;
+    const bw = Math.min(150, (x1 - x0) * 0.46);
+    const bx = x1 - bw - Math.min(40, (x1 - x0) * 0.12);
+    const amp = Math.min(30, h * 0.19);
+    const points = [[x0, cy], [bx, cy], ...BEAT.slice(1).map(([bx2, by]) => [bx + (bx2 / 19) * bw, cy + by * amp]), [x1, cy]];
+    const lengths = [0];
+    for (let i = 1; i < points.length; i += 1) lengths.push(lengths[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+    const total = lengths[lengths.length - 1] || 1;
+    const at = (u) => {
+      const d = clamp01(u) * total;
+      let i = 1;
+      while (i < lengths.length - 1 && lengths[i] < d) i += 1;
+      const k = (d - lengths[i - 1]) / ((lengths[i] - lengths[i - 1]) || 1);
+      return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * k, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * k];
+    };
+    return { x0, x1, bx, cy, at };
+  }
+  // The first message, after the line reaches the dot: a bubble opens to the right of it and its
+  // words are written in, as the shape of text (never letters), with a caret that waits at the end.
+  // Its words' widths are fixed once, so the message is always the same shape.
+  const NOTE_WORDS = [0, 1, 2].map((row) => Array.from({ length: 9 }, (_, k) => 16 + Math.round(hash(row * 31 + k + 7) * 38)));
+  function paintNote(data, age) {
+    if (scene.id !== 'ready' || !data.note) return;
+    const { cx, cy } = centre();
+    const open = still ? 1 : easeInOut((age - 1.35) / 0.55);
+    if (open <= 0) return;
+    const left = cx + 22;
+    const right = Math.min(w - 18, left + Math.max(140, w * 0.38));
+    const rows = [0.92, 0.74, 0.46];
+    const lineH = Math.min(15, h * 0.1);
+    const top = cy - lineH * 1.5 - 9;
+    const height = lineH * 3 + 18;
+    const width = (right - left) * (0.35 + 0.65 * open);
+    // The bubble: a fine edge and the faintest fill, its corner nearest the dot pointing at it.
+    ctx.globalAlpha = open;
+    ctx.fillStyle = rgba(look.ink, look === LOOKS.light ? 0.05 : 0.06);
+    ctx.strokeStyle = rgba(look.ink, 0.32);
+    ctx.lineWidth = 1;
+    const r = 10;
+    ctx.beginPath();
+    ctx.moveTo(left + 4, cy);
+    ctx.lineTo(left + 4, top + r);
+    ctx.quadraticCurveTo(left + 4, top, left + 4 + r, top);
+    ctx.lineTo(left + width - r, top);
+    ctx.quadraticCurveTo(left + width, top, left + width, top + r);
+    ctx.lineTo(left + width, top + height - r);
+    ctx.quadraticCurveTo(left + width, top + height, left + width - r, top + height);
+    ctx.lineTo(left + 4 + r, top + height);
+    ctx.quadraticCurveTo(left + 4, top + height, left + 4, top + height - r);
+    ctx.lineTo(left + 4, cy + 5);
+    ctx.lineTo(left - 2, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // The words, written in one after another.
+    const room = width - 28;
+    const total = rows.reduce((sum, share) => sum + share * room, 0);
+    let written = (still ? 1 : easeInOut((age - 1.75) / 1.9)) * total;
+    let caret = null;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(3, lineH * 0.34);
+    rows.forEach((share, row) => {
+      const y = top + 9 + lineH * (row + 0.5);
+      let x = left + 18;
+      const end = left + 18 + share * room;
+      for (const word of NOTE_WORDS[row]) {
+        if (x >= end || written <= 0) break;
+        const full = Math.min(word, end - x);
+        const len = Math.min(full, written);
+        ctx.strokeStyle = rgba(look.soft, 0.22);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.max(0.1, len), y); ctx.stroke();
+        written -= full + 7;
+        caret = [x + len + 5, y];
+        x += full + 7;
+      }
+    });
+    // The caret waits where the writing stopped: the person only has to send it.
+    if (caret && (still || frac(age * 0.9) < 0.6)) {
+      ctx.strokeStyle = rgba(look.ink, 0.9);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(caret[0], caret[1] - lineH * 0.45); ctx.lineTo(caret[0], caret[1] + lineH * 0.45); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.lineCap = 'butt';
+  }
   const PICTURES = {
     hello(p, t, data) {
       const { cx, cy, R } = centre();
@@ -233,19 +324,23 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
       return [cx + Math.cos(ang) * r * 1.6 + dx, cy + Math.sin(ang) * r * 0.55 + dy, data.state === 'skip' ? 0.07 : 0.15, 0.8];
     },
     ready(p, t, data, age) {
-      const { cy } = centre();
-      // The logo's pulse, drawn with points from the left, ending in the dot.
-      const x0 = w * 0.1;
-      const x1 = w * 0.5 - 14;
-      const u = p.i / (N - 1);
-      const drawn = still ? 1 : easeInOut(age / 1.6);
-      const amp = Math.min(30, h * 0.2);
-      const span = Math.min(0.32, 120 / Math.max(1, x1 - x0));
-      if (u > drawn) return [x0, cy, 0, 0.6];
-      const y = cy + beatAt((u - (0.62 - span / 2)) / span) * amp;
-      // A soft brightness runs along it, the way a heartbeat travels.
-      const runner = Math.exp(-(((u - frac(t * 0.22)) / 0.06) ** 2));
-      return [x0 + (x1 - x0) * u, y, 0.3 + 0.6 * runner, 0.75 + 0.4 * runner];
+      // The logo's pulse, whole and continuous: almost every point is on it, laid by its length so the
+      // steep strokes of the beat are as full as the flat ones. It draws itself from the left into the
+      // dot; a few points keep arriving along it from the edge — the AIs feeding the project — and a
+      // soft brightness runs along it the way a heartbeat travels. Then the first message (paintNote).
+      const line = pulseLine();
+      const drawn = still ? 1 : easeInOut(age / 1.5);
+      if (p.i >= ON_LINE) {
+        // The stream: from beyond the left edge, along the flat, into the start of the line.
+        const q = frac(t * 0.21 + p.seed * 1.9);
+        const x = line.x0 - w * 0.08 + (w * 0.08 + (line.bx - line.x0) * 0.9) * easeInOut(q);
+        return [x, line.cy + (p.seed2 - 0.5) * 6 * (1 - q), drawn * 0.7 * Math.sin(q * Math.PI) ** 0.8, 0.8];
+      }
+      const u = p.i / (ON_LINE - 1);
+      if (u > drawn) { const [x, y] = line.at(0); return [x, y, 0, 0.6]; }
+      const [x, y] = line.at(u);
+      const runner = Math.exp(-(((u - frac(t * 0.24)) / 0.05) ** 2));
+      return [x, y, 0.42 + 0.55 * runner, 0.62 + 0.38 * runner];
     },
   };
   const dotOf = (id, data) => {
@@ -329,6 +424,7 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     paintArc(data);
+    paintNote(data, age);
     const target = dotOf(scene.id, data);
     dot.a = still ? target : dot.a + (target - dot.a) * 0.06;
     paintDot(t);

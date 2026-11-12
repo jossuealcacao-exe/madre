@@ -106,7 +106,9 @@ test('welcome 1.1 · it ends inside a project with the first message written, ne
   assert.match(home, /openProject: \(room, \{ draft = null \} = \{\}\) => startRoom\(room, \{ enter: true, draft \}\),/);
   assert.match(home, /#escribe=\$\{encodeURIComponent\(draft\)\}/);
   assert.match(app, /if \(\/\^#escribe=\/\.test\(globalThis\.location\?\.hash \?\? ''\)\) \{/);
-  assert.match(app, /if \(words\.trim\(\)\) setTimeout\(\(\) => \{ els\.input\.value = words; els\.input\.focus\(\); autosize\(\); renderHighlight\(\); \}, motion\(500\)\);/);
+  // Written as if typed, once the AIs are known: a leading @madre moves the picker to it.
+  assert.match(app, /els\.input\.value = words;\n    els\.input\.dispatchEvent\(new Event\('input', \{ bubbles: true \}\)\);/);
+  assert.match(app, /if \(words\.trim\(\)\) setTimeout\(write, motion\(500\)\);/);
   // The local AI, its memory and the hello with it: one press, then it downloads while the person goes on.
   assert.match(welcome, /s\.queue = hasModel\(EMBED_MODEL\) \|\| s\.pulls\.get\(EMBED_MODEL\)\?\.running \? \[\] : \[EMBED_MODEL\];/);
   assert.match(welcome, /if \(pull && event\.payload\.ok && s\.queue\.length\) void startPull\(s\.queue\.shift\(\)\);/);

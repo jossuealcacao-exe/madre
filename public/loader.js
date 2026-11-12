@@ -11,6 +11,9 @@
 
 // MADRE's logo as the brandbook draws it (salas-mac.html, .brand-logo): the beat, then the word. Shared
 // by the windows that wear it in their head — the welcome, the chapters (2026-10-28).
+import { t } from './i18n.js';
+import { BRANDS } from './brands.js';
+
 export const MADRE_LOGO = '<svg class="brand-logo" viewBox="-4.8 -4.8 377.1 49.6" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><g class="pulse" transform="translate(0 0) scale(2.5) translate(0 -2)"><path class="beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" stroke-width="1.92" pathLength="100"/><circle class="beat-dot" cx="60" cy="10" r="3" stroke="none"/></g><g class="word" transform="translate(193.5 7)" stroke-width="4.8"><path d="M0 26V0L14 14.3L28 0V26"/><path transform="translate(36.5 0)" d="M0 26V7.8A7.8 7.8 0 0 1 7.8 0H17.2A7.8 7.8 0 0 1 25 7.8V26M0 15.6H25"/><path transform="translate(71.5 0)" d="M0 0H16A12 12 0 0 1 28 12V14A12 12 0 0 1 16 26H0Z"/><path transform="translate(110.5 0)" d="M0 26V0H20.85A7.15 7.15 0 0 1 28 7.15V7.15A7.15 7.15 0 0 1 20.85 14.3H0M15.12 14.3L28 26"/><path transform="translate(146 0)" d="M28 0H0V26H28M0 13H21"/></g></g></svg>';
 export const LOADER_MARK = '<svg viewBox="-2 -1 66 22" aria-hidden="true"><path class="madre-loader-trace" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path class="madre-loader-beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" pathLength="100" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle class="madre-loader-dot" cx="60" cy="10" r="3" fill="currentColor"/></svg>';
 
@@ -93,22 +96,41 @@ const make = (tag, className, text = null) => {
   if (text !== null) node.textContent = text;
   return node;
 };
-// THE OPENING (2026-10-28): before the first step, what MADRE is, said without words. The AIs a
-// person already uses come in as points of light, each in its own color, find each other with fine
-// lines and come together on one line that becomes MADRE's pulse: the beat, then the name. About five
-// seconds; a click or any key goes straight to the welcome, and a computer that asked for less motion
-// goes there without it. Drawn on a canvas, the points; the logo is MADRE's own drawing (loader.js),
-// moved by hand so the line passes each point at the moment it takes it in.
-const INTRO_HUES = {
-  dark: ['#7fe3b6', '#f2a37c', '#93acff', '#ecece6', '#c8b5ff'],
-  light: ['#1d9a68', '#cf6c40', '#4864d2', '#575a52', '#7a5ed2'],
+// THE OPENING (2026-10-28; told as a story since 2026-11-11, the author: «it is beautiful, but it does
+// not say what MADRE does — a reveal so clear that the person understands MADRE without thinking»).
+// Four short beats, each with one line of words under the picture:
+//   1 · YOUR AIs — the AIs a person already uses come in as points of light, each in its own colour and
+//       with its name, each drifting on its own.
+//   2 · YOUR PROJECTS — three of the person's things appear below them (a shop, the invoices, a
+//       website); fine threads go from the AIs to them and small sparks travel along: work being done.
+//   3 · ONE MEMORY — everything comes together: the AIs onto one line that becomes MADRE's pulse, the
+//       projects into its dot, which beats once: what they did is kept.
+//   4 · MADRE — the name, and in one line what it is.
+// About eight seconds; a click or any key goes straight to the welcome, and a computer that asked for
+// less motion goes there without it. The picture is drawn on a canvas; the logo is MADRE's own
+// drawing, moved by hand so the line passes each point at the moment it takes it in. MADRE's own style
+// (brand kit): the phosphor is the only colour that means MADRE, nothing spins or glows like neon.
+// The AIs MADRE works with, by their owners' official marks (brands.js, Lobe Icons, unaltered), in
+// the order they stand: ChatGPT's Codex, Claude, Gemini, Grok, OpenCode and Cursor.
+const INTRO_AGENTS = ['codex', 'claude', 'gemini', 'grok', 'opencode', 'cursor'];
+// What people call each one, when it is not the name of the app.
+const INTRO_SAID = { codex: 'ChatGPT' };
+const INTRO = {
+  appear: 250, labelsOut: 4000,
+  projects: 1900, threads: 2400, sparks: 2700,
+  gather: 4300, gathered: 5150, draw: 4800, drawn: 5750, beat: 5700, word: 6050, hold: 8900, out: 650,
+  story: [300, 2050, 4350, 6100],
 };
-const INTRO = { appear: 250, lines: 900, gather: 2300, gathered: 3300, draw: 2650, drawn: 3600, beat: 3550, word: 3850, hold: 5700, out: 650 };
+// Which project each AI works on, while they work: every project gets more than one, and no thread
+// crosses another (the AIs and the projects both read left to right).
+const INTRO_WORK = [[0], [0, 1], [1], [1], [1, 2], [2]];
 // The pulse is drawn at the centre, alone; when the name comes it glides left to make room for it.
 // The share of the logo's width between the pulse's centre and the whole logo's (loader.js viewBox).
 const PULSE_OFF_CENTRE = (183.75 - 80) / 377.1;
 const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - ((-2 * x + 2) ** 3) / 2);
 const easeOut = (x) => 1 - (1 - x) ** 3;
+const easeIn = (x) => x * x * x;
+const easeExpo = (x) => (x >= 1 ? 1 : 1 - 2 ** (-10 * x));
 const span = (now, from, to) => Math.max(0, Math.min(1, (now - from) / (to - from)));
 
 // A window that opens does not open with its × lit (2026-11-10). With nothing marked `autofocus`, the
@@ -161,24 +183,40 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
   openingDone = true;
   return new Promise((resolve) => {
     const light = document.documentElement.dataset.scheme === 'light';
-    const hues = INTRO_HUES[light ? 'light' : 'dark'];
-    // Only the picture is hidden from a screen reader: «Skip» inside it stays a key it can reach.
+    const brand = light ? '#2f8a1c' : '#9bff66';
+    // What each beat says, and the three things of the person's that the AIs work on.
+    // Each beat's words in two tones, as a product is presented: what it is, then the quieter half.
+    const lines = [
+      [t('You use several AIs.'), t('Each one on its own.')],
+      [t('MADRE puts them to work together,'), t('on your projects.')],
+      [t('And it remembers what they decide.'), t('Nobody starts from zero.')],
+      [t('Your AIs, together,'), t('in your projects.')],
+    ];
+    const things = [t('Your shop'), t('Invoices'), t('Your website')];
+    // Only the picture is hidden from a screen reader: the words and «Skip» stay for it.
     const stage = make('div', 'wl-intro');
     const sky = make('canvas', 'wl-intro-sky');
     sky.setAttribute('aria-hidden', 'true');
     const mark = make('div', 'wl-intro-mark');
     mark.setAttribute('aria-hidden', 'true');
     mark.innerHTML = MADRE_LOGO.replace('class="brand-logo"', 'class="wl-intro-logo"'); // trusted: our own SVG string
+    const story = make('div', 'wl-intro-story');
+    story.setAttribute('aria-live', 'polite');
+    // Two lines on top of each other: the new one comes into focus as the one before leaves.
+    const shown = [make('p', 'wl-intro-line'), make('p', 'wl-intro-line')];
+    story.append(...shown);
+    let front = 0;
     const skip = make('button', 'wl-intro-skip', skipLabel);
     skip.type = 'button';
     skip.addEventListener('click', () => end(true));
-    stage.append(sky, mark, skip);
+    stage.append(sky, mark, story, skip);
     dialog.append(stage);
     dialog.classList.add('intro');
     const beat = mark.querySelector('.beat');
     const dot = mark.querySelector('.beat-dot');
     const word = mark.querySelector('.word');
     const pen = sky.getContext('2d');
+    const face = getComputedStyle(stage).fontFamily || 'system-ui, sans-serif';
     let width = 0;
     let height = 0;
     const fit = () => {
@@ -192,23 +230,37 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
     fit();
     // Where on the pulse each AI lands, as a share of its line: before the rise, the peak, the
     // valley, the small step and the end.
-    const lands = [0.06, 0.4, 0.55, 0.74, 0.96];
+    const lands = [0.05, 0.36, 0.5, 0.64, 0.8, 0.96];
     const length = beat.getTotalLength();
-    const landing = () => lands.map((share) => {
-      const point = beat.getPointAtLength(share * length);
+    const toStage = (point) => {
       const matrix = beat.getScreenCTM();
       const box = stage.getBoundingClientRect();
       return { x: matrix.a * point.x + matrix.c * point.y + matrix.e - box.left, y: matrix.b * point.x + matrix.d * point.y + matrix.f - box.top };
+    };
+    const landing = () => lands.map((share) => toStage(beat.getPointAtLength(share * length)));
+    const dotAt = () => {
+      const box = dot.getBoundingClientRect();
+      const stageBox = stage.getBoundingClientRect();
+      return { x: box.left + box.width / 2 - stageBox.left, y: box.top + box.height / 2 - stageBox.top, r: box.width / 2 };
+    };
+    // Each mark drawn twice, as pictures the canvas can stamp: in its badge (its own colour on the
+    // brand's ground) and quiet, in the page's ink, for the row under MADRE's name at the end.
+    const picture = (svg, fill) => {
+      const image = new Image();
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.replace('<svg ', `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" `).replaceAll('currentColor', fill))}`;
+      return image;
+    };
+    const agents = INTRO_AGENTS.map((id, index) => {
+      const brand = BRANDS[id];
+      const hue = light ? brand.colorLight : brand.color;
+      return { id, hue, ground: brand.color, name: INTRO_SAID[id] ?? brand.label, badge: picture(brand.mark(), brand.ink), quiet: picture(brand.mark(), light ? '#5d625a' : '#b8bdb3'), phase: index * 1.7 };
     });
-    // The five AIs, each at its own depth on a slow orbit, and a fine dust that gives the dark depth.
-    const agents = hues.map((hue, index) => ({ hue, angle: (index / hues.length) * Math.PI * 2 + 0.35 * Math.sin(index * 2.1), reach: 0.62 + 0.38 * ((index * 37) % 5) / 4, depth: 0.75 + ((index * 3) % 5) * 0.1 }));
     const dust = Array.from({ length: 46 }, (_, index) => ({ x: ((index * 73) % 97) / 97, y: ((index * 41) % 89) / 89, r: 0.4 + ((index * 7) % 5) * 0.18, a: 0.05 + ((index * 11) % 7) * 0.016, drift: 0.004 + ((index * 5) % 9) * 0.0012 }));
-    const edges = [];
-    for (let a = 0; a < agents.length; a += 1) for (let b = a + 1; b < agents.length; b += 1) edges.push([a, b]);
     const ink = (hex, alpha) => {
       const value = Number.parseInt(hex.slice(1), 16);
-      return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+      return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${Math.max(0, Math.min(1, alpha))})`;
     };
+    const textInk = (alpha) => (light ? `rgba(28, 32, 28, ${alpha})` : `rgba(236, 240, 232, ${alpha})`);
     // Where the mark stands: the pulse alone at the centre, then the whole logo as the name comes in.
     const place = (time) => {
       const settle = easeInOut(span(time, INTRO.word - 300, INTRO.word + 900));
@@ -217,24 +269,86 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
     };
     place(0);
     let targets = landing();
+    let sink = dotAt();
     let started = 0;
     let frame = 0;
     let done = false;
-    const onResize = () => { fit(); targets = landing(); };
+    let line = -1;
+    const onResize = () => { fit(); targets = landing(); sink = dotAt(); };
     globalThis.addEventListener('resize', onResize);
+    // A card for one of the person's things: a folder's tab, its name, the faintest fill.
+    const card = (x, y, name, alpha, scale, glow) => {
+      const w = Math.max(96, Math.min(140, width * 0.13)) * scale;
+      const h = 38 * scale;
+      const left = x - w / 2;
+      const top = y - h / 2;
+      const r = 9 * scale;
+      pen.save();
+      pen.globalAlpha = alpha;
+      pen.beginPath();
+      pen.moveTo(left + r, top);
+      pen.lineTo(left + w * 0.34, top);
+      pen.lineTo(left + w * 0.34 + 6 * scale, top + 5 * scale);
+      pen.lineTo(left + w - r, top + 5 * scale);
+      pen.quadraticCurveTo(left + w, top + 5 * scale, left + w, top + 5 * scale + r);
+      pen.lineTo(left + w, top + h - r);
+      pen.quadraticCurveTo(left + w, top + h, left + w - r, top + h);
+      pen.lineTo(left + r, top + h);
+      pen.quadraticCurveTo(left, top + h, left, top + h - r);
+      pen.lineTo(left, top + r);
+      pen.quadraticCurveTo(left, top, left + r, top);
+      pen.closePath();
+      pen.fillStyle = light ? `rgba(255, 255, 255, ${0.82 + 0.18 * glow})` : `rgba(255, 255, 255, ${0.045 + 0.04 * glow})`;
+      // Depth: a soft shadow under each card, as an object resting a little above the page.
+      pen.shadowColor = light ? `rgba(24, 40, 24, ${0.1 * alpha})` : `rgba(0, 0, 0, ${0.45 * alpha})`;
+      pen.shadowBlur = 22 * scale;
+      pen.shadowOffsetY = 8 * scale;
+      pen.fill();
+      pen.shadowColor = 'transparent';
+      pen.shadowBlur = 0;
+      pen.shadowOffsetY = 0;
+      pen.strokeStyle = glow > 0.01 ? ink(brand, 0.25 + 0.4 * glow) : textInk(light ? 0.16 : 0.18);
+      pen.lineWidth = 1;
+      pen.stroke();
+      if (scale > 0.55) {
+        pen.fillStyle = textInk(light ? 0.78 : 0.82);
+        pen.font = `500 ${Math.round(12.5 * scale)}px ${face}`;
+        pen.textAlign = 'center';
+        pen.textBaseline = 'middle';
+        pen.fillText(name, x, top + 5 * scale + (h - 5 * scale) / 2, w - 16);
+      }
+      pen.restore();
+      return { x, y, top, w, h };
+    };
 
     function paint(now) {
       if (!started) started = now;
       const time = now - started;
       pen.clearRect(0, 0, width, height);
       const cx = width / 2;
-      const cy = height * 0.48;
-      const radius = Math.min(width, height) * 0.2;
+      const cy = height * 0.42;
+      const band = Math.min(height * 0.18, 140);
       const gather = easeInOut(span(time, INTRO.gather, INTRO.gathered));
       const drawn = easeOut(span(time, INTRO.draw, INTRO.drawn));
       place(time);
-      if (time < INTRO.drawn) targets = landing();
-      // The dust drifts up, and goes when the AIs come together.
+      if (time < INTRO.drawn) { targets = landing(); sink = dotAt(); }
+      // The line under the picture: one per beat, each coming in as the one before goes.
+      const at = INTRO.story.filter((from) => time >= from).length - 1;
+      if (at !== line) {
+        line = at;
+        const [strong, soft] = lines[at] ?? ['', ''];
+        const leaving = shown[front];
+        front = 1 - front;
+        const coming = shown[front];
+        leaving.classList.remove('in');
+        leaving.classList.add('out');
+        coming.classList.remove('out', 'in');
+        coming.replaceChildren(make('span', 'wl-intro-strong', strong), ' ', make('span', 'wl-intro-soft', soft));
+        coming.classList.toggle('last', at === lines.length - 1);
+        void coming.offsetWidth;
+        coming.classList.add('in');
+      }
+      // The dust drifts up, and goes when everything comes together.
       const dustFade = 1 - span(time, INTRO.gather, INTRO.gather + 700);
       for (const speck of dust) {
         const y = ((speck.y - time * speck.drift * 0.001) % 1 + 1) % 1;
@@ -243,73 +357,191 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
         pen.arc(speck.x * width, y * height, speck.r, 0, Math.PI * 2);
         pen.fill();
       }
-      // Where each AI is: on its orbit, turning slowly, until it glides to its place on the pulse.
-      const turn = time * 0.00011;
-      const at = agents.map((agent, index) => {
-        const angle = agent.angle + turn * agent.depth;
-        const free = { x: cx + Math.cos(angle) * radius * agent.reach * 1.35, y: cy + Math.sin(angle) * radius * agent.reach * 0.82 };
+      // The person's things: in a row under the AIs, then into the dot, where they are kept.
+      const projectsIn = easeOut(span(time, INTRO.projects, INTRO.projects + 700));
+      const into = easeInOut(span(time, INTRO.gather + 200, INTRO.gathered + 200));
+      const spread = Math.min(width * 0.27, 250);
+      const homes = things.map((_, index) => ({ x: cx + (index - 1) * spread, y: cy + band * 0.85 }));
+      const cards = homes.map((home, index) => {
+        const lift = (1 - easeOut(span(time, INTRO.projects + index * 140, INTRO.projects + index * 140 + 700))) * 10;
+        return { x: home.x + (sink.x - home.x) * into, y: home.y + lift + (sink.y - home.y) * into };
+      });
+      // The AIs: each on its own slow drift in a band above, until they glide to their places on the
+      // pulse. While they work, each leans a little towards the project it works on.
+      const work = easeInOut(span(time, INTRO.threads, INTRO.threads + 900)) * (1 - gather);
+      const pos = agents.map((agent, index) => {
+        const homeX = cx + (index - 2.5) * Math.min(width * 0.14, 150);
+        const homeY = cy - band * (0.75 + 0.18 * Math.sin(index * 2.3));
+        const wander = { x: Math.sin(time * 0.00042 + agent.phase) * 22, y: Math.cos(time * 0.00035 + agent.phase * 1.3) * 12 };
+        const towards = cards[INTRO_WORK[index][0]];
+        const free = { x: homeX + wander.x + (towards.x - homeX) * 0.12 * work, y: homeY + wander.y + (towards.y - homeY) * 0.1 * work };
         const target = targets[index];
         return { x: free.x + (target.x - free.x) * gather, y: free.y + (target.y - free.y) * gather };
       });
-      // The lines between them: drawn one after another, gone as they come together.
-      const linesFade = 1 - span(time, INTRO.gather, INTRO.gather + 500);
-      edges.forEach(([a, b], index) => {
-        const grow = easeOut(span(time, INTRO.lines + index * 70, INTRO.lines + index * 70 + 700));
-        if (!grow || !linesFade) return;
-        const from = at[a];
-        const to = at[b];
-        const gradient = pen.createLinearGradient(from.x, from.y, to.x, to.y);
-        gradient.addColorStop(0, ink(agents[a].hue, (light ? 0.3 : 0.22) * linesFade));
-        gradient.addColorStop(1, ink(agents[b].hue, (light ? 0.3 : 0.22) * linesFade));
-        pen.strokeStyle = gradient;
-        pen.lineWidth = 0.8;
-        pen.beginPath();
-        pen.moveTo(from.x, from.y);
-        pen.lineTo(from.x + (to.x - from.x) * grow, from.y + (to.y - from.y) * grow);
-        pen.stroke();
+      // The threads of work: fine curves from each AI to its projects, with sparks running down them.
+      const threadsIn = easeOut(span(time, INTRO.threads, INTRO.threads + 900));
+      const threadsOut = 1 - span(time, INTRO.gather - 100, INTRO.gather + 450);
+      if (threadsIn && threadsOut) {
+        INTRO_WORK.forEach((projects, index) => {
+          for (const [n, project] of projects.entries()) {
+            const from = pos[index];
+            const to = cards[project];
+            const end = { x: to.x + (n ? 1 : -1) * (projects.length > 1 ? 14 : 0), y: to.y - 20 };
+            // A soft S from the AI down into the project: it leaves straight down and arrives straight down.
+            const dy = end.y - from.y;
+            const c1 = { x: from.x, y: from.y + dy * 0.55 };
+            const c2 = { x: end.x, y: end.y - dy * 0.55 };
+            const along = (q) => {
+              const r = 1 - q;
+              return { x: r * r * r * from.x + 3 * r * r * q * c1.x + 3 * r * q * q * c2.x + q * q * q * end.x, y: r * r * r * from.y + 3 * r * r * q * c1.y + 3 * r * q * q * c2.y + q * q * q * end.y };
+            };
+            const grow = easeOut(span(time, INTRO.threads + (index * 2 + n) * 90, INTRO.threads + (index * 2 + n) * 90 + 800));
+            const alpha = (light ? 0.38 : 0.32) * threadsOut;
+            pen.strokeStyle = ink(agents[index].hue, alpha);
+            pen.lineWidth = 1;
+            pen.beginPath();
+            pen.moveTo(from.x, from.y + 4);
+            const steps = 32;
+            for (let k = 1; k <= Math.round(steps * grow); k += 1) { const point = along(k / steps); pen.lineTo(point.x, point.y); }
+            pen.stroke();
+            // A spark: one little piece of work travelling down, again and again.
+            if (time > INTRO.sparks && grow >= 1) {
+              const q = ((time - INTRO.sparks) * 0.00055 + index * 0.27 + n * 0.5) % 1;
+              const fade = Math.sin(q * Math.PI) * threadsOut;
+              // A comet: the spark and a short tail that thins behind it.
+              for (let k = 7; k >= 0; k -= 1) {
+                const back = Math.max(0, q - k * 0.012);
+                const { x: sx, y: sy } = along(easeInOut(back));
+                pen.fillStyle = ink(agents[index].hue, 0.9 * fade * (1 - k / 8) ** 1.6);
+                pen.beginPath();
+                pen.arc(sx, sy, 2 * (1 - k / 10), 0, Math.PI * 2);
+                pen.fill();
+              }
+            }
+          }
+        });
+      }
+      // Each project lights up a little while sparks reach it, and is drawn over its threads.
+      const working = threadsIn * threadsOut * (time > INTRO.sparks ? 0.5 + 0.5 * Math.sin((time - INTRO.sparks) * 0.004) : 0);
+      // Going into the dot, each card lets go of its shape and travels on as a point of MADRE's colour.
+      cards.forEach((spot, index) => {
+        const alpha = projectsIn * (1 - easeOut(Math.min(1, into * 2.4)));
+        if (alpha > 0.01) card(spot.x, spot.y, things[index], alpha, 1 - 0.3 * into, Math.max(0, working * (0.6 + 0.4 * Math.sin(index * 2 + time * 0.003))));
+        const travel = projectsIn * Math.min(1, into * 3) * (1 - span(time, INTRO.gathered - 100, INTRO.gathered + 250));
+        if (travel > 0.01) {
+          pen.fillStyle = ink(brand, 0.85 * travel);
+          pen.beginPath();
+          pen.arc(spot.x, spot.y, 2.6, 0, Math.PI * 2);
+          pen.fill();
+        }
       });
-      // The AIs: each comes in on its own, and goes into the line when the line reaches it.
+      // The AIs: each comes in with its name, and goes into the line when the line reaches it.
+      const labels = 1 - easeOut(span(time, INTRO.labelsOut, INTRO.labelsOut + 600));
       agents.forEach((agent, index) => {
         const shown = easeOut(span(time, INTRO.appear + index * 160, INTRO.appear + index * 160 + 600));
         const taken = drawn >= lands[index] ? span(time, INTRO.draw + lands[index] * (INTRO.drawn - INTRO.draw) * 0.7, INTRO.draw + lands[index] * (INTRO.drawn - INTRO.draw) * 0.7 + 260) : 0;
         const alpha = shown * (1 - taken);
         if (!alpha) return;
-        const { x, y } = at[index];
-        const size = (2.8 - 0.8 * gather) * (1 + 0.5 * taken);
-        if (!light) {
-          const glow = pen.createRadialGradient(x, y, 0, x, y, size * 9);
-          glow.addColorStop(0, ink(agent.hue, 0.42 * alpha));
-          glow.addColorStop(1, ink(agent.hue, 0));
-          pen.fillStyle = glow;
-          pen.beginPath();
-          pen.arc(x, y, size * 9, 0, Math.PI * 2);
-          pen.fill();
+        const { x, y } = pos[index];
+        // The way it came: while they glide onto the line, each leaves a fine fading trail.
+        const trail = (agent.trail ??= []);
+        trail.push({ x, y });
+        if (trail.length > 10) trail.shift();
+        if (gather > 0.08 && gather < 0.97 && trail.length > 2) {
+          for (let k = 1; k < trail.length; k += 1) {
+            pen.strokeStyle = ink(agent.hue, 0.5 * alpha * (k / trail.length) ** 2);
+            pen.lineWidth = 2.2 * (k / trail.length);
+            pen.lineCap = 'round';
+            pen.beginPath();
+            pen.moveTo(trail[k - 1].x, trail[k - 1].y);
+            pen.lineTo(trail[k].x, trail[k].y);
+            pen.stroke();
+          }
         }
-        pen.fillStyle = ink(agent.hue, alpha);
+        // Its badge: the official mark on its own colour, a small object with a soft shadow; as it
+        // glides onto the line it shrinks to a point of its colour and goes into the pulse.
+        const badge = 15 * (1 - 0.8 * easeInOut(gather)) * (1 + 0.3 * taken);
+        pen.save();
+        pen.globalAlpha = alpha;
+        pen.shadowColor = light ? 'rgba(20, 30, 20, .16)' : 'rgba(0, 0, 0, .5)';
+        pen.shadowBlur = 14 * (1 - gather);
+        pen.shadowOffsetY = 5 * (1 - gather);
+        pen.fillStyle = agent.ground;
         pen.beginPath();
-        pen.arc(x, y, size, 0, Math.PI * 2);
+        pen.arc(x, y, badge, 0, Math.PI * 2);
         pen.fill();
+        pen.restore();
+        if (light && (agent.id === 'grok' || agent.id === 'cursor')) {
+          pen.strokeStyle = `rgba(20, 30, 20, ${0.14 * alpha})`;
+          pen.lineWidth = 1;
+          pen.beginPath();
+          pen.arc(x, y, badge, 0, Math.PI * 2);
+          pen.stroke();
+        }
+        const markIn = alpha * (1 - easeOut(Math.min(1, gather * 1.8)));
+        if (markIn > 0.01 && agent.badge.complete && agent.badge.naturalWidth) {
+          const m = badge * 1.25;
+          pen.globalAlpha = markIn;
+          pen.drawImage(agent.badge, x - m / 2, y - m / 2, m, m);
+          pen.globalAlpha = 1;
+        }
+        if (labels > 0.01) {
+          pen.fillStyle = textInk((light ? 0.6 : 0.58) * alpha * labels);
+          pen.font = `500 11px ${face}`;
+          pen.textAlign = 'center';
+          pen.textBaseline = 'top';
+          pen.fillText(agent.name, x, y + badge + 7);
+        }
       });
+      // THE ROW UNDER THE NAME: once MADRE is written, the same marks come back, small and quiet, in a
+      // line under it — MADRE with the AIs it works with, one picture.
+      const rowIn = span(time, INTRO.word + 500, INTRO.word + 1500);
+      if (rowIn > 0) {
+        const box = mark.getBoundingClientRect();
+        const stageBox = stage.getBoundingClientRect();
+        const size = Math.max(16, Math.min(22, box.width * 0.042));
+        const gap = size * 1.25;
+        const total = agents.length * size + (agents.length - 1) * gap;
+        const left = box.left - stageBox.left + box.width / 2 - total / 2;
+        const top = box.bottom - stageBox.top + 26;
+        agents.forEach((agent, index) => {
+          const k = easeExpo(span(time, INTRO.word + 500 + index * 70, INTRO.word + 1300 + index * 70));
+          if (!k || !agent.quiet.complete || !agent.quiet.naturalWidth) return;
+          pen.globalAlpha = k * (light ? 0.8 : 0.75);
+          pen.drawImage(agent.quiet, left + index * (size + gap), top + 8 * (1 - k), size, size);
+          pen.globalAlpha = 1;
+        });
+      }
       // The pulse draws itself through them; then the beat, with one ring, and the name.
       beat.style.strokeDashoffset = String(100 - 100 * drawn);
       const beatIn = easeOut(span(time, INTRO.beat, INTRO.beat + 420));
       dot.style.opacity = String(beatIn);
       dot.style.transform = `scale(${0.4 + 0.6 * beatIn})`;
-      const ring = span(time, INTRO.beat + 60, INTRO.beat + 1000);
-      if (ring > 0 && ring < 1) {
-        const box = dot.getBoundingClientRect();
-        const stageBox = stage.getBoundingClientRect();
-        const rx = box.left + box.width / 2 - stageBox.left;
-        const ry = box.top + box.height / 2 - stageBox.top;
-        pen.strokeStyle = ink(light ? '#2f8a1c' : '#9bff66', 0.42 * (1 - easeOut(ring)));
-        pen.lineWidth = 1.2;
-        pen.beginPath();
-        pen.arc(rx, ry, box.width / 2 + easeOut(ring) * 46, 0, Math.PI * 2);
-        pen.stroke();
+      // The beat lights the whole stage once, softly, from the dot: what they did is now kept.
+      const bloom = span(time, INTRO.beat, INTRO.beat + 1400);
+      if (bloom > 0 && bloom < 1) {
+        const spot = dotAt();
+        const reach = Math.max(width, height) * (0.25 + 0.5 * easeOut(bloom));
+        const glow = pen.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, reach);
+        glow.addColorStop(0, ink(brand, (light ? 0.12 : 0.16) * Math.sin(bloom * Math.PI)));
+        glow.addColorStop(1, ink(brand, 0));
+        pen.fillStyle = glow;
+        pen.fillRect(0, 0, width, height);
       }
-      const wordIn = easeOut(span(time, INTRO.word, INTRO.word + 800));
-      word.style.opacity = String(wordIn);
-      word.style.transform = `translate(${193.5 + 10 * (1 - wordIn)}px, 7px)`;
+      for (const [delay, reach, strength] of [[60, 46, 0.42], [380, 74, 0.22]]) {
+        const ring = span(time, INTRO.beat + delay, INTRO.beat + delay + 1000);
+        if (ring > 0 && ring < 1) {
+          const spot = dotAt();
+          pen.strokeStyle = ink(brand, strength * (1 - easeOut(ring)));
+          pen.lineWidth = 1.2;
+          pen.beginPath();
+          pen.arc(spot.x, spot.y, spot.r + easeOut(ring) * reach, 0, Math.PI * 2);
+          pen.stroke();
+        }
+      }
+      const wordIn = easeExpo(span(time, INTRO.word, INTRO.word + 1300));
+      word.style.opacity = String(Math.min(1, wordIn * 1.4));
+      word.style.transform = `translate(${193.5 + 22 * (1 - wordIn)}px, 7px)`;
       if (time >= INTRO.hold) return end(false);
       frame = requestAnimationFrame(paint);
     }

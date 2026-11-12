@@ -79,7 +79,7 @@ test('home widgets: «MADRE usage» exists only with the author\'s token, and re
 test('home settings: Memory is Home\'s own, never the projects\' added up (L-10)', async () => {
   const { readFile } = await import('node:fs/promises');
   const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
-  assert.match(home, /\['The agents', 'Who works on this Mac', \['agents', 'bishop', 'memory', 'local'\]\]/);
+  assert.match(home, /\['The agents', 'The AIs that work for you', \['agents', 'bishop', 'memory', 'local'\]\]/);
   assert.match(home, /const SET_ORDER = \[[^\]]*'memory'/);
   assert.match(home, /memory: \(host\) => void fillMemory\(host\)/);
   const fill = home.slice(home.indexOf('async function fillMemory'), home.indexOf('// LOCAL AI (src/local-ai.mjs)'));

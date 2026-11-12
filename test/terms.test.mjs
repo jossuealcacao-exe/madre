@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { TERMS_VERSION, acceptTerms, cameFromBefore, readTerms, termsWaived } from '../src/terms.mjs';
+import { APP_TERMS_LINKS, APP_TERMS_VERSION, TERMS_LINKS, TERMS_VERSION, acceptTerms, cameFromBefore, readTerms, termsLinks, termsWaived } from '../src/terms.mjs';
 
 test('terms: not accepted until accepted on this computer, once per version of the text', async () => {
   const root = await mkdtemp(join(tmpdir(), 'madre-terms-'));
@@ -41,4 +41,22 @@ test('terms: the page waits on it before anything else, Home and a project alike
   // The diagnostics are no condition: the switch is in the gate, and on.
   assert.match(gate, /let diagnostics = answer\.diagnosticsFixed \? false : answer\.diagnostics !== false;/);
   assert.match(gate, /dialog\.addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\);/);
+});
+
+test('terms: inside the desktop app the license is the app\'s own, a text of its own, asked again once', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'madre-terms-app-'));
+  const browser = {};
+  const app = { MADRE_APP: '1' };
+  await acceptTerms(root, { env: browser });
+  assert.equal((await readTerms(root, { env: browser })).accepted, true, 'the source code\'s, accepted in a browser');
+  const first = await readTerms(root, { env: app });
+  assert.equal(first.accepted, false, 'the app asks for its own');
+  assert.equal(first.kind, 'app');
+  assert.equal(first.previous, TERMS_VERSION, 'and knows the person accepted the other one before');
+  await acceptTerms(root, { env: app });
+  assert.equal((await readTerms(root, { env: app })).version, APP_TERMS_VERSION);
+  assert.equal((await readTerms(root, { env: app })).accepted, true);
+  assert.deepEqual(termsLinks(app), APP_TERMS_LINKS);
+  assert.deepEqual(termsLinks(browser), TERMS_LINKS, 'GitHub and npm keep their license');
+  assert.match(APP_TERMS_LINKS.license.es, /^https:\/\/madre\.run\//);
 });

@@ -73,7 +73,14 @@ const BEFORE = ['1.0'];
 export const WELCOME_STEPS = ['hello', 'use', 'agents', 'project', 'ai', 'ready'];
 export const WELCOME_PROFILES = ['business', 'social', 'numbers', 'office', 'study', 'notes', 'code', 'curious'];
 const freshWelcome = () => ({ at: null, done: [], skipped: [], finished: null, profile: [] });
-const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null, welcome: freshWelcome() });
+// THE FIRST WEEK'S MISSIONS (2026-11-11, the author: «missions instead of a tour»): five things to do,
+// each with a result the person sees, each teaching a piece of MADRE on the way. Kept here with the
+// tour, one person's, whichever project or port a mission was done in: the day it was done, or
+// nothing. `missionsHidden` is the person putting them away.
+// The fifth was «install a skill» until the author tried it with none left to install (2026-11-11):
+// now it is anything got from the Market — a module, a skill, a connector.
+export const MISSIONS = ['page', 'two-ais', 'undo', 'local-ai', 'market'];
+const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null, welcome: freshWelcome(), missions: {}, missionsHidden: null });
 // A tab that shows the bonjour or the chapters says so every few seconds; another tab that finds it
 // said within this long tells the person it is open there, instead of a second bonjour.
 export const HELD_MS = 45 * 1000;
@@ -108,6 +115,8 @@ export async function readTour(stateRoot) {
       finished: iso(raw.welcome?.finished),
       profile: Array.isArray(raw.welcome?.profile) ? WELCOME_PROFILES.filter((id) => raw.welcome.profile.includes(id)) : [],
     },
+    missions: Object.fromEntries(MISSIONS.filter((id) => iso(raw.missions?.[id])).map((id) => [id, raw.missions[id]])),
+    missionsHidden: iso(raw.missionsHidden),
   };
 }
 
@@ -157,6 +166,12 @@ async function applyChange(stateRoot, change, now) {
   }
   // The welcome: where the person is, a step done or left for later (one undoes the other), done
   // with it, or from the start again (Settings › «See the welcome again»).
+  // A mission done (the first time counts), or all of them put away or back.
+  if (change.mission !== undefined) {
+    if (!MISSIONS.includes(change.mission)) return { error: 'mission' };
+    state.missions[change.mission] ??= at;
+  }
+  if (change.missionsHidden !== undefined) state.missionsHidden = change.missionsHidden === true ? at : null;
   if (change.welcome !== undefined) {
     const said = change.welcome;
     if (!said || typeof said !== 'object') return { error: 'welcome' };

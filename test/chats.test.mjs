@@ -1366,7 +1366,7 @@ test('review of 2026-10-28: a download can be stopped, «try it» is a talk, App
   // Firmer text and darker quiet greys in the chat shell.
   assert.match(css, /html\.chat-shell body \{ font-weight: 450; \}/);
   assert.match(css, /--read-weight: 430;/);
-  assert.match(home, /t\('All caught up\. When an agent asks you something, it shows up here\.'\)/);
+  assert.match(home, /t\('All caught up\. When an AI asks you something, it shows up here\.'\)/);
 });
 
 test('review of 2026-10-28 (2): Home\'s sheets in the new look, Connections understood at a glance, «Add to Home» a window, the chapters with the logo', async () => {

@@ -169,7 +169,7 @@ if (community && existsSync(join(community, 'habilidades'))) {
     skills.push({
       id, community: true, version: read.version, minMadre: read.minMadre, shelf: read.shelf,
       name: read.name, line: read.line, summary: read.summary,
-      author: read.author, spdx: read.license, credit: read.credit ?? null, files,
+      author: read.author, spdx: read.license, credit: read.credit ?? null, icon: read.icon ?? null, files,
     });
   }
 }

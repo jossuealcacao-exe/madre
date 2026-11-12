@@ -1740,24 +1740,34 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.control { color: var(--terror); text-shadow: none; }
 .system.control .who { color: var(--agent); }
 .system.control code { font-family: var(--mono); font-size: 10.5px; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--terror) 45%, transparent); border-radius: 6px; }
-.system.control.changed { display: grid; gap: 8px; justify-items: center; max-width: min(760px, 92%); padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--terror) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--terror) 6%, transparent); text-shadow: none; text-transform: none; letter-spacing: 0; font-size: 12.5px; }
-.system.control.changed .head { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; font-family: var(--sans); font-size: 12.5px; letter-spacing: 0; text-transform: none; }
+/* Read top to bottom, from the left (2026-11-12, the author: «too tight, badly ordered»): who and
+   what in the head, the files in two columns, UNDO and how much changed in one line at the foot. */
+.system.control.changed { display: grid; gap: 10px; justify-items: stretch; text-align: left; width: min(560px, 92%); max-width: min(560px, 92%); padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--terror) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--terror) 6%, transparent); text-shadow: none; text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+.system.control.changed .head { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: baseline; gap: 4px 6px; line-height: 1.4; font-family: var(--sans); font-size: 12.5px; letter-spacing: 0; text-transform: none; }
 .system.control.changed.quiet { border-style: dashed; color: var(--text-2); background: transparent; }
 /* The status and the path in two columns: the status never breaks inside a word (MODIFICADO used
    to split as MODIFICAD / O), and a long path breaks inside itself, left-aligned, not centred. */
 /* Centred like the head and the tally around them: the list is one block in the middle of the card,
    its kinds and its files still each in their own column. */
-.system.control .files { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content minmax(0, max-content); justify-content: center; gap: 6px 10px; align-items: baseline; justify-self: stretch; text-align: left; }
+.system.control .files { list-style: none; margin: 0; padding: 10px 0 0; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); display: grid; grid-template-columns: max-content minmax(0, 1fr); justify-content: start; gap: 8px 14px; align-items: baseline; justify-self: stretch; text-align: left; }
 .system.control .files li { display: contents; }
 .system.control .files .st { font-family: var(--sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--text-3); min-width: 64px; white-space: nowrap; }
 .system.control .files .st.A { color: var(--phosphor); } .system.control .files .st.M { color: var(--warn); } .system.control .files .st.D { color: var(--danger); }
 .system.control .files .file-ref { font-family: var(--mono); font-size: 12px; color: var(--text); background: transparent; border: 0; border-bottom: 1px dashed var(--line-2); padding: 0; cursor: pointer; text-align: left; overflow-wrap: anywhere; justify-self: start; }
 .system.control .files .file-ref:disabled { text-decoration: line-through; cursor: default; }
-.system.control .stat { margin: 0; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); white-space: pre-wrap; }
+.system.control .stat { margin: 0; font-family: var(--sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--text-3); white-space: nowrap; }
+.system.control.changed .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-top: 2px; }
+.system.control.changed .foot .stat { margin-left: auto; }
+.system.control.changed .forbidden { line-height: 1.45; }
 .system.control .forbidden { font-family: var(--mono); font-size: 10.5px; color: var(--danger); letter-spacing: .04em; }
 .system.control .undo { border: 1px solid var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); font: inherit; font-family: var(--sans); font-size: 12px; letter-spacing: 0; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
 .system.control .undo:hover { background: color-mix(in srgb, var(--terror) 22%, transparent); }
 .system.control .undo:disabled { opacity: .5; cursor: default; }
+/* What a CREATE turn made, taken away again (2026-11-11). */
+.artifacts .undo { margin-top: 8px; border: 1px solid var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); font: inherit; font-family: var(--sans); font-size: 12px; letter-spacing: 0; padding: 6px 11px; border-radius: 8px; cursor: pointer; }
+.artifacts .undo:hover { background: color-mix(in srgb, var(--terror) 22%, transparent); }
+.artifacts .undo:disabled { opacity: .5; cursor: default; }
+.artifacts .outcome { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .system.control .outcome { font-family: var(--sans); font-size: 12px; letter-spacing: 0; color: var(--phosphor); }
 .system.control.reverted { color: var(--phosphor); text-shadow: none; }
 /* Escalation card: the plan waits for the human, with a clock */
@@ -6467,7 +6477,8 @@ dialog.skill-text .skill-text-foot { margin: 0; }
 .sx-steps li .sx-hint { font-size: 12px; line-height: 1.45; color: var(--text-2); }
 .sx-train-what { margin: 0 16px 10px; font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
 .sx-train-platform { margin: 10px 16px 6px; }
-.sx-more > .sx-hint { margin: 0 16px; }
+/* Room under it (2026-11-12): flush with the card's rounded, clipped edge, its last line was cut. */
+.sx-more > .sx-hint { margin: 10px 16px 16px; }
 
 /* An agent's card: its colour on the avatar and the name, where it lives in small print. */
 .sx-agent .sx-head { align-items: center; }
@@ -8741,6 +8752,10 @@ dialog#core .mother-cmd .copy { position: absolute; top: 8px; right: 8px; displa
 #messages#messages .sys-dots.open > .system.folded:hover { background: color-mix(in srgb, var(--text) 4%, transparent) !important; }
 #messages#messages .sys-dots.open > .system.folded::before { content: ''; position: absolute; left: 11px; top: 12px; width: 7px; height: 7px; border-radius: 50%; background: var(--dot); }
 #messages#messages .sys-dots.open > .system.folded > b:first-child { display: inline; margin-right: 6px; }
+/* The changes a turn made, opened in the row (2026-11-12): its own grid, not one run-on line. */
+#messages#messages .sys-dots.open > .system.control.changed.folded { display: grid !important; gap: 10px; justify-items: stretch; padding: 10px 14px 12px 28px !important; font-size: 12.5px; }
+#messages#messages .sys-dots.open > .system.control.changed.folded::before { top: 16px; }
+#messages#messages .sys-dots.open > .system.control.changed.folded .head > b:first-child { margin-right: 0; }
 #messages .sys-dots.open > .sys-more { justify-self: center; margin-top: 2px; padding: 3px 10px; border-radius: 999px; cursor: pointer; color: var(--text-3); }
 #messages .sys-dots.open > .sys-more:hover { color: var(--text); }
 @keyframes notice-peek { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
@@ -9196,6 +9211,20 @@ html.chat-shell dialog.tour-window { --tour-surface: var(--cs-canvas); }
 dialog.key-ask:not(.console) { width: min(400px, calc(100vw - 32px)); }
 /* The way to a first-time hint whose place is out of view: a pill at the edge the place went past,
    with the hint's own title and which way to go. A click takes the page there (tour.js). */
+/* ONE KIND OF HINT (2026-11-11, the author: «Home's hints and the project's are different; make them
+   like the project's»): Home's floating hints take the project's first-touch card (.hint-card) — solid
+   panel, fine edge, its title and words at the same sizes, and its keys on the left, the next one in
+   the accent. The ones written inside a card (.inline) keep their own place. */
+.tour-hint:not(.inline) { gap: 0; width: min(320px, calc(100vw - 24px)); padding: 16px 18px 14px; border: 1px solid var(--line-2); border-radius: 16px; background: var(--panel); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 18px 50px rgba(0, 0, 0, .4); }
+:root[data-scheme="light"] .tour-hint:not(.inline) { box-shadow: 0 18px 50px rgba(20, 30, 20, .18); }
+.tour-hint:not(.inline) .tour-hint-eyebrow { display: block; margin: 0 0 6px; }
+.tour-hint:not(.inline) b { display: block; margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+.tour-hint:not(.inline) p { font-size: 13.5px; line-height: 1.5; }
+.tour-hint:not(.inline) .tour-hint-words { gap: 0; }
+.tour-hint:not(.inline) .tour-hint-keys { justify-content: flex-start; gap: 8px; margin-top: 12px; }
+.tour-hint:not(.inline) .tour-btn { padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 650; }
+.tour-hint:not(.inline) .tour-btn.quiet { padding: 7px 10px; background: transparent; color: var(--text-2); font-weight: 400; }
+.tour-hint:not(.inline) .tour-btn.quiet:hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
 .tour-hint-away { --tour-acc: var(--s-acc, var(--acc, var(--phosphor))); position: fixed; inset: auto; left: 50%; translate: -50% 0; margin: 0; z-index: 2147483000; display: inline-flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 8px 14px 8px 10px; border: 0; border-radius: 999px; font: inherit; font-family: var(--read); color: var(--text); background: color-mix(in srgb, var(--bg-2, var(--bg)) 94%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tour-acc) 70%, transparent), 0 14px 32px -14px rgba(0, 0, 0, .45); cursor: pointer; animation: tour-rise calc(360ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .2, 1) both; }
 .tour-hint-away[data-side="up"] { top: calc(env(safe-area-inset-top, 0px) + 84px); bottom: auto; }
 .tour-hint-away[data-side="down"] { bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); top: auto; }
@@ -12754,6 +12783,23 @@ dialog.madre-opening::backdrop { background: transparent; }
 .wl-intro-logo .beat-dot { fill: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; }
 .wl-intro-logo .word { stroke: var(--brand-word); opacity: 0; }
 :root[data-scheme="light"] .wl-intro-logo .beat { filter: none; }
+.wl-intro { font-family: var(--read); }
+/* The opening's words (2026-11-11, second round: «like a product reveal»): a headline in two tones —
+   what it is, then the quieter half — large and tight, coming into focus from a soft blur as the one
+   before rises away. One long, settled curve for everything, nothing bounces. */
+.wl-intro-story { position: absolute; left: 50%; bottom: max(13%, 64px); width: min(760px, calc(100vw - 48px)); height: 3em; margin: 0; transform: translateX(-50%); font: 600 clamp(17px, 2vw, 25px)/1.25 var(--read); letter-spacing: -.016em; text-align: center; pointer-events: none; }
+.wl-intro-line { position: absolute; inset: 0 0 auto; margin: 0; text-wrap: balance; opacity: 0; }
+.wl-intro-strong { color: var(--text); }
+.wl-intro-soft { color: var(--text-3); }
+.wl-intro-line.in { animation: wl-line-in 1.15s cubic-bezier(.16, 1, .3, 1) both; }
+.wl-intro-line.in .wl-intro-soft { animation: wl-line-in 1.15s cubic-bezier(.16, 1, .3, 1) .14s both; display: inline-block; }
+.wl-intro-line.out { animation: wl-line-out .7s cubic-bezier(.4, 0, .2, 1) both; }
+.wl-intro-line.last .wl-intro-soft { color: var(--brand-pulse); }
+.wl-intro.leaving .wl-intro-story { transition: opacity .3s ease; opacity: 0; }
+@keyframes wl-line-in { from { opacity: 0; transform: translateY(18px); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes wl-line-out { from { opacity: 1; transform: none; filter: blur(0); } to { opacity: 0; transform: translateY(-14px); filter: blur(8px); } }
+.wl-intro-mark { top: 42%; }
+@media (max-width: 560px) { .wl-intro-story { bottom: 56px; } }
 .wl-intro-skip { position: absolute; right: 26px; bottom: 22px; padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: 500 12.5px var(--read); letter-spacing: .01em; opacity: 0; cursor: pointer; animation: wl-skip-in .6s ease 1.4s forwards; }
 .wl-intro-skip:is(:hover, :focus-visible) { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); outline: none; }
 @keyframes wl-skip-in { to { opacity: 1; } }
@@ -12957,6 +13003,24 @@ dialog.terms-gate.leaving { animation: terms-out calc(260ms * var(--motion-scale
 .terms-logo svg { height: 100%; width: auto; display: block; }
 .terms-title { margin: 6px 0 0; font: 650 26px/1.15 var(--read, inherit); letter-spacing: -.02em; }
 .terms-lead { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--text-2); }
+/* ES · EN, by hand, in the window's top right corner (2026-11-11): a small sunk track, the language on
+   raised in it, the way MADRE's other two-way switches look. */
+.terms-lang { position: fixed; top: max(16px, env(safe-area-inset-top, 0px) + 12px); right: max(18px, env(safe-area-inset-right, 0px) + 14px); z-index: 2; display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: color-mix(in srgb, var(--text) 6%, transparent); box-shadow: inset 0 1px 2px rgba(20, 30, 20, .1); }
+.terms-lang button { min-width: 38px; height: 26px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: var(--text-2); font: 600 12px/1 var(--read, inherit); letter-spacing: .04em; cursor: pointer; }
+.terms-lang button:hover { color: var(--text); }
+.terms-lang button[aria-checked="true"] { background: var(--panel, #fff); color: var(--text); box-shadow: 0 1px 2px rgba(20, 30, 20, .14), 0 0 0 .5px rgba(20, 30, 20, .08); }
+.terms-lang button:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor) 60%, transparent); outline-offset: 2px; }
+dialog.terms-gate.intro .terms-lang { display: none; }
+.terms-about { display: grid; gap: 10px; }
+.terms-about h2 { margin: 0; font: 600 12px/1.3 var(--read, inherit); letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.terms-about-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.terms-about-list li { display: grid; align-content: start; gap: 8px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 3%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.terms-about-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--phosphor) 12%, transparent); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--phosphor) 30%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent); color: color-mix(in srgb, var(--phosphor) 80%, var(--text)); }
+.terms-about-icon svg { width: 15px; height: 15px; stroke-width: 1.5; }
+.terms-about-words { display: grid; gap: 2px; }
+.terms-about-words b { font: 600 13px/1.3 var(--read, inherit); }
+.terms-about-words small { font-size: 12px; line-height: 1.4; color: var(--text-2); }
+@media (max-width: 560px) { .terms-about-list { grid-template-columns: 1fr; } .terms-about-list li { grid-template-columns: auto minmax(0, 1fr); } }
 .terms-block { display: grid; gap: 6px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .terms-block h2 { margin: 0; font: 600 14.5px/1.3 var(--read, inherit); }
 .terms-block p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
@@ -13477,3 +13541,82 @@ html.chat-shell .shell > .composer > .openq .openq-head { background: none; box-
 .mk-skill-icon svg { width: 20px; height: 20px; }
 .mk-skills .mk-skill-line { margin: 2px 0 0; }
 @media (max-width: 760px) { .mk-skills .mk-skill-list { grid-template-columns: minmax(0, 1fr); } }
+
+/* THE LINE A REPLY ANSWERS, ON ITS OWN ROW (2026-11-11, the author: «with the side view the handoff
+   bubble looks awful and grows very tall»): beside the chips it was squeezed into a narrow column,
+   one word a line. It goes under them, as wide as the reply, two lines at most; the whole of it is
+   in its tooltip. The chips and the tokens stay together on the first row. */
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who,
+#messages .col > .who { flex-wrap: wrap; row-gap: 4px; }
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who .reply,
+#messages .col > .who .reply { order: 99; flex: 1 1 100%; max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; text-overflow: ellipsis; overflow-wrap: anywhere; line-height: 1.4; }
+
+
+/* THE MARKET, A LITTLE LESS LIKE A PHONE'S STORE (2026-11-11, the author: «full-width banners, banners
+   in Skills, one key "Install", and soften the Apple winks without making a show of it»):
+   · a banner is as wide as the page: the next one no longer peeks at the edge;
+   · the key is MADRE's own — a small rounded rectangle with a fine edge in the accent, not a grey
+     capsule — and nothing is written under it unless it costs something;
+   · the slides are counted with short bars, as MADRE's loader counts, not with dots that stretch. */
+.mk.flat .mk-slide { flex-basis: 100%; }
+.mk.flat .mk-get { height: 28px; padding: 0 13px; border-radius: 8px; background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--madre-green) 38%, transparent); color: var(--madre-green); font: 600 12.5px var(--read); letter-spacing: 0; transition: background-color .15s ease, box-shadow .15s ease; }
+.mk.flat .mk-get:hover { background: color-mix(in srgb, var(--madre-green) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--madre-green) 60%, transparent); }
+.mk.flat .mk-get.on { background: transparent; box-shadow: inset 0 0 0 1px var(--mk-line); color: var(--text-3); }
+.mk.flat .mk-get.light { background: var(--madre-green); box-shadow: none; color: var(--madre-green-ink); }
+.mk.flat .mk-get.light:hover { background: var(--madre-green); filter: brightness(1.06); }
+.mk.flat .mk-get.big { height: 34px; border-radius: 9px; box-shadow: none; }
+.mk.flat .mk-dots { gap: 5px; margin-top: 12px; }
+.mk.flat .mk-dot { width: 16px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--text) 16%, transparent); }
+.mk.flat .mk-dot[aria-current="true"] { width: 16px; background: var(--madre-green); }
+.mk.flat .mk-slide-words small { letter-spacing: .06em; }
+/* A skill's banner: its drawing in a square of its colour where a module has its icon. */
+.mk-skill-icon.big { width: 48px; height: 48px; border-radius: 12px; background: var(--mk-flat, var(--madre-green)); color: #fff; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1); }
+.mk-skill-icon.big svg { width: 24px; height: 24px; }
+.mk.flat .mk-skills .mk-carousel { margin-bottom: 8px; }
+.mk.flat .mk-slide { --mk-flat: color-mix(in oklab, var(--mk-a, #94a3b8) 32%, var(--mk-b, #334155)); }
+
+/* WHAT AN ANSWER USED, ONLY WHEN LOOKED FOR (2026-11-11, docs/private/TEXTOS-PARA-LA-GENTE.md): the
+   «8↓ 2.9k↑» over every reply is a number a newcomer cannot read. It comes in when the pointer is on
+   the reply, or the reply has the focus, with its words in the tooltip. */
+#messages .row .who .spent { opacity: 0; transition: opacity .15s ease; }
+#messages .row:is(:hover, :focus-within) .who .spent { opacity: 1; }
+@media (hover: none) { #messages .row .who .spent { opacity: 1; } }
+
+/* THE FIRST WEEK'S MISSIONS (2026-11-11, public/missions.js): a sheet with the five, a bar of five
+   short segments that fill in MADRE's colour, and each mission as a row — its drawing, what to do,
+   what it teaches — with one key to start it, or «Done». The pill in the bar has no × of its own:
+   the missions are put away from inside the sheet. */
+.missions-pill { padding-right: 3px; }
+.missions-pill .tour-pill-go { padding-right: 12px; }
+dialog.missions { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; border: 0; border-radius: 18px; background: var(--panel); color: var(--text); box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 30px 70px -20px rgba(0, 0, 0, .45); font-family: var(--read); overflow: auto; }
+dialog.missions::backdrop { background: color-mix(in srgb, #000 32%, transparent); }
+.missions-card { display: grid; gap: 14px; padding: 22px 22px 18px; }
+.missions-head { display: flex; align-items: center; gap: 12px; }
+.missions-head h2 { flex: 1; margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.missions-x { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); cursor: pointer; }
+.missions-x:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.missions-x svg { width: 15px; height: 15px; }
+.missions-lead { margin: -6px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+.missions-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.missions-bar i { height: 4px; border-radius: 3px; background: color-mix(in srgb, var(--text) 10%, transparent); transition: background-color .4s ease; }
+.missions-bar i.on { background: var(--madre-green, var(--phosphor)); }
+.missions-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.mission { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--text) 3%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent); }
+.mission-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: color-mix(in srgb, var(--madre-green, var(--phosphor)) 12%, transparent); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--madre-green, var(--phosphor)) 30%, transparent); color: color-mix(in srgb, var(--madre-green, var(--phosphor)) 80%, var(--text)); }
+.mission-icon svg { width: 16px; height: 16px; stroke-width: 1.5; }
+.mission.done .mission-icon { background: var(--madre-green, var(--phosphor)); color: var(--madre-green-ink, #fff); }
+.mission-words { display: grid; gap: 2px; min-width: 0; }
+.mission-words b { font-size: 14px; font-weight: 600; }
+.mission-words small { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.mission-words .mission-note { color: var(--text-3); }
+.mission.done .mission-words b { color: var(--text-2); }
+.mission-go { height: 30px; padding: 0 13px; border: 0; border-radius: 8px; background: var(--madre-green, var(--phosphor)); color: var(--madre-green-ink, #fff); font: 600 12.5px var(--read); white-space: nowrap; cursor: pointer; }
+.mission-go:hover { filter: brightness(1.06); }
+.mission-done { font: 600 12px var(--read); color: var(--madre-green, var(--phosphor)); }
+.missions-foot { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+.missions-grow { flex: 1; }
+.missions-link { height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: color-mix(in srgb, var(--madre-green, var(--phosphor)) 85%, var(--text)); font: 500 13px var(--read); cursor: pointer; }
+.missions-link.quiet { color: var(--text-2); }
+.missions-link:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.missions-ok { height: 32px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--madre-green, var(--phosphor)); color: var(--madre-green-ink, #fff); font: 600 13px var(--read); cursor: pointer; }
+@media (max-width: 520px) { .mission { grid-template-columns: auto minmax(0, 1fr); } .mission-go, .mission-done { grid-column: 2; justify-self: start; } }

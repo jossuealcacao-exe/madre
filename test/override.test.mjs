@@ -69,7 +69,7 @@ test('override: the room stores it, says it on boot and in AJUSTES without the f
 test('override: the key for #3 and #4 is one of the room\'s alerts, said in sentences', async () => {
   const [app, page, css] = await Promise.all([read('public/app.js'), read('public/index.html'), read('public/styles.css')]);
   assert.match(page, /<dialog id="override" class="room-ask key-ask" aria-labelledby="override-title">/);
-  assert.match(app, /override\.title\.textContent = override\.copilot \? t\('Turn the copilot on for \{time\}', \{ time: copilotWindowWords\(override\.copilot\) \}\) : mode === 4 \? t\('Open #4 FULL ACCESS for @\{agent\}'/);
+  assert.match(app, /override\.title\.textContent = override\.copilot \? t\('Turn the copilot on for \{time\}', \{ time: copilotWindowWords\(override\.copilot\) \}\) : mode === 4 \? t\('Give @\{agent\} full access\?'/);
   assert.ok(!app.includes('SPECIAL ORDER 937 ACKNOWLEDGED'), 'the key still answers in capitals');
   // The room's questions wear a glyph and speak in sentences; the console's keep the console.
   assert.match(app, /sheet\.title\.textContent = inConsole \? title : askWords\(title\);/);

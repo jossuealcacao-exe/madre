@@ -61,7 +61,7 @@ async function openRoom(id, { carry = false, chat = null } = {}) {
 }
 
 // The modes as the room names them (app.js, MODES): asked when shown, so the language is the page's.
-const modeName = (n) => [t('INCOGNITO'), t('CHAT ONLY'), t('CREATE'), t('EDIT'), t('FULL ACCESS')][n] ?? '';
+const modeName = (n) => [t('Not saved'), t('Just chat'), t('Can create'), t('Can edit'), t('Full access')][n] ?? '';
 // What an agent is waiting for, in one line.
 function askLine(ask) {
   if (ask.kind === 'mode') return t('@{agent} asks for #{n} {label}', { agent: ask.agent, n: ask.mode, label: modeName(ask.mode) });

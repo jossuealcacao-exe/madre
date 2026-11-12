@@ -297,7 +297,7 @@ function ago(iso) {
   return new Date(at).toLocaleDateString(language, { day: 'numeric', month: 'short' });
 }
 // The modes as the room names them (app.js, MODES): asked when shown, so the language is the page's.
-const modeName = (n) => [t('INCOGNITO'), t('CHAT ONLY'), t('CREATE'), t('EDIT'), t('FULL ACCESS')][n] ?? '';
+const modeName = (n) => [t('Not saved'), t('Just chat'), t('Can create'), t('Can edit'), t('Full access')][n] ?? '';
 function askLine(ask) {
   if (ask.kind === 'mode') return t('@{agent} asks for #{n} {label}', { agent: ask.agent, n: ask.mode, label: modeName(ask.mode) });
   if (ask.kind === 'run') return ask.text ? t('@{agent} wants to run {line}', { agent: ask.agent, line: ask.text }) : t('@{agent} wants to run a command', { agent: ask.agent });
@@ -648,7 +648,7 @@ function drawWaiting() {
   ui.waiting.count.textContent = String(total);
   ui.waiting.box.classList.toggle('has', Boolean(total));
   ui.waiting.body.replaceChildren();
-  if (!total) { ui.waiting.body.append(el('p', 'sm-hint', t('All caught up. When an agent asks you something, it shows up here.'))); return; }
+  if (!total) { ui.waiting.body.append(el('p', 'sm-hint', t('All caught up. When an AI asks you something, it shows up here.'))); return; }
   for (const room of rooms.slice(0, 2)) {
     const row = el('a', 'sm-waiting-row');
     row.href = addressOf(room);
@@ -681,7 +681,7 @@ function drawMemory() {
     const item = el('span', `k-${kind}`, `${kindWord(kind)} · ${sum.kinds[kind]}`);
     legend.append(item);
   }
-  ui.memory.body.append(legend, el('p', 'sm-hint', [sum.memories ? t('{n} in use', { n: sum.travelling }) : null, t('Counted in the open projects.')].filter(Boolean).join(' · ')));
+  ui.memory.body.append(legend, el('p', 'sm-hint', [sum.memories ? t('{n} in use', { n: sum.travelling }) : null, t('From the projects that are open.')].filter(Boolean).join(' · ')));
 }
 
 // AGENTS: the ones on this computer, with the session each has. Connected once, every project
@@ -842,7 +842,7 @@ function drawAttention() {
   if (!items.length) {
     const calm = el('li', 'sm-attention-item is-calm');
     const words = el('div', 'sm-attention-words');
-    words.append(el('b', null, t('All in order.')), el('span', null, t('No project, agent or connection needs you.')));
+    words.append(el('b', null, t('All in order.')), el('span', null, t('Nothing needs you right now.')));
     calm.append(el('i', 'dot'), words);
     ui.attention.list.append(calm);
     return;
@@ -1093,7 +1093,7 @@ function drawLinks(projects) {
   const reads = enlaces.reduce((sum, enlace) => sum + (enlace.traffic?.reads24h ?? 0), 0);
   ui.linksSum.textContent = enlaces.length
     ? [enlaces.length === 1 ? t('1 in force') : t('{n} in force', { n: enlaces.length }), t('{n} reads in 24 h', { n: reads })].join(' · ')
-    : enough ? t('No connections yet.') : t('Add a project to connect it.');
+    : enough ? t('Connect two projects so one can look things up in the other.') : t('Add a project to connect it.');
   ui.linksNote.textContent = t('A connection lets one project look up what another already learned: its decisions, facts and preferences. It only reads, never changes the other project, and you can cancel it whenever you want.');
   drawLinkSteps();
   ui.links.replaceChildren(...enlaces.map(linkRow));
@@ -1550,7 +1550,7 @@ const HOME_TILES = {
   projects: { id: 'sm-drawer', name: () => t('Projects'), about: () => t('Every project, open or asleep, three rows at a time.'), size: 12, sizes: [12], kept: true },
   decisions: { id: 'sm-decisions', name: () => t('Recent decisions'), about: () => t('What your projects decided lately.'), size: 4, rows: 3 },
   attention: { id: 'sm-attention', name: () => t('Needs you'), about: () => t('What Home noticed that needs a hand.'), size: 4, rows: 3 },
-  memory: { id: 'sm-memory', name: () => t('Memory'), about: () => t('What your projects remember, by kind.'), size: 4, rows: 3 },
+  memory: { id: 'sm-memory', name: () => t('What MADRE remembers'), about: () => t('What your projects remember, by kind.'), size: 4, rows: 3 },
 };
 const WIDGETS = {
   'w-system': { kind: 'system', name: () => t('System resources'), about: () => t('How busy this Mac\'s processor is, and how much memory is free.'), size: 4, rows: 3 },
@@ -2924,9 +2924,25 @@ const intoAProject = () => {
   const room = data ? projectsInOrder().open[0] : null;
   return room ? () => leaveTo(addressOf(room)) : undefined;
 };
+// The first week's missions (missions.js), from Home: a message is written in the project opened
+// most recently (or the first one), which opens with it in its box.
+const missionDraft = (text) => {
+  const order = projectsInOrder();
+  const room = order.open[0] ?? order.all[0];
+  if (!room) { openHomeWelcome?.({}); return; }
+  if (room.open?.port || room.here) leaveTo(`${addressOf(room)}#escribe=${encodeURIComponent(text)}`);
+  else void startRoom(room, { enter: true, draft: text });
+};
 const homeTour = startTour({
   page: 'home',
   pillSlot: $('sm-tour-pill'),
+  missions: {
+    draft: missionDraft,
+    agents: () => (agentsSeen?.agents ?? []).filter((agent) => agent.id !== 'madre' && agentState(agent, agentsSeen).ok).map((agent) => agent.id),
+    localReady: () => (agentsSeen?.agents ?? []).some((agent) => agent.id === 'madre' && agentState(agent, agentsSeen).ok),
+    settings: (part) => openSettings(part === 'local' ? 'local' : 'agents'),
+    market: (tab) => openHomeMarket(tab),
+  },
   hidden: () => (data?.phonePreview ? [] : ['phone']),
   ready: () => Boolean(data) && !welcomeOpen() && !sheet,
   welcome: { instead: true, needed: () => !projectsInOrder().all.length || !agentsReady(), open: (then) => openHomeWelcome({ then }) },
@@ -3815,7 +3831,7 @@ function macroWords() {
     // How to move round it, as keys of this computer; on a phone, where there are none, its line.
     hint: homeShellOn() ? mapKeys('projects') : t('Drag the space to move it · wheel to come closer · click a project to look at it · drag it to turn it · carry one onto the Coordinator for the Coordinator to read it, or onto another to connect them · ← → from one to the next · Esc to come back'),
     bishop: t('Coordinator'),
-    bishopAbout: t('Your Coordinator. It reads across your projects, signs the connections between them and carries an order from one to another.'),
+    bishopAbout: t('Your Coordinator sees all your projects at once. Ask it what is still pending, or have it carry something from one project to another.'),
     bishopReads: (n) => (n ? (n === 1 ? t('It reads 1 project by a connection') : t('It reads {n} projects by connections', { n })) : t('It reads no project yet: each one it reads is a connection you sign.')),
     notLinked: t('Not connected yet: touch one to connect it'),
     talk: t('Talk to the Coordinator'),
@@ -5591,7 +5607,7 @@ function openHomeWelcome({ at = null, then = null } = {}) {
 // in that room. Nothing scrolls inside the window: the screen behind it does.
 const SET_SECTIONS = [
   ['You', 'How Home looks and what its bar holds', ['look', 'bar']],
-  ['The agents', 'Who works on this Mac', ['agents', 'bishop', 'memory', 'local']],
+  ['The agents', 'The AIs that work for you', ['agents', 'bishop', 'memory', 'local']],
   ['System', 'The projects of this Mac, the version and the manual', ['projects', 'release', 'manual']],
 ];
 // The room's own icons where the room has the category (app.js, SETTINGS_CATS); the bar, BISHOP
@@ -5599,7 +5615,7 @@ const SET_SECTIONS = [
 const SET_CATS = {
   look: { name: 'Appearance', icon: trazoDrawing('appearance') },
   bar: { name: 'Top bar', icon: trazoDrawing('arrange') },
-  agents: { name: 'Agents', icon: trazoDrawing('agents') },
+  agents: { name: 'Your AIs', icon: trazoDrawing('agents') },
   bishop: { name: 'Coordinator', icon: trazoDrawing('coordinator') },
   memory: { name: 'Memory', icon: trazoDrawing('chip') },
   local: { name: 'Local AI', icon: trazoDrawing('spark') },
@@ -5687,7 +5703,7 @@ function setStatus(id) {
     if (!agentsSeen) return { line: t('Reading…') };
     const here = agentsSeen.agents.filter((agent) => agent.id !== 'madre' && agent.detected);
     const off = here.filter((agent) => !agentState(agent, agentsSeen).ok);
-    return { line: t('{n} of {total} signed in', { n: here.length - off.length, total: here.length }), warn: off.length ? t('{agents} without a session', { agents: off.map((agent) => agent.label ?? agent.id).join(', ') }) : null };
+    return { line: t('{n} of {total} connected', { n: here.length - off.length, total: here.length }), warn: off.length ? t('{agents} not connected', { agents: off.map((agent) => agent.label ?? agent.id).join(', ') }) : null };
   }
   if (id === 'bishop') { const room = bishopRoom(); return { line: room ? stateOf(room).words : t('Reading…') }; }
   // Home's own, never the projects' (L-10): /api/settings is asked of Home's room.
@@ -6586,7 +6602,17 @@ function openSettings(section = null) {
     if (line && state.open) line.textContent = setStatus(state.open).line;
     // The sheet stays where it is (it slid in once); only what is inside it is drawn again.
     const scroll = body.querySelector('.settings-scroll');
-    if (again && state.open && scroll) { stop(); scroll.replaceChildren(detail(state.open)); }
+    // Drawn again where the person was reading (2026-11-12, the author: «See every model» sent the
+    // sheet back to the top): the same scroll, and the folds that were open stay open.
+    if (again && state.open && scroll) {
+      const top = scroll.scrollTop;
+      const opened = new Set([...scroll.querySelectorAll('details[open] > summary')].map((summary) => summary.textContent));
+      stop();
+      scroll.replaceChildren(detail(state.open));
+      for (const summary of scroll.querySelectorAll('details > summary')) if (opened.has(summary.textContent)) summary.parentElement.open = true;
+      scroll.scrollTop = top;
+      requestAnimationFrame(() => { if (scroll.scrollTop !== top) scroll.scrollTop = top; });
+    }
   };
   // A look changed (here, in a room's PERSONALIZE at this address, or in another tab): the cards
   // say so, and Appearance is drawn again with it.
@@ -6640,7 +6666,7 @@ function translateStatic() {
   ui.bishop.go.textContent = t('Talk to the Coordinator');
   ui.bishop.tab.title = t('Open the Coordinator in a new tab');
   ui.bishop.tab.setAttribute('aria-label', t('Open the Coordinator in a new tab'));
-  ui.bishop.about.textContent = t('Your Coordinator. It reads across your projects, signs the connections between them and carries an order from one to another.');
+  ui.bishop.about.textContent = t('Your Coordinator sees all your projects at once. Ask it what is still pending, or have it carry something from one project to another.');
   ui.work.title.textContent = t('Recent summary');
   ui.work.again.textContent = t('Summarize again');
   ui.waiting.title.textContent = t('Waiting on you');
@@ -6650,7 +6676,7 @@ function translateStatic() {
   ui.linksTitle.textContent = t('Connections');
   ui.linksClose.setAttribute('aria-label', t('Close'));
   ui.linkMore.textContent = t('Connect projects');
-  ui.memory.title.textContent = t('Memory');
+  ui.memory.title.textContent = t('What MADRE remembers');
   ui.decisions.title.textContent = t('Recent decisions');
   ui.attention.title.textContent = t('Needs you');
   // A claim the room found false is said as everywhere else: a doubtful memory, not «aberration».

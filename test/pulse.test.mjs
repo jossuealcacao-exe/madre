@@ -590,10 +590,10 @@ test('serves the single-room interface', async () => {
     const response = await fetch(`http://127.0.0.1:${port}/`);
     const html = await response.text();
     assert.equal(response.status, 200);
-    assert.match(html, /One conversation\. Every agent\./);
+    assert.match(html, /One chat\. All your AIs\./);
     assert.match(html, /Ask the project/);
     // Said once, on one line, then kept behind the ? in the composer's row: never dropped.
-    assert.match(html, /may reach their provider/);
+    assert.match(html, /goes to the company behind each one/);
     assert.match(html, /id="onboarding"/);
     assert.match(html, /id="connection"/);
     const brands = await fetch(`http://127.0.0.1:${port}/brands.js`);
@@ -3019,6 +3019,8 @@ test('standing lease: an agent opted in creates files on every turn, and a creat
     assert.equal(seen.codex.lease.scopes.imageGen, false);
     const artifacts = events.find((event) => event.type === 'artifacts.created');
     assert.equal(artifacts.payload.files[0].name, 'out.pdf');
+    // What a CREATE turn made carries its restore point, for UNDO on the reply (2026-11-11).
+    assert.ok(artifacts.payload.checkpointId, 'the files a CREATE turn made can be taken away');
     assert.equal(events.filter((event) => event.type === 'lease.missing').length, 1, 'no second flag once the lease exists');
 
     // A direct human message to a standing-lease agent needs no CREATE either.

@@ -2212,6 +2212,70 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-idea-icon { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--wl-acc) 11%, transparent); color: color-mix(in srgb, var(--wl-acc) 78%, var(--text)); }
 .wl-idea-icon svg { width: 15px; height: 15px; }
 .wl-idea-text { flex: 1; min-width: 0; padding-top: 3px; line-height: 1.45; }
+/* THE WELCOME, 2026-11-11 (the author's round on the project step and the last one). */
+/* The new project's name is hollow like every field of MADRE (styles.css, the chats' search and the
+   model search): sunk into the page, no border, a deeper well while it is being written. */
+.wl .sm-new-name input { height: 40px; padding: 0 13px; border: 0; border-radius: 10px; outline: 0; background: color-mix(in srgb, var(--text) 6%, transparent); box-shadow: inset 0 1px 2px rgba(20, 30, 20, .1); color: var(--text); font: 450 15px var(--read); caret-color: var(--wl-acc); transition: box-shadow .15s ease, background-color .15s ease; }
+.wl .sm-new-name input::placeholder { color: var(--text-3); }
+.wl .sm-new-name input:focus { background: color-mix(in srgb, var(--text) 4%, transparent); box-shadow: inset 0 2px 5px rgba(20, 30, 20, .12), inset 0 1px 1.5px rgba(20, 30, 20, .1); }
+:root[data-scheme="dark"] .wl .sm-new-name input { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3); }
+:root[data-scheme="dark"] .wl .sm-new-name input:focus { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .35), inset 0 1px 1.5px rgba(0, 0, 0, .3); }
+.wl .sm-new-project { padding-top: 6px; }
+
+/* What is already in Home, by name. */
+.wl-inhome { display: grid; gap: 10px; padding: 12px 14px 14px; border-radius: 12px; background: color-mix(in srgb, var(--wl-acc) 8%, transparent); }
+.wl-inhome-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; font-size: 13px; color: var(--text-2); }
+.wl-inhome-head b { font-weight: 600; color: var(--text); }
+.wl-inhome-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.wl-inhome-item { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 7px 9px; border-radius: 9px; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line); }
+.wl-inhome-words { display: grid; min-width: 0; line-height: 1.25; }
+.wl-inhome-words b { overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.wl-inhome-words small { overflow: hidden; font-size: 11.5px; color: var(--text-3); white-space: nowrap; text-overflow: ellipsis; }
+.wl-inhome-tag { flex: none; margin-left: auto; padding: 1px 7px; border-radius: 99px; background: var(--wl-acc); color: var(--wl-acc-ink); font-size: 10.5px; font-weight: 600; letter-spacing: .02em; }
+.wl-inhome-more { font-size: 12px; color: var(--text-3); }
+
+/* What can I make?: ideas above the new project's name, the chosen one held. */
+.wl-newflow { display: grid; gap: 4px; }
+.wl-make, .wl-practice { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--wl-side); box-shadow: 0 0 0 1px var(--wl-line); }
+.wl-make-head { display: grid; gap: 3px; }
+.wl-make-head b { font-size: 14px; font-weight: 600; }
+.wl-make-head small { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.wl-make-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wl-make-idea { display: flex; align-items: flex-start; gap: 9px; min-width: 0; padding: 10px 11px; border: 0; border-radius: 11px; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: box-shadow .2s ease, background-color .2s ease, transform .2s ease; }
+.wl-make-idea:hover { background: color-mix(in srgb, var(--text) 3%, var(--wl-canvas)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--wl-acc) 40%, transparent); }
+.wl-make-idea:focus-visible { outline: 2px solid var(--wl-acc); outline-offset: 2px; }
+.wl-make-idea[aria-pressed="true"] { background: color-mix(in srgb, var(--wl-acc) 9%, var(--wl-canvas)); box-shadow: 0 0 0 2px var(--wl-acc); }
+.wl-make-words { display: grid; gap: 2px; min-width: 0; padding-top: 1px; }
+.wl-make-words b { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.wl-make-words small { font-size: 11.5px; line-height: 1.4; color: var(--text-2); }
+.wl-make-more { justify-self: start; }
+.wl-make-first { display: grid; gap: 3px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--wl-acc) 9%, transparent); }
+.wl-make-first small { font-size: 11.5px; color: var(--text-2); }
+.wl-make-first p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text); }
+.wl-practice .wl-section { margin: 4px 0 0; }
+.wl-practice-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wl-practice-list li { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; border-radius: 11px; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line); }
+.wl-practice > .wl-btn { justify-self: start; }
+.wl-practice .wl-tiny:empty { display: none; }
+
+/* The messages of the last step: what to send, and under it what will happen. */
+.wl-ideas-lead { margin: -4px 0 2px; font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.wl-idea-text { display: grid; gap: 2px; }
+.wl-idea-text b { font-weight: 500; }
+.wl-idea-text small { font-size: 12px; line-height: 1.4; color: var(--text-3); }
+
+/* THE WELCOME'S ICONS, refined (2026-11-11, the author: «premium, without changing the identity»): the
+   same Trazo drawings in a chip that reads as a small object — a hairline ring of its own colour and a
+   lit top edge — instead of a flat wash; a finer stroke inside, and the chosen one solid. */
+:is(.wl-tile-icon, .wl-idea-icon, .wl-make-icon, .wl-inhome-icon) { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--wl-acc) 10%, var(--wl-canvas)); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--wl-acc) 30%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent), 0 1px 2px color-mix(in srgb, var(--wl-acc) 14%, transparent); color: color-mix(in srgb, var(--wl-acc) 82%, var(--text)); }
+:root[data-scheme="dark"] :is(.wl-tile-icon, .wl-idea-icon, .wl-make-icon, .wl-inhome-icon) { background: color-mix(in srgb, var(--wl-acc) 14%, var(--wl-canvas)); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--wl-acc) 34%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 9%, transparent), 0 1px 2px rgba(0, 0, 0, .35); }
+:is(.wl-tile-icon, .wl-idea-icon, .wl-make-icon, .wl-inhome-icon) svg { width: 15px; height: 15px; stroke-width: 1.5; }
+.wl-inhome-icon { width: 24px; height: 24px; border-radius: 7px; }
+.wl-inhome-icon svg { width: 13px; height: 13px; }
+:is(.wl-uses, .wl-otherways) .wl-tile .wl-tile-icon { width: 28px; height: 28px; }
+.wl-tile[aria-pressed="true"] .wl-tile-icon, .wl-make-idea[aria-pressed="true"] .wl-make-icon { background: var(--wl-acc); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent), 0 1px 3px color-mix(in srgb, var(--wl-acc) 40%, transparent); color: var(--wl-acc-ink); }
+:is(.wl-tile, .wl-idea, .wl-make-idea):hover :is(.wl-tile-icon, .wl-idea-icon, .wl-make-icon) svg { stroke-width: 1.7; }
+@media (max-width: 640px) { .wl-make-grid, .wl-practice-list { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .wl-scene-cap.new span { animation: none; } .wl-tile { transition: none; } }
 @media (max-width: 760px) {
   .wl-window { grid-template-columns: 1fr; height: calc(100dvh - 48px); }

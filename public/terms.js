@@ -11,6 +11,7 @@
 
 import { browserLanguage, language, setLanguage, t } from './i18n.js';
 import { MADRE_LOGO, playOpening } from './loader.js';
+import { trazo } from './icons.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -58,22 +59,72 @@ function askTerms(answer, done) {
   // Esc is no answer here: without accepting, MADRE does not start.
   dialog.addEventListener('cancel', (event) => event.preventDefault());
   let diagnostics = answer.diagnosticsFixed ? false : answer.diagnostics !== false;
-  const returning = answer.before === true;
+  // Inside the desktop app (src/terms.mjs, `kind`) the license is the app's own, closed, and whoever
+  // accepted the source code's before is told the app has one of its own.
+  const app = answer.kind === 'app';
+  const returning = app ? Boolean(answer.previous) : answer.before === true;
 
+  // The logo draws itself in once: drawn again with every change of language, it started over.
+  const askLogo = el('div', 'terms-logo');
+  askLogo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
   const paintAsk = () => {
     card.replaceChildren();
-    const logo = el('div', 'terms-logo');
-    logo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
-    const title = el('h1', 'terms-title', returning ? t('MADRE 1.1 has a new license') : t('Before you start'));
+    const logo = askLogo;
+    // THE LANGUAGE, by hand (2026-11-11, the author: «whatever language is detected, an ES key in the
+    // top right corner»): ES and EN, the one on lit; the card is said again in the other at once,
+    // and MADRE keeps it as the person's choice.
+    const tongue = el('div', 'terms-lang');
+    tongue.setAttribute('role', 'radiogroup');
+    tongue.setAttribute('aria-label', 'Idioma · Language');
+    for (const [code, word] of [['es', 'ES'], ['en', 'EN']]) {
+      const key = el('button', null, word);
+      key.type = 'button';
+      key.setAttribute('role', 'radio');
+      key.setAttribute('aria-checked', String(language() === code));
+      key.setAttribute('aria-label', code === 'es' ? 'Español' : 'English');
+      key.addEventListener('click', async () => {
+        if (language() === code) return;
+        setLanguage(code);
+        paintAsk();
+        await fetch('/api/language', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ language: code }) }).catch(() => null);
+      });
+      tongue.append(key);
+    }
+    const title = el('h1', 'terms-title', returning ? (app ? t('The MADRE app has a license of its own') : t('MADRE 1.1 has a new license')) : t('Before you start'));
     title.id = 'terms-title';
-    const lead = el('p', 'terms-lead', returning
-      ? t('It is still free for you and for teams of up to 10 people. To keep using it, accept the license and the privacy notice.')
-      : t('MADRE is free for you and for teams of up to 10 people, also when you use it to work for your clients.'));
+    const lead = el('p', 'terms-lead', app
+      ? (returning ? t('On your computer, MADRE now comes as an app, with its own license of use. To keep using it, accept it and the privacy notice.') : t('Before you use MADRE, read and accept its license of use and its privacy notice.'))
+      : returning
+        ? t('It is still free for you and for teams of up to 10 people. To keep using it, accept the license and the privacy notice.')
+        : t('MADRE is free for you and for teams of up to 10 people, also when you use it to work for your clients.'));
 
+    // WHAT MADRE IS, before anything is asked (2026-11-11, the author: «a short description of what
+    // MADRE is in the first window, where the license is accepted»): three lines, the same three ideas
+    // the opening tells after it.
+    const about = el('section', 'terms-about');
+    about.append(el('h2', null, t('What MADRE is')));
+    const points = el('ul', 'terms-about-list');
+    for (const [icon, title, sub] of [
+      ['agents', t('Your AIs, together'), t('Claude, ChatGPT, Gemini and more, in one place.')],
+      ['folder', t('They work in your folders'), t('You ask the way you would ask someone on your team, and they do it in your files.')],
+      ['brain', t('MADRE remembers'), t('What gets decided is kept, so nobody starts from zero.')],
+    ]) {
+      const item = el('li');
+      const mark = el('span', 'terms-about-icon');
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = trazo(icon); // trusted: our own SVG string
+      const words = el('span', 'terms-about-words');
+      words.append(el('b', null, title), el('small', null, sub));
+      item.append(mark, words);
+      points.append(item);
+    }
+    about.append(points);
     const license = el('section', 'terms-block');
     license.append(
-      el('h2', null, t('Personal license')),
-      el('p', null, t('You can use MADRE, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
+      el('h2', null, app ? t('License of use') : t('Personal license')),
+      el('p', null, app
+        ? t('You can install the MADRE app and use it on your computers, for yourself and for your work. Its code is private: it may not be copied, modified, taken apart or redistributed, and it is not offered as a service to others.')
+        : t('You can use MADRE, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
       link(pick(answer.links?.license), t('Read the license')),
     );
 
@@ -129,7 +180,7 @@ function askTerms(answer, done) {
       setTimeout(() => { dialog.close(); dialog.remove(); done(); }, 260);
     });
     actions.append(no, yes);
-    card.append(logo, title, lead, license, help, foot, error, actions);
+    card.append(tongue, logo, title, lead, ...(returning ? [] : [about]), license, help, foot, error, actions);
     setTimeout(() => card.focus({ preventScroll: true }), 0);
   };
 

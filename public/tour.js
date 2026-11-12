@@ -21,6 +21,7 @@ import { LOADER_MARK, MADRE_LOGO, finishLoader, makeLoader, setLoader } from './
 import { hostWords, keyWords, language, t } from './i18n.js';
 import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
 import { trazo } from './icons.js';
+import { MISSIONS, missionsLeft, missionsState, onMissions, openMissions, setMissions } from './missions.js';
 
 const say = (pair) => (typeof pair === 'string' ? pair : pair?.[language()] ?? pair?.es ?? '');
 // The chapters' own words, said of the computer and the keyboard in front of the person: «tu Mac» is
@@ -117,7 +118,7 @@ export function spotlight(node) {
 // `phone`: none of it here (a phone, or the right half of a split window); `device`: this page is a
 // phone, which gets one card the first time instead of the bonjour.
 // `hidden`: the chapters whose thing is not offered on this copy; they are not told at all.
-export function startTour({ page, go = {}, ready = () => true, phone = false, device = false, pillSlot = null, welcome = null, onProjects = null, onChange = null, hidden = () => [] } = {}) {
+export function startTour({ page, go = {}, ready = () => true, phone = false, device = false, pillSlot = null, welcome = null, onProjects = null, onChange = null, hidden = () => [], missions = null } = {}) {
   let info = null;
   let state = null;
   let windowNode = null;
@@ -127,13 +128,14 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
   const loaded = (phone ? Promise.resolve(null) : tourApi.read()).then((answer) => {
     info = answer;
     state = answer?.state ?? null;
+    setMissions(state);
     paintPill();
     onChange?.(state);
     return answer;
   });
   const keep = async (change) => {
     const answer = await tourApi.change(change);
-    if (answer?.state) state = answer.state;
+    if (answer?.state) { state = answer.state; setMissions(state); }
     paintPill();
     onChange?.(state);
     return state;
@@ -215,10 +217,24 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
   }
   if (device) setTimeout(phoneCard, 1200);
 
-  // ---- The pill: «Continue the tour · 4 of 12», while there is a tour to continue.
+  // ---- The pill: «Your first steps · 2 of 5» while there are missions to do (2026-11-11, missions.js),
+  // and «Continue the tour · 4 of 12» once they are done or put away and the tour is still unread.
+  // A mission done in another tab or project is seen here when the pill is drawn again.
+  onMissions(() => paintPill());
+  const missionsWanted = () => Boolean(missions) && !phone && Boolean(state?.welcome?.finished || state?.bonjourAt) && !missionsState().missionsHidden && missionsLeft() > 0;
   function paintPill() {
     if (!pillSlot) return;
     pillSlot.replaceChildren();
+    if (missionsWanted()) {
+      pillSlot.hidden = false;
+      const doneCount = MISSIONS.length - missionsLeft();
+      const pill = el('span', 'tour-pill missions-pill');
+      const go = key('tour-pill-go', fill(t('Your first steps · {n} of {total}'), { n: doneCount, total: MISSIONS.length }), () => openMissions({ ...missions, openTour: () => openChapters(state?.at ?? null) }));
+      go.dataset.short = fill(t('Steps · {n}/{total}'), { n: doneCount, total: MISSIONS.length });
+      pill.append(go);
+      pillSlot.append(pill);
+      return;
+    }
     const list = chapters();
     const show = state?.bonjourAt && !state.finished && !windowNode?.open && !phone;
     pillSlot.hidden = !show;

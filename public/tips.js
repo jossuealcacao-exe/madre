@@ -21,6 +21,7 @@ let current = null;
 let timer = null;
 let hiddenAt = 0;
 let pending = null;   // the key a tip is waiting to show for
+let held = [];        // the keys around it, their `title` kept aside meanwhile
 
 // A key that already shows its own label (an agent's sphere in the crew's column) says `data-tip-off`.
 const keyOf = (target) => {
@@ -56,6 +57,25 @@ function restore(key) {
   delete key.dataset.tip;
 }
 
+// A key inside another that has words too (UNDO inside the card of changes, the card inside its row
+// of notices): with only the inner one's `title` gone, the browser showed the outer one's under
+// MADRE's tip (2026-11-12, the author: «the tips double»). The ones around it keep theirs aside too,
+// until the pointer leaves.
+function holdAround(key) {
+  for (let up = key.parentElement?.closest?.('[title]'); up && up !== document.body && up !== document.documentElement; up = up.parentElement?.closest?.('[title]')) {
+    up.dataset.tipHeld = up.getAttribute('title') ?? '';
+    up.removeAttribute('title');
+    held.push(up);
+  }
+}
+function releaseAround() {
+  for (const up of held) {
+    if (!up.hasAttribute('title') && 'tipHeld' in up.dataset) up.setAttribute('title', up.dataset.tipHeld);
+    delete up.dataset.tipHeld;
+  }
+  held = [];
+}
+
 function place(key) {
   const node = ensure();
   const box = key.getBoundingClientRect();
@@ -86,6 +106,7 @@ export function hideTip() {
   pending = null;
   if (current) { restore(current); hiddenAt = performance.now(); }
   current = null;
+  releaseAround();
   if (tip) { tip.classList.remove('shown'); tip.hidden = true; }
 }
 
@@ -95,6 +116,7 @@ function arm(key) {
   const soon = performance.now() - hiddenAt < AGAIN_WITHIN;
   // Its words leave `title` now, not when the tip shows: the browser's would come first.
   if (!words(key)) return;
+  holdAround(key);
   pending = key;
   const after = Number(key.closest('[data-tip-after]')?.dataset.tipAfter) || SHOW_AFTER;
   timer = setTimeout(() => { pending = null; show(key); }, soon ? 0 : after);

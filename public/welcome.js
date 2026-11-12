@@ -94,6 +94,68 @@ const SUGGESTIONS = {
   notes: () => [t('Make me a list to organise my week'), t('Give me an idea to start a long text')],
   curious: () => [t('What can you do for me?'), t('Tell me something fun in one line')],
 };
+// WHAT CAN I MAKE? (2026-11-11, the author: «give them many ideas of what they can create with MADRE,
+// in clear language»): when the person starts a project from nothing, ideas of what to make, three for
+// each use, theirs first. Picking one names the folder and leaves its first message ready for the last
+// step, so the project is born already knowing what it is for. [icon, what it is, one line, message]
+const CREATE_IDEAS = {
+  business: () => [
+    ['globe', t('A page for my business'), t('Opening hours, where to find you and a WhatsApp button.'), t('Make me a one-page website for my business with my opening hours, where to find me and a WhatsApp button. Ask me first what you need to know.')],
+    ['market', t('A product catalogue'), t('Names, prices and descriptions in one table.'), t('Make me a product catalogue with name, price and description, in a table I can fill in and print.')],
+    ['chat', t('Answers for my customers'), t('What they always ask you, ready to copy.'), t('Write the answers to the questions my customers always ask me, short and friendly, ready to paste into WhatsApp.')],
+  ],
+  social: () => [
+    ['calendar', t('A posting calendar'), t('A month of ideas, with the text for each day.'), t('Make me a posting calendar for this month: one idea a day with its caption and hashtags.')],
+    ['image', t('Short video scripts'), t('Reels and TikToks of 30 seconds, shot by shot.'), t('Write three scripts for 30-second videos about what I do, shot by shot.')],
+    ['appearance', t('My brand kit'), t('Your tone, your colours and phrases that sound like you.'), t('Help me write my brand kit: how I speak, my colours and five phrases that sound like me.')],
+  ],
+  numbers: () => [
+    ['bars', t('An expense tracker'), t('A sheet that adds up by month and category on its own.'), t('Make me an expense sheet that adds up by month and category, and explain how to fill it in.')],
+    ['inbox', t('My invoices in order'), t('One folder per month and a table so none gets lost.'), t('Help me put my invoices in order: one folder per month and a table with the date, customer, amount and whether it is paid.')],
+    ['trending', t('My monthly budget'), t('What comes in, what goes out and what is left.'), t('Make me a monthly budget: what comes in, what goes out and what is left, with a simple chart.')],
+  ],
+  office: () => [
+    ['compose', t('Email templates'), t('The emails you write most, ready to use.'), t('Write templates for the emails I send most: following up, a reminder, saying no politely and saying thank you.')],
+    ['note', t('A weekly report'), t('A format you fill in in five minutes.'), t('Make me a weekly report I can fill in in five minutes: what got done, what is pending and what I need.')],
+    ['card', t('A presentation'), t('Clear slides out of your ideas.'), t('Help me make a presentation: ask me the topic and who it is for, and propose ten slides.')],
+  ],
+  study: () => [
+    ['book', t('Notes for a subject'), t('Summaries and outlines, topic by topic.'), t('Help me make study notes for a subject: ask me which one and put it in order topic by topic.')],
+    ['checkbox', t('A practice exam'), t('Questions to see whether you understood it.'), t('Make me a practice exam of fifteen questions, with the answers at the end, about a topic I will tell you.')],
+    ['calendar', t('A study plan'), t('What to review each day until the exam.'), t('Make me a study plan up to the day of my exam: what to review each day and for how long.')],
+  ],
+  notes: () => [
+    ['note', t('A home for my ideas'), t('What occurs to you, sorted by topic.'), t('Set up a place for my ideas: one file per topic and an index that says what is in each one.')],
+    ['list', t('My week, planned'), t('Your to-dos spread over the days.'), t('Help me plan my week: ask me what I have pending and spread it over the days.')],
+    ['pencil', t('A long text'), t('A story, an essay or a book, chapter by chapter.'), t('I want to write a long text. Ask me what it is about and propose an outline by chapters.')],
+  ],
+  code: () => [
+    ['code', t('A web app'), t('From scratch, with a plan in steps before any code.'), t('I want to build a web app. Ask me what it should do and propose a plan in steps before writing code.')],
+    ['globe', t('A personal page'), t('Your portfolio on a single page.'), t('Make me a one-page portfolio with who I am, what I do and how to contact me.')],
+    ['running', t('A script that saves me time'), t('Something that does a repetitive task for you.'), t('Help me write a small script that does a repetitive task for me. Ask me first which one.')],
+  ],
+  curious: () => [
+    ['spark', t('A simple game'), t('A game in the browser, to watch the AIs work.'), t('Make me a simple game that runs in the browser, like guessing a number, and tell me how to open it.')],
+    ['checkbox', t('A shopping list'), t('A page for the supermarket that remembers itself.'), t('Make me a shopping list page where I can add and tick off things, and that remembers them.')],
+    ['book', t('A recipe book'), t('Your favourite recipes, with ingredients and steps.'), t('Make me a recipe book page: I will tell you my favourite recipes and you put them in order with ingredients and steps.')],
+  ],
+};
+// The order the uses are offered in when the person marked none.
+const CREATE_ORDER = ['business', 'social', 'office', 'numbers', 'study', 'notes', 'curious', 'code'];
+// Ideas shown at first: two rows of three; the rest behind «More ideas».
+const CREATE_SHOWN = 6;
+// The folder's name from what the idea makes, in the person's language, without its article: «Una
+// página para mi negocio» → «pagina-para-mi-negocio».
+const slugOf = (words) => String(words).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/^(?:una?|el|la|los|las|an?|the)-/, '').slice(0, 48);
+// The practice project (src/salas.mjs, createSampleProject) is a page with a to-do list: the messages
+// for it say what each one will do, so the person knows what to look at. [icon, message, what happens]
+const PRACTICE_MESSAGES = () => [
+  ['appearance', t('Change the colours of my task list to green and white'), t('You will see the page change. If you do not like it, Undo puts it back.')],
+  ['add', t('Add a button that clears the finished tasks'), t('An AI edits the page and tells you what it changed.')],
+  ['database', t('Make the tasks stay when I close the page'), t('Close it and open it again to check that it remembers them.')],
+  ['help', t('Explain this project to me in simple words'), t('A first look, without changing anything.')],
+];
+
 // «Do you already pay for an AI?»: each agent by the plan people know it by.
 const PLANS = {
   codex: () => t('You pay for ChatGPT Plus or Pro: here it is called Codex, ChatGPT working in your files.'),
@@ -183,6 +245,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     way: null,                  // the other way in open: «new» · «browse»
     allFound: false,            // every found folder shown, not only the first rows
     added: [],                  // the projects added while the welcome was open
+    idea: null,                 // what the new project will make: { name, message }, from «What can I make?»
+    allIdeas: false,            // every idea shown, not only the first rows
+    intents: new Map(),         // a project made here → the first message its idea left ready
   };
   let leave = null;             // what the step on screen stops when another one comes
   let pollTimer = 0;
@@ -530,6 +595,114 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   };
   // Found folders shown at first: three rows of three; the rest behind «See all».
   const FOUND_SHOWN = 9;
+  // WHAT IS ALREADY IN HOME, by name (2026-11-11, the author: «it says you already have 2 projects,
+  // but not which; someone coming back does not see them»): each one with where it lives, and the ones
+  // brought in this welcome marked as new. Shown, never offered again to mark.
+  const HOME_SHOWN = 8;
+  function homeList(had) {
+    const rooms = [...had];
+    for (const one of s.added) if (!rooms.some((room) => room.root === one.root || room.name === one.name)) rooms.push(one);
+    if (!rooms.length) return null;
+    const isNew = (room) => s.added.some((one) => one.root === room.root || one.name === room.name);
+    const box = el('div', 'wl-inhome');
+    const fresh = rooms.filter(isNew).length;
+    const title = rooms.length === 1 ? t('Already in Home: 1 project') : t('Already in Home: {n} projects', { n: rooms.length });
+    const words = fresh ? (fresh === 1 ? t('1 of them was added just now.') : t('{n} of them were added just now.', { n: fresh })) : t('Add another one, or continue.');
+    const top = el('p', 'wl-inhome-head');
+    top.append(el('b', null, title), el('span', null, words));
+    const list = el('ul', 'wl-inhome-list');
+    for (const room of rooms.slice(0, HOME_SHOWN)) {
+      const item = el('li', `wl-inhome-item${isNew(room) ? ' new' : ''}`);
+      const mark = el('span', 'wl-inhome-icon');
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = trazo('folder'); // trusted: our own SVG string
+      const where = room.root ? homeWord(room.root) : '';
+      const text = el('span', 'wl-inhome-words');
+      text.append(el('b', null, room.name), el('small', null, where));
+      item.append(mark, text);
+      if (isNew(room)) item.append(el('span', 'wl-inhome-tag', t('New')));
+      item.title = [room.name, where].filter(Boolean).join('\n');
+      list.append(item);
+    }
+    box.append(top, list);
+    if (rooms.length > HOME_SHOWN) box.append(el('small', 'wl-inhome-more', t('And {n} more, in Home.', { n: rooms.length - HOME_SHOWN })));
+    return box;
+  }
+  // WHAT CAN I MAKE?, under the new project's name: ideas for the person's uses first, then the rest.
+  let paintIdeas = () => {};
+  function createIdeas(nameInput) {
+    const box = el('div', 'wl-make');
+    const order = [...new Set([...s.profile].filter((one) => CREATE_IDEAS[one]).concat(CREATE_ORDER))];
+    const all = order.flatMap((use) => CREATE_IDEAS[use]().map(([icon, title, sub, message]) => ({ use, icon, title, sub, message, name: slugOf(title) })));
+    paintIdeas = () => {
+      const shown = s.allIdeas ? all : all.slice(0, CREATE_SHOWN);
+      const grid = el('div', 'wl-make-grid');
+      for (const idea of shown) {
+        const on = s.idea?.message === idea.message;
+        const key = button('wl-make-idea', null, () => {
+          s.idea = on ? null : { name: idea.name, message: idea.message, title: idea.title };
+          if (nameInput) {
+            nameInput.value = s.idea ? s.idea.name : '';
+            nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          paintIdeas();
+          // On to the name and the key that makes it (2026-11-11, the author: «after picking an idea it
+          // no longer takes them down to the name»): brought into sight, never past the idea chosen.
+          if (s.idea && nameInput) reveal(nameInput.closest('.sm-new-project') ?? nameInput);
+        });
+        key.setAttribute('aria-pressed', String(on));
+        const mark = el('span', 'wl-make-icon');
+        mark.setAttribute('aria-hidden', 'true');
+        mark.innerHTML = trazo(idea.icon); // trusted: our own SVG string
+        const words = el('span', 'wl-make-words');
+        words.append(el('b', null, idea.title), el('small', null, idea.sub));
+        key.append(mark, words);
+        grid.append(key);
+      }
+      const head = el('div', 'wl-make-head');
+      head.append(el('b', null, t('Not sure what to make? Pick an idea')), el('small', null, t('It names the folder for you, and MADRE opens the project with its first message already written. You can change anything.')));
+      const parts = [head, grid];
+      if (all.length > CREATE_SHOWN) parts.push(button('wl-btn ghost small wl-make-more', s.allIdeas ? t('Fewer ideas') : t('More ideas ({n})', { n: all.length - CREATE_SHOWN }), () => { s.allIdeas = !s.allIdeas; paintIdeas(); }));
+      if (s.idea) {
+        const first = el('div', 'wl-make-first');
+        first.append(el('small', null, t('Its first message, ready for you to send:')), el('p', null, `«${s.idea.message}»`));
+        parts.push(first);
+      }
+      box.replaceChildren(...parts);
+    };
+    paintIdeas();
+    return box;
+  }
+  // THE PRACTICE ONE, said before it is made: what it is, what can be asked of it, and one key.
+  function practicePanel() {
+    const box = el('div', 'wl-practice');
+    const head = el('div', 'wl-make-head');
+    head.append(el('b', null, t('A to-do list to practise on')), el('small', null, t('MADRE makes a folder with a small page: a list where you write tasks and tick them off. It is there so you can ask your AIs for changes and watch them happen. Nothing of yours is touched, and Undo puts back any change.')));
+    const list = el('ul', 'wl-practice-list');
+    for (const [icon, message, what] of PRACTICE_MESSAGES()) {
+      const item = el('li');
+      const mark = el('span', 'wl-make-icon');
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = trazo(icon); // trusted: our own SVG string
+      const words = el('span', 'wl-make-words');
+      words.append(el('b', null, `«${message}»`), el('small', null, what));
+      item.append(mark, words);
+      list.append(item);
+    }
+    const said = el('p', 'wl-tiny', '');
+    const make = button('wl-btn primary', t('Create the practice project'), async () => {
+      make.disabled = true;
+      make.textContent = t('Creating…');
+      const answer = await post('/api/salas/new', { sample: true, language: language() });
+      if (!answer.ok) { said.textContent = answer.body?.error ?? t('The project to try MADRE could not be made.'); make.disabled = false; make.textContent = t('Create the practice project'); return; }
+      s.added = [...s.added, ...(answer.body.added ?? [])];
+      s.way = null;
+      await host.refresh?.();
+      if (stepId() === 'project') go(s.step + 1, 'done');
+    });
+    box.append(head, el('p', 'wl-section', t('Things you will be able to ask it')), list, make, said);
+    return box;
+  }
   function project() {
     const had = host.projects?.() ?? [];
     if (!s.found && !s.finding) { s.finding = true; void loadFound(); }
@@ -541,7 +714,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       : known ? t('These are folders you already opened with other tools; the newest come marked. They stay where they are: MADRE only learns where to find them.')
         : t('These folders look like projects. Mark the ones you want to bring.');
     const parts = head(t('Bring what you already have'), lead, picture, projectCaption());
-    if (had.length) parts.push(note('ok', had.length === 1 ? t('You already have a project in Home: {name}. Add another one, or continue.', { name: had[0].name }) : t('You already have {n} projects in Home. Add another one, or continue.', { n: had.length })));
+    const inHome = homeList(had);
+    if (inHome) parts.push(inHome);
     if (s.env?.place === 'wsl') parts.push(note('warn', t('Keep your projects inside Linux (your folder in /home). A Windows folder (/mnt/c/…) makes MADRE slower and protects your files less.'), fix('wsl-windows-folder')));
     if (found.length) {
       // Three columns of small cards (2026-11-10, the author: «less scrolling»): the name, where it
@@ -593,38 +767,51 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const browse = way('browse', 'folder', t('Choose another folder'), t('Any folder on your computer.'), () => pick('browse'));
     // No project at hand (2026-11-01): one made to try MADRE, a page with a list of tasks and a README
     // with what to ask. «I do not know what I would do with MADRE» is answered by having something.
-    const sample = way('sample', 'spark', t('A practice one'), t('A page with a list of tasks, to ask your AIs for changes without fear of breaking anything.'), async () => {
-      sample.tile.disabled = true;
-      const answer = await post('/api/salas/new', { sample: true, language: language() });
-      if (!answer.ok) { sample.said.textContent = answer.body?.error ?? t('The project to try MADRE could not be made.'); sample.tile.disabled = false; return; }
-      s.added = [...s.added, ...(answer.body.added ?? [])];
-      await host.refresh?.();
-      if (stepId() === 'project') go(s.step + 1, 'done');
-    });
+    // Since 2026-11-11 it first says what it makes and what can be asked of it, then one key makes it.
+    const sample = way('sample', 'spark', t('A practice one'), t('A page with a list of tasks, to ask your AIs for changes without fear of breaking anything.'), () => pick('sample'));
     others.append(fresh.tile, browse.tile, sample.tile);
     parts.push(el('p', 'wl-section', found.length ? t('Or start another way') : t('How do you want to start?')), others);
     let opened = null;
+    let focusName = false;
     if (s.way === 'new' || s.way === 'browse') {
       const picker = host.projectPicker?.({
         sources: [s.way],
         // A project made new here does not drop the folders already chosen (QA 1.1.0, NUE-08): they
-        // are added too, and the found ones stay marked.
+        // are added too, and the found ones stay marked. The idea picked for it goes with it.
         onAdded: (added) => {
+          if (s.way === 'new' && s.idea && added?.[0]?.root) s.intents.set(added[0].root, s.idea.message);
           s.added = [...s.added, ...(added ?? [])];
           s.way = null;
+          s.idea = null;
           s.found = null;
           if (stepId() === 'project') project();
         },
       });
-      if (picker) { opened = picker.node; parts.push(opened); }
+      if (picker) {
+        opened = picker.node;
+        if (s.way === 'new') {
+          // The ideas come first and the name under them: picking one writes the name, and the key
+          // that makes the project is right below. Both are brought into sight together.
+          const name = opened.querySelector('.sm-new-name input');
+          if (name && s.idea && !name.value) name.value = s.idea.name;
+          // Writing a name of one's own lets go of the idea's: the folder is theirs.
+          name?.addEventListener('input', () => { if (s.idea && name.value !== s.idea.name) { s.idea = null; paintIdeas(); } });
+          const flow = el('div', 'wl-newflow');
+          flow.append(createIdeas(name), opened);
+          opened = flow;
+          focusName = true;
+        }
+        parts.push(opened);
+      }
     }
-    if (s.added.length) parts.push(note('ok', s.added.length === 1 ? t('{name} was added to Home.', { name: s.added[0].name }) : t('{n} projects were added to Home.', { n: s.added.length })));
+    if (s.way === 'sample') parts.push(practicePanel());
     parts.push(what(t('What is a project?'), t('Each folder you bring is a project: your shop, this year\'s invoices, your website. Each one keeps its own conversations and what has been decided, without mixing with the others. Bringing it does not move it or change anything in it.')));
     const top = content.scrollTop;
     content.replaceChildren(...parts);
     content.scrollTop = top;
     paintProjectKeys();
-    if (opened) { reveal(opened); opened.querySelector('input[type="text"]')?.focus({ preventScroll: true }); }
+    if (opened) { reveal(opened); if (focusName) opened.querySelector('input[type="text"]')?.focus({ preventScroll: true }); }
+    else if (s.way === 'sample') reveal(content.querySelector('.wl-practice'));
   }
   function paintProjectKeys() {
     const n = s.picked?.size ?? 0;
@@ -721,7 +908,11 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     coordinator.append(host.mark?.('bishop', 34) ?? el('span'), words);
     aiBody = el('div', 'wl-ai');
     content.replaceChildren(...head(t('An AI that lives on your computer'), lead, { id: 'ai', data: aiPicture }, aiCaption()), coordinator, aiBody);
+    // Already there when the step opens (2026-11-11, the author: «it opens scrolled to the bottom»):
+    // the step starts at its top, on the choices; only a talk that arrives later is brought into sight.
+    if (aiReady()) s.talkShown = true;
     paintAi();
+    content.scrollTop = 0;
     // While Ollama is not there yet, MADRE looks every few seconds: «I did it» is a courtesy.
     clearInterval(pollTimer);
     pollTimer = setInterval(() => {
@@ -1069,9 +1260,17 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const inside = room && !sample ? await getJson(`/api/salas/peek?room=${encodeURIComponent(room.id)}`) : null;
     if (stepId() !== 'ready') return;
     const born = Array.isArray(inside?.entries) && !inside.entries.some((entry) => !String(entry.name).startsWith('.'));
-    const ideas = Array.isArray(inside?.entries)
-      ? startersFor({ entries: inside.entries, profile: [...s.profile], project: room.name, t, count: 4 })
-      : (IDEAS[sample ? 'curious' : profileOf() ?? 'none'] ?? IDEAS.none)().map((text) => ({ icon: sample ? 'spark' : 'compose', text, open: false }));
+    // MESSAGES FOR THE PROJECT (2026-11-11, the author: «the ideas at the end lack logic; say the
+    // messages they can send to their project»): the practice one says what each message will do to
+    // its page; one made here from an idea opens with that idea's message first; the rest, messages
+    // for what is in the folder.
+    const intent = room ? s.intents.get(room.root) ?? null : null;
+    let ideas = sample
+      ? PRACTICE_MESSAGES().map(([icon, text, what]) => ({ icon, text, what, open: false }))
+      : Array.isArray(inside?.entries)
+        ? startersFor({ entries: inside.entries, profile: [...s.profile], project: room.name, t, count: 4 })
+        : (IDEAS[profileOf() ?? 'none'] ?? IDEAS.none)().map((text) => ({ icon: 'compose', text, open: false }));
+    if (intent) ideas = [{ icon: 'spark', text: intent, what: t('The idea you chose when you made it.'), open: false }, ...ideas.filter((one) => one.text !== intent)].slice(0, 4);
     const pull = pulling();
     const aiWords = aiReady() && !pull
       ? (s.talk?.messages?.length > 1 ? t('Ready, and you have already met') : `${s.ollama.chatModel ?? chatModels()[0].name}${localHost(s.ollama.host) ? '' : ` · ${t('on another computer')}`}`)
@@ -1095,9 +1294,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     }
     const parts = [];
     const lead = room && connected.length
-      ? t('We open {name}. Tap an idea and it stays written so you only send it, or write your own.', { name: room.name })
+      ? t('Everything is ready. Next, {name} opens, and you can start with one of these messages or write your own.', { name: room.name })
       : t('Here is what is ready. Anything you left for later has its button.');
-    parts.push(...head(t('Where do we start?'), lead, { id: 'ready', data: () => ({ text: ideas[0]?.text ?? '' }) }, room && connected.length ? t('Your first message, almost written.') : t('Almost there.')), summary);
+    parts.push(...head(t('Where do we start?'), lead, { id: 'ready', data: () => ({ text: ideas[0]?.text ?? '', note: Boolean(room && connected.length) }) }, room && connected.length ? t('Your first message, almost written.') : t('Almost there.')), summary);
     // The AI arrived while the person was elsewhere: say so, and offer the hello.
     if (aiReady() && !pull && !(s.talk?.messages?.length > 1)) {
       const arrived = el('div', 'wl-arrived');
@@ -1124,7 +1323,10 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     // opened a project. Since 1.1 with the first message already written (`#escribe=`): the person only
     // sends it. Without a project or an agent, Home as before, whose first-time cards walk them there.
     if (room && connected.length) {
-      parts.push(el('p', 'wl-section', born ? t('To get {name} going', { name: room.name }) : t('Ideas for {name}', { name: room.name })));
+      parts.push(el('p', 'wl-section', born && !intent ? t('Messages to get {name} going', { name: room.name }) : t('Messages you can send to {name}', { name: room.name })));
+      parts.push(el('p', 'wl-ideas-lead', sample
+        ? t('{name} is a page with a to-do list. Pick a message: it opens written in the project, and you decide when to send it.', { name: room.name })
+        : t('Pick one: it opens written in {name}, and you decide when to send it. Your AIs read the folder before they answer.', { name: room.name })));
       const list = el('div', 'wl-ideas');
       for (const idea of ideas) {
         // One that ends open is for the person to finish: it opens written up to there.
@@ -1132,7 +1334,10 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
         const mark = el('span', 'wl-idea-icon');
         mark.setAttribute('aria-hidden', 'true');
         mark.innerHTML = trazo(idea.icon); // trusted: our own SVG string
-        key.append(mark, el('span', 'wl-idea-text', idea.open ? `${idea.text.trim()}…` : idea.text));
+        const words = el('span', 'wl-idea-text');
+        words.append(el('b', null, idea.open ? `${idea.text.trim()}…` : idea.text));
+        if (idea.what) words.append(el('small', null, idea.what));
+        key.append(mark, words);
         list.append(key);
       }
       parts.push(list);

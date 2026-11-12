@@ -17,7 +17,8 @@
 import { t, language } from './i18n.js';
 import { appIcon, communityOf, forSale, includedSkills, yourSkills, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, marketSkills, moduleFace, remoteEntry, skillHere } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
-import { trazo } from './icons.js';
+import { ICONS, trazo, trazoDrawing } from './icons.js';
+import { markMission } from './missions.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -58,6 +59,9 @@ const lineOf = (item) => (moduleFace(item).line ? t(moduleFace(item).line) : t(i
 const makerOf = (item) => remoteEntry(item.id)?.author?.name ?? item.credit ?? null;
 const communityTag = () => el('span', 'mk-community', t('Community'));
 const priceOf = (item) => (marketEntry(item.id).price ? `$${marketEntry(item.id).price}` : t('Free'));
+// Beside a key only a price is said (2026-11-11, the author: «less like the App Store»): free is the
+// rule, so a free one says nothing under its key.
+const paidOf = (item) => (marketEntry(item.id).price ? priceOf(item) : '');
 const shelfOf = (item) => marketShelves().find((shelf) => shelf.id === marketEntry(item.id).shelf) ?? null;
 // What its key does: a switch MADRE flips, a folder it writes into, or Local AI's own settings. A
 // module from the catalog this computer does not have yet is a switch too: it is got first.
@@ -275,7 +279,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     said(line, on && item.id === 'playwright' ? t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.') : t('One moment…'));
     const answer = await post(`/api/extensions/${encodeURIComponent(item.id)}/install`, { confirm: true });
     if (!answer.ok) { key.disabled = false; stopGetting(key); said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return; }
-    if (on) await landed(key);
+    if (on) { void markMission('market', { quiet: true }); await landed(key); }
     notice(on ? t('{name} is on in this project.', { name: nameOf(item) }) : t('{name} is off in this project.', { name: nameOf(item) }));
     await refresh();
   };
@@ -288,7 +292,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     said(line, turningOn && item.id === 'playwright' ? t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.') : t('One moment…'));
     const answer = await post(`/api/extensions/${encodeURIComponent(item.id)}/scope`, { ...change, confirm: true });
     if (!answer.ok) { key.disabled = false; stopGetting(key); said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return false; }
-    if (turningOn) await landed(key);
+    if (turningOn) { void markMission('market', { quiet: true }); await landed(key); }
     await refresh();
     return true;
   };
@@ -300,15 +304,16 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (kind === 'local') return button('mk-get', t('Open'), () => { close(); host.localAi?.(); });
     if (!onPage) {
       // On a shelf the key is short: what is on says so and opens its page; what is off gets it.
-      if (on) return button('mk-get on', kind === 'install' ? t('Installed') : t('Turned on'), () => go({ tab: 'shop', focus: item.id }));
+      // One word for getting anything, «Install», and one for having it (2026-11-11, the author).
+      if (on) return button('mk-get on', t('Installed'), () => go({ tab: 'shop', focus: item.id }));
       // A paid module not bought yet is bought on its page, where it says what it costs and how.
       if (unpaid(item)) return button('mk-get', t('Buy'), () => go({ tab: 'shop', focus: item.id }));
       if (!home && kind === 'switch') {
-        const key = button('mk-get', t('Get'), async (event) => { event.stopPropagation(); const line = el('span'); await turnHere(item, true, line, key); if (line.dataset.tone === 'bad') { notice(line.textContent); key.disabled = false; } });
+        const key = button('mk-get', t('Install'), async (event) => { event.stopPropagation(); const line = el('span'); await turnHere(item, true, line, key); if (line.dataset.tone === 'bad') { notice(line.textContent); key.disabled = false; } });
         return key;
       }
       if (!home && kind === 'install') return button('mk-get', t('Install'), () => { close(); host.installHere?.(item); });
-      return button('mk-get', kind === 'install' ? t('Install') : t('Get'), () => go({ tab: 'shop', focus: item.id, choose: true }));
+      return button('mk-get', t('Install'), () => go({ tab: 'shop', focus: item.id, choose: true }));
     }
     return null;
   };
@@ -322,68 +327,77 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     words.append(title, el('span', null, lineOf(item)));
     open.append(appIcon(item, 58), words);
     const side = el('span', 'mk-row-side');
-    side.append(getKey(item), el('small', null, isOn(item) ? '' : priceOf(item)));
+    side.append(getKey(item), el('small', null, isOn(item) ? '' : paidOf(item)));
     line.append(open, side);
     return line;
   };
 
-  // THE CAROUSEL: the featured modules, each on its own colors with its picture.
-  const carousel = () => {
-    const featured = marketFeatured(items);
-    if (!featured.length) return null;
+  // THE CAROUSEL: the featured modules, each on its own colors with its picture. The rail that moves
+  // them is shared with the skills' banners (2026-11-11): one slide as wide as the page, never the
+  // next one peeking at the edge.
+  const rail = (slides, label) => {
     const box = el('section', 'mk-carousel');
     box.setAttribute('aria-roledescription', t('carousel'));
-    box.setAttribute('aria-label', t('Featured'));
+    box.setAttribute('aria-label', label);
     const track = el('div', 'mk-track');
     const dots = el('div', 'mk-dots');
     let index = 0;
-    featured.forEach((item, at) => {
-      const slide = hueOf(el('article', 'mk-slide'), item);
+    slides.forEach((slide, at) => {
       slide.setAttribute('aria-roledescription', t('slide'));
-      slide.setAttribute('aria-label', t('{n} of {total}', { n: at + 1, total: featured.length }));
-      const words = el('div', 'mk-slide-words');
-      const get = el('div', 'mk-slide-get');
-      const who = el('span', 'mk-slide-who');
-      who.append(el('b', null, nameOf(item)), el('span', null, isOn(item) ? reach(item) : priceOf(item)));
-      get.append(appIcon(item, 48), who, button('mk-get light', isOn(item) ? t('See it') : unpaid(item) ? t('Buy') : kindOf(item) === 'install' ? t('Install') : kindOf(item) === 'local' ? t('Open') : t('Get'), (event) => { event.stopPropagation(); go({ tab: 'shop', focus: item.id, choose: !isOn(item) }); }));
-      words.append(el('small', null, t('Featured')), el('h2', null, nameOf(item)), el('p', null, t(marketEntry(item.id).pitch ?? lineOf(item))), get);
-      const art = el('div', 'mk-slide-art');
-      art.innerHTML = marketArt(item); // trusted: our own drawings (market-art.js)
-      slide.append(words, art);
-      slide.addEventListener('click', () => go({ tab: 'shop', focus: item.id }));
+      slide.setAttribute('aria-label', t('{n} of {total}', { n: at + 1, total: slides.length }));
       track.append(slide);
       const dot = button('mk-dot', null, () => show(at));
-      dot.setAttribute('aria-label', t('{n} of {total}', { n: at + 1, total: featured.length }));
+      dot.setAttribute('aria-label', t('{n} of {total}', { n: at + 1, total: slides.length }));
       dots.append(dot);
     });
-    // A slide is as wide as the track, or — in the flat store — a little narrower, with the next one
-    // peeking at the edge: either way each one starts where it starts, not at a multiple of the width.
     const startOf = (at) => (track.children[at]?.offsetLeft ?? 0) - (track.children[0]?.offsetLeft ?? 0);
     const show = (at, smooth = true) => {
-      index = (at + featured.length) % featured.length;
+      index = (at + slides.length) % slides.length;
       track.scrollTo({ left: startOf(index), behavior: smooth && !reducedMotion() ? 'smooth' : 'auto' });
       mark();
     };
     const mark = () => { [...dots.children].forEach((dot, at) => dot.setAttribute('aria-current', String(at === index))); };
     track.addEventListener('scroll', () => {
       let at = 0;
-      featured.forEach((_, one) => { if (Math.abs(startOf(one) - track.scrollLeft) < Math.abs(startOf(at) - track.scrollLeft)) at = one; });
+      slides.forEach((_, one) => { if (Math.abs(startOf(one) - track.scrollLeft) < Math.abs(startOf(at) - track.scrollLeft)) at = one; });
       if (at !== index) { index = at; mark(); }
     }, { passive: true });
     // A window sized narrower or wider keeps the card it showed in place, never half of two.
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (track.isConnected) track.scrollTo({ left: startOf(index), behavior: 'auto' }); }).observe(track);
-    const prev = glyph(button('mk-arrow prev', null, () => show(index - 1)), 'back');
-    const next = glyph(button('mk-arrow next', null, () => show(index + 1)), 'next');
-    prev.setAttribute('aria-label', t('Previous'));
-    next.setAttribute('aria-label', t('Next'));
-    box.append(track, prev, next, dots);
+    box.append(track);
+    if (slides.length > 1) {
+      const prev = glyph(button('mk-arrow prev', null, () => show(index - 1)), 'back');
+      const next = glyph(button('mk-arrow next', null, () => show(index + 1)), 'next');
+      prev.setAttribute('aria-label', t('Previous'));
+      next.setAttribute('aria-label', t('Next'));
+      box.append(prev, next, dots);
+    }
     mark();
     // It moves on by itself, unless the person is reading it or asked for stillness.
     let resting = false;
     for (const [type, value] of [['pointerenter', true], ['pointerleave', false], ['focusin', true], ['focusout', false]]) box.addEventListener(type, () => { resting = value; });
     clearInterval(timer);
-    if (!reducedMotion() && featured.length > 1) timer = setInterval(() => { if (!resting && !document.hidden && box.isConnected) show(index + 1); }, 6500);
+    if (!reducedMotion() && slides.length > 1) timer = setInterval(() => { if (!resting && !document.hidden && box.isConnected) show(index + 1); }, 6500);
     return box;
+  };
+  const carousel = () => {
+    const featured = marketFeatured(items);
+    if (!featured.length) return null;
+    const slides = featured.map((item) => {
+      const slide = hueOf(el('article', 'mk-slide'), item);
+      const words = el('div', 'mk-slide-words');
+      const get = el('div', 'mk-slide-get');
+      const who = el('span', 'mk-slide-who');
+      who.append(el('b', null, nameOf(item)), el('span', null, isOn(item) ? reach(item) : paidOf(item) || lineOf(item)));
+      get.append(appIcon(item, 48), who, button('mk-get light', isOn(item) ? t('See it') : unpaid(item) ? t('Buy') : kindOf(item) === 'local' ? t('Open') : t('Install'), (event) => { event.stopPropagation(); go({ tab: 'shop', focus: item.id, choose: !isOn(item) }); }));
+      words.append(el('small', null, t('Featured')), el('h2', null, nameOf(item)), el('p', null, t(marketEntry(item.id).pitch ?? lineOf(item))), get);
+      const art = el('div', 'mk-slide-art');
+      art.innerHTML = marketArt(item); // trusted: our own drawings (market-art.js)
+      slide.append(words, art);
+      slide.addEventListener('click', () => go({ tab: 'shop', focus: item.id }));
+      return slide;
+    });
+    return rail(slides, t('Featured'));
   };
 
   const shop = () => {
@@ -693,8 +707,9 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   };
 
   // ---- SKILLS (H-8). Their own tab, because a skill is not a module: it adds no button and no
-  // page, it tells whichever agent answers how the person works. So no tiles and no carousel — a
-  // row with its sentence, and a page with the whole text before anything is kept.
+  // page, it tells whichever agent answers how the person works. So no tiles — a row with its
+  // sentence, and a page with the whole text before anything is kept; since 2026-11-11 the shelf opens
+  // with banners, as the Market does.
   //
   // Getting one is two steps, as a module's is: MADRE fetches every file and checks it against the
   // signature, shows what it says and what it carries, and only then — on the very seal that was
@@ -702,7 +717,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // The shelf of skills (2026-11-10, the author): a search, then what you already keep, what comes
   // with MADRE, and what the community made; two columns, each skill with its drawing.
   const SKILL_ICON_GUESS = [[/client|correo|mensaje|whatsapp|mail/i, 'chat'], [/red|post|instagram|social/i, 'image'], [/hoja|excel|tabla|sheet|cálculo/i, 'bars'], [/página|web|sitio|page|site/i, 'globe'], [/resum|pendiente|summar|todo/i, 'list'], [/explic|aprend|learn|explain/i, 'help'], [/cotiza|precio|quote|price/i, 'note'], [/código|code|program/i, 'code']];
-  const skillIcon = (skill) => skill.icon ?? SKILL_ICON_GUESS.find(([test]) => test.test(`${skill.id} ${skill.name}`))?.[1] ?? 'spark';
+  const skillIcon = (skill) => (ICONS[skill.icon] ? skill.icon : null) ?? SKILL_ICON_GUESS.find(([test]) => test.test(`${skill.id} ${skill.name}`))?.[1] ?? 'spark';
   const skillRow = (skill, { tag = null, key = null } = {}) => {
     const row = el('article', 'mk-skill-row');
     const mark = el('span', 'mk-skill-icon');
@@ -726,6 +741,55 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     shelf.append(list);
     return shelf;
   };
+  // THE SKILLS' BANNERS (2026-11-11, the author: «banners in Skills too»): the community's first —
+  // to say out loud that people share them — then the ones MADRE comes with. Each on a colour of its
+  // own, with a picture made from its drawing: a conversation where the skill comes in.
+  const SKILL_HUES = [['#f9a8d4', '#be185d'], ['#6ee7b7', '#047857'], ['#93c5fd', '#1d4ed8'], ['#fcd34d', '#b45309'], ['#c4b5fd', '#6d28d9'], ['#fca5a5', '#b91c1c'], ['#67e8f9', '#0e7490']];
+  const skillArt = (skill, [a, b]) => {
+    const icon = trazoDrawing(skillIcon(skill));
+    const line = (x, y, w, o = 0.5, c = '#94a3b8') => `<rect x="${x}" y="${y}" width="${w}" height="8" rx="4" fill="${c}" fill-opacity="${o}"/>`;
+    return `<svg viewBox="0 0 560 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <defs><filter id="sk-${skill.id}" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".18"/></filter></defs>
+      <g filter="url(#sk-${skill.id})">
+        <rect x="250" y="58" width="240" height="56" rx="18" fill="${b}"/>${line(272, 78, 150, 0.9, '#ffffff')}${line(272, 94, 96, 0.6, '#ffffff')}
+        <rect x="70" y="138" width="380" height="196" rx="20" fill="#ffffff"/>
+        <rect x="92" y="160" width="150" height="30" rx="15" fill="${a}" fill-opacity=".35"/>
+        <g transform="translate(101 166) scale(.9)" color="${b}">${icon}</g>
+        ${line(128, 171, 96, 0.9, b)}
+        ${line(92, 210, 320)}${line(92, 230, 290)}${line(92, 250, 304)}${line(92, 270, 210)}
+        <rect x="92" y="294" width="120" height="22" rx="11" fill="${b}" fill-opacity=".9"/>${line(110, 301, 84, 0.95, '#ffffff')}
+      </g>
+      <g transform="translate(392 230)"><rect width="104" height="104" rx="28" fill="${b}"/><g transform="translate(22 22) scale(3)" color="#ffffff">${icon}</g></g>
+    </svg>`;
+  };
+  const skillBanners = (included, community) => {
+    const featured = [...community, ...included].slice(0, 6);
+    if (!featured.length) return null;
+    const slides = featured.map((skill, at) => {
+      const hue = skill.hue ?? SKILL_HUES[at % SKILL_HUES.length];
+      const slide = el('article', 'mk-slide mk-skill-slide');
+      slide.style.setProperty('--mk-a', hue[0]);
+      slide.style.setProperty('--mk-b', hue[1]);
+      const words = el('div', 'mk-slide-words');
+      const get = el('div', 'mk-slide-get');
+      const mark = el('span', 'mk-skill-icon big');
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = trazo(skillIcon(skill)); // trusted: our own SVG strings
+      const who = el('span', 'mk-slide-who');
+      const by = skill.community ? (skill.author?.name ? t('by {name}', { name: skill.author.name }) : t('Made by the community')) : t('Comes with MADRE');
+      who.append(el('b', null, skill.name), el('span', null, by));
+      const have = skill.community ? skillHere(skill.id) : true;
+      const key = button('mk-get light', have ? t('See it') : t('Install'), (event) => { event.stopPropagation(); go({ tab: 'skills', focus: skill.community ? skill.id : null }); });
+      get.append(mark, who, key);
+      words.append(el('small', null, skill.community ? t('From the community') : t('Comes with MADRE')), el('h2', null, skill.name), el('p', null, skill.line || skill.summary || ''), get);
+      const art = el('div', 'mk-slide-art');
+      art.innerHTML = skillArt(skill, hue); // trusted: our own drawing
+      slide.append(words, art);
+      if (skill.community) slide.addEventListener('click', () => go({ tab: 'skills', focus: skill.id }));
+      return slide;
+    });
+    return rail(slides, t('Featured skills'));
+  };
   const skillsPage = (focus) => {
     const page = el('div', 'mk-page mk-skills');
     const all = marketSkills();
@@ -745,9 +809,10 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const shared = all.filter((skill) => !mine.some((have) => have.id === skill.id)).filter(fits);
     const community = shared.filter((skill) => skill.community);
     const market = shared.filter((skill) => !skill.community);
+    if (!words) { const banners = skillBanners(includedSkills(), all.filter((skill) => skill.community)); if (banners) page.append(banners); }
     const marketRow = (skill) => skillRow(skill, {
       tag: skill.community && skill.author?.name ? el('span', 'mk-skill-by', t('by {name}', { name: skill.author.name })) : skill.version ? el('span', 'mk-skill-tag', skill.version) : null,
-      key: skillHere(skill.id) ? button('mk-get on', t('Yours'), () => go({ tab: 'skills', focus: skill.id })) : button('mk-get', t('Read it'), () => go({ tab: 'skills', focus: skill.id })),
+      key: skillHere(skill.id) ? button('mk-get on', t('Yours'), () => go({ tab: 'skills', focus: skill.id })) : button('mk-get', t('Install'), () => go({ tab: 'skills', focus: skill.id })),
     });
     if (mine.length) page.append(skillShelf(t('Your skills'), t('The ones you already keep: your own, brought over from your agents, or got here. You switch them in MODULES → Skills.'), mine.map((skill) => skillRow(skill, { tag: el('span', 'mk-skill-tag', skill.origin === 'project' ? t('this project') : t('Yours')) }))));
     if (included.length) page.append(skillShelf(t('They come with MADRE'), t('Already on: each one comes in by itself when what you ask fits it.'), included.map((skill) => skillRow(skill, { tag: el('span', 'mk-skill-tag', t('Included')) }))));
@@ -776,7 +841,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     }
     const body = el('div', 'mk-skill-read');
     const said = el('p', 'mk-skill-said');
-    const keep = button('mk-get', have ? t('Get it again') : t('Keep it'), null);
+    const keep = button('mk-get', have ? t('Install again') : t('Install'), null);
     keep.hidden = true;
     const read = button('mk-get', t('Read what it tells my agents'), async () => {
       read.disabled = true;
@@ -803,6 +868,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
         if (!done.ok) { said.textContent = done.body.error ?? t('It could not be kept.'); return; }
         said.textContent = '';
         notice(t('{name} is yours now. It comes in when it fits; change that in MODULES.', { name: skill.name }));
+        // One of the first steps (missions.js): something got from the Market.
+        void markMission('market', { quiet: true });
         host.changed?.();
         await refresh();
         go({ tab: 'skills', focus: skill.id });

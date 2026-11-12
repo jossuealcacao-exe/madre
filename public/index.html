@@ -69,7 +69,7 @@
           <span class="mother-glyph modules-glyph" aria-hidden="true"></span><svg class="bar-glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="puzzle"><path class="ic-f" d="M3.6 7.6a2 2 0 0 1 2-2h1.8a1.9 1.9 0 1 1 3.2 0h1.8a2 2 0 0 1 2 2v1.8a1.9 1.9 0 1 1 0 3.2v1.8a2 2 0 0 1-2 2H5.6a2 2 0 0 1-2-2z"/></svg>Modules<span id="modules-count" class="modules-count" hidden></span>
         </button>
         <button id="mother-button" class="mother-button" type="button" title="Troubleshooting · Diagnostics" aria-haspopup="dialog" aria-pressed="false">
-          <span class="mother-glyph" aria-hidden="true"></span><svg class="bar-glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="mother"><circle class="ic-disc" cx="10" cy="10" r="9"/><path class="ic-k" d="M2 10h3.2l1.6-4.4 2.6 8.8 2-4.4h1.4l1.2-2.4 1.2 2.4H18"/><path class="ic-beat" pathLength="1" d="M2 10h3.2l1.6-4.4 2.6 8.8 2-4.4h1.4l1.2-2.4 1.2 2.4H18"/></svg>Diagnostics<span id="mother-count" class="mother-count" hidden></span>
+          <span class="mother-glyph" aria-hidden="true"></span><svg class="bar-glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="mother"><circle class="ic-disc" cx="10" cy="10" r="9"/><path class="ic-k" d="M2 10h3.2l1.6-4.4 2.6 8.8 2-4.4h1.4l1.2-2.4 1.2 2.4H18"/><path class="ic-beat" pathLength="1" d="M2 10h3.2l1.6-4.4 2.6 8.8 2-4.4h1.4l1.2-2.4 1.2 2.4H18"/></svg>Help<span id="mother-count" class="mother-count" hidden></span>
         </button>
         <button id="nostromo-bar" class="tree-button nostromo-bar" type="button" title="Memory map · memory research" aria-label="Memory map" aria-haspopup="dialog">
           <svg class="bar-glyph brain-glyph" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="brain"><path class="ic-f brain-l" d="M9.3 4.6C8.6 3.4 6.5 3.3 5.9 4.9 4.3 5 3.3 6.7 4 8.1 2.8 9.1 2.9 11.1 4.3 11.8 4.1 13.6 5.7 15.1 7.5 14.6 7.9 15.6 8.6 16.2 9.3 16.2z"/><path class="ic-f brain-r" d="M10.7 4.6C11.4 3.4 13.5 3.3 14.1 4.9 15.7 5 16.7 6.7 16 8.1 17.2 9.1 17.1 11.1 15.7 11.8 15.9 13.6 14.3 15.1 12.5 14.6 12.1 15.6 11.4 16.2 10.7 16.2z"/><path class="brain-folds" pathLength="1" d="M6.4 9.4c.9 0 1.6.5 1.9 1.3M13.6 9.4c-.9 0-1.6.5-1.9 1.3M7.2 6.6c.5.2.9.6 1 1.1M12.8 6.6c-.5.2-.9.6-1 1.1"/></svg>
@@ -155,9 +155,9 @@
         <section id="modules-list" class="mods-body"></section>
       </dialog>
 
-      <dialog id="mother" class="surface window settings-window mother-window" aria-label="Diagnostics">
+      <dialog id="mother" class="surface window settings-window mother-window" aria-label="Help">
         <header class="custom-head settings-head mother-bar">
-          <span class="custom-title mother-mark">Diagnostics</span>
+          <span class="custom-title mother-mark">Help</span>
           <form id="mother-query" class="mother-find-form" autocomplete="off">
             <label class="settings-search mother-find"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="search"><circle cx="9" cy="9" r="5.4"/><path d="m13.1 13.1 3.5 3.5"/></svg><input id="mother-input" type="search" placeholder="Write a symptom, an agent or a word" aria-label="Write a symptom, an agent or a word" spellcheck="false"></label>
           </form>
@@ -185,8 +185,8 @@
               <path class="beat" d="M1 10 H16 L20 10 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10 H52" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>
               <circle class="beat-dot" cx="60" cy="10" r="3" fill="currentColor"/>
             </svg>
-            <strong>One conversation. Every agent.</strong>
-            <span>Pick an agent and ask, or start with a mention such as <code data-say>@codex summarize this project</code>.</span>
+            <strong>One chat. All your AIs.</strong>
+            <span>Pick an AI and ask it anything. To talk to one in particular, type @ and its name, like <code data-say>@codex summarize this project</code>.</span>
             <div id="empty-starts" class="empty-starts"></div>
           </div>
         </div>
@@ -235,7 +235,7 @@
         </div>
         <div id="pick-options" class="picker pick-options" data-tip-after="3500"></div>
       </form>
-      <p id="safety" class="safety" hidden>Agents write only when you raise the mode · what they read may reach their provider.</p>
+      <p id="safety" class="safety" hidden>AIs only change your files if you let them. What they read goes to the company behind each one.</p>
       <small id="colophon" class="colophon" aria-label="MADRE version"></small>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>

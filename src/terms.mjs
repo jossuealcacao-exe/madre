@@ -18,20 +18,37 @@ export const TERMS_LINKS = {
   privacy: { es: 'https://madre.run/privacidad/', en: 'https://madre.run/en/privacy/' },
 };
 
+// THE DESKTOP APP HAS ITS OWN LICENSE (2026-11-11, the author): MADRE for Mac and Linux, the app
+// (~/madre-app, private), is closed code, so inside it the person accepts the app's license of use —
+// not the source code's. The MADRE on GitHub and npm keeps the Business Source License, unchanged. A
+// text of its own is a version of its own: whoever accepted the source's in a browser is asked again
+// the first time MADRE opens inside the app, and the other way round.
+export const APP_TERMS_VERSION = 'app-2026-11-11';
+export const APP_TERMS_LINKS = {
+  license: { es: 'https://madre.run/app/licencia/', en: 'https://madre.run/en/app/license/' },
+  privacy: TERMS_LINKS.privacy,
+};
+export const inApp = (env = process.env) => env.MADRE_APP === '1';
+export const termsVersion = (env = process.env) => (inApp(env) ? APP_TERMS_VERSION : TERMS_VERSION);
+export const termsLinks = (env = process.env) => (inApp(env) ? APP_TERMS_LINKS : TERMS_LINKS);
+export const termsKind = (env = process.env) => (inApp(env) ? 'app' : 'source');
+
 export const termsWaived = (env = process.env) => env.PULSE_TEST_MODE === '1' || env.PULSE_TERMS === 'accepted';
 
 export async function readTerms(root, { env = process.env } = {}) {
-  if (termsWaived(env)) return { accepted: true, version: TERMS_VERSION, at: null, waived: true };
+  const version = termsVersion(env);
+  const kind = termsKind(env);
+  if (termsWaived(env)) return { accepted: true, version, kind, at: null, waived: true };
   try {
     const kept = JSON.parse(await readFile(join(root, 'terms.json'), 'utf8'));
-    return { accepted: kept?.version === TERMS_VERSION, version: TERMS_VERSION, at: typeof kept?.at === 'string' ? kept.at : null, previous: kept?.version ?? null };
+    return { accepted: kept?.version === version, version, kind, at: typeof kept?.at === 'string' ? kept.at : null, previous: kept?.version ?? null };
   } catch {
-    return { accepted: false, version: TERMS_VERSION, at: null, previous: null };
+    return { accepted: false, version, kind, at: null, previous: null };
   }
 }
 
-export async function acceptTerms(root, { now = new Date() } = {}) {
-  const kept = { version: TERMS_VERSION, at: now.toISOString() };
+export async function acceptTerms(root, { now = new Date(), env = process.env } = {}) {
+  const kept = { version: termsVersion(env), at: now.toISOString() };
   await writeFile(join(root, 'terms.json'), `${JSON.stringify(kept)}\n`);
   return { accepted: true, ...kept };
 }
