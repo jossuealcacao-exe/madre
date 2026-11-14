@@ -8,7 +8,7 @@
 // so a page paints in the last known look before it hears from here.
 //
 // Only what the pages share: the theme, the accent, the wallpaper and its dials, the bubbles and
-// the text of the conversation. How Home is arranged lives beside it, in home.json (below).
+// the text of the conversation, and how code reads (the terminal and the editor). How Home is arranged lives beside it, in home.json (below).
 
 import { createHash } from 'node:crypto';
 import { readFile, rm } from 'node:fs/promises';
@@ -28,6 +28,9 @@ export const LOOK_KEYS = {
   'pulse.text': CHOICE,
   // The maps drawn as neurons (public/neural.js): 'on', or nothing.
   'pulse.neural': CHOICE,
+  // How code reads in the editor, the viewer and the app's terminal (2026-11-14): 'coldbrew',
+  // 'oldcode', or nothing for Simple.
+  'pulse.code.theme': CHOICE,
 };
 const looksFile = (stateRoot) => join(stateRoot, 'looks.json');
 
