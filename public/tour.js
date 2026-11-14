@@ -201,7 +201,8 @@ const SCENES = {
 
   // Modes: the box's mode chip opens its five levels; #3 and #4 open only once you confirm, #4 twice.
   modes(stage) {
-    const words = ['Incognito', 'Chat', 'Create', 'Edit', 'Full access'];
+    // The box's own names for the five levels (public/app.js, MODES), so the scene reads like the box.
+    const words = ['Not saved', 'Just chat', 'Can create', 'Can edit', 'Full access'];
     const options = words.map((word, n) => h('span', `ts-option o${n}`, el('b', 'ts-n', `#${n}`), el('span', 'ts-w', t(word)), el('span', 'ts-gap'),
       n >= 3 ? h('span', 'ts-lockset', glyph('lock', 'ts-i ts-shut'), glyph('lock-open', 'ts-i ts-opened')) : null,
       n === 4 ? h('span', 'ts-twice', el('i'), el('i')) : null));
