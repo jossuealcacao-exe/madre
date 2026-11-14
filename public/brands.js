@@ -79,7 +79,8 @@ export const BRANDS = {
 };
 
 BRANDS.madre = {
-  label: 'MADRE',
+  // The local AI is called as it is called in a chat (2026-11-14, the author): MADRE is the place.
+  label: '@madre',
   vendor: 'the project · local',
   color: '#34d399',
   colorLight: '#10b981',

@@ -13,7 +13,9 @@ export const MADRE_ADAPTER = 'madre-local';
 
 export function madreAgent(ollama, { enabled = true } = {}) {
   const ready = Boolean(enabled && ollama?.running && ollama.chatModel);
-  return { id: MADRE_AGENT_ID, label: 'MADRE', detected: Boolean(ollama?.running), ready, adapter: MADRE_ADAPTER, path: null, version: ollama?.chatModel ?? null, local: true };
+  // Its name in the room is how you call it, «@madre» (2026-11-14, the author): «MADRE» is the place
+  // where your AIs work, and the local AI is not it.
+  return { id: MADRE_AGENT_ID, label: '@madre', detected: Boolean(ollama?.running), ready, adapter: MADRE_ADAPTER, path: null, version: ollama?.chatModel ?? null, local: true };
 }
 
 const SYSTEM = `You are @madre, the memory of this MADRE project room, running locally on this machine. You speak only for what the room has said and decided.
