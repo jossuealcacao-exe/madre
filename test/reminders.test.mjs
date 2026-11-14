@@ -30,6 +30,24 @@ test('reminders: the when is read from the person\'s own words, in Spanish and i
 });
 
 // PENDIENTES-1.0.6, REC-1 and REC-7 (fixed for 1.1.0).
+test('reminders: a date said whole is that date, the next one to come when no year is said (2026-11-14)', () => {
+  const now = new Date(2026, 10, 14, 12, 0);
+  const when = (words) => { const read = parseWhen(words, now, { hour: 9 }); return read && [read.due.getFullYear(), read.due.getMonth() + 1, read.due.getDate(), read.due.getHours(), read.due.getMinutes()]; };
+  assert.deepEqual(when('16 de noviembre a las 10:30'), [2026, 11, 16, 10, 30], 'it was read as today at 10:30');
+  assert.deepEqual(when('recuérdame pagar la renta el 20 de diciembre'), [2026, 12, 20, 9, 0], 'it was read as nothing');
+  assert.deepEqual(when('3 de enero'), [2027, 1, 3, 9, 0], 'a date gone this year is next year');
+  assert.deepEqual(when('20 de diciembre de 2027 a las 5 pm'), [2027, 12, 20, 17, 0]);
+  assert.deepEqual(when('2026-11-20 10:00'), [2026, 11, 20, 10, 0]);
+  assert.deepEqual(when('November 20 at 10am'), [2026, 11, 20, 10, 0]);
+  assert.deepEqual(when('Nov 20, 2027'), [2027, 11, 20, 9, 0]);
+  assert.deepEqual(when('the 20th of December'), [2026, 12, 20, 9, 0]);
+  assert.deepEqual(when('el sábado 16 a las 11:00'), [2026, 11, 16, 11, 0], 'the 16th, not the next Saturday');
+  // What was read well before still is.
+  assert.deepEqual(when('el lunes'), [2026, 11, 16, 9, 0]);
+  assert.deepEqual(when('mañana a las 9'), [2026, 11, 15, 9, 0]);
+  assert.equal(parseWhen('31 de febrero', now), null, 'a day the month does not have is no date');
+});
+
 test('reminders: «hoy» is never born overdue, the part of the day decides the hour, and «at 3 files» is no hour', () => {
   const late = new Date('2026-10-20T23:02:00');
   assert.deepEqual(hm(parseWhen('llamar a Sofía hoy a las 8', late).due), [21, 8, 0]);

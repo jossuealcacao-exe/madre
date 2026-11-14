@@ -169,6 +169,42 @@ export function nextOccurrence(due, repeat, after = new Date()) {
   return next;
 }
 
+// A date said whole (2026-11-14, the author): «16 de noviembre», «20 de diciembre de 2026», «November 20»,
+// «Nov 20, 2026», «2026-11-20», «el sábado 16». Without a year it is the next one to come: «3 de enero»
+// said in November is next January. Before this, «16 de noviembre a las 10:30» was read as today at
+// 10:30 and «20 de diciembre» as nothing at all.
+const MONTHS = [
+  ['enero', 'january', 'jan', 'ene'], ['febrero', 'february', 'feb'], ['marzo', 'march', 'mar'], ['abril', 'april', 'apr', 'abr'],
+  ['mayo', 'may'], ['junio', 'june', 'jun'], ['julio', 'july', 'jul'], ['agosto', 'august', 'aug', 'ago'],
+  ['septiembre', 'setiembre', 'september', 'sep', 'sept'], ['octubre', 'october', 'oct'], ['noviembre', 'november', 'nov'], ['diciembre', 'december', 'dec', 'dic'],
+];
+const monthIndex = (word) => MONTHS.findIndex((names) => names.includes(String(word ?? '').replace(/\.$/, '')));
+const MONTH_WORDS = MONTHS.flat().sort((a, b) => b.length - a.length).join('|');
+function exactDay(text, base) {
+  let year = null; let month = -1; let date = null;
+  const iso = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  const es = text.match(new RegExp(`\\b(\\d{1,2})\\s+de\\s+(${MONTH_WORDS})\\.?(?:\\s+(?:de|del)\\s+(\\d{4}))?\\b`));
+  const en = text.match(new RegExp(`\\b(${MONTH_WORDS})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4})\\b)?`));
+  const enAfter = text.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_WORDS})\\b(?:,?\\s+(\\d{4})\\b)?`));
+  const numbered = text.match(new RegExp(`\\b(?:${DAY_WORDS})\\s+(\\d{1,2})\\b(?!\\s*(?::|am|pm|hrs|h\\b))`));
+  if (iso) { year = Number(iso[1]); month = Number(iso[2]) - 1; date = Number(iso[3]); }
+  else if (es && monthIndex(es[2]) >= 0) { date = Number(es[1]); month = monthIndex(es[2]); year = es[3] ? Number(es[3]) : null; }
+  else if (en && monthIndex(en[1]) >= 0) { date = Number(en[2]); month = monthIndex(en[1]); year = en[3] ? Number(en[3]) : null; }
+  else if (enAfter && monthIndex(enAfter[2]) >= 0) { date = Number(enAfter[1]); month = monthIndex(enAfter[2]); year = enAfter[3] ? Number(enAfter[3]) : null; }
+  else if (numbered) {
+    // «el sábado 16»: the next 16th, this month or the next.
+    date = Number(numbered[1]);
+    month = base.getMonth();
+    if (date < base.getDate()) month += 1;
+  } else return null;
+  if (month < 0 || date < 1 || date > 31) return null;
+  const today = at(base, 0);
+  let day = new Date(year ?? base.getFullYear(), month, date);
+  if (day.getDate() !== date) return null;
+  if (year === null && day < today) day = new Date(base.getFullYear() + 1, month, date);
+  return day;
+}
+
 // { due, repeat, said } for the words, or null when they say no time at all.
 export function parseWhen(words, now = new Date(), { hour: dayHour = DEFAULT_HOUR } = {}) {
   const text = fold(words);
@@ -193,8 +229,9 @@ export function parseWhen(words, now = new Date(), { hour: dayHour = DEFAULT_HOU
     return { due: new Date(base.getTime() + amount * unit), repeat: null, said: relative[0] };
   }
 
-  let day = null;
-  if (/\bpasado manana\b|\bday after tomorrow\b/.test(text)) { day = plusDays(base, 2); said.push('pasado mañana'); }
+  let day = exactDay(text, base);
+  if (day) said.push('fecha');
+  else if (/\bpasado manana\b|\bday after tomorrow\b/.test(text)) { day = plusDays(base, 2); said.push('pasado mañana'); }
   // «mañana» is tomorrow unless it is the morning: «la mañana», «de la mañana», «por la mañana».
   else if (/(^|[^a-z])(manana)(?![a-z])/.test(text.replace(/\b(la|las|en la|por la|de la|cada|todas las)\s+manana(s)?\b/g, ' ')) || /\btomorrow\b/.test(text)) { day = plusDays(base, 1); said.push('mañana'); }
   else if (/\b(hoy|today|tonight|esta tarde|esta noche|this afternoon)\b/.test(text)) { day = new Date(base); said.push('hoy'); }
