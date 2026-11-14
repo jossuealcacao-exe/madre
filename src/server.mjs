@@ -305,6 +305,9 @@ export async function createPulseServer({
   licenseApi = null,
   // Ollama detection; tests hand in a fake probe. PULSE_OLLAMA=0 leaves Ollama alone entirely.
   ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
+  // When Ollama did not answer the first look, how long until it is asked again; the last wait
+  // repeats (L-14). Tests hand in short ones.
+  ollamaRetryMs = [10_000, 30_000, 90_000, 300_000],
   // Whether every request has to carry the ficha (src/ficha.mjs). Only the CLI entry point
   // (startPulse) turns it on, as it does the quota sources; a test that checks it turns it on too.
   // `renewFicha`: asked when the browser is opened by this start; only Home acts on it, and makes a
@@ -1151,6 +1154,30 @@ export async function createPulseServer({
   };
   adoptOllamaHost(await readConfig(root));
   await wireOllama();
+  // The first look gives Ollama 1.5 s. On a busy machine (a 14B loading, a knowledge load running)
+  // that is not enough, and before this the local AI stayed off for the whole run: no @madre, the
+  // archive written by a paid agent, until a restart (L-14, Carlos's server, 2026-11-12). Now it is
+  // asked again on its own, with more time, until it answers.
+  let ollamaRetry = null;
+  let ollamaRetries = 0;
+  const askOllamaAgain = () => {
+    clearTimeout(ollamaRetry);
+    ollamaRetry = null;
+    if (ollama.running || ollama.disabled || !ollamaRetryMs.length) return;
+    const wait = ollamaRetryMs[Math.min(ollamaRetries, ollamaRetryMs.length - 1)];
+    ollamaRetries += 1;
+    ollamaRetry = setTimeout(async () => {
+      ollamaRetry = null;
+      const seen = await ollamaProbe({ timeoutMs: 10_000 }).catch(() => null);
+      if (seen?.running && !ollama.running) {
+        ollama = { ...seen, autoModel: seen.chatModel };
+        await wireOllama({ probe: false }).catch((error) => console.error(`MADRE could not wire Ollama: ${error.message}`));
+      }
+      askOllamaAgain();
+    }, wait);
+    ollamaRetry.unref?.();
+  };
+  askOllamaAgain();
   const memoryServer = memory ? memoryServerFor({ dbFile: memory.file, projectRoot: canonicalProjectRoot }) : null;
   // MOTHER's channel to the crew: her seal's fingerprint lives in the memory
   // file, so a deleted or edited .pulse/mother.env is noticed.
@@ -5866,6 +5893,7 @@ export async function createPulseServer({
   };
   server.on('close', () => quotaMonitor.stop());
   server.on('close', () => clearTimeout(reprobe));
+  server.on('close', () => clearTimeout(ollamaRetry));
   server.on('close', () => { for (const timer of [...aliveTimers, ...hereTimers]) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });
