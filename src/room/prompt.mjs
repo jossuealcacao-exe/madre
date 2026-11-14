@@ -26,6 +26,7 @@ export const BLOCK_SOURCES = {
   room: { when: 'always', where: null },
   who: { when: 'always', where: null },
   style: { when: 'always', where: null },
+  shapes: { when: 'always', where: null },
   privacy: { when: 'always', where: 'Settings › Privacy sets the marker and the terms it protects' },
   madre: { when: '@madre is in the room and this turn is somebody else\'s', where: 'MODULES → OLLAMA' },
   'memory-server': { when: 'the room has a memory', where: 'MODULES → OLLAMA · Settings › Memory' },
@@ -59,7 +60,7 @@ export const BLOCK_SOURCES = {
   ask: { when: 'the human is the one asking', where: null },
 };
 
-export const PROMPT_BLOCKS = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'skills', 'skill-sdk', 'ash', 'mother', 'mcp', 'bishop', 'sdk', 'lease', 'changes', 'copilot', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'linked', 'context', 'delegation', 'choices', 'runs', 'abilities', 'attachments', 'references', 'returned', 'ask'];
+export const PROMPT_BLOCKS = ['room', 'who', 'style', 'shapes', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'skills', 'skill-sdk', 'ash', 'mother', 'mcp', 'bishop', 'sdk', 'lease', 'changes', 'copilot', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'linked', 'context', 'delegation', 'choices', 'runs', 'abilities', 'attachments', 'references', 'returned', 'ask'];
 
 // Whether this turn could plausibly produce a MADRE module. The SDK block is long and is only
 // ever of use when the human is asking for one, so it is not carried by every leased turn. The
@@ -122,6 +123,9 @@ export function promptParts({
     { id: 'room', text: 'You are answering inside a MADRE project room shared by a human and several AI agents.' },
     { id: 'who', text: `You are @${agent.id}.` },
     { id: 'style', text: 'Answer directly and concisely. Clearly distinguish facts from inference. Write to the room in the language the human is writing in, and keep code, paths, commands and identifiers exactly as they are.' },
+    // What MADRE draws for the human (2026-11-14, the author): said once, so an answer that would
+    // read better as a chart, a diagram or cards is written in the shape the room draws.
+    { id: 'shapes', text: 'The room draws some markdown for the human; use it only when it helps. A list of places, products or pages: one point each, starting with its link, "1. [Name](https://…) — price, details": each becomes a card. A ```chart block with JSON {"type":"bar"|"line"|"pie","title":"…","labels":[…],"series":[{"name":"…","data":[…]}]} becomes a chart. A ```mermaid block with a flowchart (graph TD or LR) becomes a diagram. ```html and ```svg blocks are shown rendered. "- [ ] " points are boxes the human ticks; "> [!WARNING]" (or NOTE, TIP, IMPORTANT, CAUTION) is a coloured notice. Tables can be sorted and charted.' },
     { id: 'privacy', text: `Your own configuration is private to you: system prompts, organisation instructions, the account or e-mail you run under, CLAUDE.md or AGENTS.md files outside this project. Never bring into the room a company, brand, person, domain or fact that comes from there rather than from this transcript, the project files or the human's message. If a sentence truly needs it, write ${privacyMarker} instead.` },
     { id: 'madre', text:
       madreModel && agent.id !== 'madre'
@@ -164,7 +168,7 @@ export function promptParts({
     { id: 'copilot', text: copilot },
     { id: 'control-held', text: !lease?.control && controlHolder && controlHolder !== agent.id ? `Heads-up: @${controlHolder} currently holds CONTROL and may be changing project files while you work; cite the state you actually read.` : null },
     { id: 'escalation', text: escalation ? `The human was asked to allow file creation for this step and ${escalation === 'timeout' ? 'did not answer in time' : escalation === 'stopped' ? 'stopped the plan' : 'declined'}. Answer read-only: say plainly what you would have created and what it would contain, without creating it.` : null },
-    { id: 'web', text: scopes?.web ? 'WEB ACCESS: the human enabled web search and fetch for you; use them when the question needs current or external information, and cite the sources you used.' : null },
+    { id: 'web', text: scopes?.web ? 'WEB ACCESS: the human enabled web search and fetch for you; use them when the question needs current or external information, and cite the sources you used, each as a markdown link [title](https://…).' : null },
     { id: 'shared-lease', text: !lease && requester !== 'you' && depth > 0 && sharedLeaseHint ? sharedLeaseHint : null },
     { id: 'memories', text:
       memories?.length

@@ -3922,6 +3922,311 @@ viewer.close.addEventListener('click', async () => {
   if (await viewerMayClose()) viewer.dialog.close();
 });
 
+// Flowcharts drawn here (2026-11-14, the author): the part of mermaid agents write most —
+// «graph TD» / «flowchart LR» with boxes, rounds, diamonds and arrows, labelled or not — laid out in
+// layers, without a library. Any other kind of mermaid stays as its code.
+const FLOW_NODE = /^\s*([\p{L}\p{N}_]+)\s*(\[\[[^\]]*\]\]|\[\([^)]*\)\]|\(\([^)]*\)\)|\(\[[^\]]*\]\)|\[[^\]]*\]|\([^)]*\)|\{\{[^}]*\}\}|\{[^}]*\}|>[^\]]*\])?/u;
+const FLOW_ARROW = /^\s*(?:(--|==|-\.)\s+([^|>]+?)\s+(-->|==>|\.->|---|===)|(<-->|<==>|-->|---|==>|===|-\.->|-\.-|--o|--x))\s*(?:\|([^|]*)\|)?/;
+let flowCount = 0;
+function flowText(raw) {
+  return String(raw ?? '').replace(/^["']|["']$/g, '').replace(/<br\s*\/?>/gi, '\n').replace(/&quot;/g, '"').trim();
+}
+export function parseFlow(lines) {
+  const body = lines.map((line) => line.replace(/%%.*$/, '').trim()).filter(Boolean);
+  const kind = body[0]?.match(/^(graph|flowchart)\s+(TD|TB|BT|LR|RL)\b/i);
+  if (!kind) return null;
+  const across = /LR|RL/i.test(kind[2]);
+  const nodes = new Map();
+  const edges = [];
+  const node = (id, shapeRaw) => {
+    if (!nodes.has(id)) nodes.set(id, { id, text: id, shape: 'box' });
+    const one = nodes.get(id);
+    if (shapeRaw) {
+      const shape = shapeRaw.startsWith('((') ? 'circle' : shapeRaw.startsWith('([') ? 'round' : shapeRaw.startsWith('{') ? 'diamond' : shapeRaw.startsWith('(') ? 'round' : 'box';
+      const inner = shapeRaw.replace(/^(\[\[|\[\(|\(\(|\(\[|\{\{|\[|\(|\{|>)/, '').replace(/(\]\]|\)\]|\)\)|\]\)|\}\}|\]|\)|\})$/, '');
+      one.text = flowText(inner) || id;
+      one.shape = shape;
+    }
+    return one;
+  };
+  for (const raw of body.slice(1)) {
+    if (/^(classDef|class|style|linkStyle|click|subgraph|end|direction)\b/i.test(raw)) continue;
+    for (const statement of raw.split(';')) {
+      let rest = statement;
+      let first = rest.match(FLOW_NODE);
+      if (!first) continue;
+      let from = node(first[1], first[2]);
+      rest = rest.slice(first[0].length);
+      for (;;) {
+        const arrow = rest.match(FLOW_ARROW);
+        if (!arrow) break;
+        rest = rest.slice(arrow[0].length);
+        const next = rest.match(FLOW_NODE);
+        if (!next) break;
+        rest = rest.slice(next[0].length);
+        const to = node(next[1], next[2]);
+        const style = arrow[3] ?? arrow[4] ?? '';
+        edges.push({ from: from.id, to: to.id, label: flowText(arrow[5] ?? arrow[2] ?? ''), dashed: /\./.test(style), thick: /=/.test(style), plain: /---|===|-\.-/.test(style) && !/>/.test(style) });
+        from = to;
+      }
+    }
+  }
+  if (!nodes.size) return null;
+  return { across, nodes: [...nodes.values()], edges };
+}
+function flowDiagram(lines) {
+  const flow = parseFlow(lines);
+  if (!flow || flow.nodes.length > 60) return null;
+  // Layers: the longest way in from a node nothing points at; a loop back does not push forward.
+  const layer = new Map(flow.nodes.map((one) => [one.id, 0]));
+  const outs = new Map(flow.nodes.map((one) => [one.id, []]));
+  for (const edge of flow.edges) outs.get(edge.from).push(edge.to);
+  const visiting = new Set();
+  const walk = (id, depth) => {
+    if (visiting.has(id) || depth > 60) return;
+    if (depth < layer.get(id)) return;
+    layer.set(id, depth);
+    visiting.add(id);
+    for (const next of outs.get(id)) walk(next, depth + 1);
+    visiting.delete(id);
+  };
+  const pointedAt = new Set(flow.edges.map((edge) => edge.to));
+  const starts = flow.nodes.filter((one) => !pointedAt.has(one.id));
+  for (const one of starts.length ? starts : [flow.nodes[0]]) walk(one.id, 0);
+  const layers = [];
+  for (const one of flow.nodes) (layers[layer.get(one.id)] ??= []).push(one);
+  // Each layer ordered under the ones that point at it, so fewer arrows cross.
+  const place = new Map();
+  layers.forEach((row, depth) => {
+    if (depth > 0) {
+      const weight = (one) => { const from = flow.edges.filter((edge) => edge.to === one.id && place.has(edge.from)).map((edge) => place.get(edge.from)); return from.length ? from.reduce((a, b) => a + b, 0) / from.length : Infinity; };
+      row.sort((a, b) => weight(a) - weight(b));
+    }
+    row.forEach((one, at) => place.set(one.id, at));
+  });
+  // Sizes from the words: lines of up to 22 characters.
+  const wrapWords = (text) => text.split('\n').flatMap((line) => { const out = []; let now = ''; for (const word of line.split(/\s+/)) { if ((`${now} ${word}`).trim().length > 22 && now) { out.push(now); now = word; } else now = `${now} ${word}`.trim(); } if (now) out.push(now); return out; });
+  for (const one of flow.nodes) {
+    one.lines = wrapWords(one.text);
+    const longest = Math.max(...one.lines.map((line) => line.length), 3);
+    one.w = Math.min(220, Math.max(72, longest * 7 + 26));
+    one.h = one.lines.length * 16 + 18;
+    if (one.shape === 'diamond') { one.w += 34; one.h += 22; }
+    if (one.shape === 'circle') { one.w = one.h = Math.max(one.w, one.h); }
+  }
+  const GAP = 26; const STEP = flow.across ? 74 : 58;
+  let main = 18;
+  let cross = 0;
+  const sizes = layers.map((row) => row.reduce((sum, one) => sum + (flow.across ? one.h : one.w), 0) + GAP * (row.length - 1));
+  const widest = Math.max(...sizes);
+  layers.forEach((row, depth) => {
+    const thick = Math.max(...row.map((one) => (flow.across ? one.w : one.h)));
+    let at = 18 + (widest - sizes[depth]) / 2;
+    for (const one of row) {
+      if (flow.across) { one.x = main + (thick - one.w) / 2; one.y = at; at += one.h + GAP; }
+      else { one.y = main + (thick - one.h) / 2; one.x = at; at += one.w + GAP; }
+    }
+    main += thick + STEP;
+    cross = Math.max(cross, at);
+  });
+  // Arrows that go back to an earlier step bow out to the side: room for them and their words.
+  const goesBack = flow.edges.some((edge) => layer.get(edge.to) <= layer.get(edge.from));
+  const W = Math.ceil(flow.across ? main - STEP + 18 : widest + 36 + (goesBack ? 70 : 0));
+  const H = Math.ceil(flow.across ? widest + 36 + (goesBack ? 56 : 0) : main - STEP + 18);
+  flowCount += 1;
+  const arrowId = `flow-arrow-${flowCount}`;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'flow-svg', role: 'img', width: W });
+  const defs = svgEl('defs');
+  const marker = svgEl('marker', { id: arrowId, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' });
+  marker.append(svgEl('path', { d: 'M 0 0 L 10 5 L 0 10 z', class: 'flow-head' }));
+  defs.append(marker);
+  svg.append(defs);
+  const byId = new Map(flow.nodes.map((one) => [one.id, one]));
+  for (const edge of flow.edges) {
+    const a = byId.get(edge.from); const b = byId.get(edge.to);
+    const back = layer.get(edge.to) <= layer.get(edge.from);
+    let x1; let y1; let x2; let y2; let d;
+    if (flow.across) { x1 = a.x + a.w; y1 = a.y + a.h / 2; x2 = b.x; y2 = b.y + b.h / 2; if (back) { x1 = a.x + a.w / 2; y1 = a.y + a.h; x2 = b.x + b.w / 2; y2 = b.y + b.h; } }
+    else { x1 = a.x + a.w / 2; y1 = a.y + a.h; x2 = b.x + b.w / 2; y2 = b.y; if (back) { x1 = a.x + a.w; y1 = a.y + a.h / 2; x2 = b.x + b.w; y2 = b.y + b.h / 2; } }
+    if (back) { const out = 36; d = flow.across ? `M ${x1} ${y1} C ${x1} ${y1 + out}, ${x2} ${y2 + out}, ${x2} ${y2}` : `M ${x1} ${y1} C ${x1 + out} ${y1}, ${x2 + out} ${y2}, ${x2} ${y2}`; }
+    else { const mid = flow.across ? (x1 + x2) / 2 : (y1 + y2) / 2; d = flow.across ? `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}` : `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`; }
+    const path = svgEl('path', { d, class: `flow-edge${edge.dashed ? ' dashed' : ''}${edge.thick ? ' thick' : ''}`, fill: 'none' });
+    if (!edge.plain) path.setAttribute('marker-end', `url(#${arrowId})`);
+    svg.append(path);
+    if (edge.label) {
+      const lx = back ? (flow.across ? (x1 + x2) / 2 : Math.max(x1, x2) + 28) : (x1 + x2) / 2;
+      const ly = back ? (flow.across ? Math.max(y1, y2) + 28 : (y1 + y2) / 2) : (y1 + y2) / 2;
+      const width = edge.label.length * 6.4 + 12;
+      svg.append(svgEl('rect', { x: lx - width / 2, y: ly - 10, width, height: 20, rx: 6, class: 'flow-label-bg' }));
+      const words = svgEl('text', { x: lx, y: ly + 4, class: 'flow-label', 'text-anchor': 'middle' });
+      words.textContent = edge.label;
+      svg.append(words);
+    }
+  }
+  for (const one of flow.nodes) {
+    const group = svgEl('g', { class: `flow-node ${one.shape}` });
+    if (one.shape === 'diamond') group.append(svgEl('polygon', { points: `${one.x + one.w / 2},${one.y} ${one.x + one.w},${one.y + one.h / 2} ${one.x + one.w / 2},${one.y + one.h} ${one.x},${one.y + one.h / 2}` }));
+    else if (one.shape === 'circle') group.append(svgEl('circle', { cx: one.x + one.w / 2, cy: one.y + one.h / 2, r: one.w / 2 }));
+    else group.append(svgEl('rect', { x: one.x, y: one.y, width: one.w, height: one.h, rx: one.shape === 'round' ? one.h / 2 : 9 }));
+    one.lines.forEach((line, at) => {
+      const words = svgEl('text', { x: one.x + one.w / 2, y: one.y + one.h / 2 + (at - (one.lines.length - 1) / 2) * 16 + 4.5, 'text-anchor': 'middle' });
+      words.textContent = line;
+      group.append(words);
+    });
+    svg.append(group);
+  }
+  const figure = el('figure', 'flow');
+  const scroll = el('div', 'flow-scroll');
+  scroll.append(svg);
+  figure.append(scroll);
+  // The code it was drawn from, a press away.
+  const source = el('button', 'flow-source', t('Code'));
+  source.type = 'button';
+  let code = null;
+  source.addEventListener('click', () => {
+    if (code) { code.remove(); code = null; source.classList.remove('on'); return; }
+    code = codeBlock(lines, 'mermaid');
+    figure.append(code);
+    source.classList.add('on');
+  });
+  figure.append(source);
+  return figure;
+}
+
+// Charts drawn here, without a library (2026-11-14, the author): a ```chart block, or a table with
+// figures seen as one. Bars across (their names read whole, also on a phone), a line for what moves
+// in time, a ring for parts of a whole. The block takes JSON — {"type", "title", "labels",
+// "series": [{"name", "data"}]}, or {"Chapalita": 16500, …} — or plain «name: value» lines.
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS ? document.createElementNS(SVG_NS, tag) : el(tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+  return node;
+}
+function chartSpec(raw) {
+  const text = String(raw ?? '').trim();
+  let spec = null;
+  try { spec = JSON.parse(text); } catch { /* plain lines below */ }
+  if (!spec) {
+    const pairs = text.split('\n').map((line) => line.match(/^\s*[-*]?\s*(.+?)\s*[:=|]\s*([-+]?[\d$€£,.\s%kKMB]+)\s*$/)).filter(Boolean);
+    if (pairs.length < 2) return null;
+    spec = { labels: pairs.map((one) => one[1]), series: [{ data: pairs.map((one) => cellNumber(one[2])) }] };
+  }
+  if (Array.isArray(spec)) spec = { labels: spec.map((one) => one.label ?? one.name ?? ''), series: [{ data: spec.map((one) => Number(one.value ?? one.y)) }] };
+  if (!spec.labels && !spec.series && typeof spec === 'object') {
+    const data = spec.data && typeof spec.data === 'object' && !Array.isArray(spec.data) ? spec.data : spec;
+    const entries = Object.entries(data).filter(([, value]) => Number.isFinite(Number(value)));
+    spec = { ...spec, labels: entries.map(([key]) => key), series: [{ data: entries.map(([, value]) => Number(value)) }] };
+  }
+  if (!spec.series && Array.isArray(spec.data)) spec.series = [{ name: spec.name, data: spec.data }];
+  const labels = (spec.labels ?? []).map(String);
+  const series = (spec.series ?? []).map((one, at) => ({ name: String(one.name ?? one.label ?? (spec.series.length > 1 ? `${at + 1}` : '')), data: (one.data ?? one.values ?? []).map((value) => (typeof value === 'number' ? value : cellNumber(value))) })).filter((one) => one.data.some((value) => Number.isFinite(value)));
+  if (!labels.length || !series.length) return null;
+  const type = /line|lín|linea/i.test(spec.type ?? '') ? 'line' : /pie|donut|dona|pastel|ring/i.test(spec.type ?? '') ? 'pie' : 'bar';
+  return { type, title: spec.title ? String(spec.title) : null, labels, series: series.slice(0, 6), shown: spec.shown ?? null };
+}
+function chartBlock(spec) {
+  const box = el('figure', `chart chart-kind-${spec.type}`);
+  if (spec.title) box.append(el('figcaption', 'chart-title', spec.title));
+  const number = new Intl.NumberFormat(language(), { maximumFractionDigits: 2 });
+  const said = (si, at) => spec.shown?.[si]?.[at] ?? number.format(spec.series[si].data[at] ?? 0);
+  const legend = () => {
+    if (spec.series.length < 2) return null;
+    const keys = el('div', 'chart-legend');
+    spec.series.forEach((one, si) => { const key = el('span', `chart-key s${si}`); key.append(el('i'), one.name); keys.append(key); });
+    return keys;
+  };
+  if (spec.type === 'bar') {
+    const top = Math.max(0, ...spec.series.flatMap((one) => one.data.filter(Number.isFinite)));
+    const rows = el('div', 'chart-bars');
+    spec.labels.forEach((name, at) => {
+      const row = el('div', 'chart-row');
+      row.append(el('span', 'chart-name', name));
+      const bars = el('div', 'chart-track');
+      spec.series.forEach((one, si) => {
+        const value = one.data[at];
+        const line = el('div', 'chart-line');
+        const bar = el('span', `chart-bar s${si}`);
+        bar.style.width = `${top > 0 && Number.isFinite(value) ? Math.max(1.5, (Math.max(0, value) / top) * 100) : 0}%`;
+        line.append(bar, el('span', 'chart-value', Number.isFinite(value) ? said(si, at) : '—'));
+        bars.append(line);
+      });
+      row.append(bars);
+      rows.append(row);
+    });
+    box.append(rows);
+  } else if (spec.type === 'line') {
+    const W = 640; const H = 240; const L = 48; const R = 14; const T = 14; const B = 34;
+    const all = spec.series.flatMap((one) => one.data.filter(Number.isFinite));
+    let low = Math.min(...all); let high = Math.max(...all);
+    if (low > 0 && low / (high || 1) > 0.5) low = low * 0.9; else low = Math.min(0, low);
+    if (high === low) high = low + 1;
+    const x = (at) => L + (spec.labels.length < 2 ? (W - L - R) / 2 : (at / (spec.labels.length - 1)) * (W - L - R));
+    const y = (value) => T + (1 - (value - low) / (high - low)) * (H - T - B);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart-svg', role: 'img' });
+    for (let step = 0; step <= 4; step += 1) {
+      const value = low + ((high - low) * step) / 4;
+      svg.append(svgEl('line', { x1: L, x2: W - R, y1: y(value), y2: y(value), class: 'chart-grid' }));
+      const tick = svgEl('text', { x: L - 6, y: y(value) + 4, class: 'chart-tick', 'text-anchor': 'end' });
+      tick.textContent = new Intl.NumberFormat(language(), { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+      svg.append(tick);
+    }
+    const every = Math.ceil(spec.labels.length / 8);
+    spec.labels.forEach((name, at) => {
+      if (at % every) return;
+      const tick = svgEl('text', { x: x(at), y: H - 12, class: 'chart-tick', 'text-anchor': 'middle' });
+      tick.textContent = name.length > 12 ? `${name.slice(0, 11)}…` : name;
+      svg.append(tick);
+    });
+    spec.series.forEach((one, si) => {
+      const points = one.data.map((value, at) => (Number.isFinite(value) ? `${x(at).toFixed(1)},${y(value).toFixed(1)}` : null)).filter(Boolean);
+      svg.append(svgEl('polyline', { points: points.join(' '), class: `chart-path s${si}`, fill: 'none' }));
+      one.data.forEach((value, at) => {
+        if (!Number.isFinite(value)) return;
+        const dot = svgEl('circle', { cx: x(at), cy: y(value), r: 3.2, class: `chart-dot s${si}` });
+        const tip = svgEl('title');
+        tip.textContent = `${spec.labels[at]} · ${said(si, at)}`;
+        dot.append(tip);
+        svg.append(dot);
+      });
+    });
+    box.append(svg);
+  } else {
+    const one = spec.series[0];
+    const values = one.data.map((value) => (Number.isFinite(value) && value > 0 ? value : 0));
+    const total = values.reduce((sum, value) => sum + value, 0) || 1;
+    const svg = svgEl('svg', { viewBox: '0 0 120 120', class: 'chart-ring', role: 'img' });
+    let start = -Math.PI / 2;
+    values.forEach((value, at) => {
+      if (!value) return;
+      const sweep = (value / total) * Math.PI * 2;
+      const end = start + sweep;
+      const big = sweep > Math.PI ? 1 : 0;
+      const p = (angle, r) => `${(60 + r * Math.cos(angle)).toFixed(2)} ${(60 + r * Math.sin(angle)).toFixed(2)}`;
+      const d = sweep >= Math.PI * 2 - 1e-6 ? 'M 60 6 A 54 54 0 1 1 59.99 6 L 59.99 30 A 30 30 0 1 0 60 30 Z' : `M ${p(start, 54)} A 54 54 0 ${big} 1 ${p(end, 54)} L ${p(end, 30)} A 30 30 0 ${big} 0 ${p(start, 30)} Z`;
+      const slice = svgEl('path', { d, class: `chart-slice s${at % 6}` });
+      const tip = svgEl('title');
+      tip.textContent = `${spec.labels[at]} · ${said(0, at)}`;
+      slice.append(tip);
+      svg.append(slice);
+      start = end;
+    });
+    const parts = el('div', 'chart-legend chart-parts');
+    spec.labels.forEach((name, at) => {
+      const key = el('span', `chart-key s${at % 6}`);
+      key.append(el('i'), `${name} · ${Math.round((values[at] / total) * 100)}%`);
+      parts.append(key);
+    });
+    const side = el('div', 'chart-pie');
+    side.append(svg, parts);
+    box.append(side);
+    return box;
+  }
+  const keys = legend();
+  if (keys) box.append(keys);
+  return box;
+}
+
 // Code in an answer (2026-11-14, the author): a head with what it is and the file it belongs to,
 // changes in red and green with their count, a long block folded, and Copy in the person's words.
 // A terminal block copies its commands without the «$ » in front. Running a command stays where it
@@ -3994,6 +4299,54 @@ function codeBlock(lines, lang, info = '') {
   } else code.append(lines.join('\n'));
   pre.append(code);
   wrapper.append(pre);
+  // HTML and SVG are seen as what they make (2026-11-14), with their code a press away. An SVG is a
+  // picture (as a picture it runs nothing); a page is drawn in a sealed frame that reaches nothing
+  // outside itself and runs no script until the person allows it.
+  const source = lines.join('\n');
+  const drawable = kind === 'svg' || ((kind === 'xml' || !kind) && /^\s*<svg[\s>]/i.test(source)) ? 'svg' : kind === 'html' || kind === 'htm' ? 'html' : null;
+  if (drawable && source.trim()) {
+    const view = el('div', 'code-render');
+    const draw = (scripts = false) => {
+      if (drawable === 'svg') {
+        const img = el('img');
+        img.alt = t('Picture the agent drew');
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
+        view.replaceChildren(img);
+        return;
+      }
+      const frame = el('iframe');
+      frame.setAttribute('sandbox', scripts ? 'allow-scripts' : '');
+      frame.setAttribute('referrerpolicy', 'no-referrer');
+      frame.title = t('Page the agent wrote');
+      const seal = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; media-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'">`;
+      frame.srcdoc = /<head[\s>]/i.test(source) ? source.replace(/<head([^>]*)>/i, `<head$1>${seal}`) : `${seal}${source}`;
+      view.replaceChildren(frame);
+    };
+    const seg = el('span', 'code-views-seg');
+    const seeIt = el('button', 'code-view on', t('Preview'));
+    const seeCode = el('button', 'code-view', t('Code'));
+    for (const key of [seeIt, seeCode]) { key.type = 'button'; seg.append(key); }
+    const show = (rendered) => {
+      wrapper.classList.toggle('rendered', rendered);
+      seeIt.classList.toggle('on', rendered);
+      seeCode.classList.toggle('on', !rendered);
+      seeIt.setAttribute('aria-pressed', String(rendered));
+      seeCode.setAttribute('aria-pressed', String(!rendered));
+    };
+    seeIt.addEventListener('click', () => show(true));
+    seeCode.addEventListener('click', () => show(false));
+    head.insertBefore?.(seg, copy);
+    draw(false);
+    if (drawable === 'html' && /<script[\s>]/i.test(source)) {
+      const run = el('button', 'code-run-scripts', t('Run its scripts'));
+      run.type = 'button';
+      run.title = t('The page stays sealed: it reaches nothing outside itself.');
+      run.addEventListener('click', () => { draw(true); show(true); });
+      view.append(run);
+    }
+    wrapper.append(view);
+    show(true);
+  }
   // A long block folds: the first lines, and the rest a press away.
   if (lines.length > CODE_FOLD) {
     wrapper.classList.add('folded');
@@ -4232,6 +4585,25 @@ function liveTable(headCells, aligns, bodyRows) {
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   });
+  // A table with a column of figures and one of names is a chart a press away.
+  const isFigures = (column) => rows.every((row) => { const cell = (row.cells[column] ?? '').replace(/[*_`]/g, '').trim(); return cell && cellNumber(cell) !== null; });
+  const figureColumn = headCells.findIndex((_, column) => column > 0 && isFigures(column));
+  const nameColumn = headCells.findIndex((_, column) => !isFigures(column));
+  if (figureColumn > 0 && nameColumn >= 0 && rows.length <= 40) {
+    const see = el('button', 'table-tool', t('Chart'));
+    see.type = 'button';
+    see.title = t('See the column {column} as a chart', { column: labels[figureColumn] });
+    let drawn = null;
+    see.addEventListener('click', () => {
+      if (drawn) { drawn.remove(); drawn = null; see.classList.remove('on'); return; }
+      const order = [...tbody.children].map((tr) => rows[Number(tr.dataset.at)]);
+      const strip = (cell) => (cell ?? '').replace(/[*_`]/g, '').trim();
+      drawn = chartBlock({ type: 'bar', title: labels[figureColumn], labels: order.map((row) => strip(row.cells[nameColumn])), series: [{ name: labels[figureColumn], data: order.map((row) => cellNumber(row.cells[figureColumn])) }], shown: [order.map((row) => strip(row.cells[figureColumn]))] });
+      wrap.append(drawn);
+      see.classList.add('on');
+    });
+    tools.append(see);
+  }
   tools.append(copy, csv);
   box.append(tools);
   return wrap;
@@ -4342,7 +4714,10 @@ export function renderMarkdown(text) {
       index += 1;
       // In the room of Salas, BISHOP's block of orders becomes its own card under the reply.
       if (fence[1]?.toLowerCase() === 'pulse-salas' && state.salas) continue;
-      fragment.append(fence[1]?.toLowerCase() === 'pulse' ? planCard(body) : codeBlock(body, fence[1], fence[2]));
+      const fenceKind = fence[1]?.toLowerCase();
+      const chart = fenceKind === 'chart' || fenceKind === 'grafica' || fenceKind === 'gráfica' ? chartSpec(body.join('\n')) : null;
+      const diagram = fenceKind === 'mermaid' ? flowDiagram(body) : null;
+      fragment.append(fenceKind === 'pulse' ? planCard(body) : chart ? chartBlock(chart) : diagram ?? codeBlock(body, fence[1], fence[2]));
       continue;
     }
     if (!line.trim()) { flushParagraph(); index += 1; continue; }

@@ -1795,6 +1795,12 @@ export const ES = {
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
   // Answers with links (2026-11-14).
+  'Picture the agent drew': 'Imagen que dibujó la IA',
+  'Page the agent wrote': 'Página que escribió la IA',
+  'Run its scripts': 'Ejecutar sus scripts',
+  'The page stays sealed: it reaches nothing outside itself.': 'La página sigue sellada: no llega a nada fuera de ella.',
+  'Chart': 'Gráfica',
+  'See the column {column} as a chart': 'Ver la columna {column} como gráfica',
   'Tip': 'Consejo',
   'Warning': 'Cuidado',
   'Caution': 'Peligro',

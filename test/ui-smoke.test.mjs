@@ -246,6 +246,25 @@ test('the room UI boots against a real transcript without throwing', async () =>
     const warn = app.renderMarkdown('> [!WARNING]\n> Dos anuncios tienen precios raros.').children.find((node) => node.classList?.contains('callout'));
     assert.equal(warn.classList.contains('warning'), true);
     assert.match(warn.textContent, /Cuidado.*Dos anuncios tienen precios raros\./);
+    // Charts, flowcharts and renders (2026-11-14), drawn here without a library.
+    const chart = app.renderMarkdown('```chart\n{"type":"bar","title":"Renta","labels":["Chapalita","Providencia"],"series":[{"name":"MXN","data":[16500,17300]}]}\n```').children.find((node) => node.tagName === 'FIGURE');
+    assert.ok(chart.classList.contains('chart-kind-bar'));
+    assert.equal(find(chart, (node) => node.classList?.contains('chart-title'))?.textContent, 'Renta');
+    assert.equal(find(chart, (node) => node.classList?.contains('chart-bar') && node.tagName === 'SPAN')?.style.width, '95.37572254335261%');
+    const plain = app.renderMarkdown('```chart\nChapalita: 16500\nProvidencia: $17,300\n```').children.find((node) => node.tagName === 'FIGURE');
+    assert.ok(plain, 'plain «name: value» lines are a chart too');
+    const flow = app.parseFlow(['graph TD', 'A[Pedido] --> B{¿Pagado?}', 'B -->|sí| C(Envío)', 'B -- no --> D[Recordatorio]', 'D -.-> A']);
+    assert.equal(flow.across, false);
+    assert.deepEqual(flow.nodes.map((one) => [one.id, one.text, one.shape]), [['A', 'Pedido', 'box'], ['B', '¿Pagado?', 'diamond'], ['C', 'Envío', 'round'], ['D', 'Recordatorio', 'box']]);
+    assert.deepEqual(flow.edges.map((edge) => `${edge.from}>${edge.to}:${edge.label}${edge.dashed ? ':dashed' : ''}`), ['A>B:', 'B>C:sí', 'B>D:no', 'D>A::dashed']);
+    assert.equal(app.parseFlow(['sequenceDiagram', 'A->>B: hola']), null, 'other kinds of mermaid stay as code');
+    const drawnFlow = app.renderMarkdown('```mermaid\nflowchart LR\n  A-->B\n```').children.find((node) => node.classList?.contains('flow'));
+    assert.ok(drawnFlow, 'a flowchart is drawn');
+    const page = app.renderMarkdown('```html\n<h1>Hola</h1><script>alert(1)</script>\n```').children.find((node) => node.classList?.contains('codeblock'));
+    const frame = find(page, (node) => node.tagName === 'IFRAME');
+    assert.equal(frame.attributes.sandbox, '', 'a page runs no script until the person allows it');
+    assert.match(frame.srcdoc, /default-src 'none'/);
+    assert.ok(find(page, (node) => node.classList?.contains('code-run-scripts')));
     // Answers with links (2026-11-14): a link in bold is a link, a numbered list keeps its numbers
     // across blank lines, and a point that starts with a link is a card with its price and its site.
     const bold = app.renderMarkdown('Mira **[la guía](https://example.org/guia)** hoy.');
