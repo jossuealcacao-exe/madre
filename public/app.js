@@ -19833,7 +19833,10 @@ function imageSourcesBlock(host, item) {
   }
   sxFoot(mine, t('Each image is charged to the account of the key it is drawn with. Ask for it in the conversation with «Create» on: a logo, a banner, an illustration.'));
   if (!missing.length) return;
-  const more = sxBlock(host, t('To connect'), t('What you do not have yet. Each one asks for a key of its own; paste it here and it is ready.'), { className: 'img-sources img-connect' });
+  // Said as a question to the person, with the names (2026-11-14, the author: «no se entiende "lo que todavía
+  // no tienes", hazlo más humano»).
+  const names = new Intl.ListFormat(language(), { type: 'disjunction' }).format(missing.map((one) => one.name));
+  const more = sxBlock(host, t('Connect another one'), t('Want to make images with {names} too? Get a key on its page and paste it here. You only do it once.', { names }), { className: 'img-sources img-connect' });
   for (const provider of missing) {
     const get = sxButton(t('Get a key ↗'), () => window.open(provider.keyUrl, '_blank', 'noopener'));
     const row = sxRow(more, provider.name, IMAGE_PROVIDER_ABOUT[provider.id]?.() ?? null, get);

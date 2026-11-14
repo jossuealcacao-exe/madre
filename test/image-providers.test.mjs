@@ -279,7 +279,7 @@ test('Images: its page is told every provider, whether its key is here and where
   assert.equal(none.drawing.model, null);
 });
 
-test('Images: the page draws «With what it draws» and «To connect» from the module, and pastes keys as MADRE does', async () => {
+test('Images: the page draws «With what it draws» and «Connect another one» from the module, and pastes keys as MADRE does', async () => {
   const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
   assert.match(app, /if \(item\.id === 'image-studio'\) imageSourcesBlock\(host, item\);/);
   assert.match(app, /item\.controls\?\.length && item\.id !== 'image-studio'/, 'the bare select of every model is drawn too');
