@@ -96,7 +96,8 @@ test('13 nov · plainer opening, the answer header as a tab, Code · Both on the
   const app = await pub('app.js');
   const styles = await pub('styles.css');
   assert.match(loader, /t\('Claude, ChatGPT, Gemini… each one in its own app\.'\)/);
-  assert.match(es, /"You ask, and they work on your files\.": "Tú pides, y ellas trabajan en tus archivos\."/);
+  // 2026-11-14 (docs/private/NARRATIVA-TEXTOS.md): without the comma Spanish does not put before «y».
+  assert.match(es, /"You ask, and they work on your files\.": "Tú pides y ellas trabajan en tus archivos\."/);
   assert.match(app, /line\.append\(el\('b', 'reply-to you', t\('You'\)\), ` \$\{briefQuestion\(said\)\}`\);/);
   assert.match(styles, /\.who:has\(> \.reply\) > \.spent \{ order: 60; position: static; margin-left: auto !important;/);
   assert.match(styles, /html\.chat-shell dialog\.viewer \.code-views \{ margin-left: 0; margin-right: auto;/);

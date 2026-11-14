@@ -1116,7 +1116,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     await syncIntentOffer();
     assert.equal(offer.hidden, false, 'the way back to the default was not offered');
     assert.match(offer.textContent, /Parece una búsqueda · «Rápido» no alcanzó la última vez/);
-    assert.equal(offer.children.find((child) => child.className === 'free-go').textContent, 'Volver al nivel predeterminado del agente');
+    assert.equal(offer.children.find((child) => child.className === 'free-go').textContent, 'Volver al nivel de siempre');
     globalThis.fetch = suggestNow;
 
     // Nothing to say about an agent whose CLI takes no effort.

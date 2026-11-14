@@ -138,14 +138,14 @@ export const CHAPTERS = [
         '<b>Servidores</b>: las páginas y apps que tus proyectos tienen prendidas, y si contestan. Para verlas, prende la Vista previa dentro del proyecto.',
         '<b>Calidad de la memoria</b>: cuánto ha aprendido cada proyecto abierto y qué le falta saber.',
         '<b>Entrenamiento del Coordinador</b>: cuánto le falta al Coordinador para tener su propio modelo.',
-        '<b>Modelos locales</b>: la IA que corre en tu Mac, sus modelos y cuántos ejemplos junta cada proyecto para aprender cómo trabajas (8/300 es 8 de 300). Ahí mismo eliges qué proyectos la usan.',
+        '<b>Modelos locales</b>: la IA local, sus modelos y cuántos ejemplos junta cada proyecto para aprender cómo trabajas (8/300 es 8 de 300). Ahí mismo eliges qué proyectos la usan.',
       ],
       en: [
         '<b>System resources</b>: how busy your Mac is and how much memory it has left.',
         '<b>Servers</b>: the pages and apps your projects have running, and whether they answer. To see them, turn Preview on inside the project.',
         '<b>Memory quality</b>: how much each open project has learned and what it still needs to know.',
         '<b>Coordinator training</b>: how far the Coordinator is from a model of its own.',
-        '<b>Local models</b>: the AI that runs on your Mac, its models and how many examples each project gathers to learn how you work (8/300 is 8 of 300). Right there you choose which projects use it.',
+        '<b>Local models</b>: the local AI, its models and how many examples each project gathers to learn how you work (8/300 is 8 of 300). Right there you choose which projects use it.',
       ],
     },
     keys: [
@@ -157,18 +157,18 @@ export const CHAPTERS = [
   {
     id: 'project',
     title: { es: 'Tu proyecto', en: 'Your project' },
-    lead: { es: 'Al entrar a un proyecto tienes todo junto: tus conversaciones, tus archivos y lo que MADRE recuerda de él.', en: 'Inside a project you have it all together: your conversations, your files and what MADRE remembers about it.' },
+    lead: { es: 'Al entrar a un proyecto tienes todo junto: tus chats, tus archivos y lo que MADRE recuerda de él.', en: 'Inside a project you have it all together: your chats, your files and what MADRE remembers about it.' },
     news: { kind: 'changed', es: 'Hay una segunda barra y un panel para cambiar de proyecto. Además, los paneles se abren al lado o en una ventana que puedes mover.', en: 'The second bar and Switch project are new, and panels open beside you or in a window you move.' },
     points: {
       es: [
         'La barra de arriba es tu camino de regreso: a Inicio, a otro proyecto abierto o a Ajustes.',
-        'El botón de proyectos te enseña los que tienes abiertos. Una lucecita te avisa si alguien te espera, si una IA está trabajando o si algo ya quedó.',
-        '¿Quieres dos conversaciones a la vez? Abre otra al lado o en su propia ventana, y mueve cada una adonde no te estorbe.',
+        'El botón de proyectos te enseña los que tienes abiertos. Una lucecita te avisa si alguien te espera, si una IA está trabajando o si algo ya terminó.',
+        '¿Quieres dos chats a la vez? Abre otro al lado o en su propia ventana, y mueve cada uno adonde no te estorbe.',
       ],
       en: [
         'The bar at the top is your way back: to Home, to another open project or to Settings.',
-        'The projects key shows the ones you have open. A small light tells you if someone is waiting for you, if an AI is working or if something is done.',
-        'Two conversations at once? Open another beside this one or in a window of its own, and move each one to where it is not in your way.',
+        'The projects button shows the ones you have open. A small light tells you if someone is waiting for you, if an AI is working or if something is done.',
+        'Two chats at once? Open another beside this one or in a window of its own, and move each one to where it is not in your way.',
       ],
     },
     keys: [
@@ -180,9 +180,9 @@ export const CHAPTERS = [
   },
   {
     id: 'talk',
-    title: { es: 'Hablar con los agentes', en: 'Talking to your agents' },
+    title: { es: 'Hablar con tus IAs', en: 'Talking to your AIs' },
     lead: { es: 'Escribes en la caja de abajo, como le escribirías a alguien, y la IA que elegiste te contesta.', en: 'You write in the box at the bottom, the way you would write to someone, and the AI you chose answers.' },
-    news: { kind: 'changed', es: 'Llegan dos módulos: Esfuerzo sugerido, que te propone bajo la caja cuánto debe pensar cada agente, y GitHub, que agrega el comando /gh.', en: 'New here: the Suggested effort module, which proposes under the box how hard each agent should think, and /gh, with the GitHub module.' },
+    news: { kind: 'changed', es: 'Llegan dos módulos: Esfuerzo sugerido, que te propone bajo la caja cuánto debe pensar cada IA, y GitHub, que agrega el comando /gh.', en: 'New here: the Suggested effort module, which proposes under the box how hard each AI should think, and /gh, with the GitHub module.' },
     points: {
       es: [
         'En el círculo junto a la caja escoges con quién hablar. Debajo decides cuánto puede hacer, qué modelo usa y qué tanto debe pensar antes de contestar.',
@@ -198,46 +198,46 @@ export const CHAPTERS = [
     keys: [
       [{ es: 'Enviar', en: 'Send' }, '↵'],
       [{ es: 'Salto de línea', en: 'New line' }, '⌥ ↵'],
-      [{ es: 'Agente, modo, archivo, comando', en: 'Agent, mode, file, command' }, '@ # ! /'],
+      [{ es: 'IA, permiso, archivo, comando', en: 'AI, permission, file, command' }, '@ # ! /'],
       [{ es: 'Pegar o soltar imágenes', en: 'Paste or drop images' }, '⌘ V'],
     ],
     where: ['room'],
   },
   {
     id: 'modes',
-    title: { es: 'Modos y permisos', en: 'Modes and permissions' },
+    title: { es: 'Permisos', en: 'Permissions' },
     lead: { es: 'Cada mensaje lleva un permiso: hasta dónde puede llegar la IA con lo que le pides.', en: 'Every message carries a permission: how far the AI may go with what you ask.' },
-    news: { kind: 'changed', es: '#4 AIRLOCK ahora se llama #4 Acceso total. Tú eliges cómo confirmar #3 y #4, y una confirmación puede valer unos minutos.', en: '#4 AIRLOCK is now #4 Full access. You choose which key opens #3 and #4, and an accepted key can last a few minutes.' },
+    news: { kind: 'changed', es: '#4 AIRLOCK ahora se llama #4 Acceso total. Tú eliges cómo confirmar #3 y #4, y una confirmación puede valer unos minutos.', en: '#4 AIRLOCK is now #4 Full access. You choose how you confirm #3 and #4, and a confirmation can last a few minutes.' },
     points: {
       es: [
-        'Son cinco niveles, de menos a más: #0 Incógnito, #1 Solo conversar, #2 Crear, #3 Editar y #4 Acceso total. Si solo quieres platicar, con #1 basta.',
-        'Con #3 y #4 la IA puede cambiar lo que ya existe, así que MADRE te pide confirmar antes; con #4, dos veces. Cómo confirmas lo eliges en Ajustes › Permisos.',
+        'Son cinco permisos, de menos a más: #0 Sin guardar, #1 Solo conversar, #2 Puede crear, #3 Puede editar y #4 Acceso total. Si solo quieres platicar, con «Solo conversar» basta.',
+        'Con «Puede editar» y «Acceso total» la IA puede cambiar lo que ya tienes, así que MADRE te pide confirmar antes; con «Acceso total», dos veces. Cómo confirmas lo eliges en Ajustes › Permisos.',
         'Si vas a trabajar un buen rato, una confirmación puede durar unos minutos. Mientras dura, la ves junto a la caja.',
       ],
       en: [
-        'There are five levels, from least to most: #0 Incognito, #1 Chat only, #2 Create, #3 Edit and #4 Full access. If you only want to talk, #1 is enough.',
-        'With #3 and #4 the AI can change what already exists, so MADRE asks you to confirm first; with #4, twice. How you confirm, you choose in Settings › Permissions.',
+        'There are five permissions, from least to most: #0 Not saved, #1 Just chat, #2 Can create, #3 Can edit and #4 Full access. If you only want to talk, «Just chat» is enough.',
+        'With «Can edit» and «Full access» the AI can change what you already have, so MADRE asks you to confirm first; with «Full access», twice. You choose how you confirm in Settings › Permissions.',
         'If you are going to work for a while, a confirmation can last a few minutes. While it does, you see it beside the box.',
       ],
     },
-    keys: [[{ es: 'Elegir el modo al escribir', en: 'Choose the mode as you type' }, '#']],
+    keys: [[{ es: 'Elegir el permiso al escribir', en: 'Choose the permission as you type' }, '#']],
     where: ['room'],
   },
   {
     id: 'coordinator',
     title: { es: 'El Coordinador', en: 'The Coordinator' },
-    lead: { es: 'El que ve todos tus proyectos a la vez y puede pasar encargos de uno a otro.', en: 'The one that sees all your projects at once and can pass tasks from one to another.' },
-    news: { kind: 'new', es: 'En 0.7.2 cada proyecto trabajaba por su cuenta; ahora un agente los ve todos.', en: 'In 0.7.2 each project worked on its own; now one agent sees them all.' },
+    lead: { es: 'Una IA que ve todos tus proyectos a la vez y puede pasar encargos de uno a otro.', en: 'An AI that sees all your projects at once and can pass tasks from one to another.' },
+    news: { kind: 'new', es: 'En 0.7.2 cada proyecto trabajaba por su cuenta; ahora una IA los ve todos.', en: 'In 0.7.2 each project worked on its own; now one AI sees them all.' },
     points: {
       es: [
         'Le hablas en su propio espacio, desde Inicio, y puede asomarse a lo que pasa en cada proyecto. Pregúntale, por ejemplo, «¿qué quedó pendiente esta semana?».',
         'Desde cualquier proyecto le preguntas escribiendo /bishop. Su respuesta solo la ves tú.',
-        'Por su cuenta llega hasta #2. Si algo necesita #3 o #4, te deja la propuesta y tú decides en ese proyecto.',
+        'Por su cuenta llega hasta «Puede crear» (#2). Si algo necesita más, te deja la propuesta y tú decides en ese proyecto.',
       ],
       en: [
         'You talk to it in its own space, from Home, and it can look into what is going on in each project. Ask it, for example, «what was left pending this week?».',
         'From any project you ask it by writing /bishop. Only you see its answer.',
-        'On its own it goes up to #2. If something needs #3 or #4, it leaves you the proposal and you decide in that project.',
+        'On its own it goes up to «Can create» (#2). If something needs more, it leaves you the proposal and you decide in that project.',
       ],
     },
     keys: [[{ es: 'Preguntarle desde un proyecto', en: 'Ask it from a project' }, '/bishop']],
@@ -247,16 +247,16 @@ export const CHAPTERS = [
     id: 'links',
     title: { es: 'Conexiones', en: 'Connections' },
     lead: { es: 'Un proyecto puede aprender de otro, solo si tú le das permiso.', en: 'One project can learn from another, only if you give it permission.' },
-    news: { kind: 'new', es: 'En 0.7.2, «Conexiones» era iniciar sesión de tus agentes; ahora une dos proyectos.', en: 'In 0.7.2, «Connections» was signing your agents in; now it joins two projects.' },
+    news: { kind: 'new', es: 'En 0.7.2, «Conexiones» era donde iniciabas sesión con tus IAs; ahora une dos proyectos.', en: 'In 0.7.2, «Connections» was where you signed your AIs in; now it joins two projects.' },
     points: {
       es: [
         'Cada conexión la firmas tú: qué puede consultar, por cuánto tiempo y si el Coordinador puede pasar encargos.',
-        'Solo se comparten notas que ya están en uso, sin datos privados. Tus archivos y tus conversaciones nunca salen de su proyecto.',
+        'Solo se comparten notas que ya están en uso, sin datos privados. Tus archivos y tus chats nunca salen de su proyecto.',
         'En Conexiones, en Inicio, ves cada una como en el mapa: quién consulta a quién, qué comparte y hasta cuándo. «Cancelar conexión» la termina cuando quieras.',
       ],
       en: [
         'You sign every connection: what it may look up, for how long and whether the Coordinator may pass tasks.',
-        'Only notes already in use are shared, without private data. Your files and your conversations never leave their project.',
+        'Only notes already in use are shared, without private data. Your files and your chats never leave their project.',
         'In Connections, in Home, you see each one as on the map: who looks up whom, what it shares and until when. «Cancel the connection» ends it whenever you want.',
       ],
     },
@@ -291,20 +291,20 @@ export const CHAPTERS = [
   },
   {
     id: 'settings',
-    title: { es: 'Diagnóstico y Ajustes', en: 'Diagnostics and Settings' },
-    lead: { es: 'Ajustes es donde cambias cómo se ve y cómo trabaja MADRE. Diagnóstico te ayuda cuando algo falla.', en: 'Settings is where you change how MADRE looks and works. Diagnostics helps you when something fails.' },
-    since: { kind: 'changed', es: 'Los Ajustes de Inicio suman IA local. En Ajustes › Agentes cada agente se pliega, y OpenCode agrupa sus modelos por proveedor.', en: 'Home\'s Settings gain Local AI. In Settings › Agents each agent folds, and OpenCode groups its models by provider.' },
+    title: { es: 'Ajustes y Ayuda', en: 'Settings and Help' },
+    lead: { es: 'Ajustes es donde cambias cómo se ve y cómo trabaja MADRE. Ayuda te saca del apuro cuando algo falla.', en: 'Settings is where you change how MADRE looks and works. Help gets you out of trouble when something fails.' },
+    since: { kind: 'changed', es: 'Los Ajustes de Inicio suman IA local. En Ajustes › Tus IAs cada una se pliega, y OpenCode agrupa sus modelos por proveedor.', en: 'Home\'s Settings gain Local AI. In Settings › Your AIs each one folds, and OpenCode groups its models by provider.' },
     news: { kind: 'new', es: 'Lo que estaba repartido entre MU/TH/UR, ⚙ CONEXIONES y la barra ahora está en una ventana con buscador, y Diagnóstico te da la solución.', en: 'What was spread across MU/TH/UR, ⚙ CONNECTIONS and the bar now lives in one window with a search, and Diagnostics gives you the remedy.' },
     points: {
       es: [
-        'Ábrelos con ⌘ , y escribe / para encontrar cualquier ajuste. Lo que cambias se aplica al instante.',
+        'Abre Ajustes con ⌘ , y escribe / para encontrar cualquier ajuste. Lo que cambias se aplica al instante.',
         'En Apariencia escoges colores, fondo, tema claro u oscuro e idioma. En Automático, MADRE se pone clara u oscura igual que tu sistema.',
-        '¿Algo no funciona? Abre Diagnóstico y cuéntale qué pasa con tus palabras: te dice qué hacer y te da el botón para arreglarlo. Si algo falla al instalar, «Ver cómo arreglarlo» te da los pasos para tu sistema.',
+        '¿Algo no funciona? Abre Ayuda, en la barra del proyecto, y cuenta qué pasa con tus palabras: Diagnóstico te dice qué hacer y te da el botón para arreglarlo. Si algo falla al instalar, «Ver cómo arreglarlo» te da los pasos para tu sistema.',
       ],
       en: [
-        'Open them with ⌘ , and type / to find any setting. What you change applies at once.',
+        'Open Settings with ⌘ , and type / to find any setting. What you change applies at once.',
         'In Appearance you choose colours, background, light or dark and language. On Automatic, MADRE goes light or dark the same as your system.',
-        'Something not working? Open Diagnostics and tell it what happens in your own words: it says what to do and gives you the key that fixes it. When an install fails, «See how to fix it» gives you the steps for your system.',
+        'Something not working? Open Help, on the project\'s bar, and say what happens in your own words: Diagnostics tells you what to do and gives you the button that fixes it. When an install fails, «See how to fix it» gives you the steps for your system.',
       ],
     },
     keys: [
@@ -336,8 +336,8 @@ export const CHAPTERS = [
   },
   {
     id: 'local',
-    title: { es: 'IA local por proyecto', en: 'Local AI by project' },
-    lead: { es: 'Una IA que vive en tu Mac: gratis, sin internet, y tú decides qué proyectos la usan.', en: 'An AI that lives on your Mac: free, offline, and you decide which projects use it.' },
+    title: { es: 'Tu IA local', en: 'Your local AI' },
+    lead: { es: 'Una IA que vive en tu Mac, gratis y sin internet. En los chats la llamas @madre, y tú decides qué proyectos la usan.', en: 'An AI that runs on your Mac, free and offline. In chats you call it @madre, and you decide which projects use it.' },
     news: { kind: 'changed', es: 'En 0.7.2 la IA local era todo o nada; ahora se elige proyecto por proyecto.', en: 'In 0.7.2 the local AI was all or nothing; now it is chosen project by project.' },
     since: { kind: 'new', es: 'En 1.0 la IA local era todo o nada; ahora se elige proyecto por proyecto.', en: 'In 1.0 the local AI was all or nothing; now it is chosen project by project.' },
     points: {
@@ -420,7 +420,7 @@ export const GESTURES = [
   [{ es: 'La caja', en: 'The box' }, [
     [{ es: 'Enviar', en: 'Send' }, '↵'],
     [{ es: 'Salto de línea', en: 'New line' }, '⌥ ↵'],
-    [{ es: 'Agente, modo, archivo, comando', en: 'Agent, mode, file, command' }, '@ # ! /'],
+    [{ es: 'IA, permiso, archivo, comando', en: 'AI, permission, file, command' }, '@ # ! /'],
     [{ es: 'Pegar o soltar imágenes', en: 'Paste or drop images' }, '⌘ V'],
   ]],
   [{ es: 'Código', en: 'Code' }, [
