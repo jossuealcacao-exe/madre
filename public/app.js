@@ -2892,8 +2892,10 @@ function openPort(found) {
   portsMenuShown(false);
   const url = `http://127.0.0.1:${found.port}/`;
   // A server that sets frame-ancestors is right to, and RIPLEY cannot and should not override
-  // it. The honest move is a real tab, not a grey rectangle with a broken-document icon.
-  if (found.framable === false) {
+  // it. The honest move is a real tab, not a grey rectangle with a broken-document icon. In the
+  // app, MADRE's own browser is a real browser, not a frame: it shows the server like any tab
+  // (2026-11-14, the author: «why can I not see that server in the browser»).
+  if (found.framable === false && !nativeBrowser()) {
     const current = browserTab();
     if (!current || current.url !== 'about:blank') browserNewTab('about:blank');
     const tab = browserTab();
@@ -2973,13 +2975,14 @@ function fillPorts(target, read) {
   const wider = read?.wider ?? [];
   if (!ports.length && !wider.length) target.append(el('div', 'ports-empty', t('Nothing started from this project is answering. Start your dev server inside the project folder and it shows up here by itself.')));
   for (const found of ports) {
-    const row = el('button', `ports-row${found.framable === false ? ' refuses' : ''}`);
+    const refuses = found.framable === false && !nativeBrowser();
+    const row = el('button', `ports-row${refuses ? ' refuses' : ''}`);
     row.type = 'button';
     // A server that sends no Content-Type used to leave the separator hanging: «:5173 node · 200 · ».
     const kind = found.html ? '' : (found.contentType ?? '').trim();
     // Open to the whole network too: it opens here on 127.0.0.1, and the row says the rest.
     const what = `${found.command} · ${found.status}${kind ? ` · ${kind}` : ''}${found.network ? ` · ${t('your network can reach it too')}` : ''}`;
-    row.append(el('i', 'ports-lamp'), el('b', null, `:${found.port}`), el('span', null, found.framable === false ? t('{what} · cannot be shown in here', { what }) : what));
+    row.append(el('i', 'ports-lamp'), el('b', null, `:${found.port}`), el('span', null, refuses ? t('{what} · cannot be shown in here', { what }) : what));
     row.addEventListener('click', () => openPort(found));
     target.append(row);
   }
