@@ -481,8 +481,8 @@ test('the room UI boots against a real transcript without throwing', async () =>
   // Each one filled from the room, and each one with its own `==>` sections.
   // In the language MADRE speaks, which is the point of reading it here rather than in the
   // catalogue: the page, the panes and the words all came up together.
-  assert.match(panes.children[1].textContent, /EL DOCUMENTO[\s\S]*MEMORIES[\s\S]*LO QUE INCLUYE/);
-  assert.match(panes.children[2].textContent, /EL LANZAMIENTO[\s\S]*\/usr\/local\/bin\/codex/);
+  assert.match(panes.children[1].textContent, /LAS INSTRUCCIONES[\s\S]*MEMORIES[\s\S]*LO QUE INCLUYE/);
+  assert.match(panes.children[2].textContent, /CÓMO SE ABRE[\s\S]*\/usr\/local\/bin\/codex/);
   assert.match(panes.children[3].textContent, /ENVÍOS[\s\S]*the npm registry/);
   // An inquiry that is already a pane opens it rather than printing it twice.
   const prompt = body.querySelector('.console-line');

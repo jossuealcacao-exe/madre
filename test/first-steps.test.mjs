@@ -12,27 +12,17 @@ test('first contact: the five-stop tour of 0.7 is gone; the welcome of 1.0 (publ
   assert.match(app, /import \{ (?:spotlight, )?startTour as startWelcome \} from '\.\/tour\.js';/);
 });
 
-test('first steps: offered once to a first visit, ticked by doing, never by a «done» key', async () => {
-  const [app, page] = await Promise.all([read('public/app.js'), read('public/index.html')]);
-  const ids = [...app.slice(app.indexOf('const FIRST_STEPS = ['), app.indexOf('const steps = {')).matchAll(/\{ id: '(\w+)'/g)].map((one) => one[1]);
-  assert.deepEqual(ids, ['ask', 'team', 'mother', 'beside', 'bar', 'module']);
-  assert.match(app, /return localStorage\.getItem\('pulse\.tour'\) === 'seen' \? null : \{ on: true, done: \[\] \};/);
-  // The room's record ticks the first question and the first plan; the rest are ticked where they happen.
-  assert.match(app, /if \(event\.type === 'message\.created' && event\.payload\?\.role === 'user'\) stepDone\('ask'\);/);
-  assert.match(app, /else if \(event\.type === 'plan\.created'\) stepDone\('team'\);/);
-  assert.match(app, /state\.lastSequence = Math\.max\(state\.lastSequence, event\.sequence \?\? 0\);\n  stepsSaw\(event\);/);
-  for (const [where, id] of [['function openMother() {', 'mother'], ['function openModuleWindow(id) {', 'module'], ['function barEdit(on', 'bar']]) {
-    const body = app.slice(app.indexOf(where), app.indexOf(where) + 400);
-    assert.ok(body.includes(`stepDone('${id}')`), `${where} does not tick ${id}`);
-  }
-  assert.equal((app.match(/stepDone\('beside'\);/g) ?? []).length, 2, 'the split and a window both count as a second conversation');
-  // The list is defined before the room replays its record, so the replay can tick it.
-  assert.ok(app.indexOf('const steps = {') < app.indexOf('/* ---------- bootstrap ---------- */'));
-  // It rides in the bar with the other pills that come and go, and ? brings a hidden list back.
-  // (The pill of the tour of 1.0 rides with them; ? opens its chapters.)
-  assert.match(app, /const BAR_CONTEXTUAL = \['#steps-pill', '#tour-pill-slot', '#handoff-pill', '#update-pill', '#stop-all'\];/);
-  assert.match(app, /stepsResume\(\); roomTour\(\)\.openChapters\(\);/);
-  assert.match(page, /<button id="steps-pill" class="stop-all steps-pill" type="button" hidden/);
+test('first steps: one list, the five missions; the six steps of 0.7 that rode beside them are gone (2026-11-14)', async () => {
+  const [app, page, css, tour] = await Promise.all([read('public/app.js'), read('public/index.html'), read('public/styles.css'), read('public/tour.js')]);
+  // Two «First steps» in the bar at once, a ring of six and a pill of five, read as a mistake: the
+  // missions (public/missions.js) replaced the six, and the six leave with their pill and card.
+  for (const gone of ['const FIRST_STEPS = [', 'function stepDone(', 'stepsSaw(', 'stepsResume(', "'#steps-pill'"]) assert.ok(!app.includes(gone), `${gone} is still in app.js`);
+  assert.ok(!page.includes('id="steps-pill"'), 'the pill of the six steps is still in the page');
+  assert.ok(!/\.steps-pill|\.steps-card/.test(css), 'styles of the six steps are still there');
+  assert.match(tour, /fill\(t\('Your first steps · \{n\} of \{total\}'\)/);
+  // ? opens the tour's chapters; it no longer brings back a hidden list.
+  assert.match(app, /document\.querySelector\('#mother'\)\?\.close\?\.\(\); roomTour\(\)\.openChapters\(\);/);
+  assert.match(app, /const BAR_CONTEXTUAL = \['#tour-pill-slot', '#handoff-pill', '#update-pill', '#stop-all'\];/);
 });
 
 test('scrolling: the editor keeps its wheel, and the conversation scrolls without layers of glass', async () => {

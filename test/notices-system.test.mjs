@@ -37,7 +37,8 @@ test('notifications: each kind the person\'s, security always, a module only thr
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
     const first = await fetch(`${base}/api/notifications`).then((response) => response.json());
-    assert.deepEqual(first.prefs, { conversations: true });
+    // MADRE's own switch for all of them (2026-11-14) starts on, beside each kind.
+    assert.deepEqual(first.prefs, { enabled: true, conversations: true });
     assert.ok(first.modules.some((one) => one.id === 'reminders' && one.on), 'Reminders does not ask to notify');
     const saved = await fetch(`${base}/api/notifications`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ conversations: false, security: false, updates: false, notices: false, modules: { reminders: false, ash: true } }) }).then((response) => response.json());
     assert.equal(saved.prefs.conversations, false);
@@ -53,6 +54,10 @@ test('notifications: each kind the person\'s, security always, a module only thr
   const page = await pub('notifications.js');
   assert.match(page, /const ALWAYS = new Set\(\['security', 'notices', 'updates'\]\);/);
   assert.match(page, /if \(ALWAYS\.has\(kind\)\) return true;/);
+  // Turned off in Settings, MADRE's switch silences every kind but new versions and the author's notices,
+  // which are asked first; the updates row says «Always» and has no switch.
+  assert.ok(page.indexOf("if (ALWAYS.has(kind)) return true;") < page.indexOf("if (prefs?.prefs?.enabled === false) return false;"));
+  assert.match(page, /ui\.sxRow\(block, t\('New versions'\)/);
   const home = await pub('salas-mac.js');
   assert.match(home, /notify\('module:reminders', t\('Reminder'\), one\.text/);
   assert.match(home, /notify\('updates', /);

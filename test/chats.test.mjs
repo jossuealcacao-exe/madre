@@ -730,7 +730,7 @@ test('chat shell: Code shows the text, both or what it makes; the preview is siz
   // The key wears </> again.
   assert.doesNotMatch(app, /files-key/);
   // Your servers: its edge sizes the column, and the page's own edges stand clear of it.
-  assert.match(app, /sideWidths\.browser = Math\.round\(box\.x \+ box\.w - moving\.clientX\);/);
+  assert.match(app, /const wanted = Math\.round\(box\.x \+ box\.w - moving\.clientX\);\n\s+closing = wanted < SIDE_MIN - SIDE_CLOSE_PAST;/);
   assert.match(css, /\.browser-dock \.viewer-stage \.stage-grip:first-of-type \{ left: max\(12px,/);
 });
 
@@ -825,14 +825,14 @@ test('chat shell: notices read open without hover, a failure in one face, the re
   assert.match(css, /html\.chat-shell \.reply-quote \.drop:is\(\*, :hover, :focus-visible\) \{/);
 });
 
-test('chat shell: the first steps and a newer MADRE read as quiet words in the bar', async () => {
+test('chat shell: a newer MADRE reads as quiet words in the bar', async () => {
   const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(app, /pill\.replaceChildren\(glyph, el\('span', 'update-words', t\('\{version\} available', \{ version: info\.latest \}\)\), get\);/);
-  assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.steps-pill, \.update-pill\):is\(\*, :hover, :active, :focus-visible, \[aria-expanded="true"\]\) \{/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar > \.update-pill:is\(\*, :hover, :active, :focus-visible, \[aria-expanded="true"\]\) \{/);
   assert.match(css, /html\.chat-shell \.shell > \.bar > \.update-pill \.update-glyph svg \{ display: none; \}/);
-  // Never folded into the bar's square keys; narrow, the ring and count, and the arrow alone.
-  assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.steps-pill, \.update-pill\) \{ width: auto !important;/);
+  // Never folded into the bar's square keys; narrow, the arrow alone.
+  assert.match(css, /html\.chat-shell \.shell > \.bar > \.update-pill \{ width: auto !important;/);
   assert.match(css, /html\.chat-shell \.shell > \.bar > \.update-pill :is\(\.update-words, \.update-glyph\) \{ display: none; \}/);
 });
 
@@ -993,7 +993,7 @@ test('chat shell: Diagnostics in two rows of filters, the memory map head in the
   assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: color-mix\(in srgb, var\(--acc, var\(--phosphor\)\) 38%, #15171c\) !important; color: #fff !important;/);
   assert.match(app, /\{ id: 'egress', label: t\('Where it connects'\) \},/);
   assert.match(app, /head\.append\(el\('b', null, coreBlockName\(part\.id\)\)\);/);
-  assert.match(es, /'What the agent reads': 'Lo que lee el agente',/);
+  assert.match(es, /"What the AI reads": "Lo que lee la IA",/);
 });
 
 test('neural mode: memories are neurons, links are tracts, and the core is never quiet', async () => {
@@ -1461,6 +1461,14 @@ test('a sidebar dragged by its edge well past its narrowest closes when let go, 
   assert.match(app, /sideWidths\[surface\.key\] = Math\.max\(SIDE_MIN, wanted\);/);
   assert.match(app, /if \(closing\) \{\s*if \(before === undefined\) delete sideWidths\[surface\.key\]; else sideWidths\[surface\.key\] = before;\s*surface\.close\?\.\(\);/);
   assert.match(css, /\.closing-by-edge \{ opacity: \.45;/);
+});
+
+test('the browser docked at the right closes by its edge as the sidebar does, instead of springing back (2026-11-14)', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const grip = app.slice(app.indexOf("browserGrip?.addEventListener('pointerdown'"), app.indexOf("browser.button?.addEventListener('click'"));
+  assert.match(grip, /closing = wanted < SIDE_MIN - SIDE_CLOSE_PAST;/);
+  assert.match(grip, /sideWidths\.browser = Math\.max\(SIDE_MIN, wanted\);/);
+  assert.match(grip, /if \(closing && ended\?\.type === 'pointerup'\) \{\s*if \(before === undefined\) delete sideWidths\.browser; else sideWidths\.browser = before;\s*browserHide\(\);/);
 });
 
 // 2026-10-31, seen on Windows: the plan's closing step showed MADRE's own instruction to the agent,

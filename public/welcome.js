@@ -451,10 +451,21 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     fact(t('Memory'), hw.memoryGb ? `${number(hw.memoryGb)} GB` : null, t('The more memory, the bigger and smarter the AI that fits.'));
     fact(t('Graphics card'), graphicsWords(), hw.accelerator === 'apple' ? null : t('With one, your own AI answers faster.'));
     fact(t('Free space'), env.disk ? t('{n} GB free', { n: number(env.disk.freeGb) }) : null, t('An AI of your own takes between 1 and 20 GB.'));
+    // A button that reads as one (2026-11-14, the author: «hacer más clickeable»): the chip, the words
+    // and an arrow that turns when it opens, on a soft pill instead of grey small print.
+    const checkedSummary = () => {
+      const summary = el('summary', 'wl-more-key');
+      const chip = el('span', 'wl-more-icon');
+      chip.innerHTML = trazo('chip'); // trusted: our own SVG string
+      const arrow = el('span', 'wl-more-arrow');
+      arrow.innerHTML = trazo('chevron'); // trusted: our own SVG string
+      summary.append(chip, el('span', null, t('What MADRE checked on your computer')), arrow);
+      return summary;
+    };
     const fold = el('details', 'wl-more');
     fold.addEventListener('toggle', () => { if (fold.open) reveal(fold); });
     fold.append(
-      el('summary', null, t('What MADRE checked on your computer')),
+      checkedSummary(),
       el('p', 'wl-facts-lead', t('MADRE can have an AI of its own that works without internet. To know which one fits your computer, it checked this:')),
       grid,
       el('p', 'wl-tiny', t('None of this leaves your computer.')),
@@ -515,13 +526,13 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   // ---- 2 · WHAT YOU WANT IT FOR: one or several; the examples from here on follow it.
   function use() {
     const picture = { id: 'use', data: () => ({ items: PROFILES.map((one) => ({ id: one.id, on: s.profile.has(one.id) })) }) };
-    const parts = head(t('What would you like MADRE to help you with?'), t('Mark everything that sounds like your day. From here on, the examples you see are about your things, not a programmer\'s.'), picture, s.profile.size ? t('This picks the examples you will see.') : t('Mark one or several.'));
+    const parts = head(t('What would you like MADRE to help you with?'), t('Choose one or more. That way MADRE shows you examples of what you do.'), picture, s.profile.size ? t('Your examples will be about this.') : t('Choose one or more.'));
     const grid = el('div', 'wl-tiles wl-uses');
     for (const one of PROFILES) {
       const tile = button('wl-tile', null, () => {
         if (s.profile.has(one.id)) s.profile.delete(one.id); else s.profile.add(one.id);
         tile.setAttribute('aria-pressed', String(s.profile.has(one.id)));
-        scene.say(s.profile.size ? t('This picks the examples you will see.') : t('Mark one or several.'));
+        scene.say(s.profile.size ? t('Your examples will be about this.') : t('Choose one or more.'));
         paintUseKeys();
       });
       tile.setAttribute('aria-pressed', String(s.profile.has(one.id)));
@@ -538,7 +549,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   }
   function paintUseKeys() {
     footer({
-      next: s.profile.size ? t('Continue') : t('Continue without marking'),
+      next: s.profile.size ? t('Continue') : t('Continue without choosing'),
       onNext: async () => {
         await save({ profile: [...s.profile] });
         go(s.step + 1, s.profile.size ? 'done' : 'skip');

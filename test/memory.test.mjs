@@ -830,7 +830,7 @@ test('memory: distillation takes the newest exchanges first and the backlog drai
 
 import { listExtensions } from '../src/extensions.mjs';
 
-test('RIPLEY: off by default, files stay source; on, HTML and SVG render through a sealed preview route', async () => {
+test('RIPLEY: on from the start (2026-11-14); off, files stay source; on, HTML and SVG render through a sealed preview route', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-ripley-'));
   const project = join(root, 'site');
   await mkdir(project);
@@ -844,12 +844,17 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
   try {
     const listed = await listExtensions({ projectRoot: project, config: {} });
     const ripley = listed.find((item) => item.id === 'ripley');
-    assert.equal(ripley.status.installed, false);
+    assert.equal(ripley.status.installed, true, 'Preview does not start on');
     // What it says, not how it words it: the room is open here, so it speaks the room's language.
-    assert.match((await listExtensions({ projectRoot: project, config: { modules: { ripley: { enabled: true } } } })).find((item) => item.id === 'ripley').status.detail, /Preview/);
+    assert.match(ripley.status.detail, /Preview/);
+    assert.equal((await listExtensions({ projectRoot: project, config: { modules: { ripley: { enabled: false } } } })).find((item) => item.id === 'ripley').status.installed, false);
 
     const state = await fetch(`${base}/api/state`).then((response) => response.json());
-    assert.deepEqual(state.ripley, { enabled: false });
+    assert.deepEqual(state.ripley, { enabled: true });
+    // Turned off by the person, files stay source.
+    const turnedOff = await fetch(`${base}/api/extensions/ripley/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    assert.deepEqual(await turnedOff.json(), { enabled: false });
+    assert.deepEqual((await fetch(`${base}/api/state`).then((response) => response.json())).ripley, { enabled: false });
     const off = await fetch(`${base}/preview/project/index.html`);
     assert.equal(off.status, 412);
     // Plain /api/files keeps serving HTML as text, as before.

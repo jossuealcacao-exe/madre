@@ -110,11 +110,9 @@ test('ux 12 nov · the card of changes reads in order: head, files, and UNDO wit
   assert.match(css, /\.sys-dots\.open > \.system\.control\.changed\.folded \{ display: grid !important;/);
 });
 
-test('ux 12 nov · «Show me» on the second conversation opens one beside, and Settings keeps its place when drawn again', () => {
+test('ux 12 nov · Settings keeps its place when drawn again (the six first steps and their «Show me» left on 2026-11-14)', () => {
   const app = pub('app.js');
-  assert.match(app, /show: \(\) => \{ void stepsBeside\(\); \}/);
-  assert.match(app, /if \(other\) \{ openSplit\(other\.id\); return; \}/);
-  assert.match(app, /localStorage\.setItem\('pulse\.split', before\)/);
+  assert.match(app, /localStorage\.setItem\('pulse\.split', /);
   const home = pub('salas-mac.js');
   assert.match(home, /const top = scroll\.scrollTop;/);
   assert.match(home, /scroll\.scrollTop = top;/);

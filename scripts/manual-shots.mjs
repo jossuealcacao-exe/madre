@@ -44,7 +44,7 @@ const WORDS = {
 // What is not the point of a picture is not in it: the version's corner, the first steps of a new
 // house, a newer version on npm, a toast, a hint, MADRE's own cards in the chat. The note and the due
 // reminder only where they are told.
-const QUIET = '#colophon, #update-pill, #steps-pill, .toast, .toasts, .hint-card, .tour-hint, .neural-invite { visibility: hidden !important; } #thread-inner > .system { display: none !important; }';
+const QUIET = '#colophon, #update-pill, .toast, .toasts, .hint-card, .tour-hint, .neural-invite { visibility: hidden !important; } #thread-inner > .system { display: none !important; }';
 const NO_NOTES = '.note-window, .reminder-due { display: none !important; }';
 const MACHINE = hostname().replace(/\.local$/i, '');
 

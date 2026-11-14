@@ -74,7 +74,7 @@ test('launch: the core prints the command that would run, and printing it runs n
     const local = await room.launch({ agent: 'madre', mode: 1 });
     assert.equal(local.local, true);
     assert.equal(local.executable, undefined);
-    assert.match(local.says, /No process is started/);
+    assert.match(local.says, /No program is opened for @madre/);
     await room.shutdown();
   } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
@@ -82,7 +82,7 @@ test('launch: the core prints the command that would run, and printing it runs n
 test('launch: the floor under the document shows the command, the isolation and the servers', async () => {
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
   assert.match(app, /paneInto\('launch', renderCoreLaunch\(briefing\.launch \?\? null\)\)/);
-  assert.match(app, /WHAT MADRE WOULD RUN TO DELIVER IT/);
+  assert.match(app, /THE PROGRAM AND THE OPTIONS MADRE WOULD HAND YOUR MESSAGE TO/);
   assert.match(app, /WHAT KEEPS IT TO THIS TURN/);
   assert.match(app, /NAMES ONLY\. NO VALUE IS EVER SHOWN HERE\./);
   assert.match(app, /OUTSIDE TOOLS \(MCP\) IT CAN USE/);

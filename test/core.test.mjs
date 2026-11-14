@@ -236,7 +236,7 @@ test('core: four panes, one at a time, and the prompt through all of them', asyn
   // `==>` over each section, names in one column and numbers in the other.
   assert.match(app, /head\.append\(el\('b', null, '==>'\), el\('span', 'title', title\)\)/);
   assert.match(app, /function brewRow\(key, value, className = null\)/);
-  for (const title of ['THE DOCUMENT', 'WHAT IT CARRIES', 'THE LAUNCH', 'WHAT KEEPS IT TO THIS TURN', 'OUTBOUND']) {
+  for (const title of ['THE INSTRUCTIONS', 'WHAT IT CARRIES', 'HOW IT OPENS', 'WHAT KEEPS IT TO THIS TURN', 'OUTBOUND']) {
     assert.ok(app.includes(`brewHead(t('${title}')`), `${title} is not a section of its own`);
   }
   // The blocks are a package list, not a wall: a sign, a name, a number, a bar, a reason.

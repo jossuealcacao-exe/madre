@@ -121,3 +121,24 @@ test('Ash validation is local, deterministic and marks exact or structural drift
   assert.ok(validateAshReply({ request: 'devuelve código', response: '```js\nconst x = 1;' }).issues.includes('unclosed code fence'));
   assert.ok(validateAshReply({ request: 'coordina', response: '```pulse\n@codex: revisa\n```\ny luego termina' }).issues.includes('text after ```pulse block'));
 });
+
+test('Preview and the test browser start on; the browser is fetched the first time a turn wants it (2026-11-14)', async () => {
+  // «Vienen activas por defecto y el usuario las desactiva si quiere»: on with nothing said, off when the person says so.
+  for (const id of ['ripley', 'playwright']) {
+    const module = moduleById(id);
+    assert.equal(module.settingsFrom({}).enabled, true, `${id} does not start on`);
+    assert.equal(module.settingsFrom({ modules: { [module.configKey]: { enabled: false } } }).enabled, false, `${id} cannot be turned off`);
+  }
+  const { fetchWhenAsked } = await import('../src/modules/playwright.mjs');
+  if (process.platform === 'win32') return;   // there the person installs it
+  const said = [];
+  let prepared = 0;
+  const ctx = { settings: { browser: 'chromium' }, projectRoot: process.cwd(), stateRoot: null, record: async (type, payload) => { said.push([type, payload.ok]); } };
+  const prepare = async () => { prepared += 1; return { ok: true, steps: [] }; };
+  const first = fetchWhenAsked(ctx, {}, { prepare });
+  // A second turn while it downloads does not start another download.
+  assert.equal(fetchWhenAsked(ctx, {}, { prepare }), first);
+  await first;
+  assert.equal(prepared, 1);
+  assert.deepEqual(said, [['extension.preparing', undefined], ['extension.prepared', true]]);
+});

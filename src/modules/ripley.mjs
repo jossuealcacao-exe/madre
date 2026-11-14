@@ -17,7 +17,8 @@ export default defineModule({
   // RIPLEY's own because it is a separate promise: rendering a file from this project and opening
   // an address on the internet are not the same permission, and bundling them would hide the
   // second one behind the first.
-  settings: { web: false },
+  // On from the start (2026-11-14, the author): pages are shown as pages unless the person turns it off.
+  settings: { enabled: true, web: false },
   // No switch for the web, because the browser has no address bar to use it with. What it opens
   // is the list of servers answering on this computer, and nothing else.
   //

@@ -1766,7 +1766,7 @@ export class Room {
     if (agent.local || agent.adapter === 'madre-local') {
       return {
         agent: agent.id, label: agent.label, local: true,
-        says: 'No process is started for @madre: it is the local model answering inside MADRE, through Ollama on this computer.',
+        says: t('No program is opened for @madre: it is the AI on your computer, and it answers inside MADRE through Ollama.'),
         mcpServers: [], env: [], isolation: [],
       };
     }

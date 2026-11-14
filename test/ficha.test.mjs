@@ -145,8 +145,9 @@ test('ficha · a link between projects passes with its own key, RIPLEY\'s previe
     assert.equal((await ask(port, { path: '/api/enlace/state', headers: { 'x-madre-enlace': 'f'.repeat(64) } })).status, 401);
     // The key of the links opens only the links' routes.
     assert.equal((await ask(port, { headers: { 'x-madre-enlace': key } })).status, 401);
-    // Preview is off here: past the door it answers 412, before it 401.
-    assert.equal((await ask(port, { path: `/preview/${previewKey(ficha)}/project/index.html` })).status, 412);
+    // Preview is on from the start (2026-11-14): past the door the file is looked for (there is none,
+    // 404); before it, 401.
+    assert.equal((await ask(port, { path: `/preview/${previewKey(ficha)}/project/index.html` })).status, 404);
     assert.equal((await ask(port, { path: `/preview/${'0'.repeat(32)}/project/index.html` })).status, 401);
     assert.equal((await ask(port, { path: '/preview/project/index.html' })).status, 401);
     // The agents' browser is told the keyed address.

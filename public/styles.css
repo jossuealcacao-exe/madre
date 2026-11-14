@@ -7965,47 +7965,6 @@ dialog.room-ask:not(.console) .room-ask-code { width: 100%; margin: 2px 0 0; pad
 .bubble-foot > .stamp { order: 1 !important; } .bubble-foot > .bubble-actions { order: 2 !important; } .bubble-foot > :not(.stamp):not(.bubble-actions) { order: 0 !important; }
 
 /* ==========================================================================================
-   FIRST STEPS — a pill in the bar counts what is done, with a ring that fills; the card under it
-   says each step in one line and has a key that takes you there. A step done keeps its title,
-   ticked in the accent, and lets go of its explanation.
-   ========================================================================================== */
-.bar > .steps-pill {
-  opacity: 1; cursor: pointer; width: auto; height: 30px; padding: 0 12px 0 7px; gap: 7px; border: 0; border-radius: 999px;
-  background: color-mix(in srgb, var(--acc, var(--phosphor)) 15%, transparent); color: var(--text);
-  font-family: var(--read); font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; text-shadow: none;
-  transition: background-color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
-}
-.bar > .steps-pill:hover, .bar > .steps-pill[aria-expanded="true"] { background: color-mix(in srgb, var(--acc, var(--phosphor)) 26%, transparent); }
-.bar > .steps-pill:active { transform: scale(.97); }
-.bar > .steps-pill:focus-visible { outline: 2px solid color-mix(in srgb, var(--acc, var(--phosphor)) 70%, transparent); outline-offset: 2px; }
-.bar > .steps-pill[hidden] { display: none !important; }
-.steps-ring { width: 18px; height: 18px; flex: none; color: color-mix(in srgb, var(--acc, var(--phosphor)) 72%, var(--text)); }
-.bar > .steps-pill svg.steps-ring :is(circle) { stroke-width: 2; }
-.steps-arc { stroke-dasharray: var(--steps, 0) 1; stroke-linecap: butt; transition: stroke-dasharray calc(500ms * var(--motion-scale, 1)) var(--ease-out); }
-.steps-count { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--text-2); }
-@media (max-width: 720px) { .bar > .steps-pill { padding: 0 9px 0 6px; } .steps-label { display: none; } }
-
-.steps-card { z-index: 80; width: min(360px, calc(100vw - 32px)); padding: 14px 10px 10px; }
-.steps-card .bar-card-head { padding: 0 6px; margin-bottom: 6px; }
-.steps-tally { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.steps-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.steps-list li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 6px; border-radius: 12px; }
-.steps-list li:not(.done):hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
-.steps-tick { display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 26%, transparent); color: transparent; transition: background-color var(--motion) var(--ease-out), color var(--motion) var(--ease-out); }
-.steps-tick svg { display: block; width: var(--ico-xs); height: var(--ico-xs); }
-.steps-list li.done .steps-tick { background: var(--acc, var(--phosphor)); color: var(--acc-ink, var(--phosphor-ink)); box-shadow: none; }
-.steps-words { display: grid; gap: 2px; min-width: 0; }
-.steps-words b { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
-.steps-words span { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
-.steps-list li.done .steps-words b { font-weight: 500; color: var(--text-2); }
-.steps-list li.done .steps-words span { display: none; }
-.steps-go.sx-btn { align-self: center; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 12px; }
-.steps-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 6px 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.4; color: var(--text-3); }
-.steps-hide { flex: none; border: 0; padding: 4px 0; background: transparent; color: var(--text-2); font: inherit; font-weight: 600; cursor: pointer; }
-.steps-hide:hover { color: var(--text); }
-@media (prefers-reduced-motion: reduce) { .steps-arc, .steps-tick, .bar > .steps-pill { transition: none; } }
-
-/* ==========================================================================================
    DEPTH OF THE CONVERSATION — three levels, read like sheets at different heights over the
    wallpaper. Nothing here blurs what is behind it (see the conversation's rule above): height is
    said with tone and with light and shadow only, which costs the browser nothing while scrolling.
@@ -10530,8 +10489,6 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
    el nombre del proyecto no sea lo primero en irse. */
 @container roombar (max-width: 760px) {
   .shell > .bar:not(.bar-home) { gap: 10px; }
-  #steps-pill .steps-label { display: none; }
-  #steps-pill { gap: 6px; padding-inline: 9px 11px; }
   /* El nombre del proyecto se queda; el título de la conversación es el que se corta con «…». */
   .shell > .bar:not(.bar-home) .project:not(.chat-here) { font-size: 11px; }
   .shell > .bar:not(.bar-home) .project:not(.chat-here)::after { content: none; }
@@ -11630,7 +11587,6 @@ html.chat-shell .shell > .bar > #stop-all.armed { height: 30px; border-radius: 8
 @container bar (max-width: 980px) {
   html.chat-shell .shell > .bar > #stop-all.armed { width: 34px; height: 34px; padding: 0; gap: 0; font-size: 0; border-radius: 11px; }
 }
-html.chat-shell .shell > .bar > .steps-pill { height: 28px; border-radius: 999px; }
 html.chat-shell .shell > .bar .agents .avatar { width: 22px !important; height: 22px !important; }
 html.chat-shell .shell > .bar .agents .avatar svg { width: 13px; height: 13px; }
 /* The sidebar's key: in the bar only while the sidebar is shut; open, its own sits in its head. */
@@ -11859,7 +11815,7 @@ html.chat-shell #messages#messages .thread-inner > .system, html.chat-shell #mes
    (the memory map, modules, diagnostics), the apps, and last, by the side they open at, the keys
    that open beside the conversation (Files, which holds the code, and your servers; 2026-10-27). */
 html.chat-shell .shell > .bar:not(.bar-home) > .bar-left { order: 0; }
-html.chat-shell .shell > .bar:not(.bar-home) > :is(#inbox-pill, #steps-pill, #tour-pill-slot, #handoff-pill, #update-pill) { order: 2; }
+html.chat-shell .shell > .bar:not(.bar-home) > :is(#inbox-pill, #tour-pill-slot, #handoff-pill, #update-pill) { order: 2; }
 html.chat-shell .shell > .bar:not(.bar-home) > #agents-compact { order: 3; }
 html.chat-shell .shell > .bar:not(.bar-home) > #stop-all { order: 4; }
 html.chat-shell .shell > .bar:not(.bar-home) > .bar-family.project { order: 34; }
@@ -12574,29 +12530,27 @@ html.chat-shell[data-scheme="dark"] :is(.tree.window, dialog.surface.window, .co
 html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).aside { opacity: 1; }
 html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).aside:hover { opacity: 1; }
 
-/* ---- What is happening, in the bar (2026-10-27): the first steps and a newer MADRE read as the
-   bar's quiet words — a small mark, the words, no coloured pill; the hover tone under the pointer. ---- */
-html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill):is(*, :hover, :active, :focus-visible, [aria-expanded="true"]) {
+/* ---- What is happening, in the bar (2026-10-27): a newer MADRE reads as the bar's quiet words — a
+   small mark, the words, no coloured pill; the hover tone under the pointer. (The six first steps
+   that rode here too gave way to the five of the missions, 2026-11-14.) ---- */
+html.chat-shell .shell > .bar > .update-pill:is(*, :hover, :active, :focus-visible, [aria-expanded="true"]) {
   height: 28px; gap: 6px; padding: 0 9px 0 7px; border: 0 !important; border-radius: 8px;
   background: none !important; box-shadow: none !important; transform: none !important;
   font: 500 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2);
 }
-html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill):is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--cs-hover) !important; color: var(--text); }
-html.chat-shell .shell > .bar > .steps-pill .steps-ring { width: 14px; height: 14px; color: var(--phosphor); }
-html.chat-shell .shell > .bar > .steps-pill .steps-count { font-weight: 450; color: var(--text-3); }
+html.chat-shell .shell > .bar > .update-pill:is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--cs-hover) !important; color: var(--text); }
 /* A newer MADRE: an accent dot where the download arrow was. */
 html.chat-shell .shell > .bar > .update-pill .update-glyph { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--phosphor); opacity: 1; }
 html.chat-shell .shell > .bar > .update-pill .update-glyph svg { display: none; }
 html.chat-shell .shell > .bar > .update-pill .update-get { display: inline-grid; place-items: center; flex: none; margin-left: 1px; color: var(--phosphor); }
 html.chat-shell .shell > .bar > .update-pill .update-get svg { width: 14px; height: 14px; }
 /* Never folded into the bar's square keys: as wide as what it says. A narrow bar (a tool or a second
-   conversation beside it) keeps the first steps' ring and count, and the new version's arrow. */
-html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill) { width: auto !important; min-width: 0 !important; flex: none; white-space: nowrap; }
+   conversation beside it) keeps the new version's arrow. */
+html.chat-shell .shell > .bar > .update-pill { width: auto !important; min-width: 0 !important; flex: none; white-space: nowrap; }
 @container roombar (max-width: 760px) {
   html.chat-shell .shell > .bar > .update-pill :is(.update-words, .update-glyph) { display: none; }
   html.chat-shell .shell > .bar > .update-pill { padding: 0 7px !important; }
   html.chat-shell .shell > .bar > .update-pill .update-get { margin: 0; }
-  html.chat-shell .shell > .bar > .steps-pill { padding: 0 8px 0 7px !important; }
 }
 
 /* ---- The box you write in, lower (2026-10-27): one line when it is empty, as the chat apps do, and
@@ -14633,3 +14587,54 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
 .ports-turn-on .ports-why { margin: 0; font: 12.5px/1.5 var(--read, var(--sans)); color: var(--text-2); }
 .ports-turn-on .ports-on { justify-self: start; height: 32px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--phosphor); color: var(--phosphor-ink, #fff); font: 600 13px var(--read, var(--sans)); cursor: pointer; }
 .ports-turn-on .ports-on:disabled { opacity: .7; cursor: progress; }
+
+/* THE MARKET'S BIG KEY UNDER THE POINTER (2026-11-14, the author: «el hover de instalar se ve muy mal, debe
+   verse sutil»). The fine-edged key's hover — a pale tint of the accent — reached the filled one too and
+   left white letters on a washed green. The filled key keeps its fill and only leans a little toward the
+   ink of the page: a touch darker in light, a touch lighter in dark. */
+.mk.flat .mk-get.big:not(.quiet):not(.on):not(:disabled):hover { background: color-mix(in srgb, var(--madre-green) 90%, var(--text)); box-shadow: none; color: var(--madre-green-ink); }
+.mk.flat .mk-get.big:not(.quiet):not(.on):active { background: color-mix(in srgb, var(--madre-green) 84%, var(--text)); }
+.mk.flat .mk-get.big:is(.quiet, .on):hover { background: color-mix(in srgb, var(--text) 12%, transparent); box-shadow: none; }
+
+/* THE COMMAND A MODULE RUNS, WHILE ITS NOTICE IS STILL OPEN (2026-11-14, the author: «al instalar ahp el dot
+   pierde formato»). The words of `npx … setup` are a span.cmd, and the glass capsule meant for the keys in a
+   notice (`.system .cmd`) dressed them as a round button: on two lines the capsule broke and the text ran
+   past its edge. Read, not pressed: a quiet line of code, as it already is inside an open row of dots. */
+#messages#messages .system.module:not(.folded) span.cmd,
+#messages#messages .system.module:not(.folded) span.cmd:is(:hover, :active) {
+  display: block; width: fit-content; max-width: 100%; box-sizing: border-box; margin: 7px 0 0; padding: 4px 10px;
+  border: 0 !important; border-radius: 8px; box-shadow: none !important; outline: 0; transform: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text);
+  font: 400 12px/1.55 var(--mono); letter-spacing: 0; text-transform: none; white-space: pre-wrap; overflow-wrap: anywhere;
+  cursor: text; user-select: text;
+}
+
+/* The line over the code with nothing to say (2026-11-14): a file at the top of the project, read with no
+   function under the cursor and no change to review — its name is already the tab's. */
+dialog.viewer .code-crumbs.empty { display: none !important; }
+
+/* Settings › Notifications (2026-11-14): new versions always come, said by a quiet «Always» where the other
+   rows have a switch — read as a fact of the row, not as something to press. */
+.sx-always { display: inline-flex; align-items: center; height: 26px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--madre-green); background: color-mix(in srgb, var(--madre-green) 12%, transparent); }
+
+/* SETTINGS › PERMISSIONS › WHAT EACH AI MAY DO (2026-11-14, the author: «0 a 4 confunde, mejor pones número
+   más lo que hace cada modo»): a key under the title says what each mode lets, in its colour; every option
+   of a row carries its number over its name, five equal columns as wide as the row. */
+.perm-legend { list-style: none; margin: 0; padding: 2px 16px 12px; display: grid; gap: 5px; }
+.perm-legend li { display: grid; grid-template-columns: 26px minmax(96px, auto) minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+.perm-legend .perm-n { font-weight: 700; font-variant-numeric: tabular-nums; }
+.perm-legend .perm-n.o0 { color: var(--mode-0); } .perm-legend .perm-n.o1 { color: var(--mode-1); } .perm-legend .perm-n.o2 { color: var(--mode-2); }
+.perm-legend .perm-n.o3 { color: var(--mode-3); } .perm-legend .perm-n.o4 { color: var(--mode-4); }
+.perm-legend .perm-name { font-weight: 600; color: var(--text); white-space: nowrap; }
+.perm-legend small { font-size: 12.5px; color: var(--text-3); }
+.perm-who .sx-row.stack .sx-control { width: 100%; max-width: none; }
+.perm-who .sx-seg.perm-modes { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+.perm-who .sx-seg.perm-modes button { display: grid; justify-items: center; align-content: center; gap: 1px; height: auto; min-height: 44px; min-width: 0; padding: 5px 4px; line-height: 1.2; white-space: nowrap; }
+.perm-who .sx-seg.perm-modes button b { font-size: 12.5px; font-weight: 700; }
+.perm-who .sx-seg.perm-modes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; font-weight: 500; }
+@media (max-width: 560px) { .perm-legend li { grid-template-columns: 26px minmax(0, 1fr); } .perm-legend small { grid-column: 2; } }
+
+/* WHAT IS SENT, SAID FOR SOMEONE NEW (2026-11-14): each pane opens with one plain sentence about what it
+   shows, quiet under the tabs and above the pane's own heads. */
+.core .core-lead { margin: 2px 0 14px; max-width: 76ch; font: 400 13.5px/1.55 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2); }

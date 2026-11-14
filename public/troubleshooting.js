@@ -680,8 +680,8 @@ export const CONDITIONS = [
     // was filed as this help card (1.1.0 diagnostics, MU-023 from Codex and OpenCode).
     match: /\bmodes?\b|ghost|exchange|control|airlock|deploy|despleg|producci|override|designation|max mode|#[0-4]\b/i,
     diagnosis: 'Every message goes out at a mode, chosen in the chip after TO @agent (or typed as #2 in the text). #0 INCOGNITO is off the record: nothing is saved, no other agent remembers it, gone on reload, no plan. #1 CHAT ONLY is the default: read and coordinate. #2 CREATE lets the agent add new files and folders anywhere in the project, where they belong; whatever existed before is put back after the turn and the project says so. #3 EDIT puts one agent in command of the project itself: a git restore point is taken first, every change is listed afterwards, writes into .git, .pulse or .env files are reverted on the spot, and UNDO goes back to the restore point. One holder at a time; it needs Max mode #3 and a git repository. Your mode is the ceiling of any plan the message starts, and #3 is never given to a plan step. Each agent has a Max mode in Settings → Permissions; above it, #2 is answered read-only and #3 is refused. When a #1 plan reaches a step that wants to create something, the project pauses and asks you: GRANT ONCE, GRANT FOR PLAN or DENY, with a 3-minute clock; silence denies. #4 FULL ACCESS is EDIT plus commands: tests, builds, git push, deploys with the CLIs and sessions already on this machine. Files still come back with UNDO; what leaves the machine does not, so the unlock asks for the project name twice. An agent that says it needs a "production mode" or "permission to run commands" is asking for #4.',
-    remedy: 'Pick the mode in the chip, or type #0..#4 in the message. Raise an agent\'s Max mode in Settings → Permissions, under Who may do what. EDIT asks for the project name (the folder name) in the unlock; FULL ACCESS asks for it twice.',
-    fixes: same(['# chip: TO @codex  #1 CHAT ONLY ▾  → choose', '@codex #2 create the poster', '@opencode #4 run the tests and deploy to preview', '# Settings → Permissions → Who may do what']),
+    remedy: 'Pick the mode in the chip, or type #0..#4 in the message. Raise an agent\'s Max mode in Settings → Permissions, under What each AI may do. EDIT asks for the project name (the folder name) in the unlock; FULL ACCESS asks for it twice.',
+    fixes: same(['# chip: TO @codex  #1 CHAT ONLY ▾  → choose', '@codex #2 create the poster', '@opencode #4 run the tests and deploy to preview', '# Settings → Permissions → What each AI may do']),
   },
   {
     id: 'lease-missing',
@@ -701,7 +701,7 @@ export const CONDITIONS = [
     match: /scope-[a-z]+-write/,
     diagnosis: 'Every CLI can create files inside a permission to create; each agent\'s Max mode says how far it may go, and nothing is created until you press CREATE.',
     remedy: 'Give the agent a Max mode of #2 or more in Settings → Permissions, then arm CREATE in the Write box for the request.',
-    fixes: same(['# Settings → Permissions → Who may do what → #2', '# Write box → CREATE (lock) → send']),
+    fixes: same(['# Settings → Permissions → What each AI may do → #2', '# Write box → CREATE (lock) → send']),
   },
   {
     id: 'node-version',

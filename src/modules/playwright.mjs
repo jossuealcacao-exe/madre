@@ -213,6 +213,24 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
   };
 }
 
+// The download a turn starts when the switch is on and nothing is installed yet (2026-11-14): one at a
+// time per MADRE, never on Windows (there the person installs it), and said to the person when it
+// starts and when it ends, since it takes a few minutes.
+let fetching = null;
+export function fetchWhenAsked(ctx, env, { prepare = preparePlaywright } = {}) {
+  if (fetching || process.platform === 'win32') return fetching;
+  const browser = ctx.settings.browser ?? 'chromium';
+  fetching = (async () => {
+    await ctx.record?.('extension.preparing', { id: 'playwright', name: 'PLAYWRIGHT', browser, first: true });
+    const check = await prepare({ browser, env, cwd: ctx.projectRoot, stateRoot: ctx.stateRoot });
+    forgetPlaywrightHealth(check, browser);
+    await playwrightVersion({ env, projectRoot: ctx.projectRoot, fresh: true });
+    await ctx.record?.('extension.prepared', { id: 'playwright', name: 'PLAYWRIGHT', browser, ok: Boolean(check.ok), problem: check.ok ? null : String(check.problem ?? '').slice(0, 200) });
+    return check;
+  })().catch(() => null).finally(() => { fetching = null; });
+  return fetching;
+}
+
 async function playwrightReady(ctx) {
   const browser = ctx.settings.browser ?? 'chromium';
   let check = await playwrightStarts({ browser, env: await playwrightEnv(ctx), cwd: ctx.projectRoot });
@@ -239,7 +257,10 @@ export default defineModule({
   summary: 'Hands an agent a headless browser that reaches only this project and the servers you start from COMMANDS, on the turns that ask to look at a page, click through it, read its console or take screenshots.',
   creates: ['nothing in the project \u00b7 screenshots land in .pulse/out/<turn>/', 'a switch in ~/.pulse/config.json', 'a browser per turn, started and stopped by the CLI', 'no origin but this project is reachable through it'],
   requires: ['@playwright/mcp and the browser you choose for it (chromium by default) on this machine', 'PREVIEW on, to have pages to open'],
-  settings: { enabled: false, browser: 'chromium', headless: true },
+  // On from the start (2026-11-14, the author: «vienen activas por defecto y el usuario las desactiva si
+  // quiere»). What it needs is fetched the first time a turn asks for a browser (toolsForTurn), not
+  // when MADRE is installed: someone who never tests a page never downloads one.
+  settings: { enabled: true, browser: 'chromium', headless: true },
   card: 'switch',
   controls: [
     { key: 'browser', label: 'BROWSER', type: 'select', options: PLAYWRIGHT_BROWSERS, note: 'Which browser engine the agents drive.' },
@@ -261,7 +282,7 @@ export default defineModule({
     return {
       runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (!version ? t('on · the browser server is not installed') : health?.ok === false ? t('on · the browser does not start: {problem}. Turn it off and on again: MADRE downloads what is missing.', { problem: String(health.problem).replace(/[.\s]+$/, '').slice(0, 160) }) : `${t('on')} · ${ctx.settings.browser}`) : version ? t('off') : process.platform === 'win32' ? t('off · the browser server is not installed') : t('off · turn it on and MADRE installs its browser; it takes a few minutes') },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (!version ? (process.platform === 'win32' ? t('on · the browser server is not installed') : t('on · it downloads the first time an AI opens your page')) : health?.ok === false ? t('on · the browser does not start: {problem}. Turn it off and on again: MADRE downloads what is missing.', { problem: String(health.problem).replace(/[.\s]+$/, '').slice(0, 160) }) : `${t('on')} · ${ctx.settings.browser}`) : version ? t('off') : process.platform === 'win32' ? t('off · the browser server is not installed') : t('off · turn it on and MADRE installs its browser; it takes a few minutes') },
       // Missing is not a reason to refuse the switch: turning it on installs what is missing
       // (playwrightReady) everywhere but Windows (2026-10-20). Only there does the person install it.
       preflight: version || process.platform !== 'win32' ? { ok: true, problems: [] } : { ok: false, problems: [t('Install the browser server first: {server}, then its browser: {browser}', { server: 'npm install -g @playwright/mcp', browser: installBrowserLine(ctx.settings.browser) })] },
@@ -285,8 +306,13 @@ export default defineModule({
   },
   async toolsForTurn(ctx, turn) {
     const env = await playwrightEnv(ctx);
-    if (!(await playwrightVersion({ env, projectRoot: ctx.projectRoot }))) return [];
     if (turn.mode === 0) return [];   // a ghost turn leaves no screenshots and opens no browser
+    if (!(await playwrightVersion({ env, projectRoot: ctx.projectRoot }))) {
+      // On but not yet on this computer: the first turn that wants a browser starts the download, and
+      // this turn goes on without one (the person is told it is on its way).
+      if (turn.text === undefined || wantsBrowser(turn.text)) fetchWhenAsked(ctx, env);
+      return [];
+    }
     // Only for a turn that asks for what a browser does. Its tool list goes into every call the CLI
     // makes inside the turn: a one-line change cost Codex 576 thousand tokens of reading, and the
     // browser it carried was never opened.

@@ -94,9 +94,10 @@ import { CHAPTERS, HINTS, MISSIONS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cam
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
-// The kinds of notification of the system a person turns on or off (/api/notifications). A new
-// version and the author's notices are not among them: they always go out (public/notifications.js).
-const NOTIFICATION_KINDS = ['conversations'];
+// The kinds of notification of the system a person turns on or off (/api/notifications), and `enabled`,
+// MADRE's own switch for all of them (2026-11-14). A new version and the author's notices are not among
+// them: they always go out (public/notifications.js).
+const NOTIFICATION_KINDS = ['enabled', 'conversations'];
 // @madre is offered a test once agents answered this many real questions in a conversation, and
 // offered again after these days while it has not been measured (offerLocalTry).
 const LOCAL_TRY_MIN = 6;
@@ -333,7 +334,8 @@ export async function createPulseServer({
   // opens it (public/i18n.js, browserLanguage), once, and keeps it as if it had been chosen.
   let languageChosen = Boolean(process.env.PULSE_LANGUAGE || (await readConfig(root)).language);
   // RIPLEY renders HTML in the viewer only while the human has it switched on; read live, the switch is the module's.
-  const ripleyOn = async () => moduleOnHere(await readConfig(root), 'ripley');
+  // On unless the person turned it off (2026-11-14): the module's own default (src/modules/ripley.mjs).
+  const ripleyOn = async () => moduleOnHere(await readConfig(root), 'ripley', true);
   agentTimeouts ??= agentTimeoutsFromEnv();
   const detector = detect ?? (providedAgents ? null : detectAgents);
   const refreshCodexRoute = async (agent) => agent.id === 'codex' && agent.route

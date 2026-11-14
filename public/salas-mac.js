@@ -6395,7 +6395,7 @@ function fillRelease(host) {
   }
   noticesRow(block);
   // What MADRE may hand to the system, kind by kind (2026-11-10, public/notifications.js).
-  const told = sxBlock(host, t('Notifications'), t('What MADRE tells you through the system when you are not looking at it.'));
+  const told = sxBlock(host, t('Notifications'), t('What MADRE tells you when you are not looking at it. You choose which.'));
   const sxSwitch = (on, change, { disabled = false, label = null } = {}) => {
     const wrap = el('label', 'settings-switch');
     const box = el('input');

@@ -2133,9 +2133,19 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-hello .wl-title { font-size: 28px; letter-spacing: -.02em; }
 .wl-more summary, .wl-what summary { cursor: pointer; list-style: none; }
 .wl-more summary::-webkit-details-marker, .wl-what summary::-webkit-details-marker { display: none; }
-.wl-more summary { font-size: 12.5px; color: var(--text-3); }
-.wl-more summary:hover { color: var(--text-2); }
-.wl-more[open] summary { margin-bottom: 10px; }
+/* What MADRE checked, a button that reads as one (2026-11-14): a soft pill with the chip, the words and an
+   arrow that turns open; before it was grey small print nobody saw as something to press. */
+.wl-more summary.wl-more-key { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 10px; border-radius: 999px; font-size: 13.5px; font-weight: 550; color: var(--text); background: var(--wl-hover); box-shadow: 0 0 0 1px var(--wl-line); transition: background .15s ease, box-shadow .15s ease; }
+.wl-more summary.wl-more-key:hover { background: var(--wl-sel); box-shadow: 0 0 0 1px color-mix(in srgb, var(--madre-green, #059669) 45%, var(--wl-line)); }
+.wl-more summary.wl-more-key:focus-visible { outline: 2px solid color-mix(in srgb, var(--madre-green, #059669) 60%, transparent); outline-offset: 2px; }
+.wl-more-icon, .wl-more-arrow { display: inline-grid; place-items: center; flex: none; }
+.wl-more-icon { width: 22px; height: 22px; border-radius: 999px; color: var(--madre-green, #059669); background: color-mix(in srgb, var(--madre-green, #059669) 14%, transparent); }
+.wl-more-icon svg { width: 14px; height: 14px; }
+.wl-more-arrow { color: var(--text-3); transition: transform .2s ease; }
+.wl-more-arrow svg { width: 14px; height: 14px; }
+.wl-more[open] .wl-more-arrow { transform: rotate(180deg); }
+.wl-more[open] summary { margin-bottom: 14px; }
+@media (prefers-reduced-motion: reduce) { .wl-more-arrow { transition: none; } }
 .wl-more .wl-tiny { margin: 8px 0 0; }
 .wl-what { padding: 10px 12px; border-radius: 10px; background: var(--wl-hover); font-size: 13px; color: var(--text-2); }
 .wl-what summary { color: var(--text); font-weight: 500; }
@@ -2654,3 +2664,11 @@ html.home-shell .mk.flat .mk-mine .mk-chip { display: inline-block; flex: 0 1 au
 .sm-card-head .sm-rename { flex: 1 1 auto; min-width: 0; height: 30px; margin: -3px 0; padding: 0 9px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--text) 6%, transparent);
   box-shadow: inset 0 1px 2px rgba(20, 30, 20, .12), 0 0 0 2px color-mix(in srgb, var(--s-acc, var(--phosphor)) 45%, transparent); color: var(--text); font: 600 15px var(--read); outline: none; }
 :root[data-scheme="dark"] .sm-card-head .sm-rename { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35), 0 0 0 2px color-mix(in srgb, var(--s-acc, var(--phosphor)) 45%, transparent); }
+
+/* Connections, step 3 and any tall step (2026-11-14, the author: «la animación 3 se ve mal, parece cortada»).
+   The scene is a row of the sheet's grid with its overflow hidden, and such a row may shrink to nothing: on
+   a step with many rows it gave up its height and cut its chips (1.7 px in a short window): a box whose
+   overflow is hidden counts as nothing tall when the rows are shared out. Clipped by a rounded mask instead,
+   it measures what it holds and keeps it; the sheet scrolls instead. */
+.sm-sheet-body > .scene-link { overflow: visible; clip-path: inset(0 round 18px); }
+html.home-shell .sm-sheet-body > .scene-link { clip-path: inset(0 round 12px); }
