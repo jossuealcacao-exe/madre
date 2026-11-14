@@ -27,7 +27,7 @@ export function makePalette({ colors = stdout.isTTY && !process.env.NO_COLOR, de
   };
   const wrap = (open) => (text) => `${open}${text}[0m`;
   return {
-    phosphor: wrap(fg('#9bff66')),
+    phosphor: wrap(fg('#34d399')),
     dim: wrap('[2m'),
     bold: wrap('[1m'),
     danger: wrap(truecolor ? fg('#ff7b72') : '[31m'),

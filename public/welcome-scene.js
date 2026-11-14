@@ -15,7 +15,7 @@
 //   project   threads from the edge, one per folder chosen, gathering into a ring round the dot
 //   ai        the points fall in a slow spiral into a core while it downloads, a fine arc saying how
 //             much; once there, they settle in three quiet orbits
-//   ready     the points draw the logo's pulse, whole, into the dot, fed from the edge; then a
+//   ready     the points draw the logo's M, whole, above the dot, fed from the edge; then a
 //             message bubble opens beside the dot and its words are written in, the caret waiting
 //
 // MADRE's own style, from its brand book (madre-landing/brand-kit): the phosphor is the only colour
@@ -32,25 +32,12 @@ const frac = (x) => x - Math.floor(x);
 const easeInOut = (x) => { const v = clamp01(x); return v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2; };
 const hash = (n) => frac(Math.sin(n * 127.1 + 311.7) * 43758.5453);
 
-// The logo's beat (madre-mark: …H20 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10…): along 0…1, the height
-// in units of the beat (negative is up). The `ready` picture draws it with points.
-const BEAT = [[0, 0], [3.5, -1], [8, 1], [12, 0], [15, 0], [17, -0.5], [19, 0]];
-function beatAt(u) {
-  if (u <= 0 || u >= 1) return 0;
-  const x = u * 19;
-  for (let i = 1; i < BEAT.length; i += 1) {
-    const [x0, y0] = BEAT[i - 1];
-    const [x1, y1] = BEAT[i];
-    if (x <= x1) return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
-  }
-  return 0;
-}
 const bezier = (a, c, b, q) => (1 - q) * (1 - q) * a + 2 * (1 - q) * q * c + q * q * b;
 
 // The two looks. In the dark the light adds up, as light does; in the light the points are ink.
 const LOOKS = {
-  dark: { ground: [5, 6, 5], ink: [155, 255, 102], soft: [238, 241, 234], glow: 0.075, scan: 0.03, blend: 'lighter', halo: 0.34 },
-  light: { ground: [238, 240, 234], ink: [47, 138, 28], soft: [18, 21, 18], glow: 0.06, scan: 0, blend: 'source-over', halo: 0.18 },
+  dark: { ground: [5, 6, 5], ink: [52, 211, 153], soft: [238, 241, 234], glow: 0.075, scan: 0.03, blend: 'lighter', halo: 0.34 },
+  light: { ground: [238, 240, 234], ink: [5, 150, 105], soft: [18, 21, 18], glow: 0.06, scan: 0, blend: 'source-over', halo: 0.18 },
 };
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${clamp01(a)})`;
 
@@ -132,16 +119,21 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
   // the dot in the same place, a little above the middle, so the eye has one place to rest.
   const centre = () => ({ cx: w * 0.5, cy: h * 0.44, R: Math.min(h * 0.32, w * 0.16) });
   const drift = (p, t, k = 1) => [Math.sin(t * 0.5 + p.seed * 40) * 3 * k * p.z, Math.cos(t * 0.42 + p.seed2 * 40) * 2.4 * k * p.z];
-  // The `ready` picture's line: flat, the beat, flat, into the dot. `at(u)` walks it by its length.
+  // The `ready` picture's line: flat, then the logo's M (the rebranding, 2026-11-13), its right leg
+  // ending just above the dot, as in the logo. `at(u)` walks it by its length.
   const ON_LINE = 204;
+  const cub = (a, b, c, d, n) => Array.from({ length: n }, (_, i) => { const q = (i + 1) / n, r = 1 - q; return [r * r * r * a[0] + 3 * r * r * q * b[0] + 3 * r * q * q * c[0] + q * q * q * d[0], r * r * r * a[1] + 3 * r * r * q * b[1] + 3 * r * q * q * c[1] + q * q * q * d[1]]; });
+  const M_POINTS = [[20, 82], [20, 42], ...cub([20, 42], [20, 21], [41, 21], [46, 39], 12), [50, 52], [54, 39], ...cub([54, 39], [59, 21], [80, 21], [80, 42], 12), [80, 60]];
   function pulseLine() {
     const { cx, cy } = centre();
     const x0 = Math.max(18, w * 0.07);
-    const x1 = cx - 11;
-    const bw = Math.min(150, (x1 - x0) * 0.46);
-    const bx = x1 - bw - Math.min(40, (x1 - x0) * 0.12);
-    const amp = Math.min(30, h * 0.19);
-    const points = [[x0, cy], [bx, cy], ...BEAT.slice(1).map(([bx2, by]) => [bx + (bx2 / 19) * bw, cy + by * amp]), [x1, cy]];
+    // The M's top (its arches, 55 above the dot) stays inside the picture with room to spare: sized
+    // by the width alone it rose out of the card (2026-11-13).
+    const k = Math.min((cy - 16) / 55, (cx - x0) * 0.9 / 61);
+    const place = ([mx, my]) => [cx + (mx - 80) * k, cy + (my - 81) * k];
+    const m = M_POINTS.map(place);
+    const bx = m[0][0];
+    const points = [[x0, m[0][1]], ...m];
     const lengths = [0];
     for (let i = 1; i < points.length; i += 1) lengths.push(lengths[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
     const total = lengths[lengths.length - 1] || 1;
@@ -149,10 +141,10 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
       const d = clamp01(u) * total;
       let i = 1;
       while (i < lengths.length - 1 && lengths[i] < d) i += 1;
-      const k = (d - lengths[i - 1]) / ((lengths[i] - lengths[i - 1]) || 1);
-      return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * k, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * k];
+      const q = (d - lengths[i - 1]) / ((lengths[i] - lengths[i - 1]) || 1);
+      return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * q, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * q];
     };
-    return { x0, x1, bx, cy, at };
+    return { x0, x1: m[m.length - 1][0], bx, cy: m[0][1], at };
   }
   // The first message, after the line reaches the dot: a bubble opens to the right of it and its
   // words are written in, as the shape of text (never letters), with a caret that waits at the end.
@@ -324,8 +316,8 @@ export function createScene({ still = globalThis.matchMedia?.('(prefers-reduced-
       return [cx + Math.cos(ang) * r * 1.6 + dx, cy + Math.sin(ang) * r * 0.55 + dy, data.state === 'skip' ? 0.07 : 0.15, 0.8];
     },
     ready(p, t, data, age) {
-      // The logo's pulse, whole and continuous: almost every point is on it, laid by its length so the
-      // steep strokes of the beat are as full as the flat ones. It draws itself from the left into the
+      // The logo's M, whole and continuous: almost every point is on it, laid by its length so the
+      // steep strokes are as full as the flat ones. It draws itself from the left into the
       // dot; a few points keep arriving along it from the edge — the AIs feeding the project — and a
       // soft brightness runs along it the way a heartbeat travels. Then the first message (paintNote).
       const line = pulseLine();

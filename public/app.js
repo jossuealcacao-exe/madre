@@ -3,7 +3,7 @@
 import { archiveQuestion, modeAskedWithTime, MODE_WINDOWS, windowFor } from './routing.js';
 import { calledByName, abduct } from './abduction.js';
 import { brandOf, monogram } from './brands.js';
-import { installTips } from './tips.js';
+import { hideTip, installTips } from './tips.js';
 import { allConditions, detectPlatform, diagnose, findConditions, fixesFor, PLATFORMS } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
@@ -62,6 +62,9 @@ const SPLIT_CHAT = (() => {
     return asked.get('pane') === 'split' && /^[a-z0-9]+$/.test(id) ? id : null;
   } catch { return null; }
 })();
+// No tips in the second conversation (2026-11-13, the author: «very invasive»): it is a whole
+// conversation to read beside the first, not keys to learn; its keys keep their names for a reader.
+if (SPLIT_CHAT && globalThis.document?.documentElement) document.documentElement.dataset.tipOff = '';
 // A whole page looking at one conversation by its own address, `/?en=<id>`: how a phone moves
 // between conversations without moving the one the room has open on the Mac. Everything about a
 // conversation goes to the server with `chat=<id>`, as from the half on the right; the page keeps
@@ -656,7 +659,8 @@ function adoptTitle(node) {
   if (!node.hasAttribute('aria-label') && !node.textContent.trim()) node.setAttribute('aria-label', said);
   else if (!node.hasAttribute('aria-description')) node.setAttribute('aria-description', said);
 }
-const takeTitle = (event) => { const node = event.target?.closest?.('[title]'); if (node) adoptTitle(node); };
+// A frame's title is its name, not a tip: over a whole conversation it showed «Second chat» (2026-11-13).
+const takeTitle = (event) => { const node = event.target?.closest?.('[title]:not(iframe)'); if (node) adoptTitle(node); };
 document.addEventListener('pointerover', takeTitle, true);
 document.addEventListener('focusin', takeTitle, true);
 
@@ -1746,6 +1750,39 @@ function codeActionsFor(path, family, reading) {
   }
   modeButton?.before?.(code.besideButton);
   code.besideButton.before?.(code.views);
+  // READ, EDIT and OPEN RAW in a «⋯» when the header is too narrow for them (2026-11-13, the author:
+  // they moved from line to line as the panel narrowed). The keys stay where they are, out of sight,
+  // and do the work: the menu presses the one chosen.
+  code.more = el('button', 'code-more', '⋯');
+  code.more.type = 'button';
+  code.more.setAttribute('aria-haspopup', 'menu');
+  code.more.setAttribute('aria-expanded', 'false');
+  code.more.setAttribute('aria-label', t('More'));
+  const moreMenu = el('div', 'code-more-menu');
+  moreMenu.setAttribute('role', 'menu');
+  moreMenu.hidden = true;
+  const closeMore = () => { moreMenu.hidden = true; code.more.setAttribute('aria-expanded', 'false'); };
+  code.more.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (!moreMenu.hidden) { closeMore(); return; }
+    const keys = [...(editingSeg?.seg?.children ?? [])].filter((key) => !key.hidden);
+    moreMenu.replaceChildren(...keys.map((key) => {
+      const item = el('button', `code-more-item${key.getAttribute('aria-pressed') === 'true' ? ' on' : ''}`, key.textContent.replace(/\s*↗\s*$/, '').trim());
+      item.type = 'button';
+      item.setAttribute('role', 'menuitem');
+      item.addEventListener('click', () => { closeMore(); key.click(); });
+      return item;
+    }));
+    const at = code.more.getBoundingClientRect();
+    const box = viewer.dialog.getBoundingClientRect();
+    moreMenu.style.top = `${Math.round(at.bottom - box.top + 4)}px`;
+    moreMenu.style.right = `${Math.max(8, Math.round(box.right - at.right))}px`;
+    moreMenu.hidden = false;
+    code.more.setAttribute('aria-expanded', 'true');
+  });
+  document.addEventListener('pointerdown', (event) => { if (!moreMenu.hidden && !moreMenu.contains(event.target) && event.target !== code.more) closeMore(); }, true);
+  code.views.after?.(code.more);
+  viewer.dialog.append?.(moreMenu);
   if (typeof MutationObserver === 'function') new MutationObserver(() => syncCode()).observe(viewer.dialog, { attributes: true, attributeFilter: ['class', 'open'] });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => syncCode()).observe(viewer.dialog);
   code.button?.addEventListener('click', () => void toggleCode());
@@ -6053,9 +6090,7 @@ function renderAssistantMessage(event) {
     if (ash?.active) who.append(el('span', 'badge ash', t('Short answers')));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
-      const reply = el('span', 'reply', `↳ ${briefQuestion(question.text)}`);
-      reply.title = question.text;
-      who.append(reply);
+      who.append(replyLine(question.text));
     }
     col.append(who);
   }
@@ -6239,6 +6274,32 @@ function plainQuote(text) {
 
 // The line a reply answers, said short (2026-11-09): a place pointed at («⌖ :5180 (Python) / · view
 // 799 px · area 713×456 at (18, 92) · capture attached») reads as its server, then what was asked.
+// The line an answer answers, under its chips (2026-11-13, the author: «↳ ↩ @codex: …», two arrows
+// pointing at each other). One mark, then what was asked; a message written as a reply to an
+// answer (quoteHead: «↩ @codex: "…"» and the words after it) says whose answer, in its colour, and
+// the words the person wrote — or, with none, the words quoted.
+const REPLY_QUOTE = /^↩ @([\w.-]+)(?: #\d+)?: “([^”]*)”\s*([\s\S]*)$/;
+function replyLine(text) {
+  const said = String(text ?? '');
+  const line = el('span', 'reply');
+  const mark = el('i', 'reply-mark');
+  mark.setAttribute('aria-hidden', 'true');
+  mark.innerHTML = ICON_REPLY; // trusted: our own SVG string
+  line.append(mark);
+  const quoted = REPLY_QUOTE.exec(said);
+  if (quoted) {
+    const [, agent, words, rest] = quoted;
+    const to = paint(el('b', 'reply-to'), agent);
+    to.textContent = `@${agent}`;
+    line.append(to, ` ${rest.trim() ? briefQuestion(rest.trim()) : `“${words.length > 80 ? `${words.slice(0, 80)}…` : words}”`}`);
+  } else {
+    // Whose words this answer took as its context: the person's, said as «You» (2026-11-13: the tab
+    // shows how the context passes from one to the other — you to an AI, or an AI to another).
+    line.append(el('b', 'reply-to you', t('You')), ` ${briefQuestion(said)}`);
+  }
+  line.title = said;
+  return line;
+}
 function briefQuestion(text) {
   let said = String(text ?? '');
   const point = parsePointed(said);
@@ -8358,9 +8419,7 @@ function renderBishopAnswer(event) {
   const who = el('div', 'who');
   who.append(el('span', null, t('Coordinator')));
   if (question) {
-    const reply = el('span', 'reply', `↳ ${question.length > 90 ? `${question.slice(0, 90)}…` : question}`);
-    reply.title = question;
-    who.append(reply);
+    who.append(replyLine(question));
   }
   who.append(el('span', 'badge', t('through @{agent} · from Home', { agent })));
   col.append(who);
@@ -9179,6 +9238,27 @@ function groupRepeats(strip) {
     } else { lead = node; times = 1; }
   }
 }
+const stillMotion = () => Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+function morphStrip(strip, from, open) {
+  if (!from || stillMotion() || typeof strip.animate !== 'function') return;
+  const to = strip.getBoundingClientRect();
+  if (!to.width || !to.height) return;
+  strip.getAnimations?.().forEach((one) => one.cancel());
+  // Quicker and smoother (2026-11-13, the author): shorter, and the frosted glass rests while it
+  // moves — blurring what is behind a box that changes size every frame is what made it stutter.
+  strip.classList.add('morphing');
+  const grow = strip.animate([
+    { width: `${from.width}px`, height: `${from.height}px`, borderRadius: open ? '999px' : '16px' },
+    { width: `${to.width}px`, height: `${to.height}px`, borderRadius: open ? '16px' : '999px' },
+  ], { duration: open ? 190 : 150, easing: 'cubic-bezier(.25, .9, .3, 1)' });
+  const done = () => { strip.classList.remove('morphing'); };
+  grow.onfinish = done;
+  grow.oncancel = done;
+  if (!open) return;
+  [...strip.children].forEach((node, index) => {
+    node.animate?.([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 150, delay: 40 + Math.min(index, 6) * 16, easing: 'ease-out', fill: 'backwards' });
+  });
+}
 // The whole row opens at once, in order, and folds again on a click or Escape.
 function openStrip(strip, open = !strip.classList.contains('open')) {
   if (open) for (const other of els.column.querySelectorAll('.sys-dots.open')) if (other !== strip) openStrip(other, false);
@@ -9186,10 +9266,17 @@ function openStrip(strip, open = !strip.classList.contains('open')) {
   // scrolled away from under the click.
   const last = !strip.nextElementSibling;
   if (open && !last) setPinned(false);
+  // From the dot to the card and back as one movement (2026-11-13, the author: «improve how the dots
+  // open and close»): the row's size before and after, and it grows or shrinks between them, the
+  // notices coming in one after another when it opens.
+  const from = strip.getBoundingClientRect?.();
+  // A tip waiting on the row would come up for a row that is not there any more.
+  hideTip();
   strip.classList.toggle('open', open);
   for (const node of strip.querySelectorAll(':scope > .system.folded')) node.classList.remove('quiet');
   groupRepeats(strip);
   countStrip(strip);
+  morphStrip(strip, from, open);
   if (open) requestAnimationFrame(() => { ourScroll(900); strip.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); });
 }
 els.column.addEventListener('click', (event) => {
@@ -12152,9 +12239,13 @@ function seatDialog(surface) {
   }, true);
 }
 
+// Where each one was before it became a window: pressing the window key again takes it back there
+// (2026-11-13, the author: Files beside the conversation came back as a sheet over a dark page).
+const surfaceBefore = {};
 function setSurfaceMode(surface, next, { animate = true } = {}) {
   const node = surface.node();
   if (!node || modeOf(surface) === next) return;
+  if (next === 'window') surfaceBefore[surface.key] = modeOf(surface);
   // The sidebar is a sidebar in the chat shell: it shows and hides, it does not float.
   if (surface.key === 'chats' && next !== 'split' && chatShellOn()) return;
   if (next === 'split') noteBeside(surface.key);
@@ -12206,8 +12297,18 @@ function modeButtons({ side = 'right', split, window: floating, close = null }) 
   };
   const splitButton = make(side === 'left' ? SPLIT_LEFT_ICON : SPLIT_RIGHT_ICON, 'split');
   const windowButton = make(FLOAT_ICON, 'window');
-  splitButton.addEventListener('click', (event) => { event.stopPropagation(); split.run(); paint(); });
-  windowButton.addEventListener('click', (event) => { event.stopPropagation(); hideArrange(); floating.run(); paint(); });
+  // A double press is one press (2026-11-13, the author: pressed twice, the browser and Files wobbled):
+  // the second click of a double click, and any click while the last change is still moving, waits.
+  let movingUntil = 0;
+  const once = (event) => {
+    event.stopPropagation();
+    if (event.detail > 1 || performance.now() < movingUntil) return false;
+    movingUntil = performance.now() + 450;
+    return true;
+  };
+  splitButton.addEventListener('click', (event) => { if (!once(event)) return; split.run(); paint(); });
+  windowButton.addEventListener('click', (event) => { if (!once(event)) return; hideArrange(); floating.run(); paint(); });
+  for (const key of [splitButton, windowButton]) key.addEventListener('dblclick', (event) => { event.preventDefault(); event.stopPropagation(); });
   arrangeOnHover(windowButton, { owner: () => windowButton.closest(ARRANGE_OWNER), float: () => { if (!floating.on()) { floating.run(); paint(); } } });
   function paint() {
     const splitOn = Boolean(split.on());
@@ -12249,7 +12350,7 @@ function surfaceButtons(surface) {
     close: before,
     side: surface.side,
     split: { on: () => isSplit(surface), fits: () => sideFits(surface), run: () => setSurfaceMode(surface, isSplit(surface) ? 'base' : 'split'), label: (on) => (on ? t('Give it back its place') : t('Split the screen with it')) },
-    window: { on: () => isWindow(surface), run: () => setSurfaceMode(surface, isWindow(surface) ? 'base' : 'window'), label: (on) => (on ? t('Give it back its place') : t('Float it as a window')) },
+    window: { on: () => isWindow(surface), run: () => setSurfaceMode(surface, isWindow(surface) ? backFromWindow(surface) : 'window'), label: (on) => (on ? t('Give it back its place') : t('Float it as a window')) },
   });
   anchor.replaceWith(group);
   // In a console header the window's controls are the header's own, beside the title, not the
@@ -12257,6 +12358,14 @@ function surfaceButtons(surface) {
   // the controls stay at the top right, where every window keeps them.
   if (group.parentElement?.matches?.('.mother-actions')) node.querySelector(surface.head)?.append(group);
   surfacePaints.set(surface.key, [...(surfacePaints.get(surface.key) ?? []), paint]);
+}
+
+// Out of a window, back where it was: beside the conversation if it stood there (or, in the chat
+// shell, where the tools live, when there is room), else its own place.
+function backFromWindow(surface) {
+  const was = surfaceBefore[surface.key];
+  if (was && was !== 'window') return was;
+  return chatShellOn() && surface.side === 'right' && sideFits(surface) ? 'split' : 'base';
 }
 
 // A window is carried by its header's empty part, and only while it is a window.
@@ -13143,7 +13252,6 @@ function paintSplit() {
   const here = chats.list.find((chat) => chat.id === split.chat);
   if (split.title) {
     split.title.textContent = here?.title ?? '';
-    split.title.title = here?.title ?? '';
   }
   split.box.classList.toggle('working', Boolean(here?.working));
 }
@@ -13339,7 +13447,7 @@ function openConvWindow(id, { box = null, animate = true } = {}) {
     return button;
   };
   const frame = el('iframe', 'conv-frame');
-  frame.title = t('Conversation');
+  frame.setAttribute('aria-label', t('Conversation'));
   frame.src = `/?pane=split&chat=${encodeURIComponent(id)}`;
   const win = { node, title, frame, box: null };
   // The same two buttons as every surface: here the window is lit, and either one gives the
@@ -14003,7 +14111,7 @@ function boot() {
   stepsPaint();
   // The Coordinator's own project is a folder of MADRE's, named for the code («salas»): it says
   // who lives there instead. Its key (projectDesignation) is still the folder's name.
-  els.project.textContent = state.salas ? t('Coordinator') : (initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot);
+  els.project.textContent = state.salas ? t('Coordinator') : (initial.projectTitle || initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot);
   els.project.title = initial.projectRoot;
   // The sidebar's «this project» row was drawn before the name was known: it says it now.
   const hereRow = shellUI.projects?.querySelector('.side-project.here .side-project-name');

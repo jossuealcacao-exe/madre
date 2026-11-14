@@ -12,6 +12,7 @@
 import { browserLanguage, language, setLanguage, t } from './i18n.js';
 import { MADRE_LOGO, playOpening } from './loader.js';
 import { trazo } from './icons.js';
+import { createTermsField } from './terms-field.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -55,7 +56,9 @@ function askTerms(answer, done) {
   // The dialog's first focus goes to the card, never to a link or a key with the browser's ring on it.
   card.tabIndex = -1;
   card.setAttribute('autofocus', '');
-  dialog.append(card);
+  // Behind the card, over the window's right half: MADRE at work, in the abstract (terms-field.js).
+  const field = createTermsField();
+  dialog.append(field.node, card);
   // Esc is no answer here: without accepting, MADRE does not start.
   dialog.addEventListener('cancel', (event) => event.preventDefault());
   let diagnostics = answer.diagnosticsFixed ? false : answer.diagnostics !== false;
@@ -93,7 +96,7 @@ function askTerms(answer, done) {
     const title = el('h1', 'terms-title', returning ? (app ? t('The MADRE app has a license of its own') : t('MADRE 1.1 has a new license')) : t('Before you start'));
     title.id = 'terms-title';
     const lead = el('p', 'terms-lead', app
-      ? (returning ? t('On your computer, MADRE now comes as an app, with its own license of use. To keep using it, accept it and the privacy notice.') : t('Before you use MADRE, read and accept its license of use and its privacy notice.'))
+      ? (returning ? t('MADRE is still free for you, now under the app\'s personal license. To go on, accept it and the privacy notice.') : t('MADRE is free for you, under its personal license. Before you start, accept it and the privacy notice.'))
       : returning
         ? t('It is still free for you and for teams of up to 10 people. To keep using it, accept the license and the privacy notice.')
         : t('MADRE is free for you and for teams of up to 10 people, also when you use it to work for your clients.'));
@@ -121,9 +124,9 @@ function askTerms(answer, done) {
     about.append(points);
     const license = el('section', 'terms-block');
     license.append(
-      el('h2', null, app ? t('License of use') : t('Personal license')),
+      el('h2', null, t('Personal license')),
       el('p', null, app
-        ? t('You can install the MADRE app and use it on your computers, for yourself and for your work. Its code is private: it may not be copied, modified, taken apart or redistributed, and it is not offered as a service to others.')
+        ? t('Install it on your computers and use it in your projects, at no cost. What you make with it is yours. The license is for you as a person, and the app\'s code is private.')
         : t('You can use MADRE, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
       link(pick(answer.links?.license), t('Read the license')),
     );
@@ -131,9 +134,11 @@ function askTerms(answer, done) {
     const help = el('section', 'terms-block terms-help');
     const head = el('div', 'terms-help-head');
     const words = el('div');
+    // What is shared, what never is, and the one notice that always goes (2026-11-13, the author chose
+    // the closest of four ways to say it): the switch turns off everything but that daily notice.
     words.append(el('h2', null, t('Help make MADRE better')), el('p', null, returning
-      ? t('MADRE is made by one person. From this version your copy can share its errors with me anonymously, so the next versions fix first what fails for you. It is optional and you can turn it off whenever you like in Settings.')
-      : t('MADRE is made by one person. Your copy can share its errors with me anonymously, so each version fixes first what fails for you. It is optional and you can turn it off whenever you like in Settings.')));
+      ? t('MADRE is made by one person, and from this version you can help me know what to fix first. If you leave it on, your copy tells me anonymously what fails and which features you use. It never sees your files, your projects or what you write.')
+      : t('MADRE is made by one person, and you help me know what to fix first. If you leave it on, your copy tells me anonymously what fails and which features you use. It never sees your files, your projects or what you write.')));
     const knob = el('button', 'terms-switch');
     knob.type = 'button';
     knob.setAttribute('role', 'switch');
@@ -146,12 +151,12 @@ function askTerms(answer, done) {
       said.replaceChildren();
       if (answer.diagnosticsFixed) said.append(t('Off: MADRE was started with PULSE_TELEMETRY=0.'));
       else if (diagnostics) said.append(link(pick(answer.links?.privacy), t('See what is sent')));
-      else said.append(t('Off: the author will not know when something fails for you, and it may take longer to fix.'));
+      else said.append(t('Off. MADRE works the same; it will just take me longer to find out if something fails for you.'));
     };
     knob.addEventListener('click', () => { diagnostics = !diagnostics; paintKnob(); });
     paintKnob();
     head.append(words, knob);
-    help.append(head, said);
+    help.append(head, el('p', 'terms-said terms-daily', t('Apart from that, once a day MADRE says it is still in use, with its version and its system.')), said);
 
     const foot = el('p', 'terms-foot');
     foot.append(t('By continuing you accept MADRE\'s'), ' ', link(pick(answer.links?.license), t('license')), ' ', t('and its'), ' ', link(pick(answer.links?.privacy), t('privacy notice')), '.');
@@ -174,10 +179,11 @@ function askTerms(answer, done) {
       // came after it, with the welcome. The veil goes back over the page until the welcome opens or
       // Home is drawn (bootDone); the welcome does not play the opening again (openingPlayed).
       card.style.visibility = 'hidden';
-      await playOpening(dialog, { skipLabel: t('Skip') });
+      // The opening takes up the smoke where it is (terms-field.js), and condenses it.
+      await playOpening(dialog, { skipLabel: t('Skip'), from: field.smoke?.() ?? null });
       veilPage();
       dialog.classList.add('leaving');
-      setTimeout(() => { dialog.close(); dialog.remove(); done(); }, 260);
+      setTimeout(() => { field.stop(); dialog.close(); dialog.remove(); done(); }, 260);
     });
     actions.append(no, yes);
     card.append(tongue, logo, title, lead, ...(returning ? [] : [about]), license, help, foot, error, actions);
@@ -215,4 +221,5 @@ function askTerms(answer, done) {
   paintAsk();
   document.body.append(dialog);
   if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+  field.start();
 }

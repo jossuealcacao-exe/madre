@@ -34,16 +34,16 @@ test('welcome 1.1 · the stage is abstract, in the brand book\'s colours, light 
   const { createScene } = await import('../public/welcome-scene.js');
   assert.equal(typeof createScene, 'function');
   // Both looks, from the brand book: phosphor on near-black, and the light phosphor on a pale ground.
-  assert.match(scene, /dark: \{ ground: \[5, 6, 5\], ink: \[155, 255, 102\]/);
-  assert.match(scene, /light: \{ ground: \[238, 240, 234\], ink: \[47, 138, 28\]/);
+  assert.match(scene, /dark: \{ ground: \[5, 6, 5\], ink: \[52, 211, 153\]/);
+  assert.match(scene, /light: \{ ground: \[238, 240, 234\], ink: \[5, 150, 105\]/);
   // It reads the look the page has on, and follows it when it changes.
   assert.match(scene, /document\.documentElement\.dataset\.scheme === 'light'/);
   assert.match(scene, /attributeFilter: \['data-scheme'\]/);
   assert.match(scene, /prefers-reduced-motion: reduce/);
   // Abstract: no words, no logos, no images of things drawn on it.
   assert.doesNotMatch(scene, /fillText|drawImage\(image|markImage|shadowBlur/);
-  // The logo's beat, for the last picture.
-  assert.match(scene, /const BEAT = \[\[0, 0\], \[3\.5, -1\], \[8, 1\], \[12, 0\], \[15, 0\], \[17, -0\.5\], \[19, 0\]\];/);
+  // The logo's M (the rebranding, 2026-11-13), for the last picture.
+  assert.match(scene, /const M_POINTS = \[\[20, 82\], \[20, 42\], \.\.\.cub\(\[20, 42\], \[20, 21\], \[41, 21\], \[46, 39\], 12\), \[50, 52\], \[54, 39\]/);
   // Every picture the welcome asks for is drawn.
   const welcome = await pub('welcome.js');
   const asked = new Set([...welcome.matchAll(/\{ id: '(hello|use|agents|project|ai|ready)', data/g)].map((match) => match[1]));
@@ -52,7 +52,7 @@ test('welcome 1.1 · the stage is abstract, in the brand book\'s colours, light 
   // Served like every module of the page, and its frame follows the look too.
   assert.match(await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8'), /'\/welcome\.js', '\/welcome-scene\.js'/);
   const css = await readFile(join(import.meta.dirname, '..', 'public', 'salas-mac.css'), 'utf8');
-  assert.match(css, /:root\[data-scheme="light"\] \.wl-scene \{ --scene-ground: #eef0ea; --scene-ink: #2f8a1c;/);
+  assert.match(css, /:root\[data-scheme="light"\] \.wl-scene \{ --scene-ground: #eef0ea; --scene-ink: #059669;/);
 });
 
 test('welcome 1.1 · the folders other tools know come along, read for their paths and nothing else', async () => {

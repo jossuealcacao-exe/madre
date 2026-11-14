@@ -5,7 +5,7 @@
    the accent, and the edges of the screen kept clear of the notch and the home bar. */
 body.salas {
   --s-acc: var(--acc, var(--phosphor));
-  --s-acc-ink: var(--acc-ink, var(--phosphor-ink, #0a1405));
+  --s-acc-ink: var(--acc-ink, var(--phosphor-ink, #022c22));
   min-height: 100dvh; margin: 0; background: var(--bg); color: var(--text);
   font-family: var(--read); font-size: 15px; line-height: 1.45;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -14,7 +14,7 @@ body.salas {
 .salas-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 14px 18px 12px; background: color-mix(in srgb, var(--bg) 92%, transparent); }
 /* The brand as the bar draws it on the Mac, drawn once and then still. */
 .salas-brand { display: inline-flex; align-items: center; flex: none; }
-.salas-brand .brand-logo { height: 15px; }
+.salas-brand .brand-logo { height: 20px; }
 .salas-mac { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-2); }
 .salas-stop { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 11px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--terror, #ff4d4d) 14%, transparent); color: var(--terror, #ff4d4d); font-size: 13px !important; font-weight: 600; cursor: pointer; }
 .salas-stop svg { width: 15px; height: 15px; }

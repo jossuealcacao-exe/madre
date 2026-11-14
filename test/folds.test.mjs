@@ -93,9 +93,9 @@ test('mother: the panel reads as a terminal, and nothing in it is drawn in the p
   // NOSTROMO has a red phosphor of its own, so this is the panel's, not the first one found.
   const panel = css.match(/\n\s*\/\* Terminal\.app's Homebrew profile[^\n]*\n\s*--ph: (#[0-9a-f]{6});/i);
   assert.ok(panel, 'the panel has no phosphor of its own');
-  assert.equal(panel[1].toLowerCase(), '#28fe14');
+  assert.equal(panel[1].toLowerCase(), '#34d399');
   const brew = css.match(/--brew: (#[0-9a-f]{6});/i);
-  assert.equal(brew[1].toLowerCase(), '#28fe14', 'the panel and the terminal green have drifted apart');
+  assert.equal(brew[1].toLowerCase(), '#34d399', 'the panel and the terminal green have drifted apart');
 
   // Every field in these forms is drawn in phosphor on black. A textarea was left out of that
   // rule, so what you typed into it was invisible; nothing may be left out again.
@@ -116,7 +116,7 @@ test('mother: a chosen mode wears its own colour, and the rows line up', async (
   // The red that used to be painted onto #3 alone. It still belongs elsewhere, so the check is
   // of the mode chips rather than of the whole stylesheet.
   const chips = css.slice(css.indexOf('.conn-card .seg {'), css.indexOf('.conn-card .seg-option:disabled'));
-  assert.ok(!/#[0-9a-f]{6}/i.test(chips.replace(/--mode-ink, #041004/g, '')), 'a mode chip still carries a colour of its own instead of the mode\'s');
+  assert.ok(!/#[0-9a-f]{6}/i.test(chips.replace(/--mode-ink, #022c22/g, '')), 'a mode chip still carries a colour of its own instead of the mode\'s');
   for (const n of [0, 1, 2, 3, 4]) {
     assert.match(css, new RegExp(`\\.conn-card \\.seg-option\\.o${n} \\{[^}]*--mode: var\\(--mode-${n}\\)`), `mode ${n} does not carry its own colour`);
   }

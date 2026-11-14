@@ -27,7 +27,8 @@ import { compareVersions } from './updates.mjs';
 export const PRESENCE_URL = 'https://madre.run/api/presence';
 export const PRESENCE_EVERY_MS = 5 * 60 * 1000;
 const KEY_PART = /^[a-z0-9][a-z0-9-]{0,30}$/;
-const CHANNELS = new Set(['npx', 'global', 'project', 'source']);
+// «app»: the desktop app (MADRE_APP=1, src/updates.mjs), counted apart since 2026-11-13.
+const CHANNELS = new Set(['npx', 'global', 'project', 'source', 'app']);
 const SHELLS = new Set(['zsh', 'bash', 'fish', 'sh', 'pwsh', 'powershell', 'nu', 'dash', 'ksh', 'tcsh']);
 const GB = 1024 ** 3;
 

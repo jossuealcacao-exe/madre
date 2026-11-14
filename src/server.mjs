@@ -155,7 +155,7 @@ import { heartbeat, installId } from './heartbeat.mjs';
 import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
 import { acceptTerms, cameFromBefore, readTerms, termsLinks } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
-import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
+import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, projectTitle, renameProject, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { UNIT_NAME, disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
@@ -2672,7 +2672,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/missions.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/missions.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/terms-field.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -2720,6 +2720,9 @@ export async function createPulseServer({
         ['/assets/brand/Geist-latin-ext.woff2', 'font/woff2'],
         ['/assets/brand/GeistMono-latin.woff2', 'font/woff2'],
         ['/assets/brand/GeistMono-latin-ext.woff2', 'font/woff2'],
+        ['/assets/brand/SpaceGrotesk-latin.woff2', 'font/woff2'],
+        ['/assets/brand/SpaceGrotesk-latin-ext.woff2', 'font/woff2'],
+        ['/assets/brand/OFL-SpaceGrotesk.txt', 'text/plain; charset=utf-8'],
         ['/assets/brand/OFL-Geist.txt', 'text/plain; charset=utf-8'],
         ['/assets/brand/OFL-GeistMono.txt', 'text/plain; charset=utf-8'],
         ['/assets/brand/OFL-Sora.txt', 'text/plain; charset=utf-8'],
@@ -3636,6 +3639,19 @@ export async function createPulseServer({
       // adding one is. Never the Coordinator's own, never the room that is asked. Open, it is closed
       // first; its connections end with it, so none is left pointing at a project MADRE no longer
       // knows; then its record goes aside (forgetProject). Its folder on the Mac is not touched.
+      // A name of the person's own for a project, from Home (2026-11-13). Its folder keeps its name.
+      if (request.method === 'POST' && url.pathname === '/api/salas/rename') {
+        const host = String(request.headers.host ?? '');
+        const site = request.headers['sec-fetch-site'];
+        if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('This is done from Home, on this Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const id = String(payload.room ?? '');
+        if (id === salasRoomId(root)) return sendJson(response, 422, { error: t('The Coordinator keeps its name.') });
+        if (!(await knownRooms(root)).some((one) => one.id === id)) return sendJson(response, 404, { error: t('MADRE does not know that project on this Mac.') });
+        const renamed = await renameProject({ stateRoot: root, id, title: payload.name });
+        if (renamed.error) return sendJson(response, 404, { error: t('MADRE does not know that project on this Mac.') });
+        return sendJson(response, 200, renamed);
+      }
       if (request.method === 'POST' && url.pathname === '/api/salas/forget') {
         const host = String(request.headers.host ?? '');
         const site = request.headers['sec-fetch-site'];
@@ -3692,6 +3708,8 @@ export async function createPulseServer({
           // The project's name as this system writes paths (WEB-11): the page cut it at «/», and on
           // Windows the name was the whole path, so the key for #3 never matched.
           projectName: basename(canonicalProjectRoot),
+          // The name the person gave it in Home, if any (2026-11-13): shown in place of the folder's.
+          projectTitle: await projectTitle(roomDir).catch(() => null),
           // The column Diagnostics reads its commands from (public/troubleshooting.js): WSL is Linux
           // inside Windows, and says so (2026-10-28).
           platform: await environmentOnce().then((one) => (one?.wsl ? 'wsl' : process.platform), () => process.platform),

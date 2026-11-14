@@ -327,7 +327,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       item.append(key);
       list.append(item);
     });
-    railBody.replaceChildren(list, el('p', 'wl-rail-foot', t('It takes about three minutes. What takes long to download keeps downloading while you go on.')));
+    railBody.replaceChildren(list, el('p', 'wl-rail-foot', t('It takes about three minutes. If something takes a while to download, go on with the steps: it finishes on its own.')));
   }
 
   // ---- The parts every step is made of.
@@ -436,16 +436,29 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const env = s.env ?? {};
     const hw = facts();
     const grid = el('div', 'wl-facts');
-    const fact = (label, value) => { if (!value) return; const box = el('div', 'wl-fact'); box.append(el('small', null, label), el('b', null, value)); grid.append(box); };
-    fact(t('Where MADRE runs'), placeWords());
-    fact(t('System'), env.name ?? (env.os === 'macos' ? 'macOS' : env.os === 'linux' ? 'Linux' : env.os ?? null));
-    fact(t('Processor'), hw.chip ?? (hw.cores ? t('{n} cores', { n: hw.cores }) : null));
-    fact(t('Memory'), hw.memoryGb ? `${number(hw.memoryGb)} GB` : null);
-    fact(t('Graphics card'), graphicsWords());
-    fact(t('Free space'), env.disk ? t('{n} GB free', { n: number(env.disk.freeGb) }) : null);
+    // Each thing found says what it means for the person, not only what it is (2026-11-13: a list of
+    // parts read as a technician's report).
+    const fact = (label, value, means = null) => {
+      if (!value) return;
+      const box = el('div', 'wl-fact');
+      box.append(el('small', null, label), el('b', null, value));
+      if (means) box.append(el('span', null, means));
+      grid.append(box);
+    };
+    fact(t('Where MADRE runs'), placeWords(), t('Your files and your chats stay here.'));
+    fact(t('System'), env.name ?? (env.os === 'macos' ? 'macOS' : env.os === 'linux' ? 'Linux' : env.os ?? null), t('So MADRE downloads what matches your computer.'));
+    fact(t('Processor'), hw.chip ?? (hw.cores ? t('{n} cores', { n: hw.cores }) : null), t('It does the work of your own AI.'));
+    fact(t('Memory'), hw.memoryGb ? `${number(hw.memoryGb)} GB` : null, t('The more memory, the bigger and smarter the AI that fits.'));
+    fact(t('Graphics card'), graphicsWords(), hw.accelerator === 'apple' ? null : t('With one, your own AI answers faster.'));
+    fact(t('Free space'), env.disk ? t('{n} GB free', { n: number(env.disk.freeGb) }) : null, t('An AI of your own takes between 1 and 20 GB.'));
     const fold = el('details', 'wl-more');
     fold.addEventListener('toggle', () => { if (fold.open) reveal(fold); });
-    fold.append(el('summary', null, t('See what we found on your computer')), grid, el('p', 'wl-tiny', t('This never leaves your computer. We only use it to know which AI fits.')));
+    fold.append(
+      el('summary', null, t('What MADRE checked on your computer')),
+      el('p', 'wl-facts-lead', t('MADRE can have an AI of its own that works without internet. To know which one fits your computer, it checked this:')),
+      grid,
+      el('p', 'wl-tiny', t('None of this leaves your computer.')),
+    );
     return fold;
   }
   // What only some places need to know, said in the greeting so nothing surprises later.

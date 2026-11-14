@@ -7,7 +7,7 @@
 // the checkpoint afterwards. A CLI that respects the filesystem cannot touch
 // them; one that chmods its way through is caught by the checkpoint anyway.
 
-import { chmod, lstat, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { isForbidden } from '../checkpoint.mjs';
 import { writeWhole } from '../json-file.mjs';
@@ -51,6 +51,13 @@ const KEEP_AT_MOST = 1024 * 1024;
 // back (restoreGuard) and gives them their modes again.
 export async function guardForbidden(projectRoot, { record = null } = {}) {
   const targets = await forbiddenTargets(projectRoot);
+  // The folder the other AIs write their work in (.pulse/out, src/lease.mjs LEASE_ROOT) is made before
+  // .pulse/ is locked: an AI with #2 asked while another held #3 found .pulse/ read-only and MADRE
+  // could not make it (EACCES, 2026-11-13, @gemini while @codex had full access). .pulse/ itself stays
+  // locked; out/ inside it keeps its own write bit, as it is meant to be written in.
+  if (targets.some((target) => target.kind === 'dir' && relative(projectRoot, target.path) === '.pulse')) {
+    await mkdir(join(projectRoot, '.pulse', 'out'), { recursive: true, mode: 0o755 }).catch(() => {});
+  }
   const locked = [];
   const kept = [];
   for (const target of targets) {

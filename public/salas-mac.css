@@ -60,7 +60,7 @@ body.salas-mac {
 .sm-tb-home { margin-left: 0; }
 .sm-tb-home { flex: none; gap: 6px; padding: 9px 10px; }
 .sm-brand { display: inline-flex; align-items: center; flex: none; color: var(--text); border-radius: 8px; padding: 4px 2px; }
-.sm-brand .brand-logo { height: 15px; }
+.sm-brand .brand-logo { height: 20px; }
 .sm-back-room { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 26px; padding: 0 9px 0 5px; border-radius: 6px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); color: var(--text-2); font-weight: 600; text-decoration: none; }
 .sm-back-room svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-back-room:hover { color: var(--text); box-shadow: var(--key-over, var(--key-rest)); }
@@ -119,7 +119,7 @@ body.salas-mac {
   .sm-topbar { gap: 8px; height: 44px; padding: 8px 10px; border-radius: 16px; }
   .sm-tb-home { gap: 4px; padding: 8px; }
   .sm-brand { width: 40px; overflow: hidden; }
-  .sm-brand .brand-logo { height: 14px; }
+  .sm-brand .brand-logo { height: 18px; }
   .sm-barkey { padding: 0 8px; }
 }
 @media (max-width: 560px) { #sm-reload { display: none; } }
@@ -433,7 +433,7 @@ body.sm-in-macro { overflow: hidden; }
 /* The macroverse's space is night in either theme and what is drawn on it is light; its keys
    are the room's in the theme you chose (2026-10-10), with the accent as the night wears it where
    something is chosen (salas-mac.js, darkAccent and its ink). */
-.mv { --s-acc: var(--mv-acc, #9bff66); --s-acc-ink: var(--mv-acc-ink, #0a1405); }
+.mv { --s-acc: var(--mv-acc, #34d399); --s-acc-ink: var(--mv-acc-ink, #022c22); }
 .mv.leaving { animation: mv-out 260ms ease-in forwards; }
 @keyframes mv-in { from { opacity: 0; transform: scale(1.04); } }
 @keyframes mv-out { to { opacity: 0; transform: scale(1.03); } }
@@ -974,7 +974,7 @@ dialog.sm-sheet.sm-invite { --sm-sheet-w: 520px; }
 .sm-w-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 13px; }
 .sm-w-row b { font-family: var(--mono); font-size: 12.5px; }
 .sm-w-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
-.sm-w-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--session-ok, #3f9b3a); }
+.sm-w-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--session-ok, #10b981); }
 .sm-w-row.bad .sm-w-dot { background: var(--session-bad, #d9493a); }
 .sm-w-project { display: grid; gap: 5px; }
 .sm-w-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -1555,7 +1555,7 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 .sm-tb-open > .sm-tb-room:not(.is-more):not(.sm-tb-slot) > i { display: none; }
 .sm-tb-open > .sm-tb-room:not(.is-asleep):not(.is-waking):not(.is-more):not(.sm-tb-slot) {
   background: linear-gradient(160deg, color-mix(in oklab, var(--acc, var(--s-acc)) 82%, #ffffff) 0%, var(--acc, var(--s-acc)) 60%, color-mix(in oklab, var(--acc, var(--s-acc)) 84%, #000000) 100%);
-  color: var(--acc-ink, #0a1405);
+  color: var(--acc-ink, #022c22);
   font-weight: 650;
   box-shadow: 0 1px 2px rgba(0, 0, 0, .18), 0 0 0 .5px color-mix(in srgb, var(--acc, var(--s-acc)) 60%, transparent);
 }
@@ -1642,7 +1642,7 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 .sm-rumbo-n { font-size: 13px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
 .sm-rumbo-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-3) !important; }
 .sm-rumbo-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-3); }
-.is-good > .sm-rumbo-dot { background: var(--session-ok, #3f9b3a); }
+.is-good > .sm-rumbo-dot { background: var(--session-ok, #10b981); }
 .is-watch > .sm-rumbo-dot { background: var(--session-wait, #d9a90f); }
 .is-bad > .sm-rumbo-dot { background: var(--session-bad, #d9493a); }
 .is-info > .sm-rumbo-dot { background: color-mix(in srgb, var(--s-acc) 70%, transparent); }
@@ -1654,7 +1654,7 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 .sm-rumbo-decision-words > span { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 .sm-rumbo-bars { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .sm-rumbo-bars small { font-size: 11.5px !important; color: var(--text-3) !important; font-variant-numeric: tabular-nums; }
-.sm-rumbo-bars small.met { color: var(--session-ok, #3f9b3a) !important; }
+.sm-rumbo-bars small.met { color: var(--session-ok, #10b981) !important; }
 .sm-rumbo-vars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; }
 @media (max-width: 900px) { .sm-rumbo-vars { grid-template-columns: minmax(0, 1fr); } }
 .sm-rumbo-group { grid-column: 1 / -1; margin-top: 6px; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
@@ -1747,7 +1747,7 @@ html.home-shell .sm-side {
 }
 html.home-shell.home-side .sm-side { transform: none; visibility: visible; transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
 html.home-shell .sm-side .side-brand { display: inline-flex; align-items: center; margin-left: 6px; padding: 4px 2px; border-radius: 6px; color: var(--text); }
-html.home-shell .sm-side .side-brand .brand-logo { height: 13px; }
+html.home-shell .sm-side .side-brand .brand-logo { height: 17px; }
 html.home-shell .sm-side .side-grow { flex: 1; }
 html.home-shell .sm-side .side-row[aria-current="page"] { background: var(--cs-sel); font-weight: 500; }
 html.home-shell .sm-side .side-row[aria-current="page"] svg { color: var(--text); }
@@ -1983,7 +1983,7 @@ dialog.wl::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: b
 .wl-window { position: relative; width: min(980px, 100%); height: min(680px, calc(100dvh - 48px)); display: grid; grid-template-columns: 236px minmax(0, 1fr); border-radius: 14px; overflow: hidden; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line), 0 34px 90px -30px rgba(0, 0, 0, .55), 0 8px 24px -8px rgba(0, 0, 0, .25); }
 .wl-rail { display: flex; flex-direction: column; gap: 2px; min-height: 0; padding: 16px 10px; background: var(--wl-side); box-shadow: inset -1px 0 0 var(--wl-line); }
 .wl-brand { display: flex; align-items: center; padding: 4px 10px 16px; }
-.wl-brand .brand-logo { height: 14px; }
+.wl-brand .brand-logo { height: 18px; }
 .wl-rail-body { display: contents; }
 /* After the opening the rail's logo is already drawn: it stays still. */
 .wl-brand.still .brand-logo .beat { animation: none; stroke-dashoffset: 0; }
@@ -2121,9 +2121,9 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 /* THE WELCOME OF 1.1 (2026-11-08, docs/private/BIENVENIDA-1.1.md). Above each step an abstract stage
    (welcome-scene.js) in the brand book's colours, dark or light as the look on is; under it, one
    question per step. */
-.wl-scene { --scene-ground: #050605; --scene-ink: #9bff66; --scene-cap: #9aa197; --scene-edge: rgba(238, 241, 234, .06); position: relative; justify-self: stretch; width: 100%; height: 176px; margin: 0 0 6px; border-radius: 16px; overflow: hidden; background: var(--scene-ground); box-shadow: 0 0 0 1px var(--scene-edge); }
+.wl-scene { --scene-ground: #050605; --scene-ink: #34d399; --scene-cap: #9aa197; --scene-edge: rgba(238, 241, 234, .06); position: relative; justify-self: stretch; width: 100%; height: 176px; margin: 0 0 6px; border-radius: 16px; overflow: hidden; background: var(--scene-ground); box-shadow: 0 0 0 1px var(--scene-edge); }
 /* It follows the look on (welcome-scene.js reads the same data-scheme): ink on a pale ground in the light. */
-:root[data-scheme="light"] .wl-scene { --scene-ground: #eef0ea; --scene-ink: #2f8a1c; --scene-cap: #5d635b; --scene-edge: rgba(18, 21, 18, .07); }
+:root[data-scheme="light"] .wl-scene { --scene-ground: #eef0ea; --scene-ink: #059669; --scene-cap: #5d635b; --scene-edge: rgba(18, 21, 18, .07); }
 .wl-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .wl-scene-cap { position: absolute; left: 16px; right: 16px; bottom: 12px; display: flex; align-items: center; gap: 9px; margin: 0; color: var(--scene-cap); font: 450 12.5px/1.35 var(--read); pointer-events: none; }
 .wl-scene-cap::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--scene-ink); }
@@ -2443,7 +2443,7 @@ html.home-shell dialog.sm-add-framed .sm-sheet-head .surface-modes { position: a
 .sm-fail > :not(summary) { margin: 0 10px 8px; }
 .sm-fail-frames { display: block; white-space: pre; font: 450 11.5px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); }
 .sm-fail-keys { display: flex; gap: 6px; }
-.sm-fail-keys .sm-btn.on { background: var(--s-acc, var(--phosphor)); color: var(--s-acc-ink, #0a1405); }
+.sm-fail-keys .sm-btn.on { background: var(--s-acc, var(--phosphor)); color: var(--s-acc-ink, #022c22); }
 
 /* What is new, on Home (2026-10-28, salas-mac.js homeNews): each card says its whole line — they are
    short, and a cut sentence read as a missing one. */
@@ -2620,3 +2620,37 @@ dialog.sm-app-choice h3 { margin: 0 0 8px; font-size: 23px; font-weight: 700; le
 .sm-app-option-icon svg { width: 18px; height: 18px; }
 .sm-app-option-words b { display: block; margin: 1px 0 5px; font-size: 14.5px; font-weight: 650; }
 .sm-app-option-lines { display: grid; gap: 2px; color: var(--text-2); font-size: 12.5px; line-height: 1.45; }
+
+/* ---- The welcome, 2026-11-13 (the author): its icons with no edge, as in «Before you start»; its
+   section names in the welcome's own type, not code type in capitals; each thing found on the
+   computer says what it means. ---- */
+:is(.wl-tile-icon, .wl-idea-icon, .wl-make-icon, .wl-inhome-icon),
+:root[data-scheme="dark"] :is(.wl-tile-icon, .wl-idea-icon, .wl-make-icon, .wl-inhome-icon),
+.wl-tile[aria-pressed="true"] .wl-tile-icon, .wl-make-idea[aria-pressed="true"] .wl-make-icon { box-shadow: none; }
+.wl-section { font: 600 13.5px/1.3 var(--read); letter-spacing: -.005em; text-transform: none; color: var(--text-2); }
+.wl-facts-lead { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.wl-fact span { display: block; margin-top: 4px; font-size: 12px; line-height: 1.4; color: var(--text-3); }
+
+/* The projects in a Modules card, small, inside the card (2026-11-13, the author): a long name ends in
+   «…» instead of running past the card's edge, and a module in several projects shows them as small
+   chips that wrap, all inside. The whole name stays in the chip's tip. */
+html.home-shell .mk.flat .mk-mine .mk-card { min-width: 0; overflow: hidden; }
+html.home-shell .mk.flat .mk-mine :is(.mk-chips, .mk-card-foot) { min-width: 0; max-width: 100%; }
+html.home-shell .mk.flat .mk-mine .mk-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+html.home-shell .mk.flat .mk-mine .mk-chip { display: inline-block; flex: 0 1 auto; min-width: 0; max-width: 100%; height: 22px; padding: 0 8px; font: 500 11.5px/22px var(--read); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The map's card is always dark glass, whatever the look (2026-11-13, the author: its keys did not
+   read): the accent key filled, the others light on the glass, all the same height and type. */
+.mv-actions { gap: 8px; align-items: center; }
+.mv-card .mv-actions .sm-btn { height: 32px; padding: 0 14px; border-radius: 10px; font: 600 13px/1 var(--read); letter-spacing: 0; text-decoration: none; box-shadow: none; transition: background-color .16s ease, color .16s ease; }
+.mv-card .mv-actions .sm-btn.primary { background: #34d399; color: #022c22; }
+.mv-card .mv-actions .sm-btn.primary:hover { background: #4fdcaa; }
+.mv-card .mv-actions .sm-btn.ghost { background: rgba(255, 255, 255, .08); color: rgba(242, 241, 238, .92); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.mv-card .mv-actions .sm-btn.ghost:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.mv-card .mv-actions .sm-btn:focus-visible { outline: 2px solid rgba(52, 211, 153, .7); outline-offset: 2px; }
+
+/* A project's name written in place (2026-11-13): the same size as the name, in the well every field
+   of MADRE has. */
+.sm-card-head .sm-rename { flex: 1 1 auto; min-width: 0; height: 30px; margin: -3px 0; padding: 0 9px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-shadow: inset 0 1px 2px rgba(20, 30, 20, .12), 0 0 0 2px color-mix(in srgb, var(--s-acc, var(--phosphor)) 45%, transparent); color: var(--text); font: 600 15px var(--read); outline: none; }
+:root[data-scheme="dark"] .sm-card-head .sm-rename { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35), 0 0 0 2px color-mix(in srgb, var(--s-acc, var(--phosphor)) 45%, transparent); }

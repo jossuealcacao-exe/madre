@@ -183,7 +183,7 @@ function paintStars(seed, count, biggest, dpr) {
   return { canvas, side };
 }
 
-export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bff66', accentInk = '#0a1405', bishop = null, words, actions, neural: neuralStart = false }) {
+export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#34d399', accentInk = '#022c22', bishop = null, words, actions, neural: neuralStart = false }) {
   const reduced = reducedMotion();
   const layer = document.createElement('section');
   layer.className = 'mv';

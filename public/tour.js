@@ -32,6 +32,9 @@ const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-red
 // Up, turned for down: the way to a hint whose place is out of view.
 const ARROW_UP = trazo('arrow-up');
 const CLOSE_ICON = trazo('close');
+// The × of every window of MADRE (2026-11-13): the same key, in the same channel, as the Market's,
+// Modules' and Settings' — not a round plate of its own.
+const closeKeys = (close) => { const keys = document.createElement('span'); keys.className = 'surface-modes window-close'; keys.append(close); return keys; };
 const FOLDER = '<svg viewBox="0 0 32 26" aria-hidden="true"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h7.2l3 3.2h12.8A2.5 2.5 0 0 1 30 8.7v12.8a2.5 2.5 0 0 1-2.5 2.5h-23A2.5 2.5 0 0 1 2 21.5z" fill="currentColor"/></svg>';
 const ROBOT = trazo('robot');
 
@@ -389,10 +392,10 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     logo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
     words.append(logo, el('span', 'wn-eyebrow'), title);
     // The ✕ every window of MADRE has (1.1): it turns and goes red under the pointer.
-    const close = key('tour-close x-close x-only', null, () => windowNode.close());
+    const close = key('surface-mode close x-close x-only', null, () => windowNode.close());
     close.innerHTML = `<span class="x-icon">${CLOSE_ICON}</span>`; // trusted: our own SVG string
     close.setAttribute('aria-label', t('Close'));
-    head.append(words, close);
+    head.append(words, closeKeys(close));
     const body = el('div', 'tour-body');
     const nav = el('ol', 'tour-nav');
     nav.setAttribute('aria-label', t('Chapters'));
@@ -505,7 +508,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     page2.append(scene, words);
     main.replaceChildren(page2);
     main.scrollTop = 0;
-    acts.querySelector('.tour-btn.primary')?.focus({ preventScroll: true });
+    // Ready for ↵, not shown as chosen: no ring until the keyboard is used (2026-11-13).
+    focusQuietly(acts.querySelector('.tour-btn.primary'));
   }
 
   // The key that goes on holds the focus, so ↵ presses it, without wearing the focus ring nobody
@@ -517,7 +521,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const wake = () => button.classList.remove('quiet-focus');
     button.addEventListener('keydown', wake, { once: true });
     button.addEventListener('blur', wake, { once: true });
-    button.focus({ focusVisible: false });
+    button.focus({ focusVisible: false, preventScroll: true });
   }
   // ---- `?`: the sheet of gestures, anywhere. Its keys are the keyboard's in front of the person:
   // ⌘ on a Mac, Ctrl+ anywhere else.
@@ -545,10 +549,10 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
       const title = el('h2', null, t('Gestures and shortcuts'));
       title.id = 'tour-gestures-title';
       words.append(title);
-      const close = key('tour-close x-close x-only', null, () => sheetNode.close());
+      const close = key('surface-mode close x-close x-only', null, () => sheetNode.close());
       close.innerHTML = `<span class="x-icon">${CLOSE_ICON}</span>`; // trusted: our own SVG string
       close.setAttribute('aria-label', t('Close'));
-      head.append(words, close);
+      head.append(words, closeKeys(close));
       const body = el('div', 'tour-gesture-body');
       body.append(gestureGrid());
       sheet.append(head, body);
@@ -620,7 +624,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     // card of its own beside the window — on its right, else on its left, else over its top corner.
     // It belongs to the window (so the window does not make it unreachable) and leaves with it.
     if (inside) {
-      const dialog = anchor.closest('dialog') ?? anchor;
+      const dialog = anchor.closest('dialog') ?? anchor.closest('[role="dialog"][aria-modal="true"]') ?? anchor;
       card.classList.remove('inline');
       card.classList.add('beside-window');
       if (typeof card.showPopover === 'function') card.popover = 'manual';
@@ -634,14 +638,21 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
         const framed = whole.width >= window.innerWidth - 4 && dialog.firstElementChild ? dialog.firstElementChild.getBoundingClientRect() : whole;
         const height = card.getBoundingClientRect().height;
         const top = Math.max(12, Math.min(window.innerHeight - height - 12, framed.top));
+        // With no room on either side, in the window's bottom corner: its top is its bar, its name and
+        // its search, which the hint covered.
         let left = framed.right - width - 16;
-        let at = top + 16;
+        let at = Math.max(top + 16, Math.min(window.innerHeight - height - 12, framed.bottom - height - 16));
         if (window.innerWidth - framed.right >= width + 28) { left = framed.right + 16; at = top; } else if (framed.left >= width + 28) { left = framed.left - width - 16; at = top; }
         Object.assign(card.style, { position: 'fixed', margin: '0', left: `${left}px`, top: `${at}px` });
       };
       placeBeside();
       window.addEventListener('resize', placeBeside);
-      dialog.addEventListener('close', () => { window.removeEventListener('resize', placeBeside); done(); }, { once: true });
+      const leave = () => { window.removeEventListener('resize', placeBeside); done(); };
+      if (dialog.matches('dialog')) dialog.addEventListener('close', leave, { once: true });
+      else {
+        // A window of the page's own is taken away, not closed: the hint goes with it.
+        const gone = setInterval(() => { if (!card.isConnected) { clearInterval(gone); if (hintNode === card) leave(); else window.removeEventListener('resize', placeBeside); } }, 400);
+      }
       return true;
     }
     if (typeof card.showPopover === 'function') card.popover = 'manual';
@@ -730,7 +741,9 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
       if (state?.hints?.[id]) return;
       setTimeout(() => {
         const box = opened();
-        const modal = Boolean(box?.closest?.('dialog')?.matches?.(':modal'));
+        // A window of the page's own (the Market and Modules: a div that says it is modal) is a
+        // window too: the hint sits beside it, not over its bar (2026-11-13, Modules the first time).
+        const modal = Boolean(box?.closest?.('dialog')?.matches?.(':modal') || box?.closest?.('[role="dialog"][aria-modal="true"]'));
         const into = modal ? (inside?.(box) ?? box) : null;
         void hint(id, into ?? box ?? node, { title: title(), text: text(), inside: modal });
       }, after);

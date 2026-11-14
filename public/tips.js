@@ -91,6 +91,10 @@ function place(key) {
 }
 
 function show(key) {
+  // A key gone from the page, or with no size (a row of notices opened under the pointer while the
+  // tip waited), has no place to point at: its tip came up in the window's top corner (2026-11-13).
+  const box = key.isConnected ? key.getBoundingClientRect() : null;
+  if (!box || (!box.width && !box.height)) { restore(key); return; }
   const said = words(key);
   if (!said) return;
   current = key;

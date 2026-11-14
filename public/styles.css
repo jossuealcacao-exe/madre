@@ -7,6 +7,10 @@
    what is read, JetBrains Mono for labels, data and commands. Served by this room, never fetched. */
 @font-face { font-family: 'Sora'; font-style: normal; font-weight: 300 800; font-display: swap; src: url('/assets/brand/Sora-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Sora'; font-style: normal; font-weight: 300 800; font-display: swap; src: url('/assets/brand/Sora-latin-ext.woff2') format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+/* Space Grotesk, the name in MADRE's logo (2026-11-13, the author: the M of one stroke and its dot,
+   «madre» in Space Grotesk bold, tracked -35). Only the logo uses it; SIL OFL 1.1, licence beside it. */
+@font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 700; font-display: block; src: url('/assets/brand/SpaceGrotesk-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 700; font-display: block; src: url('/assets/brand/SpaceGrotesk-latin-ext.woff2') format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 /* Geist, the reading face: what the crew and the human say, and the chips that quote it. Sora is
    wide and its paragraphs read heavy; Geist keeps the same round geometry about 10% narrower. */
 @font-face { font-family: 'Geist'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/assets/brand/Geist-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -31,9 +35,10 @@
   --read: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --read-weight: 300;
   font-family: var(--sans);
-  /* The logo's two inks (brand kit §3.3): the pulse is phosphor, the word is white. On light
-     backgrounds the kit's light version: a darker green and near-black letters. */
-  --brand-pulse: #9bff66;
+  /* The logo's two inks (rebranding, 2026-11-13): the M and the word in the page's ink, the dot in
+     emerald. On light backgrounds a deeper emerald and near-black letters. (`--brand-pulse` keeps its
+     name: it is the dot's colour, and everything that used the pulse's colour now uses the dot's.) */
+  --brand-pulse: #34d399;
   --brand-word: #eef1ea;
 
   --bg: #050605;
@@ -46,13 +51,13 @@
   --text-2: #9aa197;
   --text-3: #626a5f;
 
-  --phosphor: #9bff66;           /* MOTHER */
+  --phosphor: #34d399;           /* MOTHER */
   /* MADRE's own green, which an accent never repaints: the copilot wears it (2026-10-14). */
-  --madre-green: #9bff66;
-  --madre-green-ink: #0a1405;
-  --brew: #28fe14;               /* Terminal.app 'Homebrew' green */
-  --brew-ink: #041004;
-  --phosphor-ink: #0a1405;
+  --madre-green: #34d399;
+  --madre-green-ink: #022c22;
+  --brew: #34d399;               /* Terminal.app 'Homebrew' green */
+  --brew-ink: #022c22;
+  --phosphor-ink: #022c22;
   --accent: var(--phosphor);
   --accent-ink: var(--phosphor-ink);
 
@@ -137,10 +142,10 @@
     --text: #121512;
     --text-2: #5a615a;
     --text-3: #767d75;
-    --phosphor: #2f8a1c;
-    --madre-green: #2f8a1c;
+    --phosphor: #059669;
+    --madre-green: #059669;
     --madre-green-ink: #ffffff;
-    --brew: #178f0c;
+    --brew: #059669;
     --brew-ink: #ffffff;
     --phosphor-ink: #ffffff;
     --bubble: #dde0d7;
@@ -175,10 +180,10 @@
     --text: #121512;
     --text-2: #5a615a;
     --text-3: #767d75;
-    --phosphor: #2f8a1c;
-    --madre-green: #2f8a1c;
+    --phosphor: #059669;
+    --madre-green: #059669;
     --madre-green-ink: #ffffff;
-    --brew: #178f0c;
+    --brew: #059669;
     --brew-ink: #ffffff;
     --phosphor-ink: #ffffff;
     --bubble: #dde0d7;
@@ -205,7 +210,7 @@ body {
   margin: 0;
   color: var(--text);
   background:
-    linear-gradient(rgba(155,255,102,.035) 1px, transparent 1px) 0 0 / 100% 3px,
+    linear-gradient(rgba(52, 211, 153,.035) 1px, transparent 1px) 0 0 / 100% 3px,
     radial-gradient(ellipse at 50% -20%, var(--bg-2), var(--bg) 55%);
   -webkit-font-smoothing: antialiased;
 }
@@ -257,15 +262,16 @@ body {
 .brand { display: flex; align-items: center; text-decoration: none; cursor: pointer; }
 /* The kit's horizontal logo, its geometry untouched: pulse and word in one drawing, at the kit's
    own proportion. No glow, no recolouring of the letters (kit §3.5). It still draws itself in once. */
-/* 16 px tall puts the word's capitals at the height of the bar's own labels, so the logo sits in
-   the row instead of shouting over it. The kit's proportions are untouched; only the size. */
-.brand-logo { display: block; height: 16px; width: auto; overflow: visible; }
-.brand-icon { display: none; height: 16px; width: auto; overflow: visible; }
-.brand-icon .pulse { stroke: var(--brand-pulse); }
+/* The M of one stroke beside «madre» (2026-11-13): 21 px tall puts the word's x-height near the
+   bar's own labels. The M and the word in the page's ink, the dot in emerald; the word is set in
+   Space Grotesk bold, the only place that face is used. */
+.brand-logo { display: block; height: 21px; width: auto; overflow: visible; }
+.brand-icon { display: none; height: 21px; width: auto; overflow: visible; }
+.brand-icon .pulse { stroke: var(--brand-word); }
 .brand-icon .pulse .beat-dot { fill: var(--brand-pulse); }
-.brand-logo .pulse { stroke: var(--brand-pulse); }
+.brand-logo .pulse { stroke: var(--brand-word); }
 .brand-logo .pulse .beat-dot { fill: var(--brand-pulse); }
-.brand-logo .word { stroke: var(--brand-word); }
+.brand-logo .word { fill: var(--brand-word); stroke: none; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 700; }
 /* MADRE's pulse says how the page stands with its server (2026-10-28; app.js setConnection, salas-mac.js
    refresh): the dot at its end green while it is live, red when the connection is lost, amber for
    anything in between — opening, or an answer slow to come. Red breathes, so it is seen. */
@@ -371,9 +377,9 @@ body {
   padding: 36px 0 28px;
 }
 .empty { margin: auto; text-align: center; color: var(--text-3); display: grid; gap: 10px; max-width: 420px; justify-items: center; }
-.empty-mark { width: 144px; height: 40px; color: var(--brand-pulse); margin-bottom: 6px; overflow: visible; }
+.empty-mark { width: 58px; height: 55px; color: var(--brand-word); margin-bottom: 8px; overflow: visible; }
 .empty-mark .beat { stroke-dasharray: 100; stroke-dashoffset: 100; animation: beat-draw 1.1s cubic-bezier(.2, .7, .2, 1) .15s forwards; }
-.empty-mark .beat-dot { opacity: 0; transform-origin: 60px 10px; transform-box: view-box; animation: beat-dot 1s ease-out 1.05s forwards, beat-idle 2.6s ease-in-out 2.4s infinite; }
+.empty-mark .beat-dot { opacity: 0; transform-origin: 80px 81px; transform-box: view-box; animation: beat-dot 1s ease-out 1.05s forwards, beat-idle 2.6s ease-in-out 2.4s infinite; }
 .empty strong { color: var(--text); font-size: 17px; letter-spacing: -.01em; font-weight: 600; }
 .empty span { font-size: 13px; line-height: 1.5; }
 code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 10%, transparent); padding: 2px 5px; border-radius: 5px; }
@@ -961,14 +967,14 @@ dialog.mother { border: 0; padding: 0; margin: 0; width: 100vw; max-width: 100vw
 dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(6px); }
 .mother-frame {
   /* Terminal.app's Homebrew profile, which is what a room like this should read as. */
-  --ph: #28fe14; --ph-dim: rgba(40, 254, 20, .52); --ph-faint: rgba(40, 254, 20, .13);
+  --ph: #34d399; --ph-dim: rgba(52, 211, 153, .52); --ph-faint: rgba(52, 211, 153, .13);
   position: relative; height: 100%; overflow-y: auto;
   padding: 26px clamp(16px, 5vw, 64px) 40px;
   background:
-    linear-gradient(rgba(155, 255, 102, .05) 1px, transparent 1px) 0 0 / 100% 3px,
+    linear-gradient(rgba(52, 211, 153, .05) 1px, transparent 1px) 0 0 / 100% 3px,
     radial-gradient(ellipse at 50% 0%, #0a1506, #020402 70%);
   font-family: var(--mono); color: var(--ph); letter-spacing: .04em;
-  text-shadow: 0 0 3px rgba(155, 255, 102, .18);
+  text-shadow: 0 0 3px rgba(52, 211, 153, .18);
   animation: mother-on .5s ease-out;
 }
 @keyframes mother-on { from { opacity: 0; transform: scaleY(.96); filter: brightness(2); } to { opacity: 1; transform: none; filter: none; } }
@@ -985,7 +991,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-query input::placeholder { color: var(--ph-dim); text-transform: none; letter-spacing: .04em; }
 .mother-os { display: flex; gap: 1px; border: 1px solid var(--ph-dim); }
 .mother-os button { border: 0; background: transparent; color: var(--ph-dim); font: inherit; font-family: var(--sans); font-size: 12px; letter-spacing: 0; padding: 6px 10px; cursor: pointer; }
-.mother-os button[aria-checked="true"] { background: var(--ph); color: #041004; text-shadow: none; }
+.mother-os button[aria-checked="true"] { background: var(--ph); color: #022c22; text-shadow: none; }
 .mother-answer { margin: 14px 0 6px; font-size: 12px; letter-spacing: .14em; min-height: 1.4em; }
 .mother-section h3 { margin: 0 0 12px; font-size: 10px; letter-spacing: .28em; color: var(--ph-dim); font-weight: 400; }
 /* Air between the blocks of one MU/TH/UR screen: every heading after the first starts a new block. */
@@ -1045,7 +1051,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-card .actions .act:disabled { opacity: .6; cursor: default; }
 .mother-card .actions .note { font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); }
 .mother-card.hit p.remedy { box-shadow: none; animation: remedy-in calc(600ms * var(--motion-scale)) ease; }
-@keyframes remedy-in { from { background: rgba(155, 255, 102, .18); } to { background: var(--ph-faint); } }
+@keyframes remedy-in { from { background: rgba(52, 211, 153, .18); } to { background: var(--ph-faint); } }
 .mother-cmd { position: relative; margin: 4px 0 0; border: 1px solid var(--ph-faint); background: #000; padding: 10px 12px; }
 .mother-cmd pre { margin: 0; padding-right: 30px; font: inherit; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ph); }
 .mother-cmd .c { color: var(--ph-dim); }
@@ -1122,7 +1128,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .module-card ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: rgba(210, 255, 190, .8); text-shadow: none; }
 .module-card .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .module-card .actions button { border: 1px solid var(--ph); background: transparent; color: var(--ph); font: inherit; font-size: 12.5px; letter-spacing: 0; padding: 8px 14px; cursor: pointer; }
-.module-card .actions button.primary { background: var(--ph); color: #041004; text-shadow: none; }
+.module-card .actions button.primary { background: var(--ph); color: #022c22; text-shadow: none; }
 .module-card .actions button.remove-module { border-color: color-mix(in srgb, var(--danger) 65%, transparent); color: var(--danger); }
 .module-card .actions button.remove-module:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .module-card .actions button:disabled { opacity: .4; cursor: default; }
@@ -1169,7 +1175,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 
 /* ================= connections & settings (inside MU/TH/UR) ================= */
 .mother-actions { display: flex; gap: 8px; }
-.mother-close[aria-pressed="true"] { background: var(--ph); color: #041004; text-shadow: none; }
+.mother-close[aria-pressed="true"] { background: var(--ph); color: #022c22; text-shadow: none; }
 .settings .conn-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 .settings .conn-grid { align-items: stretch; }
 .conn-card { border: 1px solid var(--ph-dim); padding: 16px 18px 18px; background: rgba(2, 6, 2, .6); display: grid; grid-template-rows: auto; gap: 14px; min-width: 0; overflow-wrap: anywhere; align-content: start; }
@@ -1185,7 +1191,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .conn-card .meta { font-size: 11px; line-height: 1.6; color: rgba(210, 255, 190, .8); text-shadow: none; }
 .conn-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .conn-card button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 11.5px; letter-spacing: 0; padding: 6px 10px; cursor: pointer; }
-.conn-card button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
+.conn-card button.primary { background: var(--ph); color: #022c22; text-shadow: none; border-color: var(--ph); }
 .conn-card button:disabled { opacity: .4; cursor: default; }
 .conn-card label { display: grid; gap: 4px; font-size: 11.5px; letter-spacing: 0; color: var(--ph-dim); }
 /* A textarea is a field like any other here. It was left out of this rule, so what you typed
@@ -1359,7 +1365,7 @@ dialog.override[open] { display: grid; place-items: center; }
 /* On a phone the label, the field and ARM did not fit one row and ARM left the screen. */
 .override-reply { min-height: 22px; letter-spacing: 0; }
 .override-reply.denied { color: #ff7b72; text-shadow: 0 0 3px rgba(255, 123, 114, .25); animation: terror-in .8s steps(3, end) 1; }
-.override-reply.granted { color: var(--ph); text-shadow: 0 0 3px rgba(155, 255, 102, .25); }
+.override-reply.granted { color: var(--ph); text-shadow: 0 0 3px rgba(52, 211, 153, .25); }
 /* MOTHER answering a name that is not this project's: her lines, and the count. */
 .override-reply .line { display: block; line-height: 1.6; }
 .override-reply .strike { display: block; margin-top: 6px; font-size: 9px; letter-spacing: .18em; color: var(--warn); text-shadow: none; }
@@ -1653,7 +1659,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* A chosen mode wears its own colour, the same one the composer uses for it. It used to be
    phosphor for every mode but #3, which made one card look like a warning and the rest like
    settings, when all five are the same kind of choice. */
-.conn-card .seg-option.current { background: var(--mode, var(--ph)); color: var(--mode-ink, #041004); font-weight: 700; }
+.conn-card .seg-option.current { background: var(--mode, var(--ph)); color: var(--mode-ink, #022c22); font-weight: 700; }
 .conn-card .seg-option.o0 { --mode: var(--mode-0); --mode-ink: var(--mode-0-ink); }
 .conn-card .seg-option.o1 { --mode: var(--mode-1); --mode-ink: var(--mode-1-ink); }
 .conn-card .seg-option.o2 { --mode: var(--mode-2); --mode-ink: var(--mode-2-ink); }
@@ -2300,7 +2306,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .command-card.eyecat b { display: block; font-family: var(--sans); font-size: 11px; letter-spacing: 0; color: var(--text-2); margin-bottom: 4px; }
 .command-card.eyecat p { margin: 0; font-size: 13.5px; line-height: 1.5; }
 .command-card.eyecat .eyecat-claim p { color: var(--mem-aberration); }
-.command-card.eyecat .eyecat-correction p { color: var(--ok, #9bff66); }
+.command-card.eyecat .eyecat-correction p { color: var(--ok, #34d399); }
 .eyecat-actions { display: flex; gap: 8px; padding: 10px 12px; }
 .eyecat-actions button { font-family: var(--sans); font-size: 12px; letter-spacing: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; }
 .eyecat-actions button.primary { border-color: color-mix(in srgb, var(--mem-aberration) 70%, transparent); color: var(--mem-aberration); }
@@ -2326,7 +2332,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .command-card.terminal code.term-line { padding: 0; border: 0; background: none; }
 .command-card.terminal .term-line { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12px; color: var(--text); }
 .command-card.terminal .term-status { flex: none; padding: 2px 9px; border-radius: 999px; font-size: 10px; letter-spacing: .03em; white-space: nowrap; color: var(--text-2); background: color-mix(in srgb, var(--text) 6%, transparent); }
-.command-card.terminal .term-status.ok { color: var(--ok, #2f9e44); background: color-mix(in srgb, var(--ok, #2f9e44) 12%, transparent); }
+.command-card.terminal .term-status.ok { color: var(--ok, #10b981); background: color-mix(in srgb, var(--ok, #10b981) 12%, transparent); }
 .command-card.terminal .term-status.failed { color: var(--crit); background: color-mix(in srgb, var(--crit) 12%, transparent); }
 .command-card.terminal .term-who { flex: none; font-size: 10.5px; color: var(--agent, var(--text-3)); }
 .command-card.terminal .term-count { flex: none; font-size: 10px; color: var(--text-3); white-space: nowrap; }
@@ -2342,7 +2348,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .command-card.terminal .term-clip { min-height: 0; overflow: hidden; }
 .command-card.terminal pre { max-height: 420px; border-top: 1px solid var(--line-2); background: color-mix(in srgb, var(--text) 3%, transparent); }
 .command-card.terminal pre .l-bad { color: var(--crit); }
-.command-card.terminal pre .l-good { color: var(--ok, #2f9e44); }
+.command-card.terminal pre .l-good { color: var(--ok, #10b981); }
 .command-card.terminal .undo { margin-top: 10px; }
 @media (max-width: 560px) { .command-card.terminal .term-count, .command-card.terminal .term-tag { display: none; } }
 @media (prefers-reduced-motion: reduce) { .command-card.terminal .term-out, .command-card.terminal .term-head .chev-icon { transition: none; } }
@@ -2375,7 +2381,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 /* Light scheme: the CRT glow is a dark-room effect. In daylight, the room keeps its colours and loses the shine;
    MU/TH/UR's and NOSTROMO's own screens stay as they are. */
 :root[data-scheme="light"] :not(.mother-frame, .mother-frame *, .nostromo-frame, .nostromo-frame *, .override-frame, .override-frame *) { text-shadow: none; }
-:root[data-scheme="light"] { --brand-pulse: #2f8a1c; --brand-word: #121512; }
+:root[data-scheme="light"] { --brand-pulse: #10b981; --brand-word: #121512; }
 :root[data-scheme="light"] .field button[type="submit"] { box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 2px 6px rgba(0, 0, 0, .08); }
 :root[data-scheme="light"] .user .bubble { box-shadow: var(--lift-1); }
 :root[data-scheme="light"] .composer.control .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--terror) 30%, transparent); }
@@ -2589,8 +2595,8 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .conn-card .key-form input, .conn-card .key-form select { color: var(--ph); background: #000; border: 1px solid var(--ph-dim); border-radius: 0; font-size: 12px; padding: 6px 8px; }
 .conn-card .key-form input::placeholder { color: var(--ph-dim); opacity: .7; }
 .conn-card .key-form input:focus, .conn-card .key-form select:focus { outline: 1px solid var(--ph); border-color: var(--ph); }
-.conn-card .key-row button { border: 1px solid var(--ph); color: #041004; background: var(--ph); border-radius: 0; }
-.conn-card .key-row button:hover:not(:disabled) { background: var(--ph-dim); color: #041004; }
+.conn-card .key-row button { border: 1px solid var(--ph); color: #022c22; background: var(--ph); border-radius: 0; }
+.conn-card .key-row button:hover:not(:disabled) { background: var(--ph-dim); color: #022c22; }
 .conn-card .key-link:hover { color: var(--ph); }
 .conn-card .key-said.bad { color: var(--terror); }
 
@@ -2611,7 +2617,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .conn-card .login-code input { color: var(--ph); background: #000; border: 1px solid var(--ph-dim); border-radius: 0; font-size: 12px; padding: 6px 8px; }
 .conn-card .login-code input::placeholder { color: var(--ph-dim); opacity: .7; }
 .conn-card .login-code input:focus { outline: 1px solid var(--ph); border-color: var(--ph); }
-.conn-card .login-code button { border: 1px solid var(--ph); color: #041004; background: var(--ph); border-radius: 0; }
+.conn-card .login-code button { border: 1px solid var(--ph); color: #022c22; background: var(--ph); border-radius: 0; }
 
 /* A module card, floor by floor: what it is, what it does, what it touches, how it is doing, and
    then the switch. Everything inside a card wears the panel's phosphor, never the page's palette,
@@ -2704,7 +2710,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .exams .said { margin: 0; font-size: 12px; line-height: 1.55; color: #eaffdf; text-shadow: none; }
 .exams .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 2px; }
 .exams button { border: 1px solid var(--ph); background: transparent; color: var(--ph); font: inherit; font-size: 12px; letter-spacing: 0; padding: 7px 12px; cursor: pointer; }
-.exams button.primary { background: var(--ph); color: #041004; text-shadow: none; }
+.exams button.primary { background: var(--ph); color: #022c22; text-shadow: none; }
 .exams button:disabled { opacity: .4; cursor: default; }
 
 .maturity-next { color: var(--ph); }
@@ -2770,12 +2776,12 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 .mem-dash-head .when { font-size: 9px; letter-spacing: .16em; color: var(--ph-dim); }
 .mem-dash button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
 .mem-dash button:hover { background: var(--ph-faint); }
-.mem-dash button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
+.mem-dash button.primary { background: var(--ph); color: #022c22; text-shadow: none; border-color: var(--ph); }
 .mem-dash button:disabled { opacity: .4; cursor: default; }
 .mem-dash .note { margin: 0; font-size: 9.5px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }
 
 .mem-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.mem-tile { display: grid; align-content: start; gap: 6px; padding: 14px 16px 12px; border: 1px solid var(--ph-faint); background: rgba(40, 254, 20, .025); min-width: 0; }
+.mem-tile { display: grid; align-content: start; gap: 6px; padding: 14px 16px 12px; border: 1px solid var(--ph-faint); background: rgba(52, 211, 153, .025); min-width: 0; }
 .mem-tile .label { font-size: 9px; letter-spacing: .2em; color: var(--ph-dim); }
 .mem-tile .value { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: .04em; line-height: 1.05; color: #eaffdf; text-shadow: none; }
 .mem-tile .sub { font-size: 9px; letter-spacing: .14em; line-height: 1.6; color: var(--ph); text-transform: uppercase; }
@@ -2826,7 +2832,7 @@ html.chat-shell .chat-menu button:is(:hover, :focus-visible) { background: var(-
 
 .mem-table { width: 100%; border-collapse: collapse; font-size: 9.5px; letter-spacing: .1em; }
 .mem-table th { text-align: right; font-weight: 400; font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); padding: 4px 6px; border-bottom: 1px solid var(--ph-faint); }
-.mem-table td { text-align: right; padding: 4px 6px; color: var(--ph); font-variant-numeric: tabular-nums; border-bottom: 1px solid rgba(40, 254, 20, .06); }
+.mem-table td { text-align: right; padding: 4px 6px; color: var(--ph); font-variant-numeric: tabular-nums; border-bottom: 1px solid rgba(52, 211, 153, .06); }
 .mem-table th:first-child, .mem-table td:first-child { text-align: left; }
 
 /* A meter: the fill against its own track, with an optional mark where it has to reach. */
@@ -2927,7 +2933,7 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
   --ns-edge: rgba(238, 241, 234, .09);
   --ns-text: #eef1ea;
   --ns-text-2: #9aa197;
-  --ns-accent: #9bff66;
+  --ns-accent: #34d399;
   --ns-hint-bg: #eef1ea;
   --ns-hint-ink: #0b0d0b;
   --ns-shadow: 0 .6em 1.6em rgba(0, 0, 0, .38), 0 .1em .3em rgba(0, 0, 0, .3);
@@ -2945,7 +2951,7 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
   --ns-edge: rgba(18, 21, 18, .08);
   --ns-text: #151815;
   --ns-text-2: #5d635b;
-  --ns-accent: #2f8a1c;
+  --ns-accent: #059669;
   --ns-hint-bg: #151815;
   --ns-hint-ink: #f4f5f1;
   --ns-shadow: 0 .6em 1.6em rgba(30, 40, 30, .12), 0 .1em .3em rgba(30, 40, 30, .08);
@@ -2972,7 +2978,7 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .ns-row { display: flex; align-items: center; gap: .45em; opacity: 0; transform: translateX(-1.2em) scale(.92); transition: opacity .45s var(--ns-glide) calc(var(--i) * .16s), transform .6s var(--ns-spring) calc(var(--i) * .16s); }
 .ns-skills.b3 .ns-row { opacity: 1; transform: none; }
 .ns-pill { display: flex; align-items: center; gap: .35em; padding: .28em .32em .28em .62em; border-radius: 1em; background: var(--ns-glass); box-shadow: inset 0 0 0 1px var(--ns-edge); font-size: .7em; white-space: nowrap; }
-.ns-check { display: grid; place-items: center; width: 1.25em; height: 1.25em; padding: .18em; border-radius: 50%; background: var(--ns-accent); color: #0a1405; transform: scale(0); transition: transform .45s var(--ns-spring); }
+.ns-check { display: grid; place-items: center; width: 1.25em; height: 1.25em; padding: .18em; border-radius: 50%; background: var(--ns-accent); color: #022c22; transform: scale(0); transition: transform .45s var(--ns-spring); }
 .ns-row .ns-check { transition-delay: calc(var(--i) * .2s); }
 .ns-skills.b4 .ns-check { transform: scale(1); }
 
@@ -3131,7 +3137,7 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .slash-menu .item.starter:has(.shape.connector) { --shape: var(--module-electric); }
 .slash-menu .item.starter:has(.shape.sends) { --shape: var(--mode-4); }
 .slash-menu .item.starter:has(.shape.card) { --shape: var(--mode-2); }
-:root[data-scheme="light"] .slash-menu .item.starter:has(.shape.command) { --shape: #178f0c; }
+:root[data-scheme="light"] .slash-menu .item.starter:has(.shape.command) { --shape: #059669; }
 :root[data-scheme="light"] .slash-menu .item.starter:has(.shape.sends) { --shape: #1f6f9e; }
 :root[data-scheme="light"] .slash-menu .item.starter:has(.shape.card) { --shape: #9a6400; }
 @media (max-width: 560px) { .slash-menu.with-starters { grid-template-columns: minmax(0, 1fr); } }
@@ -4069,13 +4075,13 @@ dialog.room-ask[open] .room-ask-card { animation: room-ask-in calc(240ms * var(-
 .room-ask-choice.danger { border-color: color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 .room-ask-choice.danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 /* From the console: its black, its scanlines, its phosphor. */
-dialog.room-ask.console { --ph: #28fe14; --ph-dim: rgba(40, 254, 20, .52); --ph-faint: rgba(40, 254, 20, .13); color: var(--ph); }
+dialog.room-ask.console { --ph: #34d399; --ph-dim: rgba(52, 211, 153, .52); --ph-faint: rgba(52, 211, 153, .13); color: var(--ph); }
 dialog.room-ask.console::backdrop { background: rgba(0, 0, 0, .7); }
 dialog.room-ask.console .room-ask-card {
   border: 1px solid var(--ph-dim); border-radius: 0;
-  background: linear-gradient(rgba(155, 255, 102, .05) 1px, transparent 1px) 0 0 / 100% 3px, radial-gradient(ellipse at 50% 0%, #0a1506, #020402 70%);
+  background: linear-gradient(rgba(52, 211, 153, .05) 1px, transparent 1px) 0 0 / 100% 3px, radial-gradient(ellipse at 50% 0%, #0a1506, #020402 70%);
   box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
-  font-family: var(--mono); text-shadow: 0 0 3px rgba(155, 255, 102, .18);
+  font-family: var(--mono); text-shadow: 0 0 3px rgba(52, 211, 153, .18);
 }
 dialog.room-ask.console .room-ask-title { color: var(--ph); font-size: 12px; letter-spacing: .22em; }
 dialog.room-ask.console .room-ask-body { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; line-height: 1.75; color: rgba(210, 255, 190, .88); text-transform: uppercase; }
@@ -4085,7 +4091,7 @@ dialog.room-ask.console .room-ask-field input { color: var(--ph); caret-color: v
 dialog.room-ask.console .room-ask-field:focus-within { border-bottom-color: var(--ph); }
 dialog.room-ask.console .room-ask-choice { border-radius: 0; border-color: var(--ph-dim); color: var(--ph); }
 dialog.room-ask.console .room-ask-choice:hover { background: var(--ph-faint); }
-dialog.room-ask.console .room-ask-choice.primary { background: var(--ph); border-color: var(--ph); color: #041004; text-shadow: none; }
+dialog.room-ask.console .room-ask-choice.primary { background: var(--ph); border-color: var(--ph); color: #022c22; text-shadow: none; }
 dialog.room-ask.console .room-ask-choice.danger { border-color: color-mix(in srgb, var(--danger) 70%, transparent); background: transparent; color: var(--danger); }
 dialog.room-ask.console .room-ask-choice.danger:hover { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
 @media (prefers-reduced-motion: reduce) { dialog.room-ask[open] .room-ask-card { animation: none; } }
@@ -4109,7 +4115,7 @@ dialog.room-ask.console .room-ask-choice.danger:hover { background: color-mix(in
    light in the card's top corner instead of a word in a box. */
 .conn-card { position: relative; }
 .conn-card > .head { align-self: stretch; justify-content: flex-start; padding-right: 22px; }
-.conn-dot { position: absolute; top: 14px; right: 14px; width: 9px; height: 9px; border-radius: 50%; background: var(--ph-dim); box-shadow: 0 0 0 3px rgba(40, 254, 20, .08); }
+.conn-dot { position: absolute; top: 14px; right: 14px; width: 9px; height: 9px; border-radius: 50%; background: var(--ph-dim); box-shadow: 0 0 0 3px rgba(52, 211, 153, .08); }
 .conn-dot.on { background: var(--ph); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ph) 18%, transparent), 0 0 10px color-mix(in srgb, var(--ph) 55%, transparent); }
 .conn-dot.off { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent), 0 0 8px color-mix(in srgb, var(--danger) 45%, transparent); }
 .conn-dot.busy { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); animation: conn-dot-breathe 1.4s ease-in-out infinite; }
@@ -4252,14 +4258,14 @@ dialog.custom-window::backdrop { display: none; }
 .seg-option.look-text-visual { font-weight: 650; }
 .seg-option.look-text-larger { font-size: 12.5px; } .seg-option.look-text-smaller { font-size: 10.5px; }
 .custom-swatches { display: flex; flex-wrap: wrap; gap: 12px; padding: 3px 2px; }
-.swatch { --sw: #9bff66; position: relative; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--sw); cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18), inset 0 2px 3px rgba(255, 255, 255, .25), 0 2px 6px -2px rgba(0, 0, 0, .4); transition: transform var(--motion-fast) var(--ease-out); }
+.swatch { --sw: #34d399; position: relative; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--sw); cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18), inset 0 2px 3px rgba(255, 255, 255, .25), 0 2px 6px -2px rgba(0, 0, 0, .4); transition: transform var(--motion-fast) var(--ease-out); }
 .swatch:hover { transform: translateY(-1px) scale(1.06); }
 .swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--sw), 0 4px 10px -3px rgba(0, 0, 0, .45); }
-.swatch[aria-checked="true"]::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 5px; border-left: 2px solid var(--sw-ink, #0a1405); border-bottom: 2px solid var(--sw-ink, #0a1405); transform: translate(-50%, -65%) rotate(-45deg); }
+.swatch[aria-checked="true"]::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 5px; border-left: 2px solid var(--sw-ink, #022c22); border-bottom: 2px solid var(--sw-ink, #022c22); transform: translate(-50%, -65%) rotate(-45deg); }
 /* Each sphere shows its colour's identity, in either theme: Madre green is MADRE's own phosphor,
    and the others the hex they were named for. The homologue for a ground is what the room wears,
    not what the sphere is. */
-.swatch[data-swatch="madre"] { --sw: #9bff66; --sw-ink: #0a1405; }
+.swatch[data-swatch="madre"] { --sw: #34d399; --sw-ink: #022c22; }
 .swatch[data-swatch="mountain"] { --sw: #28f7ca; --sw-ink: #04201a; }
 .swatch[data-swatch="caribbean"] { --sw: #2ddff7; --sw-ink: #031a1f; }
 .swatch[data-swatch="phantom"] { --sw: #9063f2; --sw-ink: #ffffff; }
@@ -4306,7 +4312,7 @@ dialog.custom-window::backdrop { display: none; }
    the preview while it is only a draft. Madre green is the room as it was and writes nothing on
    the root. The permission modes are colours with a meaning (--mode-n, fixed at the root) and do
    not follow the accent. */
-[data-accent="madre"] { --acc: #9bff66; --acc-ink: #0a1405; --acc-bubble: #9bff66; --acc-bubble-ink: #0a1405; }
+[data-accent="madre"] { --acc: #34d399; --acc-ink: #022c22; --acc-bubble: #34d399; --acc-bubble-ink: #022c22; }
 [data-accent="mountain"] { --acc: #28f7ca; --acc-ink: #04201a; --acc-bubble: #28f7ca; --acc-bubble-ink: #04201a; }
 [data-accent="caribbean"] { --acc: #2ddff7; --acc-ink: #031a1f; --acc-bubble: #2ddff7; --acc-bubble-ink: #031a1f; }
 [data-accent="phantom"] { --acc: #a585f7; --acc-ink: #12062b; --acc-bubble: #8255ee; --acc-bubble-ink: #ffffff; }
@@ -4332,7 +4338,7 @@ dialog.custom-window::backdrop { display: none; }
    key does on a dark screen, and the fortress blue lightens until it reads. */
 [data-accent="negro"] { --acc: #ededed; --acc-ink: #141414; --acc-bubble: #ededed; --acc-bubble-ink: #141414; }
 [data-accent="fortaleza"] { --acc: #6b86ff; --acc-ink: #ffffff; --acc-bubble: #0030ff; --acc-bubble-ink: #ffffff; }
-:root[data-scheme="light"][data-accent="madre"], :root[data-scheme="light"] [data-accent="madre"] { --acc: #2f8a1c; --acc-ink: #ffffff; --acc-bubble: #2f8a1c; --acc-bubble-ink: #ffffff; }
+:root[data-scheme="light"][data-accent="madre"], :root[data-scheme="light"] [data-accent="madre"] { --acc: #059669; --acc-ink: #ffffff; --acc-bubble: #059669; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="mountain"], :root[data-scheme="light"] [data-accent="mountain"] { --acc: #0b7d66; --acc-ink: #ffffff; --acc-bubble: #0b7d66; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="caribbean"], :root[data-scheme="light"] [data-accent="caribbean"] { --acc: #0a7189; --acc-ink: #ffffff; --acc-bubble: #0a7189; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="phantom"], :root[data-scheme="light"] [data-accent="phantom"] { --acc: #6a3fd6; --acc-ink: #ffffff; --acc-bubble: #6a3fd6; --acc-bubble-ink: #ffffff; }
@@ -4362,8 +4368,8 @@ dialog.custom-window::backdrop { display: none; }
    phosphor is set on the button itself, so its border, its fill and its ink follow. */
 :root[data-accent] :is(#messages, button, [role="button"]) { --phosphor: var(--acc); --phosphor-ink: var(--acc-ink); --accent: var(--acc); --accent-ink: var(--acc-ink); }
 /* ASH keeps Homebrew's green whatever the accent: it is a terminal, and that is its colour. */
-:root[data-accent] .ash-toggle { --brew: #28fe14; --phosphor: #28fe14; }
-:root[data-scheme="light"][data-accent] .ash-toggle { --brew: #178f0c; --phosphor: #178f0c; }
+:root[data-accent] .ash-toggle { --brew: #34d399; --phosphor: #34d399; }
+:root[data-scheme="light"][data-accent] .ash-toggle { --brew: #059669; --phosphor: #059669; }
 /* The box you write in takes the accent while it is in EXCHANGE (#1), the mode the room is in by
    default; every other mode keeps the colour that says what it lets an agent do. The mode menu
    and the chip say the same. */
@@ -4573,7 +4579,7 @@ dialog.custom-window::backdrop { display: none; }
 /* Each accent sphere in two halves, split on the diagonal: the tone the buttons and links wear in
    the dark theme above, and in the light theme below, where it deepens to be read. The tick is white
    on a soft shadow so it reads on either half. */
-.swatch[data-swatch="madre"] { --sw-dark: #9bff66; --sw-light: #2f8a1c; }
+.swatch[data-swatch="madre"] { --sw-dark: #34d399; --sw-light: #059669; }
 .swatch[data-swatch="mountain"] { --sw-dark: #28f7ca; --sw-light: #0b7d66; }
 .swatch[data-swatch="caribbean"] { --sw-dark: #2ddff7; --sw-light: #0a7189; }
 .swatch[data-swatch="phantom"] { --sw-dark: #a585f7; --sw-light: #6a3fd6; }
@@ -4606,7 +4612,7 @@ dialog.custom-window::backdrop { display: none; }
    the inks, the accent's homologue and the wallpaper's layers of each theme, scoped to it. */
 .look-preview[data-scheme="dark"] { color-scheme: dark; --bg: #050605; --bg-2: #0b0d0b; --panel: #101310; --panel-2: #171b17; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .13); --text: #eef1ea; --text-2: #9aa197; --text-3: #626a5f; --bubble: #1c201c; --bubble-ink: #eef1ea; color: var(--text); --wp-jarrito: linear-gradient(rgb(10 8 18 / min(.96, calc(.74 * var(--veil-k, 1)))), rgb(10 8 18 / min(.97, calc(.82 * var(--veil-k, 1))))), url("/assets/wallpapers/jarrito.webp?v=3") 50% 50% / cover no-repeat, #120e1c;   --wp-canela: linear-gradient(rgb(12 10 9 / min(.96, calc(.66 * var(--veil-k, 1)))), rgb(12 10 9 / min(.97, calc(.76 * var(--veil-k, 1))))), url("/assets/wallpapers/canela.webp?v=3") 50% 50% / cover no-repeat, #14100d;   --wp-paradise: linear-gradient(rgb(6 10 18 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(6 10 18 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/paraiso.webp?v=3") 50% 55% / cover no-repeat, #0a1220;   --wp-ventura: linear-gradient(rgb(9 11 13 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(9 11 13 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/ventura.webp?v=4") 50% 50% / cover no-repeat, #090b0d;   --wp-magna: linear-gradient(rgb(16 10 9 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(16 10 9 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/magna.webp?v=4") 50% 50% / cover no-repeat, #100a09; --wp-biznaga: linear-gradient(rgb(13 11 9 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(13 11 9 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/biznaga.webp?v=3") 50% 50% / cover no-repeat, #0d0b09; --wp-oceano: linear-gradient(rgb(12 10 10 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(12 10 10 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/oceano.webp?v=3") 50% 50% / cover no-repeat, #0c0a0a; --wp-quila: linear-gradient(rgb(13 13 13 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(13 13 13 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/quila.webp?v=3") 50% 50% / cover no-repeat, #0d0d0d; --wp-xico: linear-gradient(rgb(16 12 12 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(16 12 12 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/xico.webp?v=3") 50% 50% / cover no-repeat, #100c0c; --wp-tropical: linear-gradient(rgb(15 15 13 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(15 15 13 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/tropical.webp?v=3") 50% 50% / cover no-repeat, #0f0f0d; --wp-tradicion: linear-gradient(rgb(16 11 13 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(16 11 13 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/tradicion.webp?v=3") 50% 50% / cover no-repeat, #100b0d; --wp-urbania: linear-gradient(rgb(11 10 10 / min(.96, calc(.68 * var(--veil-k, 1)))), rgb(11 10 10 / min(.97, calc(.78 * var(--veil-k, 1))))), url("/assets/wallpapers/urbania.webp?v=3") 50% 50% / cover no-repeat, #0b0a0a; }
 .look-preview[data-scheme="light"] { color-scheme: light; --bg: #f4f5f2; --bg-2: #ffffff; --panel: #ffffff; --panel-2: #eef0ea; --line: rgba(0, 0, 0, .07); --line-2: rgba(0, 0, 0, .13); --text: #121512; --text-2: #5a615a; --text-3: #767d75; --bubble: #dde0d7; --bubble-ink: #121512; color: var(--text); --wp-jarrito: linear-gradient(rgb(252 250 246 / min(.96, calc(.62 * var(--veil-k, 1)))), rgb(252 250 246 / min(.97, calc(.72 * var(--veil-k, 1))))), url("/assets/wallpapers/jarrito.webp?v=3") 50% 50% / cover no-repeat, #f6f2ea;   --wp-canela: linear-gradient(rgb(252 248 244 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(252 248 244 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/canela.webp?v=3") 50% 50% / cover no-repeat, #f6f0ea;   --wp-paradise: linear-gradient(rgb(246 250 255 / min(.96, calc(.5 * var(--veil-k, 1)))), rgb(246 250 255 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/paraiso.webp?v=3") 50% 55% / cover no-repeat, #eef4fa;   --wp-ventura: linear-gradient(rgb(245 246 247 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(245 246 247 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/ventura.webp?v=4") 50% 50% / cover no-repeat, #eef0f1;   --wp-magna: linear-gradient(rgb(248 245 245 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(248 245 245 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/magna.webp?v=4") 50% 50% / cover no-repeat, #f4efee; --wp-biznaga: linear-gradient(rgb(247 245 245 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(247 245 245 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/biznaga.webp?v=3") 50% 50% / cover no-repeat, #f1efee; --wp-oceano: linear-gradient(rgb(246 245 245 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(246 245 245 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/oceano.webp?v=3") 50% 50% / cover no-repeat, #f1efef; --wp-quila: linear-gradient(rgb(247 247 247 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(247 247 247 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/quila.webp?v=3") 50% 50% / cover no-repeat, #f1f2f1; --wp-xico: linear-gradient(rgb(248 246 246 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(248 246 246 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/xico.webp?v=3") 50% 50% / cover no-repeat, #f4f0f0; --wp-tropical: linear-gradient(rgb(248 248 247 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(248 248 247 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/tropical.webp?v=3") 50% 50% / cover no-repeat, #f3f3f2; --wp-tradicion: linear-gradient(rgb(248 245 247 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(248 245 247 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/tradicion.webp?v=3") 50% 50% / cover no-repeat, #f4eff1; --wp-urbania: linear-gradient(rgb(245 245 245 / min(.96, calc(.52 * var(--veil-k, 1)))), rgb(245 245 245 / min(.97, calc(.64 * var(--veil-k, 1))))), url("/assets/wallpapers/urbania.webp?v=3") 50% 50% / cover no-repeat, #efefee; }
-.look-preview[data-scheme="dark"][data-accent="madre"] { --acc: #9bff66; --acc-ink: #0a1405; --acc-bubble: #9bff66; --acc-bubble-ink: #0a1405; }
+.look-preview[data-scheme="dark"][data-accent="madre"] { --acc: #34d399; --acc-ink: #022c22; --acc-bubble: #34d399; --acc-bubble-ink: #022c22; }
 .look-preview[data-scheme="dark"][data-accent="mountain"] { --acc: #28f7ca; --acc-ink: #04201a; --acc-bubble: #28f7ca; --acc-bubble-ink: #04201a; }
 .look-preview[data-scheme="dark"][data-accent="caribbean"] { --acc: #2ddff7; --acc-ink: #031a1f; --acc-bubble: #2ddff7; --acc-bubble-ink: #031a1f; }
 .look-preview[data-scheme="dark"][data-accent="phantom"] { --acc: #a585f7; --acc-ink: #12062b; --acc-bubble: #8255ee; --acc-bubble-ink: #ffffff; }
@@ -4623,7 +4629,7 @@ dialog.custom-window::backdrop { display: none; }
 .look-preview[data-scheme="dark"][data-accent="pulso"] { --acc: #b7bf98; --acc-ink: #ffffff; --acc-bubble: #99a17d; --acc-bubble-ink: #ffffff; }
 .look-preview[data-scheme="dark"][data-accent="leal"] { --acc: #ff6a1f; --acc-ink: #ffffff; --acc-bubble: #ff6a1f; --acc-bubble-ink: #ffffff; }
 .look-preview[data-scheme="dark"][data-accent="dulce"] { --acc: #ffd061; --acc-ink: #2b2000; --acc-bubble: #ffd061; --acc-bubble-ink: #2b2000; }
-.look-preview[data-scheme="light"][data-accent="madre"] { --acc: #2f8a1c; --acc-ink: #ffffff; --acc-bubble: #2f8a1c; --acc-bubble-ink: #ffffff; }
+.look-preview[data-scheme="light"][data-accent="madre"] { --acc: #059669; --acc-ink: #ffffff; --acc-bubble: #059669; --acc-bubble-ink: #ffffff; }
 .look-preview[data-scheme="light"][data-accent="mountain"] { --acc: #0b7d66; --acc-ink: #ffffff; --acc-bubble: #0b7d66; --acc-bubble-ink: #ffffff; }
 .look-preview[data-scheme="light"][data-accent="caribbean"] { --acc: #0a7189; --acc-ink: #ffffff; --acc-bubble: #0a7189; --acc-bubble-ink: #ffffff; }
 .look-preview[data-scheme="light"][data-accent="phantom"] { --acc: #6a3fd6; --acc-ink: #ffffff; --acc-bubble: #6a3fd6; --acc-bubble-ink: #ffffff; }
@@ -6582,7 +6588,7 @@ dialog.skill-text .skill-text-foot { margin: 0; }
 .settings-detail .sx-analysis .exams .exam:is(.passed, .failed) { border: 0; border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent); background: none; }
 .settings-detail .sx-analysis .exams .exam button.primary { background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--text); }
 .settings-detail .sx-analysis .exams .exam button.primary:is(:hover, :focus-visible):not(:disabled) { background: color-mix(in srgb, var(--phosphor) 22%, transparent); }
-:root[data-scheme="light"] .settings-detail .sx-analysis .exams .exam button.primary { background: color-mix(in srgb, var(--s-acc, #2f8a1c) 12%, transparent); }
+:root[data-scheme="light"] .settings-detail .sx-analysis .exams .exam button.primary { background: color-mix(in srgb, var(--s-acc, #059669) 12%, transparent); }
 .settings-detail .sx-analysis .exams .said { font-family: var(--read); font-size: 12.5px; line-height: 1.5; }
 .settings-detail .sx-analysis .mem-cols i:not(.zero) { background: color-mix(in srgb, #3fb6d9 70%, transparent); }
 .settings-detail .sx-analysis .mem-cols i.now { background: #3fb6d9; }
@@ -6884,7 +6890,7 @@ dialog.surface.window:is(.settings-window, .module-window).lifted { background-c
 .bar-left .connection { position: relative; align-self: flex-start; margin: 9px 0 0 -2px; padding: 4px; text-transform: none; cursor: default; }
 .bar-left .connection :is(.connection-icon .bar-glyph, .connection-label) { display: none; }
 .bar-left .connection .connection-dot { width: 7px; height: 7px; background: var(--text-3); box-shadow: none; }
-.bar-left .connection[data-state="live"] .connection-dot { background: #34d058; animation: state-pulse 2.6s ease-in-out infinite; }
+.bar-left .connection[data-state="live"] .connection-dot { background: #10b981; animation: state-pulse 2.6s ease-in-out infinite; }
 .bar-left .connection[data-state="reconnecting"] .connection-dot { background: var(--warn); animation: state-pulse 1.1s ease-in-out infinite; }
 .bar-left .connection:is([data-state="offline"], [data-state="closed"], [data-state="disconnected"]) .connection-dot { background: var(--danger, #e5484d); animation: none; }
 /* The project's state is a dot that breathes, nothing more (2026-10-14): from its size to a little
@@ -7209,7 +7215,7 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 /* (3) Intenciones while a test runs: one card, sentence case, keys at their own size. */
 .mods-intents .intents-live { display: grid; gap: 12px; justify-items: start; margin-top: 12px; padding: 16px 18px; border-radius: 16px; background: var(--surface, var(--panel)); }
 .mods-intents .intents-live > .note:first-child { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--text); }
-.mods-intents .intents-live > .note:first-child::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #34d058; animation: live-glow 2.4s ease-in-out infinite; }
+.mods-intents .intents-live > .note:first-child::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: live-glow 2.4s ease-in-out infinite; }
 .mods-intents :is(.intents-live > .note, .card-block > .note, .intents-agent > .note) { display: block; text-transform: lowercase; }
 .mods-intents :is(.intents-live > .note, .card-block > .note, .intents-agent > .note)::first-letter { text-transform: uppercase; }
 .mods-intents button { width: auto; text-transform: lowercase !important; }
@@ -7253,7 +7259,7 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 .toast.note { color: var(--text); }
 .toast .toast-from { display: none; }
 .toast .toast-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
-.toast[data-tone="done"] .toast-dot { background: #34c759; box-shadow: 0 0 0 3px rgba(52, 199, 89, .16); }
+.toast[data-tone="done"] .toast-dot { background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, .16); }
 .toast[data-tone="look"] .toast-dot { background: #e0a23c; box-shadow: 0 0 0 3px rgba(224, 162, 60, .18); }
 .toast[data-tone="news"] .toast-dot { background: var(--madre-green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--madre-green) 22%, transparent); }
 /* The one key a notice may carry (the Market's news): small, the room's green, at its end. */
@@ -7527,7 +7533,7 @@ dialog.nostromo-key .room-ask-icon { --tone: #e5484d; }
    the med bay, grey once jettisoned — and its meaning in a sentence under it. NOSTROMO is dark in
    both themes, so the colours are the dark theme's and do not follow the light one. */
 #nostromo .nostromo-card .meta dd.zone { display: grid; justify-items: start; gap: 4px; }
-#nostromo .nostromo-card .zone-word { --zone: #9bff66; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 10.5px; letter-spacing: .1em; color: var(--zone); background: color-mix(in srgb, var(--zone) 16%, transparent); box-shadow: none; }
+#nostromo .nostromo-card .zone-word { --zone: #34d399; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 10.5px; letter-spacing: .1em; color: var(--zone); background: color-mix(in srgb, var(--zone) 16%, transparent); box-shadow: none; }
 #nostromo .nostromo-card .zone-bridge .zone-word { --zone: #d2ffb8; }
 #nostromo .nostromo-card .zone-medbay .zone-word { --zone: #ffd166; }
 #nostromo .nostromo-card .zone-jettisoned .zone-word { --zone: rgba(242, 241, 238, .55); }
@@ -8345,7 +8351,7 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
 .agent-pop .pop-who .vendor { margin: 0; font-family: var(--read, var(--sans)); font-size: 11.5px; letter-spacing: 0; color: var(--text-3); }
 .agent-pop .pop-session { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; height: 22px; padding: 0 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); font-family: var(--read, var(--sans)); font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
 .agent-pop .pop-session::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
-.agent-pop .pop-session.ok::before { background: #34c759; }
+.agent-pop .pop-session.ok::before { background: #10b981; }
 .agent-pop .pop-session.wait::before { background: var(--warn); }
 .agent-pop .pop-session.bad::before { background: var(--danger); }
 .agent-pop .pop-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
@@ -8375,7 +8381,7 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
 .agent-pop .pop-chips span { padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); font: 450 11.5px var(--read, var(--sans)); color: var(--text-2); }
 .agent-pop .pop-chips span[title] { cursor: help; }
 .agent-pop .pop-chips .pop-provider-chip { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
-.agent-pop .pop-chips .pop-provider-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #34c759; }
+.agent-pop .pop-chips .pop-provider-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
 .agent-pop .pop-can ul { grid-template-columns: 1fr 1fr; gap: 5px 12px; }
 .agent-pop .pop-can li { font-size: 12px; }
 /* What it can do, as things it does (1.1): what it can, ticked in its colour; what it cannot, quieter. */
@@ -8429,8 +8435,8 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
    manual: EXCHANGE green, CREATE amber, CONTROL red): green with a session, amber while it signs in
    or when it is not known, red without one. They never follow the accent. The lamp is a dot; the
    words beside it stay in the text's colour, so they read on any ground. */
-:root { --session-ok: #9bff66; --session-wait: #ffb000; --session-bad: #ff2a1f; }
-:root[data-scheme="light"] { --session-ok: #2f8a1c; --session-wait: #d99600; --session-bad: #e0261c; }
+:root { --session-ok: #34d399; --session-wait: #ffb000; --session-bad: #ff2a1f; }
+:root[data-scheme="light"] { --session-ok: #059669; --session-wait: #d99600; --session-bad: #e0261c; }
 .session-lamp { color: var(--text-2) !important; }
 .session-lamp::before { content: '' !important; display: inline-block !important; width: 7px !important; height: 7px !important; margin-right: 6px !important; border-radius: 50% !important; vertical-align: 1px; opacity: 1 !important; box-shadow: none !important; }
 .session-lamp.ok::before { background: var(--session-ok) !important; }
@@ -8725,7 +8731,7 @@ dialog#core .mother-cmd .copy { position: absolute; top: 8px; right: 8px; displa
 #messages#messages .sys-dots > .system.folded { --dot: var(--text-3); margin: 0; cursor: inherit; }
 #messages#messages .sys-dots > .system.folded[data-tone="crit"] { --dot: var(--terror, #d33); }
 #messages#messages .sys-dots > .system.folded[data-tone="warn"] { --dot: var(--warn, #e2a022); }
-#messages#messages .sys-dots > .system.folded[data-tone="ok"] { --dot: var(--ok, var(--phosphor, #2f9e44)); }
+#messages#messages .sys-dots > .system.folded[data-tone="ok"] { --dot: var(--ok, var(--phosphor, #10b981)); }
 /* Folded: the first notice is the dot; the rest are counted in «+N». */
 #messages#messages .sys-dots:not(.open) > .system.folded {
   flex: none; width: 8px !important; height: 8px !important; min-width: 0 !important; max-width: none !important; padding: 0 !important; border: 0 !important; border-radius: 50% !important;
@@ -8900,8 +8906,8 @@ dialog.room-ask.review-ask:not(.console) .review-ask-note { margin: 0; font-size
    its ground; the pulse, the accent. One loader for every wait that takes time.
    ========================================================================================== */
 .madre-loader { --p: 0; display: grid; justify-items: center; gap: 16px; color: var(--text); text-align: center; }
-.madre-loader-mark { display: grid; place-items: center; width: 120px; height: 46px; color: var(--acc, var(--phosphor)); animation: madre-loader-breathe 1.8s ease-in-out infinite; }
-.madre-loader-mark svg { width: 120px; height: auto; overflow: visible; }
+.madre-loader-mark { display: grid; place-items: center; width: 48px; height: 46px; color: var(--acc, var(--phosphor)); animation: madre-loader-breathe 1.8s ease-in-out infinite; }
+.madre-loader-mark svg { width: 44px; height: auto; overflow: visible; }
 .madre-loader-trace { opacity: .22; }
 .madre-loader-beat { stroke-dasharray: 34 66; stroke-dashoffset: 34; animation: madre-loader-run 1.4s cubic-bezier(.45, 0, .25, 1) infinite; }
 .madre-loader-dot { transform-box: fill-box; transform-origin: center; animation: madre-loader-dot 1.4s ease-in-out infinite; }
@@ -8921,8 +8927,8 @@ dialog.room-ask.review-ask:not(.console) .review-ask-note { margin: 0; font-size
 .reload-curtain.leaving .madre-loader { animation: curtain-logo-out 420ms ease forwards; }
 /* The jobs' card (app.js, jobSheet: installs, model downloads, module updates) wears the same
    loader: the beating pulse where the arrow was, and the thin bar of the theme's ink. */
-.job-icon.madre-loader-mark { width: 44px; height: 34px; border-radius: 0; background: none; color: var(--acc, var(--phosphor)); }
-.job-icon.madre-loader-mark svg { width: 44px; }
+.job-icon.madre-loader-mark { width: 34px; height: 34px; border-radius: 0; background: none; color: var(--acc, var(--phosphor)); }
+.job-icon.madre-loader-mark svg { width: 30px; }
 .job-sheet:is(.done, .failed) .madre-loader-mark { animation: none; }
 .job-sheet:is(.done, .failed) :is(.madre-loader-beat, .madre-loader-dot) { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; opacity: 1; }
 .job-sheet.failed .job-icon.madre-loader-mark { background: none; color: var(--danger); }
@@ -8933,8 +8939,8 @@ dialog.room-ask.review-ask:not(.console) .review-ask-note { margin: 0; font-size
 /* In a line, inside a card (2026-10-28): the percentage is always whole — it was cut at the card's edge
    («37» without its «%»). When the card is narrow the bar gives way first, then the words. */
 .madre-loader.small { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
-.madre-loader.small .madre-loader-mark { order: 0; flex: none; width: 34px; height: 16px; }
-.madre-loader.small .madre-loader-mark svg { width: 34px; }
+.madre-loader.small .madre-loader-mark { order: 0; flex: none; width: 18px; height: 18px; }
+.madre-loader.small .madre-loader-mark svg { width: 17px; }
 .madre-loader.small .madre-loader-said { order: 1; flex: none; min-width: 0; max-width: calc(100% - 108px); margin: 0; overflow: hidden; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; }
 .madre-loader.small .madre-loader-bar { order: 2; flex: 0 1 84px; min-width: 20px; width: auto; }
 .madre-loader.small .madre-loader-pct { order: 3; flex: none; min-width: 4ch; margin: 0; font-size: 11px; white-space: nowrap; text-align: right; }
@@ -10108,7 +10114,7 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
    amplia y muy suave, que lo despega del lienzo; y mientras está, la conversación que estaba en su
    final sube lo que mide para que el aviso no tape la última línea. */
 .toast { --toast-tone: var(--text-3); }
-.toast[data-tone="done"] { --toast-tone: #34c759; }
+.toast[data-tone="done"] { --toast-tone: #10b981; }
 .toast[data-tone="look"] { --toast-tone: #e0a23c; }
 .toast[data-tone="wrong"] { --toast-tone: var(--danger); }
 .toast:not([hidden]) { animation: toast-bloom calc(480ms * var(--motion-scale)) cubic-bezier(.3, .7, .2, 1) both; }
@@ -10790,7 +10796,7 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
    they read on any accent. The Coordinator keeps its own colours. */
 .switch-icon:not(.is-coordinator) {
   background: linear-gradient(160deg, color-mix(in oklab, var(--acc, var(--phosphor)) 86%, #ffffff) 0%, var(--acc, var(--phosphor)) 55%, color-mix(in oklab, var(--acc, var(--phosphor)) 82%, #000000) 100%);
-  color: var(--acc-ink, #0a1405);
+  color: var(--acc-ink, #022c22);
 }
 .switch-icon:not(.is-coordinator) .switch-face { text-shadow: 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent); }
 
@@ -11140,7 +11146,7 @@ html.chat-shell.chats-over .shell > .tree.chats.split { box-shadow: inset -1px 0
 .side-head { flex: none; height: 48px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 10px; }
 .side-grow { flex: 1; }
 .side-brand { display: inline-flex; align-items: center; margin-left: 6px; color: var(--text); }
-.side-brand .brand-logo { height: 13px !important; }
+.side-brand .brand-logo { height: 17px !important; }
 .side-brand .brand-icon { display: none !important; }
 .shell-key { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-2); cursor: pointer; flex: none; }
 .shell-key svg { width: 18px; height: 18px; }
@@ -11246,7 +11252,7 @@ html.chat-shell #messages#messages .thread-inner > .system:not(.claim, .mother-a
 }
 html.chat-shell #messages#messages .thread-inner > .system:is(.alert, .crit, .halted, .control, .failed, .fail:not(.recovered)):not(.claim, .mother-alert, .folded, .folding) { --sys-dot: var(--terror, #d33); --sys-head-on: var(--terror, #d33); }
 html.chat-shell #messages#messages .thread-inner > .system:is(.warn, .lease, .privacy):not(.claim, .mother-alert, .folded, .folding) { --sys-dot: var(--warn, #e2a022); }
-html.chat-shell #messages#messages .thread-inner > .system:is(.login, .module, .reverted, .granted, .recovered):not(.failed, .claim, .mother-alert, .folded, .folding) { --sys-dot: var(--ok, var(--phosphor, #2f9e44)); }
+html.chat-shell #messages#messages .thread-inner > .system:is(.login, .module, .reverted, .granted, .recovered):not(.failed, .claim, .mother-alert, .folded, .folding) { --sys-dot: var(--ok, var(--phosphor, #10b981)); }
 html.chat-shell #messages#messages .thread-inner > .system:not(.claim, .mother-alert, .folded, .folding) > b:first-child:not(.inline) { display: block; margin: 0 0 2px; color: var(--sys-head-on); font-weight: 600; }
 html.chat-shell #messages#messages .thread-inner > .system.lease.missing:not(.folded) { justify-content: flex-start; }
 html.chat-shell #messages#messages .thread-inner > .system.alert:not(.folded) .cmd {
@@ -12657,7 +12663,7 @@ html.chat-shell #nostromo .nostromo-help:has(> .map-keys) { text-transform: none
    the scenes and the keys on flat grounds. Every animation stays. */
 html.chat-shell dialog.tour-window .tour-sheet { border-radius: 14px; background: var(--cs-canvas) !important; background-image: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: 0 0 0 1px var(--cs-line), 0 34px 90px -30px rgba(0, 0, 0, .42), 0 8px 24px -8px rgba(0, 0, 0, .16) !important; }
 html.chat-shell .tour-logo { display: block; margin-bottom: 8px; }
-html.chat-shell .tour-logo .brand-logo { height: 14px; }
+html.chat-shell .tour-logo .brand-logo { height: 18px; }
 html.chat-shell .tour-head h2 { font: 600 20px/1.25 var(--read); letter-spacing: -.01em; }
 html.chat-shell .tour-head .wn-eyebrow { font: 450 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell .tour-close { border-radius: 9px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line); }
@@ -12765,7 +12771,7 @@ dialog.intents-window .custom-head .surface-modes { grid-column: 2; grid-row: 1 
    become its pulse — before the welcome's first step and when a project opens again after it was
    closed. In a project it plays in a window of its own, over everything, and the room shows under it
    as it goes. */
-:root { --wl-stage: #050605; --wl-stage-glow: rgba(155, 255, 102, .05); }
+:root { --wl-stage: #050605; --wl-stage-glow: rgba(52, 211, 153, .05); }
 :root[data-scheme="light"] { --wl-stage: #f5f6f2; --wl-stage-glow: rgba(47, 138, 28, .06); }
 dialog.madre-opening { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; }
 dialog.madre-opening.intro::backdrop { background: var(--wl-stage); }
@@ -12776,28 +12782,48 @@ dialog.madre-opening::backdrop { background: transparent; }
 .wl-intro.leaving .wl-intro-mark { transition: scale .5s cubic-bezier(.4, 0, .2, 1), opacity .3s ease; scale: .96; opacity: 0; }
 @keyframes wl-intro-out { to { opacity: 0; } }
 .wl-intro-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
-.wl-intro-mark { position: absolute; left: 50%; top: 48%; width: min(500px, 70vw); transform: translate(-50%, -50%); will-change: transform; }
+/* The drama (2026-11-12, the author: «more drama, it is going commercial»): the stage opens from the
+   dark in a slow circle, keeps soft dark edges, and the mark takes the beat with one small push. */
+.wl-intro:not(.po-stage)::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: radial-gradient(circle at 50% 46%, transparent 0, transparent var(--iris, 140%), var(--wl-stage) calc(var(--iris, 140%) + 18%));
+  animation: wl-iris 1.9s cubic-bezier(.55, 0, .2, 1) both; }
+@property --iris { syntax: '<percentage>'; inherits: false; initial-value: 140%; }
+@keyframes wl-iris { from { --iris: 0%; } to { --iris: 62%; } }
+.wl-intro:not(.po-stage) .wl-intro-mark { scale: calc(1 + var(--hit, 0) * .035); }
+.wl-intro-mark { position: absolute; left: 50%; top: 48%; width: min(440px, 66vw); transform: translate(-50%, -50%); will-change: transform; }
 .wl-intro-logo { display: block; width: 100%; height: auto; overflow: visible; }
-.wl-intro-logo .pulse { stroke: var(--brand-pulse); }
-.wl-intro-logo .beat { stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-pulse) 35%, transparent)); }
+/* The rebranded logo (2026-11-13): the M in the page's ink, drawn in two halves from its middle (the
+   heart it starts as), the seed and the dot in emerald, the word in Space Grotesk. */
+.wl-intro-logo .pulse { stroke: var(--brand-word); }
+.wl-intro-logo .half { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.wl-intro-logo .seed { fill: var(--brand-pulse); stroke: none; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--brand-pulse) 55%, transparent)); }
 .wl-intro-logo .beat-dot { fill: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; }
-.wl-intro-logo .word { stroke: var(--brand-word); opacity: 0; }
-:root[data-scheme="light"] .wl-intro-logo .beat { filter: none; }
+.wl-intro-logo .word { fill: var(--brand-word); stroke: none; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 700; opacity: 0; transform-box: fill-box; }
+:root[data-scheme="light"] .wl-intro-logo .seed { filter: none; }
 .wl-intro { font-family: var(--read); }
 /* The opening's words (2026-11-11, second round: «like a product reveal»): a headline in two tones —
    what it is, then the quieter half — large and tight, coming into focus from a soft blur as the one
    before rises away. One long, settled curve for everything, nothing bounces. */
 .wl-intro-story { position: absolute; left: 50%; bottom: max(13%, 64px); width: min(760px, calc(100vw - 48px)); height: 3em; margin: 0; transform: translateX(-50%); font: 600 clamp(17px, 2vw, 25px)/1.25 var(--read); letter-spacing: -.016em; text-align: center; pointer-events: none; }
-.wl-intro-line { position: absolute; inset: 0 0 auto; margin: 0; text-wrap: balance; opacity: 0; }
+/* Every line on one centre (2026-11-12, the author: «they do not look level as they change»): a line
+   of one row and one of two sit on the same middle, and the quieter half is always one block, so a
+   line does not re-wrap as it leaves. The movement uses `translate`, which adds to that centring. */
+.wl-intro-line { position: absolute; left: 0; right: 0; top: 50%; margin: 0; transform: translateY(-50%); text-wrap: balance; opacity: 0; }
+.wl-intro-soft { display: inline-block; }
 .wl-intro-strong { color: var(--text); }
 .wl-intro-soft { color: var(--text-3); }
 .wl-intro-line.in { animation: wl-line-in 1.15s cubic-bezier(.16, 1, .3, 1) both; }
-.wl-intro-line.in .wl-intro-soft { animation: wl-line-in 1.15s cubic-bezier(.16, 1, .3, 1) .14s both; display: inline-block; }
+.wl-intro-line.in .wl-intro-soft { animation: wl-line-in 1.15s cubic-bezier(.16, 1, .3, 1) .14s both; }
 .wl-intro-line.out { animation: wl-line-out .7s cubic-bezier(.4, 0, .2, 1) both; }
 .wl-intro-line.last .wl-intro-soft { color: var(--brand-pulse); }
+/* The last line is the promise: larger, and a light runs once across its green half. */
+.wl-intro-line.last { font-size: 1.24em; letter-spacing: -.026em; }
+.wl-intro-line.last.in .wl-intro-soft { color: transparent; background: linear-gradient(100deg, var(--brand-pulse) 0 38%, color-mix(in srgb, var(--brand-pulse) 45%, #fff) 50%, var(--brand-pulse) 62% 100%) 100% 0 / 260% 100%; -webkit-background-clip: text; background-clip: text;
+  animation: wl-line-in 1.15s cubic-bezier(.16, 1, .3, 1) .14s both, wl-shine 1.7s cubic-bezier(.4, 0, .2, 1) 1.2s both; }
+@keyframes wl-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
 .wl-intro.leaving .wl-intro-story { transition: opacity .3s ease; opacity: 0; }
-@keyframes wl-line-in { from { opacity: 0; transform: translateY(18px); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
-@keyframes wl-line-out { from { opacity: 1; transform: none; filter: blur(0); } to { opacity: 0; transform: translateY(-14px); filter: blur(8px); } }
+@keyframes wl-line-in { from { opacity: 0; translate: 0 18px; filter: blur(10px); } to { opacity: 1; translate: 0 0; filter: blur(0); } }
+@keyframes wl-line-out { from { opacity: 1; translate: 0 0; filter: blur(0); } to { opacity: 0; translate: 0 -14px; filter: blur(8px); } }
 .wl-intro-mark { top: 42%; }
 @media (max-width: 560px) { .wl-intro-story { bottom: 56px; } }
 .wl-intro-skip { position: absolute; right: 26px; bottom: 22px; padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: 500 12.5px var(--read); letter-spacing: .01em; opacity: 0; cursor: pointer; animation: wl-skip-in .6s ease 1.4s forwards; }
@@ -12808,8 +12834,8 @@ dialog.madre-opening::backdrop { background: transparent; }
    with a ring, the project's name where MADRE's would be; then closer, and gone. */
 .po-stage { display: grid; place-items: center; }
 .po-mark { display: flex; align-items: center; gap: 18px; max-width: calc(100vw - 48px); }
-.po-pulse svg { display: block; width: 132px; height: auto; overflow: visible; }
-.po-beat { stroke: var(--brand-pulse); stroke-dasharray: 100; stroke-dashoffset: 100; animation: po-trace .62s cubic-bezier(.65, 0, .35, 1) .08s forwards; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand-pulse) 35%, transparent)); }
+.po-pulse svg { display: block; width: 62px; height: auto; overflow: visible; }
+.po-beat { stroke: var(--brand-word); stroke-dasharray: 100; stroke-dashoffset: 100; animation: po-trace .62s cubic-bezier(.65, 0, .35, 1) .08s forwards; }
 :root[data-scheme="light"] .po-beat { filter: none; }
 .po-dot { fill: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; animation: po-beat .42s cubic-bezier(.2, .9, .3, 1.4) .62s forwards; }
 .po-ring { stroke: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; animation: po-ring .8s cubic-bezier(.2, .7, .2, 1) .7s forwards; }
@@ -12818,7 +12844,7 @@ dialog.madre-opening::backdrop { background: transparent; }
 .po-stage.po-leaving .po-mark { transition: scale .5s cubic-bezier(.4, 0, .2, 1), opacity .35s ease; scale: 1.06; opacity: 0; }
 @keyframes po-trace { to { stroke-dashoffset: 0; } }
 @keyframes po-beat { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
-@keyframes po-ring { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(5.5); } }
+@keyframes po-ring { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
 @keyframes po-name { from { opacity: 0; transform: translateX(-8px); letter-spacing: .04em; } to { opacity: 1; transform: none; letter-spacing: -.01em; } }
 @media (max-width: 560px) { .po-pulse svg { width: 96px; } .po-name { font-size: 22px; } }
 
@@ -12998,7 +13024,14 @@ dialog.terms-gate.leaving { animation: terms-out calc(260ms * var(--motion-scale
 @keyframes terms-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes terms-out { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { dialog.terms-gate, dialog.terms-gate.leaving { animation: none; } }
-.terms-card { display: grid; gap: 14px; width: min(540px, 100%); }
+.terms-card { position: relative; z-index: 1; display: grid; gap: 14px; width: min(540px, 100%); }
+/* The smoke behind the card (2026-11-13, public/terms-field.js): over the whole window, faint; it goes
+   when MADRE's opening takes it up and condenses it. */
+.terms-field { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity calc(1800ms * var(--motion-scale, 1)) ease; }
+.terms-field.on { opacity: 1; }
+dialog.terms-gate.intro .terms-field { opacity: 0; transition-duration: .35s; }
+/* Over the field, the card's blocks are frosted, so their words read the same on either half. */
+dialog.terms-gate :is(.terms-block, .terms-about-list li) { -webkit-backdrop-filter: blur(16px) saturate(1.15); backdrop-filter: blur(16px) saturate(1.15); }
 .terms-logo { height: 26px; color: var(--text); }
 .terms-logo svg { height: 100%; width: auto; display: block; }
 .terms-title { margin: 6px 0 0; font: 650 26px/1.15 var(--read, inherit); letter-spacing: -.02em; }
@@ -13014,17 +13047,17 @@ dialog.terms-gate.intro .terms-lang { display: none; }
 .terms-about { display: grid; gap: 10px; }
 .terms-about h2 { margin: 0; font: 600 12px/1.3 var(--read, inherit); letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
 .terms-about-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
-.terms-about-list li { display: grid; align-content: start; gap: 8px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 3%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.terms-about-list li { display: grid; align-content: start; gap: 8px; padding: 12px; border-radius: 12px; background: linear-gradient(color-mix(in srgb, var(--text) 3%, transparent), color-mix(in srgb, var(--text) 3%, transparent)), color-mix(in srgb, var(--bg) 55%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .terms-about-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--phosphor) 12%, transparent); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--phosphor) 30%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent); color: color-mix(in srgb, var(--phosphor) 80%, var(--text)); }
 .terms-about-icon svg { width: 15px; height: 15px; stroke-width: 1.5; }
 .terms-about-words { display: grid; gap: 2px; }
 .terms-about-words b { font: 600 13px/1.3 var(--read, inherit); }
 .terms-about-words small { font-size: 12px; line-height: 1.4; color: var(--text-2); }
 @media (max-width: 560px) { .terms-about-list { grid-template-columns: 1fr; } .terms-about-list li { grid-template-columns: auto minmax(0, 1fr); } }
-.terms-block { display: grid; gap: 6px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.terms-block { display: grid; gap: 6px; padding: 14px 16px; border-radius: 14px; background: linear-gradient(color-mix(in srgb, var(--text) 4%, transparent), color-mix(in srgb, var(--text) 4%, transparent)), color-mix(in srgb, var(--bg) 55%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .terms-block h2 { margin: 0; font: 600 14.5px/1.3 var(--read, inherit); }
 .terms-block p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
-.terms-help { background: color-mix(in srgb, var(--phosphor) 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phosphor) 30%, var(--line)); }
+.terms-help { background: linear-gradient(color-mix(in srgb, var(--phosphor) 7%, transparent), color-mix(in srgb, var(--phosphor) 7%, transparent)), color-mix(in srgb, var(--bg) 55%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phosphor) 30%, var(--line)); }
 .terms-help-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 14px; }
 .terms-help-head > div { display: grid; gap: 6px; }
 .terms-said { font-size: 12.5px !important; color: var(--text-3) !important; }
@@ -13041,7 +13074,7 @@ dialog.terms-gate.intro .terms-lang { display: none; }
 .terms-error:empty { display: none; }
 .terms-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .terms-btn { height: 40px; padding: 0 18px; border: 0; border-radius: 12px; font: 600 14px var(--read, inherit); cursor: pointer; }
-.terms-btn.primary { background: var(--phosphor); color: var(--phosphor-ink, #041004); }
+.terms-btn.primary { background: var(--phosphor); color: var(--phosphor-ink, #022c22); }
 .terms-btn.primary:hover { background: color-mix(in srgb, var(--phosphor) 88%, var(--text)); }
 .terms-btn.quiet { background: transparent; color: var(--text-2); }
 .terms-btn.quiet:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
@@ -13067,7 +13100,7 @@ dialog.terms-gate.intro .terms-card { opacity: 0; }
    important and security ones as a strip above the conversation. */
 .madre-notices { display: flex; flex-direction: column; gap: 8px; }
 .madre-notices[hidden] { display: none; }
-.madre-notice { --notice: var(--accent, #2f7d32); display: flex; align-items: flex-start; gap: 14px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--notice) 45%, transparent); border-left-width: 3px; border-radius: 12px; background: color-mix(in srgb, var(--notice) 7%, var(--surface, #fff)); color: var(--text, inherit); }
+.madre-notice { --notice: var(--accent, #10b981); display: flex; align-items: flex-start; gap: 14px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--notice) 45%, transparent); border-left-width: 3px; border-radius: 12px; background: color-mix(in srgb, var(--notice) 7%, var(--surface, #fff)); color: var(--text, inherit); }
 .madre-notice.is-important { --notice: #b7791f; }
 .madre-notice.is-security { --notice: #c0392b; }
 .madre-notice-words { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
@@ -13620,3 +13653,130 @@ dialog.missions::backdrop { background: color-mix(in srgb, #000 32%, transparent
 .missions-link:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .missions-ok { height: 32px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--madre-green, var(--phosphor)); color: var(--madre-green-ink, #fff); font: 600 13px var(--read); cursor: pointer; }
 @media (max-width: 520px) { .mission { grid-template-columns: auto minmax(0, 1fr); } .mission-go, .mission-done { grid-column: 2; justify-self: start; } }
+/* THE OPENING AS A MIX (2026-11-13, loader.js playOpening): no iris and no push on the beat; the stage
+   fades in and the colours do the rest. */
+.wl-intro:not(.po-stage)::after { content: none; }
+.wl-intro:not(.po-stage):not(.leaving) { animation: wl-mix-in .9s ease-out both; }
+@keyframes wl-mix-in { from { opacity: 0; } }
+/* Taken up from the smoke of «Before you start»: no fade in, the stage is already the same smoke. */
+.wl-intro.continues:not(.po-stage):not(.leaving) { animation: none; }
+/* The opening's words, readable in either look (2026-11-13, the author: «in dark they do not show; give
+   people the chance to read them»): the first half in the page's strongest ink, the second a clear grey
+   that holds on the near-black stage, a little larger, and each word that goes by under the name stays
+   long enough to be read (loader.js, INTRO.tick). */
+.wl-intro-story { font-size: clamp(18px, 2.15vw, 27px); }
+:root .wl-intro-strong { color: #f3f5f0; }
+:root .wl-intro-soft { color: #b4bcb0; }
+:root[data-scheme="light"] .wl-intro-strong { color: #111511; }
+:root[data-scheme="light"] .wl-intro-soft { color: #545b53; }
+/* The icons of «What MADRE is» without a border (2026-11-13, the author): the soft tint alone. */
+.terms-about-icon { box-shadow: none; }
+/* On a light stage the logo's dot, and the point the heart grows from, one step deeper than the green
+   field around them, so they never melt into it (2026-11-13). */
+:root[data-scheme="light"] .wl-intro-logo :is(.beat-dot, .seed) { fill: #059669; }
+/* THE OPENING'S WORDS, ONE SENTENCE AT A TIME (2026-11-13, the author: «only sentences that change, on
+   the same line, as Apple would»): one ink, centred, each replacing the one before in the same place;
+   the last one, MADRE's promise, in its green. */
+.wl-intro-line .wl-intro-strong { display: inline-block; }
+.wl-intro-line.last .wl-intro-strong { color: #34d399; }
+:root[data-scheme="light"] .wl-intro-line.last .wl-intro-strong { color: #059669; }
+/* The words sit a steady step under the logo, on its centre line (2026-11-13): not pinned to the
+   window's bottom, far from it. 42% is the logo's centre; min(76px, 11.5vw) its half height. */
+.wl-intro-story { top: calc(42% + min(76px, 11.5vw) + clamp(36px, 6vh, 64px)); bottom: auto; }
+/* «Before you start» with no edges on its cards (2026-11-13, the author): the frosted fill alone says
+   where each one is. */
+.terms-about-list li, .terms-block, .terms-help { box-shadow: none; }
+/* The × of the first steps, the chapters and the gestures (2026-11-13): the windows' own key in its
+   channel, at the head's right, the same in every window of MADRE. */
+.surface-modes.window-close { flex: none; align-self: center; margin-left: auto; }
+.surface-modes.window-close .surface-mode.close { width: 28px; height: 26px; }
+/* The plan's stop key at the card's far right (2026-11-13, the author): beside «plan» it read as part
+   of the title and was too easy to press by mistake. */
+html.chat-shell #messages .system.plan > b:first-child { justify-content: flex-start; }
+html.chat-shell #messages .system.plan > b:first-child > .act.stop { margin-left: auto; margin-right: -4px; }
+/* The thinking ring, whole in WebKit too (2026-11-13, the author: «the pulse looks cut»). The column
+   clips with a margin (overflow-clip-margin) that WebKit does not have, so the ring was cut flush at
+   the column's edge: there it clips only side to side (the avatar has 24px of room there), and the
+   ring reaches a little less far. */
+@supports not (overflow-clip-margin: 1px) {
+  #messages .thread-inner { overflow: visible; overflow-x: clip; }
+}
+@keyframes think-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--agent, var(--phosphor)) 50%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--agent, var(--phosphor)) 0%, transparent); }
+}
+/* The answer's header on one line (2026-11-13, the author, after a tab and a folder he did not like):
+   the AI's chip, then the words it answered — one reply mark, whose words, the words — and what the
+   answer used at the far end of the answer's width. Too long, the words end in «…»; the whole of
+   them is in the tip. */
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who:has(> .reply),
+#messages#messages .col > .who:has(> .reply) {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; width: 100%; max-width: 100%;
+  padding: 0 !important; border-radius: 0; background: none !important; box-shadow: none !important;
+}
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who:has(> .reply) > *,
+#messages#messages .col > .who:has(> .reply) > * { flex: none; margin: 0 !important; }
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who .reply,
+#messages .col > .who .reply {
+  order: 50; flex: 1 1 auto !important; min-width: 0; max-width: none; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  -webkit-line-clamp: none; line-clamp: none; padding: 0 !important; border: 0 !important;
+}
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who:has(> .reply) > .spent,
+#messages#messages .col > .who:has(> .reply) > .spent { order: 60; position: static; margin-left: auto !important; opacity: .8; }
+#messages .row:is(:hover, :focus-within) .who:has(> .reply) > .spent { opacity: 1; }
+#messages .col > .who .reply .reply-mark { display: inline-block; width: 13px; height: 13px; margin-right: 5px; vertical-align: -2px; color: var(--text-3); }
+#messages .col > .who .reply .reply-mark svg { width: 100%; height: 100%; display: block; }
+#messages .col > .who .reply .reply-to { font-weight: 600; font-style: normal; color: color-mix(in srgb, var(--agent, var(--text)) 80%, var(--text)); }
+/* Side view and narrow chats (2026-11-13, the author: «these stick together too much»): the line of
+   what it is doing, the skill it uses and the steps it took each get their own air, and no chip runs
+   past the column. */
+@media (max-width: 760px) {
+  #messages .row:is(.thinking, .assistant) > .turn-skills { margin: 10px 0 2px; gap: 6px 8px; }
+  #messages .row.thinking > .work-steps { margin: 10px 0 0; gap: 8px; max-width: 100%; }
+  #messages .row.thinking > .work-steps .work-step { max-width: 100%; }
+  #messages .row.thinking > .bubble { row-gap: 4px; flex-wrap: wrap; }
+  #messages .row.thinking > .bubble :is(.elapsed, .tokens) { margin-left: 0; }
+  #messages .row.thinking > .bubble .status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 100%; }
+}
+#messages .col > .who .reply .reply-to.you { color: var(--text-2); }
+/* Code · Both at the left of the Files header (2026-11-13, the author), where reading starts: the
+   choice of what is seen comes before the files, not after them on the far side. */
+html.chat-shell dialog.viewer .code-views { margin-left: 0; margin-right: auto; padding-left: 0 !important; box-shadow: none; }
+/* The file an answer made, quieter (2026-11-13, the author: «the shadow is too much» and it was cut):
+   a hairline and the faintest lift, no jump on hover — the jump and its shadow ran past the answer's
+   own box, which paints nothing outside itself, and were cut there. */
+:root:not([data-lab02]) #messages#messages .bubble .file-tile:not(.image) { box-shadow: 0 0 0 .5px rgb(var(--plane-ink) / .12), 0 1px 1.5px rgb(var(--plane-ink) / .05); }
+:root:not([data-lab02]) #messages#messages .bubble .file-tile:not(.image):hover { transform: none; box-shadow: 0 0 0 .5px rgb(var(--plane-ink) / .2), 0 1px 3px rgb(var(--plane-ink) / .08); }
+#messages .bubble .artifacts .files { padding: 2px 2px 4px; }
+/* The Files header in a fixed order (2026-11-13, the author: «they seem to move»): on top, what is
+   seen (Code · Both · Preview) on the left and READ · EDIT · OPEN RAW on the right; the open files
+   under them. Too narrow for both groups, READ · EDIT · OPEN RAW fold into «⋯». */
+html.chat-shell dialog.viewer.code > .viewer-head { flex-wrap: wrap !important; justify-content: flex-start !important; align-items: center; row-gap: 6px; }
+html.chat-shell dialog.viewer.code > .viewer-head > .code-views { order: 1; }
+html.chat-shell dialog.viewer.code > .viewer-head > .viewer-seg:not(.code-views) { order: 2; margin-left: auto; }
+html.chat-shell dialog.viewer.code > .viewer-head > .code-more { order: 3; }
+html.chat-shell dialog.viewer.code > .viewer-head > .code-tabs { order: 10; flex: 1 1 100%; min-width: 0; }
+.code-more { display: none; place-items: center; width: 30px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 600 16px/1 var(--read); cursor: pointer; }
+.code-more:hover, .code-more[aria-expanded="true"] { background: var(--cs-hover, color-mix(in srgb, var(--text) 7%, transparent)); color: var(--text); }
+.code-more-menu { position: absolute; z-index: 40; display: grid; gap: 1px; min-width: 170px; padding: 5px; border-radius: 11px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 0 0 1px var(--cs-line, var(--line)), 0 10px 28px -10px rgba(20, 30, 20, .3); }
+.code-more-menu[hidden] { display: none; }
+.code-more-item { display: flex; align-items: center; height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--text); font: 500 13px var(--read); text-align: left; cursor: pointer; }
+.code-more-item:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
+.code-more-item.on { color: var(--phosphor); font-weight: 600; }
+@container viewerhead (max-width: 500px) {
+  html.chat-shell dialog.viewer.code > .viewer-head > .viewer-seg:not(.code-views) { display: none !important; }
+  html.chat-shell dialog.viewer.code > .viewer-head:has(> .viewer-seg:not(.code-views):not([hidden])) > .code-more { display: inline-grid; }
+}
+/* The avatar's shadow, whole when the AI has finished (2026-11-13, the author). A row off its
+   «thinking» state paints only inside its own box (content-visibility), and the room the column
+   leaves for shadows (overflow-clip-margin) is not in WebKit: the avatar sits at the row's foot and
+   its shadow was cut there. In WebKit each row's box reaches 12px further down and 10px further left
+   to paint in, given back by its margins, so nothing moves. */
+@supports not (overflow-clip-margin: 1px) {
+  #messages .thread-inner > .row { padding-bottom: 12px; margin-bottom: -12px; padding-left: 10px; margin-left: -10px; }
+}
+/* The row grows from its dot (app.js, morphStrip): its own fade-in would run on top of that. */
+#messages .sys-dots.open { animation: none; }
+/* While a row of notices grows or shrinks (app.js, morphStrip): what is outside stays outside, and
+   the frosted glass rests until it stops. */
+#messages .sys-dots.morphing { overflow: hidden; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; will-change: width, height; }

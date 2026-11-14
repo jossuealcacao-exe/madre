@@ -81,11 +81,11 @@ export const BRANDS = {
 BRANDS.madre = {
   label: 'MADRE',
   vendor: 'the project · local',
-  color: '#9bff66',
-  colorLight: '#2f8a1c',
-  ink: '#0a1405',
-  // The brand kit's compact pulse, the one drawn for 64 px and under (favicon, icon), with its dot.
-  mark: () => glyph('<path d="M3.5 16h5.5l2.3-5.5 4 11 3.2-7.5 1.8 2h2.2" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="26.4" cy="16" r="2.4" fill="currentColor"/>'),
+  color: '#34d399',
+  colorLight: '#10b981',
+  ink: '#04261a',
+  // MADRE's M of one stroke and its dot (the rebranding, 2026-11-13), on the 32 grid of the marks.
+  mark: () => glyph('<path d="M6.1 25.24V12.04C6.1 5.11 13.03 5.11 14.68 11.05L16.0 15.34L17.32 11.05C18.97 5.11 25.9 5.11 25.9 12.04V17.98" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25.9" cy="24.91" r="3.1" fill="currentColor"/>'),
 };
 
 BRANDS.ollama = {

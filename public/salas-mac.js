@@ -80,6 +80,7 @@ let query = '';                // what the search box holds
 const busy = new Map();       // room id → 'starting' | 'closing'
 const asking = new Set();      // room ids whose card asks before closing
 const forgetting = new Set();  // room ids whose card asks before leaving MADRE
+const renaming = new Set();    // room ids whose card is having its name written (2026-11-13)
 const failed = new Map();      // room id → what went wrong, said on its card
 // One is one: «1 conversaciones» read wrong on every new project's card.
 const conversationsCount = (n) => (n === 1 ? t('1 conversation') : t('{n} conversations', { n }));
@@ -401,7 +402,8 @@ function card(room) {
   node.addEventListener('contextmenu', (event) => pinsMenu(event, room));
 
   const head = el('header', 'sm-card-head');
-  head.append(el('h3', null, room.name));
+  if (renaming.has(room.id)) head.append(renameField(room));
+  else head.append(el('h3', null, room.name));
   if (room.here) head.append(el('span', 'sm-chip here', t('You are here')));
   else if (room.open) head.append(el('span', 'sm-chip port', `:${room.open.port}`));
   // What the right-click offers, for whoever does not right-click: a key of its own.
@@ -3773,6 +3775,43 @@ function waitDone(id) {
 
 // Out of MADRE (2026-10-10): Home forgets it (src/salas.mjs, forgetProject); its folder and its
 // memory stay where they are, and adding the folder again brings them back.
+// The card's name, written in place: ↵ keeps it, Esc or leaving the field leaves it as it was.
+// Emptied, the project takes its folder's name back.
+function renameField(room) {
+  const field = el('input', 'sm-rename');
+  field.type = 'text';
+  field.value = room.name;
+  field.maxLength = 80;
+  field.spellcheck = false;
+  field.setAttribute('aria-label', t('Name of {name}', { name: room.name }));
+  let done = false;
+  const stop = () => { if (done) return; done = true; renaming.delete(room.id); draw(); };
+  const keep = async () => {
+    if (done) return;
+    const name = field.value.replace(/\s+/g, ' ').trim();
+    if (name === room.name) { stop(); return; }
+    done = true;
+    field.disabled = true;
+    const answer = await post('/api/salas/rename', { room: room.id, name });
+    renaming.delete(room.id);
+    if (!answer.ok) { failed.set(room.id, answer.body.error ?? t('The name could not be changed.')); draw(); return; }
+    failed.delete(room.id);
+    toast(name ? t('It is called {name} now. Its folder keeps its name.', { name: answer.body.name ?? name }) : t('It takes its folder\'s name back.'));
+    await refresh();
+  };
+  field.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') { event.preventDefault(); void keep(); }
+    else if (event.key === 'Escape') { event.preventDefault(); stop(); }
+  });
+  // Leaving the field keeps the name; a card drawn again (the field gone with it) does not.
+  field.addEventListener('blur', () => { setTimeout(() => { if (field.isConnected) void keep(); }, 0); });
+  field.addEventListener('click', (event) => event.stopPropagation());
+  field.addEventListener('pointerdown', (event) => event.stopPropagation());
+  requestAnimationFrame(() => { field.focus(); field.select(); });
+  return field;
+}
+
 async function forgetRoom(room) {
   forgetting.delete(room.id);
   busy.set(room.id, 'forgetting');
@@ -3885,7 +3924,7 @@ function darkAccent() {
       }
     }
   } catch { /* no sheets to read: the house accent */ }
-  return '#9bff66';
+  return '#34d399';
 }
 // And the ink that accent wears, read the same way.
 function darkAccentInk() {
@@ -3901,7 +3940,7 @@ function darkAccentInk() {
       }
     }
   } catch { /* no sheets to read: the house ink */ }
-  return '#0a1405';
+  return '#022c22';
 }
 ui.macro.addEventListener('click', async () => {
   if (macro || !data) return;
@@ -4037,6 +4076,7 @@ const PIN_ICON = trazo('pin');
 const UNPIN_ICON = trazo('unpin');
 const ARRANGE_ICON = trazo('arrange');
 const FORGET_ICON = trazo('forget');
+const RENAME_ICON = trazo('pencil');
 const MORE_ICON = trazo('more');
 const pins = {
   saved: null,          // what this page decided, for when storage will not keep it
@@ -4407,6 +4447,8 @@ function pinsMenu(event, room, at = null) {
   if (place >= 0 && place < order.length - 1) item(t('Move after'), AFTER_ICON, () => moveProject(room.id, 1));
   if (place > 0) item(t('Move to the start'), BEFORE_ICON, () => moveProject(room.id, 'first'));
   item(t('Add to Home…'), ADD_ICON, () => openHomeAdd());
+  // A name of the person's own; the folder keeps its name (2026-11-13). Not the Coordinator's.
+  if (room.id !== data?.salas) item(t('Rename…'), RENAME_ICON, () => { renaming.add(room.id); forgetting.delete(room.id); draw(); });
   menu.append(el('i', 'sm-menu-sep'));
   item(t('Remove from MADRE…'), FORGET_ICON, () => { forgetting.add(room.id); asking.delete(room.id); failed.delete(room.id); draw(); }, { danger: true });
   menu.addEventListener('keydown', (key) => {
@@ -7103,7 +7145,8 @@ if (location.hash === '#macroverso' && data && !ui.macro.hidden) { history.repla
 // The Market's addresses: #mercado, #mercado=<module>, #modulos.
 if (/^#mercado(=|$)/.test(location.hash)) openHomeMarket('shop', decodeURIComponent(location.hash.split('=')[1] ?? '') || null);
 else if (location.hash === '#modulos') openHomeMarket('mine');
-timer = setInterval(() => { if (!document.hidden && !busy.size && !pins.dropping && !pins.drag) void refresh({ polled: true }); }, 4000);
+// Not while a name is being written in a card: the card would be drawn again under the person.
+timer = setInterval(() => { if (!document.hidden && !busy.size && !renaming.size && !pins.dropping && !pins.drag) void refresh({ polled: true }); }, 4000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { void refresh(); void loadAgents(); void loadWork(); void loadDecisions(); } });
 // The decisions are asked again every few minutes (the route itself asks the rooms no oftener).
 setInterval(() => { if (!document.hidden) void loadDecisions(); }, 5 * 60 * 1000);

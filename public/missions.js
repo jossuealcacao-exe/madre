@@ -97,10 +97,13 @@ export function openMissions(host = {}) {
     const head = el('header', 'missions-head');
     const title = el('h2', null, left ? t('Your first steps') : t('You did all five'));
     title.id = 'missions-title';
-    const x = button('missions-x', null, close);
-    x.innerHTML = trazo('close'); // trusted: our own SVG string
+    // The × of every window of MADRE (2026-11-13): the same key in the same channel, not a bare mark.
+    const x = button('surface-mode close x-close x-only', null, close);
+    x.innerHTML = `<span class="x-icon">${trazo('close')}</span>`; // trusted: our own SVG string
     x.setAttribute('aria-label', t('Close'));
-    head.append(title, x);
+    const keys = el('span', 'surface-modes window-close');
+    keys.append(x);
+    head.append(title, keys);
     const lead = el('p', 'missions-lead', left
       ? t('Five things to get to know MADRE by doing something real. Each one takes a couple of minutes, and you can do them in any order.')
       : t('You know what matters in MADRE: asking, letting it create, comparing AIs, undoing and adding what you need. From here on, it is yours.'));

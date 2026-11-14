@@ -487,6 +487,28 @@ export async function forgetProject({ stateRoot, id }) {
   return { id, name: typeof record.name === 'string' ? record.name : id, root: typeof record.root === 'string' ? record.root : null };
 }
 
+// A name of the person's own for a project (2026-11-13, the author: «rename it from Home»). Only
+// what MADRE shows changes: the folder keeps its name and its place, so nothing that points at it
+// breaks. An empty name takes the folder's back.
+export const PROJECT_TITLE_MAX = 80;
+export async function renameProject({ stateRoot, id, title }) {
+  if (typeof id !== 'string' || !/^[^/\\]+$/.test(id) || id === '.' || id === '..') return { error: 'unknown' };
+  const file = join(stateRoot, 'rooms', id, 'project.json');
+  const said = String(title ?? '').replace(/\s+/g, ' ').trim().slice(0, PROJECT_TITLE_MAX);
+  return oneAtATime(file, async () => {
+    const was = await readJson(file);
+    if (!was) return { error: 'unknown' };
+    const { title: _old, ...rest } = was;
+    await writeWhole(file, `${JSON.stringify(said ? { ...rest, title: said } : rest)}\n`);
+    return { id, name: said || (typeof was.name === 'string' ? was.name : id), title: said || null };
+  });
+}
+// The name MADRE shows for a project: the person's own, else its folder's.
+export async function projectTitle(roomDir) {
+  const record = await readJson(join(roomDir, 'project.json'));
+  return typeof record?.title === 'string' && record.title.trim() ? record.title : null;
+}
+
 // Every room: the ones open now, and the ones asleep whose project is still on disk. A folder
 // with neither (a test's, a temporary one, a room from before MADRE kept the path) is not
 // offered: there is nothing to open (S-004).
@@ -505,7 +527,8 @@ export async function knownRooms(stateRoot) {
     if (!open && !there) continue;
     out.push({
       id,
-      name: typeof where?.name === 'string' ? where.name : typeof mark?.project === 'string' ? mark.project : id.replace(/-[0-9a-f]{16}$/, ''),
+      name: typeof where?.title === 'string' && where.title.trim() ? where.title : typeof where?.name === 'string' ? where.name : typeof mark?.project === 'string' ? mark.project : id.replace(/-[0-9a-f]{16}$/, ''),
+      folderName: typeof where?.name === 'string' ? where.name : null,
       root: there ? root : null,
       lastOpened: where?.lastOpened ?? mark?.at ?? null,
       keepOpen: where?.keepOpen === true,

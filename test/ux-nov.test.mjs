@@ -120,3 +120,90 @@ test('ux 12 nov · «Show me» on the second conversation opens one beside, and 
   assert.match(home, /scroll\.scrollTop = top;/);
   assert.match(pub('styles.css'), /\.sx-more > \.sx-hint \{ margin: 10px 16px 16px; \}/);
 });
+
+test('ux 12 nov · behind «Before you start», MADRE at work in the abstract, on the right half, served to the page and the phone', async () => {
+  const field = pub('terms-field.js');
+  assert.match(field, /export function createTermsField/);
+  assert.match(field, /SPDX-License-Identifier: BUSL-1\.1/);
+  assert.match(pub('terms.js'), /const field = createTermsField\(\);\n  dialog\.append\(field\.node, card\);/);
+  assert.match(pub('terms.js'), /field\.stop\(\); dialog\.close\(\);/);
+  const css = pub('styles.css');
+  assert.match(css, /\.terms-field \{ position: fixed; inset: 0; z-index: 0;/);
+  assert.match(css, /dialog\.terms-gate\.intro \.terms-field \{ opacity: 0;/);
+  assert.match(readFileSync(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8'), /'\/terms-field\.js'/);
+  assert.match(readFileSync(join(import.meta.dirname, '..', 'src', 'bridge', 'policy.mjs'), 'utf8'), /'\/terms-field\.js'/);
+  // Without a page to draw in, it does nothing and does not throw.
+  const { createTermsField } = await import('../public/terms-field.js');
+  assert.equal(typeof createTermsField, 'function');
+});
+
+test('ux 13 nov · the opening is a mix: each AI a colour, blended into MADRE\'s, and the M written out of it', () => {
+  const css = pub('styles.css');
+  assert.match(css, /\.wl-intro-line \{ position: absolute; left: 0; right: 0; top: 50%; margin: 0; transform: translateY\(-50%\);/);
+  assert.match(css, /\.wl-intro-soft \{ display: inline-block; \}/);
+  assert.match(css, /@keyframes wl-line-in \{ from \{ opacity: 0; translate: 0 18px;/);
+  // No iris and no push: the stage fades in, and leaving still fades it out.
+  assert.match(css, /\.wl-intro:not\(\.po-stage\)::after \{ content: none; \}/);
+  assert.match(css, /\.wl-intro:not\(\.po-stage\):not\(\.leaving\) \{ animation: wl-mix-in/);
+  const loader = pub('loader.js');
+  const opening = loader.slice(loader.indexOf('export function playOpening('), loader.indexOf('// A PROJECT OPENS AGAIN'));
+  // Each AI's own colour as a field, the grey ones quieter; blended, then MADRE's colour.
+  assert.match(opening, /const hue = light \? BRANDS\[id\]\.colorLight : BRANDS\[id\]\.color;/);
+  assert.match(opening, /pen\.globalCompositeOperation = light \? 'source-over' : 'screen';/);
+  assert.match(opening, /glow\(x, y, radius, mix\(one\.hue, brand, tint\), alpha\);/);
+  // Nothing else on the stage: no badges, no threads, no sparks, no heart; two lines of words.
+  assert.ok(!/burst|drawImage|--hit/.test(opening), 'the old opening is back');
+  // The M is born as a heart from the point where the colours meet, beats once and becomes the M.
+  assert.match(loader, /const HEART_R = \[\[50, 33\]/);
+  assert.match(loader, /const INTRO_VIEW = \{ x: 0, y: 5.5, w: 305.5, h: 98 \}/);
+  assert.match(loader, /centreOfInk/);
+  assert.match(opening, /halfPath\(HEART_L, M_L, morph\)/);
+  // Only whole sentences, one at a time, on one line: no half that turns, no room kept for it.
+  assert.ok(!/softNow|const uses = /.test(opening), 'a turning half is back');
+  assert.match(loader, /story: \[300, 2900, 5400, 7500, 9400\]/);
+  assert.match(opening, /t\('MADRE brings them into one chat\.'\)/);
+  // Grander: a vortex, one flash and a wave at the meeting, a light along the M, a ring for the dot.
+  assert.match(opening, /const spin = time \* 0\.00009 \+ 2\.6 \* easeIn\(together\);/);
+  assert.match(opening, /THE MEETING: one emerald flash/);
+  assert.match(opening, /band\.id = 'wl-sheen';/);
+  assert.match(loader, /hold: 11300/);
+});
+
+test('rebranding 13 nov · the M of one stroke, its dot apart, «madre» in Space Grotesk, served from the package', () => {
+  const loader = pub('loader.js');
+  assert.match(loader, /export const MADRE_LOGO = '<svg class="brand-logo" viewBox="12 17\.5 281\.5 74"/);
+  assert.match(loader, /d="M20 82V42C20 21 41 21 46 39L50 52L54 39C59 21 80 21 80 42V60" stroke-width="14\.5"/);
+  assert.match(loader, /<circle class="beat-dot" cx="80" cy="81" r="9\.5"/);
+  assert.match(loader, /<text class="word" x="116\.7" y="71\.4" font-size="62" letter-spacing="-2\.17">madre<\/text>/);
+  // The pages draw the same logo, and the loader is the M too.
+  for (const page of ['index.html', 'salas-mac.html']) assert.match(pub(page), /<svg class="brand-logo" viewBox="12 17\.5 281\.5 74"/);
+  assert.match(loader, /export const LOADER_MARK = '<svg viewBox="10 16 82 76"/);
+  const css = pub('styles.css');
+  assert.match(css, /@font-face \{ font-family: 'Space Grotesk'; font-style: normal; font-weight: 700;[^}]*SpaceGrotesk-latin\.woff2/);
+  assert.match(css, /\.brand-logo \.word \{ fill: var\(--brand-word\); stroke: none; font-family: 'Space Grotesk'/);
+  assert.match(readFileSync(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8'), /\['\/assets\/brand\/SpaceGrotesk-latin\.woff2', 'font\/woff2'\]/);
+  // The favicon and the web icon: the M in its gradient on #0B0B0E.
+  assert.match(pub('assets/brand/madre-favicon.svg'), /<linearGradient id="m"[\s\S]*#0B0B0E/);
+});
+
+test('13 nov · the welcome and the second conversation, as the author asked', () => {
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const tour = readFileSync(new URL('../public/tour.js', import.meta.url), 'utf8');
+  const welcome = readFileSync(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  const scene = readFileSync(new URL('../public/welcome-scene.js', import.meta.url), 'utf8');
+  const mac = readFileSync(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  // No tips in the second conversation: the frame is named, not titled, and the pane says so.
+  assert.match(html, /<aside id="split" class="split-dock" aria-label="Second conversation" data-tip-off hidden>/);
+  assert.match(html, /<iframe id="split-frame" class="split-frame" aria-label="Second conversation"><\/iframe>/);
+  assert.ok(!/split\.title\.title =/.test(app));
+  assert.match(app, /if \(SPLIT_CHAT && globalThis\.document\?\.documentElement\) document\.documentElement\.dataset\.tipOff = '';/);
+  assert.match(app, /closest\?\.\('\[title\]:not\(iframe\)'\)/);
+  // The first-time hint over Modules (a div that is modal) sits beside the window, not over its bar.
+  assert.match(tour, /box\?\.closest\?\.\('\[role="dialog"\]\[aria-modal="true"\]'\)/);
+  assert.match(tour, /framed\.bottom - height - 16/);
+  // The computer check says what each thing means; the last picture's M fits in its card.
+  assert.match(welcome, /t\('What MADRE checked on your computer'\)/);
+  assert.match(scene, /const k = Math\.min\(\(cy - 16\) \/ 55, \(cx - x0\) \* 0\.9 \/ 61\);/);
+  assert.match(mac, /\.wl-section \{ font: 600 13\.5px\/1\.3 var\(--read\); letter-spacing: -\.005em; text-transform: none;/);
+});
