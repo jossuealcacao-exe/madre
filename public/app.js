@@ -43,6 +43,7 @@ import { changeSentence, changedFiles, fileToSee } from './changes.js';
 import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
 import { createNewsScene } from './news-scenes.js';
+import { autoOpenOn, csvRows, kindOf, pickToOpen, setAutoOpen } from './auto-open.js';
 
 // Nothing of MADRE starts before its license and privacy notice are accepted on this computer
 // (public/terms.js, src/terms.mjs): the page waits here.
@@ -3735,7 +3736,34 @@ function paintViewerPath(text) {
   viewer.path.append(el('b', 'file', cut >= 0 ? said.slice(cut + 1) : said));
   viewer.path.setAttribute?.('aria-label', said);
 }
-async function openViewer({ root = 'project', path = null, url = null, label = null, line = null, lines = null }) {
+// A sheet the way a sheet is looked at: its first rows as a table. An .xlsx has no reader here,
+// so it says what it is and offers it to the person's own spreadsheet app.
+function sheetView({ text = null, src }) {
+  const box = el('div', 'viewer-sheet');
+  if (text === null) {
+    box.classList.add('viewer-sheet-file');
+    box.append(el('p', null, t('A spreadsheet. Open it with your spreadsheet app.')));
+    const get = el('a', 'viewer-sheet-get', t('Download'));
+    get.href = src;
+    get.download = '';
+    box.append(get);
+    return box;
+  }
+  const rows = csvRows(text);
+  const table = el('table');
+  rows.forEach((cells, index) => {
+    const tr = el('tr');
+    for (const cell of cells) tr.append(el(index === 0 ? 'th' : 'td', null, cell));
+    table.append(tr);
+  });
+  box.append(table);
+  return box;
+}
+
+// `result`: what a file makes, not its text (a page drawn, a document read, a sheet as a table).
+// What opens on its own after an answer opens this way (autoOpenMade): the person asked for a page,
+// not for its code. The text stays one press away, on SOURCE.
+async function openViewer({ root = 'project', path = null, url = null, label = null, line = null, lines = null, result = false }) {
   let docked = false;
   try { docked = codeOn(); } catch { /* the layout is not up yet */ }
   if (!await leaveEditor({ stash: docked })) return;
@@ -3767,14 +3795,19 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
       frame.src = src; if (frame.tagName !== 'IFRAME') frame.controls = true;
       viewer.body.replaceChildren(frame); return;
     }
+    if (result && /\.xlsx$/i.test(path ?? '')) { viewer.body.replaceChildren(sheetView({ src })); return; }
     const text = await response.text();
+    if (result && /\.csv$/i.test(path ?? '')) { viewer.body.replaceChildren(sheetView({ text, src })); return; }
     // Text of this project, small enough to edit: the editor is offered. Attachments and frames
     // are read, never written.
     const editable = root === 'project' && Boolean(path) && !url && response.headers.has('x-mtime') && text.length < 2 * 1024 * 1024 && !text.includes('\u0000');
     // In the code workspace a page or a document opens as its text, with what it makes beside it.
     let docked = false;
     try { docked = codeOn(); } catch { /* the layout is not up yet */ }
-    Object.assign(viewerMode, { kind, text, src, line, lines, preview: Boolean(kind) && state.ripley && !line && !lines && !(docked && code.view !== 'preview'), mtime: response.headers.get('x-mtime'), editable });
+    // A document needs no sealed frame to be read (it is drawn as the answers are), so as a result
+    // it shows read even with Preview off; a page or an SVG still needs Preview.
+    const asResult = result && (kind === 'markdown' || (Boolean(kind) && state.ripley));
+    Object.assign(viewerMode, { kind, text, src, line, lines, preview: asResult || Boolean(kind) && state.ripley && !line && !lines && !(docked && code.view !== 'preview'), mtime: response.headers.get('x-mtime'), editable });
     const tab = editable ? noteCodeTab(path) : null;
     syncViewerMode();
     syncEditButton();
@@ -7726,6 +7759,10 @@ function renderLease(event) {
 
 function attachArtifacts(event) {
   const { responseMessageId, files = [] } = event.payload;
+  // Something new exists in the project: it opens beside the conversation (autoOpenMade). Live
+  // events only: a conversation read again opens nothing. Before the tiles' early return: the
+  // answer usually brings its tiles already drawn, and the opening was never reached.
+  if (!replaying) autoOpenMade(files);
   const bubble = document.getElementById(`msg-${responseMessageId}`)?.querySelector('.bubble');
   if (!bubble || bubble.querySelector('.artifacts')) return;
   // Above the reply's foot, with the rest of what it says.
@@ -7752,12 +7789,48 @@ function attachArtifacts(event) {
     tiles.append(undo);
   }
   if (foot && foot.parentNode === bubble && typeof bubble.insertBefore === 'function') bubble.insertBefore(tiles, foot); else bubble.append(tiles);
-  // Something new exists in the project: show it, so the human sees what
-  // changed and can quote lines back to an agent. Live events only.
-  if (!replaying && files.length && !viewer.dialog.open) {
-    const first = files.find((file) => (file.contentType ?? '').startsWith('image/') || /^(text\/|application\/(json|x-ndjson))/.test(file.contentType ?? '')) ?? null;
-    if (first) void openViewer({ root: 'project', path: first.path, label: `/${first.path} · ${t(first.status)}` });
+}
+
+// LO QUE SE CREA, SE ABRE SOLO (2026-11-11). What an answer made or changed that can be looked at
+// opens beside the conversation, as what it makes (a page drawn, not its code), without being asked
+// for: the person asked for a page and sees the page. Of several, the one that matters most
+// (public/auto-open.js); the others stay on the answer's tiles. Never over what the person is
+// already looking at: then a quiet notice, «Made gastos.html · View», and nothing moves.
+// `files` are the answer's: { path, status } with «created»/«changed» or the edit's A/M/R/D.
+// Another card under the answer (what changed) can call it with its own list: it is one door.
+function autoOpenMade(files) {
+  if (!autoOpenOn()) return;
+  const { first } = pickToOpen(files);
+  if (!first) return;
+  const name = first.path.split('/').pop();
+  const made = ['created', 'A'].includes(first.status);
+  const open = () => openViewer({ root: 'project', path: first.path, label: `/${first.path}`, result: true });
+  // Already on screen: Preview reloads it on its own (ripleyMaybeReload); nothing to open.
+  if (viewer.dialog?.open && viewerUI.path === first.path) return;
+  if (sideBusy() || state.device) {
+    toast(made ? t('Made {name}', { name }) : t('Changed {name}', { name }), { action: { label: t('View'), run: () => void open() } });
+    return;
   }
+  // Whoever was writing keeps writing: the viewer does not take the caret from the box.
+  const typing = document.activeElement === els.input;
+  void open().then(() => {
+    if (typing && document.activeElement !== els.input) els.input.focus({ preventScroll: true });
+    firstMadeSeen();
+  });
+}
+// The viewer on another file, or the browser beside with a page in it: the person is looking at it.
+function sideBusy() {
+  if (viewer.dialog?.open) return true;
+  const tab = browserTab();
+  return Boolean(browser.dialog && !browser.dialog.hidden && tab?.url && tab.url !== 'about:blank');
+}
+// The first thing that ever opened on its own is the person's first result: said once, in a few words.
+function firstMadeSeen() {
+  try {
+    if (localStorage.getItem('madre.firstMade')) return;
+    localStorage.setItem('madre.firstMade', new Date().toISOString());
+  } catch { return; }
+  toast(t('Your first result, already on screen.'), { tone: 'done' });
 }
 
 function artifactTiles(files) {
@@ -9197,7 +9270,7 @@ function renderEventNode(event) {
     case 'bishop.order.proposed': node = renderBishopProposal(event); break;
     case 'bishop.answer': node = renderBishopAnswer(event); break;
     case 'create.missing': node = renderCreateMissing(event); break;
-    case 'control.changed': markTouched(event.payload.agent, event.payload.files, event.timestamp); node = attachControlChanges(event) ? null : renderControlChanged(event); if (!replaying) { ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); } break;
+    case 'control.changed': markTouched(event.payload.agent, event.payload.files, event.timestamp); node = attachControlChanges(event) ? null : renderControlChanged(event); if (!replaying) { ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); treeFollowWrites(); autoOpenMade(event.payload.files); } break;
     case 'control.reverted': node = renderControlReverted(event); if (!replaying) { treeFollowWrites(); void markMission('undo', { say: toast }); } break;
     case 'mode.granted':
     case 'mode.denied': settleModeRequest(event); return;
@@ -10069,7 +10142,7 @@ const SETTINGS_INDEX = [
   ['room', 'Several at once'], ['room', 'Notifications'], ['room', 'Conversations at once'], ['room', 'Answers per conversation'], ['room', 'Agents may make plans'], ['room', 'Steps per plan'],
   ['manual', 'User manual'], ['manual', 'PDF'],
   ['room', 'Suggested effort'], ['room', 'Options'], ['room', 'Commands'], ['memory', 'Connections'],
-  ['files', 'Files'], ['files', 'Your servers'], ['files', 'File viewer'], ['files', 'Preview'], ['files', "Test browser"],
+  ['files', 'Files'], ['files', 'Your servers'], ['files', 'File viewer'], ['files', 'Open what is made'], ['files', 'Preview'], ['files', "Test browser"],
   ['room', 'Usage limit per agent'], ['room', 'Default time limit'], ['room', 'Silence limit'], ['room', 'Retries'], ['room', 'Model'],
   ['agents', 'Max mode'], ['agents', 'Starting mode'], ['agents', 'Web access'], ['agents', 'Generate images'], ['agents', 'Time limit'], ['agents', 'Sign in'],
   ['memory', 'Who does it first'], ['memory', 'Who may do it'], ['memory', 'How many notes it hands over'], ['memory', 'Related notes'], ['memory', 'Search by meaning'], ['memory', 'Training data'], ['memory', 'Details and checkups'],
@@ -16775,6 +16848,8 @@ function drawFilesSettings(host) {
     { value: 'dock', text: t('Docked') }, { value: 'window', text: t('Window') },
   ], browserWindow.floating ? 'window' : 'dock', (value) => { setBrowserFloating(value === 'window', { animate: false }); }, { label: t('Your servers') }));
   sxRow(where, t('File viewer'), t('It always opens beside the conversation: opening a file never splits the project on its own. From there it can float as a window.'));
+  // What an answer makes opens beside the conversation (autoOpenMade). Kept in this browser.
+  sxRow(where, t('Open what is made'), t('A page, picture or document an AI makes or changes opens beside the conversation.'), sxSwitch(autoOpenOn(), (on) => setAutoOpen(on), { label: t('Open what is made') }));
 
   const show = sxBlock(host, t('What they can show'), t('These switches are the same ones as in MODULES.'));
   for (const [id, label, hint] of [
