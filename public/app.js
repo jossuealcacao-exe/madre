@@ -10830,6 +10830,9 @@ const LOOKS = {
   wallpaper: { key: 'pulse.wallpaper', values: ['default', 'jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania', CUSTOM_WALL] },
   // How a photograph wears the room's ground: a flat layer, or a mesh of its own colours.
   wpStyle: { key: 'pulse.wallpaper.style', values: ['veil', 'mesh'] },
+  // How code reads (2026-11-14, the author): the editor, the file viewer and the app's terminal, as
+  // data-code-theme (styles.css, «Terminal and editor»). Simple is the room as it always was.
+  codeTheme: { key: 'pulse.code.theme', values: ['simple', 'coldbrew', 'oldcode'] },
 };
 // The photographs' two dials: how strong the layer or the mesh is (100 is the original) and how far
 // the photograph blurs, in pixels. Numbers, not choices, so they live beside the looks.
@@ -10862,6 +10865,14 @@ const LOOK_WORDS = {
   text: { comfortable: () => t('Comfortable'), larger: () => t('Larger'), smaller: () => t('Smaller'), visual: () => t('Visual') },
   wallpaper: { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania', custom: () => t('Your picture') },
   wpStyle: { veil: () => t('Layer'), mesh: () => t('Mesh') },
+  // The author's names, the same in every language.
+  codeTheme: { simple: () => 'Simple', coldbrew: () => 'Coldbrew', oldcode: () => 'Oldcode' },
+};
+// What each style is, under its tile.
+const CODE_THEME_ABOUT = {
+  coldbrew: () => t('MADRE green, in the spirit of a classic terminal.'),
+  oldcode: () => t('Calm, warm colours for reading code for hours.'),
+  simple: () => t('MADRE as it has always looked.'),
 };
 // Jarrito took MADRE's place among the wallpapers and Canela took Autumn's: a choice saved under
 // the old name lands on the one that replaced it.
@@ -10903,7 +10914,7 @@ window.addEventListener?.('storage', (event) => {
 // one chosen in Home (src/looks.mjs, `rooms`). The rest of the looks are shared.
 // The accent too, since 1.0.5: chosen here it is this project's, and Home's is the one a project
 // wears until it has its own.
-const SHARED_LOOKS = ['pulse.theme', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural'];
+const SHARED_LOOKS = ['pulse.theme', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural', 'pulse.code.theme'];
 let booted = false;
 let looksPush = 0;
 // Saved for this project alone, on the server, so it outlives the port the page is served on.
@@ -10979,7 +10990,7 @@ function saveLook(name, value) {
 // Closing the window drops it. The language is part of the draft too, and accepting a new one
 // reloads the page in it, after the looks are saved.
 function currentLooks() {
-  return { accent: readLook('accent'), bubbles: readLook('bubbles'), text: readLook('text'), wallpaper: readLook('wallpaper'), wpStyle: readLook('wpStyle'), veil: readTune('veil'), blur: readTune('blur'), language: language(), theme: themeMode };
+  return { accent: readLook('accent'), bubbles: readLook('bubbles'), text: readLook('text'), wallpaper: readLook('wallpaper'), wpStyle: readLook('wpStyle'), codeTheme: readLook('codeTheme'), veil: readTune('veil'), blur: readTune('blur'), language: language(), theme: themeMode };
 }
 function setDraft(name, value) {
   customWindow.draft = { ...(customWindow.draft ?? currentLooks()), [name]: value };
@@ -11243,6 +11254,38 @@ function drawCustom() {
     const talk = sxBlock(page, t('Conversation'));
     sxRow(talk, t('Bubbles'), null, segmented('bubbles'), { stack: true });
     sxRow(talk, t('Text'), null, segmented('text'), { stack: true });
+    // How code reads (2026-11-14): three tiles in the author's order, each a few lines of code in its
+    // own colours, light or dark as the Theme is; the line under them says what the one in view is.
+    const code = sxBlock(page, t('Terminal and editor'), t('How code reads in the editor, the file viewer and the app\'s terminal. Each style has a light and a dark version and changes with the Theme.'));
+    const codeBox = el('div', 'paper-box');
+    const picks = el('div', 'custom-papers code-picks');
+    picks.setAttribute('role', 'radiogroup');
+    picks.setAttribute('aria-label', t('Terminal and editor'));
+    const about = el('p', 'code-pick-about', CODE_THEME_ABOUT[draft.codeTheme]());
+    for (const value of ['coldbrew', 'oldcode', 'simple']) {
+      const tile = radio(el('button', 'paper code-pick'), value === draft.codeTheme, () => setDraft('codeTheme', value));
+      const sample = el('span', 'paper-swatch code-sample');
+      sample.dataset.codeSample = value;
+      sample.setAttribute('aria-hidden', 'true');
+      const line = (...parts) => { const one = el('span'); for (const [kind, words] of parts) one.append(kind ? el('span', `t-${kind}`, words) : words); return one; };
+      sample.append(
+        line(['comment', '// MADRE']),
+        line(['keyword', 'const'], [null, ' n = '], ['number', '42'], [null, ';']),
+        line(['keyword', 'let'], [null, ' ok = '], ['literal', 'true'], [null, ';']),
+        line([null, 'say('], ['string', '"hola"'], [null, ');']),
+      );
+      tile.append(sample, el('span', 'paper-name', LOOK_WORDS.codeTheme[value]()));
+      tile.setAttribute('aria-label', `${LOOK_WORDS.codeTheme[value]()} · ${CODE_THEME_ABOUT[value]()}`);
+      const say = () => { about.textContent = CODE_THEME_ABOUT[value](); about.classList.toggle('peek', value !== draft.codeTheme); };
+      const back = () => { about.textContent = CODE_THEME_ABOUT[draft.codeTheme](); about.classList.remove('peek'); };
+      tile.addEventListener('pointerenter', say);
+      tile.addEventListener('focus', say);
+      tile.addEventListener('pointerleave', back);
+      tile.addEventListener('blur', back);
+      picks.append(tile);
+    }
+    codeBox.append(picks, about);
+    code.rows.append(codeBox);
     const words = sxBlock(page, t('Language'));
     sxRow(words, t('Interface'), t('The page reloads in it when you choose to.'), languages);
     const acts = el('div', 'sx-actions end');
@@ -11380,7 +11423,7 @@ const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'm
 // The words the search knows, each pointing to the category that holds it and to the words on the
 // screen that carry it there, so a result opens the category and lands on the setting.
 const SETTINGS_INDEX = [
-  ['look', 'Preview'], ['look', 'Language'], ['look', 'Theme'], ['look', 'Wallpaper'], ['look', 'Accent'], ['look', 'Bubbles'], ['look', 'Text'],
+  ['look', 'Preview'], ['look', 'Language'], ['look', 'Theme'], ['look', 'Wallpaper'], ['look', 'Accent'], ['look', 'Bubbles'], ['look', 'Text'], ['look', 'Terminal and editor'],
   ['room', 'Several at once'], ['room', 'Notifications'], ['room', 'Conversations at once'], ['room', 'Answers per conversation'], ['room', 'Agents may make plans'], ['room', 'Steps per plan'],
   ['manual', 'User manual'], ['manual', 'PDF'],
   ['room', 'Suggested effort'], ['room', 'Options'], ['room', 'Commands'], ['memory', 'Connections'],

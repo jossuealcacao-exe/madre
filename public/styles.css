@@ -14638,3 +14638,95 @@ dialog.viewer .code-crumbs.empty { display: none !important; }
 /* WHAT IS SENT, SAID FOR SOMEONE NEW (2026-11-14): each pane opens with one plain sentence about what it
    shows, quiet under the tabs and above the pane's own heads. */
 .core .core-lead { margin: 2px 0 14px; max-width: 76ch; font: 400 13.5px/1.55 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2); }
+
+/* ---- Terminal and editor: Coldbrew, Oldcode and Simple (2026-11-14, the author) ----
+   Ajustes › Apariencia › Terminal y editor puts data-code-theme on the root (app.js, LOOKS.codeTheme).
+   Simple is the room as it always was and writes no attribute: nothing here touches it. Each style
+   has a dark and a light version and follows the Theme through data-scheme. What it paints is the
+   code: the editor's page and gutter, the file viewer's code, and the app's terminal (the --term-*
+   variables, read by the desktop app's terminal-panel.js). The code blocks inside the conversation
+   keep their own look. The --code-* names carry each palette so the root's --syn-* stay Simple's,
+   which the Simple sample in Apariencia reads. Every colour of text holds AA (4.5:1) on its ground.
+   Coldbrew: the Homebrew profile of the Mac's Terminal, green on almost black, in MADRE's emerald;
+   light, a deep green on a pale mint. Oldcode: warm ink on dark paper, or on light paper, made to be
+   read for hours; comments in a soft italic. */
+:root[data-code-theme="coldbrew"], [data-code-sample="coldbrew"] {
+  --code-bg: #08100c; --code-gutter: #08100c; --code-text: #34d399; --code-dim: #3f8a6b;
+  --code-line: rgba(52, 211, 153, .14); --code-active: rgba(52, 211, 153, .07); --code-sel: rgba(52, 211, 153, .28); --code-caret: #6ee7b7;
+  --code-keyword: #a7f3d0; --code-string: #bef264; --code-comment: #5f9c82; --code-number: #f5e6a3; --code-literal: #5eead4; --code-regex: #93c5fd;
+}
+:root[data-code-theme="coldbrew"] {
+  --term-bg: #08100c; --term-fg: #34d399; --term-cursor: #6ee7b7; --term-sel: rgba(52, 211, 153, .3);
+  --term-black: #1c2b24; --term-red: #f87171; --term-green: #34d399; --term-yellow: #e9e27d;
+  --term-blue: #7cb7f5; --term-magenta: #e79bf2; --term-cyan: #5eead4; --term-white: #c8e6d8;
+  --term-bright-black: #5c8574; --term-bright-red: #fca5a5; --term-bright-green: #6ee7b7; --term-bright-yellow: #f5f0a8;
+  --term-bright-blue: #b4d6fb; --term-bright-magenta: #f3c6f8; --term-bright-cyan: #99f6e4; --term-bright-white: #effdf6;
+}
+:root[data-code-theme="coldbrew"][data-scheme="light"], :root[data-scheme="light"] [data-code-sample="coldbrew"] {
+  --code-bg: #f4faf6; --code-gutter: #ebf4ee; --code-text: #064e3b; --code-dim: #5a7d6d;
+  --code-line: rgba(6, 78, 59, .12); --code-active: rgba(5, 150, 105, .07); --code-sel: rgba(5, 150, 105, .2); --code-caret: #059669;
+  --code-keyword: #047857; --code-string: #4d7c0f; --code-comment: #557363; --code-number: #92400e; --code-literal: #0f766e; --code-regex: #1d4ed8;
+}
+:root[data-code-theme="coldbrew"][data-scheme="light"] {
+  --term-bg: #f4faf6; --term-fg: #064e3b; --term-cursor: #059669; --term-sel: rgba(5, 150, 105, .22);
+  --term-black: #1f2d27; --term-red: #b42318; --term-green: #047857; --term-yellow: #855d00;
+  --term-blue: #1d4ed8; --term-magenta: #a21caf; --term-cyan: #0e7490; --term-white: #5f6f68;
+  --term-bright-black: #4b5d55; --term-bright-red: #c9372c; --term-bright-green: #067a55; --term-bright-yellow: #946800;
+  --term-bright-blue: #2563eb; --term-bright-magenta: #b02bc0; --term-bright-cyan: #0a7690; --term-bright-white: #2d3a34;
+}
+:root[data-code-theme="oldcode"], [data-code-sample="oldcode"] {
+  --code-bg: #1c1b18; --code-gutter: #191815; --code-text: #e4dccb; --code-dim: #7b7467;
+  --code-line: rgba(228, 220, 203, .08); --code-active: rgba(228, 220, 203, .045); --code-sel: rgba(232, 184, 106, .24); --code-caret: #e8b86a;
+  --code-keyword: #dda56a; --code-string: #a8c48a; --code-comment: #968e7d; --code-number: #e0a3a0; --code-literal: #93b4d8; --code-regex: #c5a3d6;
+}
+:root[data-code-theme="oldcode"] {
+  --term-bg: #1c1b18; --term-fg: #e4dccb; --term-cursor: #e8b86a; --term-sel: rgba(232, 184, 106, .26);
+  --term-black: #35322c; --term-red: #e38c7c; --term-green: #a8c48a; --term-yellow: #e3bf7a;
+  --term-blue: #93b4d8; --term-magenta: #cba1d1; --term-cyan: #8fc4b9; --term-white: #d6cdbb;
+  --term-bright-black: #7b7467; --term-bright-red: #f0a999; --term-bright-green: #c2daa8; --term-bright-yellow: #f0d49e;
+  --term-bright-blue: #b3cbe7; --term-bright-magenta: #dcbde0; --term-bright-cyan: #b0dad1; --term-bright-white: #f7f1e4;
+}
+:root[data-code-theme="oldcode"][data-scheme="light"], :root[data-scheme="light"] [data-code-sample="oldcode"] {
+  --code-bg: #f8f4ea; --code-gutter: #f1ecdf; --code-text: #2a2620; --code-dim: #857c6b;
+  --code-line: rgba(42, 38, 32, .1); --code-active: rgba(42, 38, 32, .04); --code-sel: rgba(138, 74, 18, .16); --code-caret: #8a4a12;
+  --code-keyword: #8a4a12; --code-string: #476628; --code-comment: #6f6759; --code-number: #9b3550; --code-literal: #285a8c; --code-regex: #6b4791;
+}
+:root[data-code-theme="oldcode"][data-scheme="light"] {
+  --term-bg: #f8f4ea; --term-fg: #2a2620; --term-cursor: #8a4a12; --term-sel: rgba(138, 74, 18, .18);
+  --term-black: #2a2620; --term-red: #a3392b; --term-green: #476628; --term-yellow: #855d00;
+  --term-blue: #285a8c; --term-magenta: #7d3c8a; --term-cyan: #2a6b66; --term-white: #6a6253;
+  --term-bright-black: #5c554a; --term-bright-red: #b8473a; --term-bright-green: #55762f; --term-bright-yellow: #946800;
+  --term-bright-blue: #33679c; --term-bright-magenta: #8d4a99; --term-bright-cyan: #2f7a74; --term-bright-white: #3d3830;
+}
+/* Simple in its sample: whatever the root wears, the sample shows the room's own colours. */
+[data-code-sample="simple"] {
+  --code-bg: initial; --code-gutter: initial; --code-text: initial; --code-dim: initial; --code-keyword: initial; --code-string: initial;
+  --code-comment: initial; --code-number: initial; --code-literal: initial; --code-regex: initial;
+}
+/* The editor: its page and its gutter, never its bar or its status line. Behind :where() the root
+   adds nothing to the weight of a rule, so a selection, a search mark or an AI's mark still wins. */
+:where(:root[data-code-theme]) .code-editor .ed-main { background: var(--code-bg); }
+:where(:root[data-code-theme]) .ed-gutter { background: var(--code-gutter); border-right-color: var(--code-line); }
+:where(:root[data-code-theme]) .ed-gutter-inner { color: var(--code-dim); opacity: 1; }
+:where(:root[data-code-theme]) .ed-gutter-inner > div.on { color: var(--code-text); }
+:where(:root[data-code-theme]) .ed-hl { color: var(--code-text); }
+:where(:root[data-code-theme]) .ed-active { background: var(--code-active); border-color: transparent; }
+:where(:root[data-code-theme]) .ed-input { caret-color: var(--code-caret); }
+:where(:root[data-code-theme]) .ed-input::selection { background: var(--code-sel); }
+/* The file viewer's code. Beside a preview only the code takes the ground; the preview keeps its own. */
+:where(:root[data-code-theme]) .viewer-body:has(> pre.code):not(.with-beside), :where(:root[data-code-theme]) .viewer-body pre.code { background: var(--code-bg); }
+:where(:root[data-code-theme]) .viewer-body pre.code { color: var(--code-text); }
+:where(:root[data-code-theme]) .viewer-body pre.code .ln { background: var(--code-gutter); color: var(--code-dim); border-right-color: var(--code-line); }
+:where(:root[data-code-theme]) .viewer-body pre.code ::selection { background: var(--code-sel); }
+/* The words, in both. */
+:where(:root[data-code-theme]) :is(.ed-hl, .viewer .code) .t-keyword, .code-sample .t-keyword { color: var(--code-keyword, var(--syn-keyword)); }
+:where(:root[data-code-theme]) :is(.ed-hl, .viewer .code) .t-string, .code-sample .t-string { color: var(--code-string, var(--syn-string)); }
+:where(:root[data-code-theme]) :is(.ed-hl, .viewer .code) .t-comment, .code-sample .t-comment { color: var(--code-comment, var(--syn-comment)); font-style: italic; }
+:where(:root[data-code-theme]) :is(.ed-hl, .viewer .code) .t-number, .code-sample .t-number { color: var(--code-number, var(--syn-number)); }
+:where(:root[data-code-theme]) :is(.ed-hl, .viewer .code) .t-literal, .code-sample .t-literal { color: var(--code-literal, var(--syn-literal)); }
+:where(:root[data-code-theme]) :is(.ed-hl, .viewer .code) .t-regex, .code-sample .t-regex { color: var(--code-regex, var(--syn-regex)); }
+/* The three to choose from, as the wallpapers are: a tile each, with a few lines of code on its ground. */
+.code-picks .paper-swatch.code-sample { display: grid; align-content: center; justify-items: start; padding: 6px 10px; overflow: hidden; font: 10.5px/1.42 var(--mono); letter-spacing: 0; text-align: left; white-space: pre; background: var(--code-bg, var(--cs-canvas, var(--panel))); color: var(--code-text, var(--text)); }
+.code-picks .code-sample > span { display: block; max-width: 100%; overflow: hidden; text-overflow: clip; }
+.code-pick-about { margin: 0; font: 12px/1.45 var(--read, var(--sans)); color: var(--text-2); }
+.code-pick-about.peek { color: var(--text-3); }

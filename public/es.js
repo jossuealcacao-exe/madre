@@ -1718,6 +1718,12 @@ export const ES = {
   'Agents': 'Tus IAs',
   'Language': 'Idioma',
   'Theme': 'Tema',
+  // Terminal y editor en Apariencia (2026-11-14): Coldbrew, Oldcode y Simple son nombres del autor.
+  'Terminal and editor': 'Terminal y editor',
+  'How code reads in the editor, the file viewer and the app\'s terminal. Each style has a light and a dark version and changes with the Theme.': 'Cómo se lee el código en el editor, en el visor de archivos y en la terminal de la app. Cada estilo tiene versión clara y oscura, y cambia con el Tema.',
+  'MADRE green, in the spirit of a classic terminal.': 'El verde de MADRE, al estilo de una terminal clásica.',
+  'Calm, warm colours for reading code for hours.': 'Colores cálidos y tranquilos para leer código por horas.',
+  'MADRE as it has always looked.': 'MADRE como se ha visto siempre.',
   'Conversations': 'Chats',
   'Close conversations': 'Cerrar los chats',
   'Project files': 'Archivos del proyecto',
