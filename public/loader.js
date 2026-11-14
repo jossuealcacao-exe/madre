@@ -460,7 +460,11 @@ export function playOpening(dialog, { skipLabel = 'Skip', from = null } = {}) {
       const dotIn = easeOut(span(time, INTRO.dot, INTRO.dot + 380));
       const lub = (x) => 1 + 0.3 * Math.exp(-((x / 70) ** 2)) + 0.17 * Math.exp(-(((x - 220) / 70) ** 2));
       dot.style.opacity = String(dotIn);
-      dot.style.transform = `scale(${(dotIn * lub(time - INTRO.dot - 260)).toFixed(4)})`;
+      // And it keeps beating while the words go on (2026-11-13, the author: «the dot must keep beating»),
+      // the same double beat every 2.6 s, a little softer after the first.
+      const since = time - INTRO.dot - 260;
+      const beat = since < 2600 ? lub(since) : 1 + 0.75 * (lub(since % 2600) - 1);
+      dot.style.transform = `scale(${(dotIn * beat).toFixed(4)})`;
       // The light along the M, once, left to right.
       const run = span(time, INTRO.sheen, INTRO.sheen + 900);
       sheen.style.opacity = run > 0 && run < 1 ? '1' : '0';

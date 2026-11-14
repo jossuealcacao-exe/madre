@@ -1859,6 +1859,11 @@ export const ES = {
   "Ask again in a minute, pick an explicit model from the Write box's model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the spare model; left empty, there is none.":
     'Vuelve a preguntar en un minuto, elige un modelo explícito en el menú de la caja de Escribir, o pásale la pregunta a otro agente. PULSE_GEMINI_FALLBACK_MODEL cambia el modelo de respaldo; vacío, no hay respaldo.',
 
+  'The model OpenCode picked does not exist at its provider': 'El modelo que eligió OpenCode no existe en su proveedor',
+  'With no model chosen in MADRE, OpenCode picks one by itself, and its provider answered that it does not have it. Your sign-in is fine: the model is what fails.': 'Sin un modelo elegido en MADRE, OpenCode escoge uno por su cuenta, y su proveedor contestó que no lo tiene. Tu sesión está bien: lo que falla es el modelo.',
+  "Retry on a model that works (MADRE offers one under the error), or choose OpenCode's model in Settings › Agents › OpenCode.": 'Reintenta con un modelo que funciona (MADRE te ofrece uno debajo del error), o elige el modelo de OpenCode en Ajustes › Agentes › OpenCode.',
+  '# press [m] and pick a model that answers, e.g. openai/gpt-5.6-sol or opencode/big-pickle': '# pulsa [m] y elige un modelo que responda, por ejemplo openai/gpt-5.6-sol u opencode/big-pickle',
+  '# press [m] and pick a model that answers': '# pulsa [m] y elige un modelo que responda',
   'OpenCode picked a provider without a valid session': 'OpenCode eligió un proveedor sin sesión válida',
   'Without a model in its config, `opencode run` falls back to its default provider. On this machine that provider holds a stale or invalid key.':
     'Sin un modelo en su configuración, `opencode run` se va a su proveedor por defecto. En esta computadora ese proveedor tiene una llave vieja o inválida.',
@@ -4854,6 +4859,7 @@ export const ES = {
   'You are on the new version. From today you can open MADRE like any other app and get more out of what it can do on your {computer}. Everything it remembers comes with you.': 'Ya tienes la versión nueva. Desde hoy puedes abrir MADRE como cualquier otra app y aprovechar mejor lo que puede hacer en tu {computer}. Todo lo que recuerda viene contigo.',
   'You are on the new version. From today you can open MADRE like any other app and get more out of what it can do on your {computer}: {project} comes with you as it is, with its chats and everything MADRE remembers.': 'Ya tienes la versión nueva. Desde hoy puedes abrir MADRE como cualquier otra app y aprovechar mejor lo que puede hacer en tu {computer}: {project} viene contigo tal como está, con sus chats y todo lo que MADRE recuerda.',
   'You are on the new version. From today you can open MADRE like any other app and get more out of what it can do on your {computer}: {projects} come with you as they are, with their chats and everything MADRE remembers.': 'Ya tienes la versión nueva. Desde hoy puedes abrir MADRE como cualquier otra app y aprovechar mejor lo que puede hacer en tu {computer}: {projects} vienen contigo tal como están, con sus chats y todo lo que MADRE recuerda.',
+  'It all starts with your AIs.': 'Todo empieza con tus IAs.',
   'Personal license': 'Licencia personal',
   'You can use MADRE, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.': 'Puedes usar MADRE, modificarla y compartirla; una organización de más de 10 personas, o quien ofrezca MADRE como servicio, necesita una licencia comercial.',
   'MADRE 1.1 has a new license': 'MADRE 1.1 trae una licencia nueva',

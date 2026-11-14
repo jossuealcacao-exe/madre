@@ -13853,3 +13853,19 @@ html.chat-shell dialog.viewer.code > .viewer-head > .code-tabs { order: 10; flex
 /* While a row of notices grows or shrinks (app.js, morphStrip): what is outside stays outside, and
    the frosted glass rests until it stops. */
 #messages .sys-dots.morphing { overflow: hidden; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; will-change: width, height; }
+/* The welcome's logo keeps its heartbeat (2026-11-13, the author: «the dot at the end of the M must keep
+   beating»): it lands, then beats twice every 2.6 s, also once the logo is drawn still. */
+.wl-brand .brand-logo .pulse .beat-dot { animation: beat-dot 1s ease-out 1.05s forwards, beat-idle calc(2.6s * var(--motion-scale, 1)) ease-in-out 2.4s infinite; }
+.wl-brand.still .brand-logo .pulse .beat-dot { opacity: 1; animation: beat-idle calc(2.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .wl-brand .brand-logo .pulse .beat-dot, .wl-brand.still .brand-logo .pulse .beat-dot { animation: none; opacity: 1; } }
+/* The prelude before «Before you start» (2026-11-13, terms-field.js PRELUDE): the card and the language
+   key wait while the AIs are born as points and open into smoke; one quiet line begins the story; then
+   the card comes up over the smoke. */
+dialog.terms-gate .terms-card { transition: opacity calc(700ms * var(--motion-scale, 1)) ease, transform calc(800ms * var(--motion-scale, 1)) cubic-bezier(.16, 1, .3, 1); }
+dialog.terms-gate.prelude .terms-card { opacity: 0; transform: translateY(10px); pointer-events: none; }
+dialog.terms-gate.prelude .terms-lang { opacity: 0; pointer-events: none; }
+dialog.terms-gate .terms-lang { transition: opacity calc(600ms * var(--motion-scale, 1)) ease; }
+.terms-field.born { transition-duration: .2s; }
+.terms-prelude { position: fixed; left: 50%; top: 50%; z-index: 1; margin: 0; transform: translate(-50%, -50%); font: 600 clamp(17px, 2vw, 24px)/1.3 var(--read, inherit); letter-spacing: -.016em; color: var(--text); white-space: nowrap; pointer-events: none; opacity: 0; animation: terms-prelude calc(2300ms * var(--motion-scale, 1)) ease .35s both; }
+@keyframes terms-prelude { 0% { opacity: 0; filter: blur(4px); } 25%, 62% { opacity: 1; filter: none; } 100% { opacity: 0; filter: blur(3px); } }
+@media (prefers-reduced-motion: reduce) { .terms-prelude { display: none; } dialog.terms-gate.prelude .terms-card { transition: none; } }

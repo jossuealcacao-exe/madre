@@ -180,6 +180,24 @@ export const CONDITIONS = [
     },
   },
   {
+    // The QA of the app (2026-11-13): with no model chosen, OpenCode picked one its provider does not
+    // have (anthropic/claude-fable-5-1) and every turn ended in «APIError: Not Found», read by the
+    // person as a sign-in that would not work. Same way out as MU-007: a model that answers.
+    id: 'opencode-default-model-missing',
+    code: 'MU-094',
+    solvedIn: 'connections',
+    agent: 'opencode',
+    severity: 'blocking',
+    title: 'The model OpenCode picked does not exist at its provider',
+    match: /APIError:\s*Not Found|Error:\s*Not Found\b|model[^\n]{0,40}not found/i,
+    diagnosis: 'With no model chosen in MADRE, OpenCode picks one by itself, and its provider answered that it does not have it. Your sign-in is fine: the model is what fails.',
+    remedy: 'Retry on a model that works (MADRE offers one under the error), or choose OpenCode\'s model in Settings › Agents › OpenCode.',
+    fixes: {
+      darwin: ['npx @jossuealcala/madre setup', '# press [m] and pick a model that answers, e.g. openai/gpt-5.6-sol or opencode/big-pickle', '# one-off alternative:', 'PULSE_OPENCODE_MODEL=opencode/big-pickle npx @jossuealcala/madre start'],
+      linux: ['npx @jossuealcala/madre setup', '# press [m] and pick a model that answers', 'PULSE_OPENCODE_MODEL=opencode/big-pickle npx @jossuealcala/madre start'],
+    },
+  },
+  {
     // Seen in a real project (2026-10-19): OpenCode's default model was Anthropic's, through an API
     // key with no balance, and every turn of a plan failed with the provider's words in English.
     id: 'provider-credit-exhausted',

@@ -113,3 +113,13 @@ test('13 nov · Files keys fixed on top with «⋯», rows paint their avatar sh
   assert.ok(!/--fold/.test(styles), 'the folder look is gone');
   assert.match(app, /hideTip\(\);\n  strip\.classList\.toggle\('open', open\);/);
 });
+
+test('13 nov · OpenCode on a model its provider does not have is MU-094, with the way out', async () => {
+  const { diagnose } = await import('../public/troubleshooting.js');
+  assert.deepEqual(diagnose('APIError: Not Found', 'opencode').map((one) => one.code), ['MU-094']);
+  assert.equal(diagnose('APIError: Not Found', 'gemini').some((one) => one.code === 'MU-094'), false);
+  const { problemOf } = await import('../src/opencode-health.mjs');
+  assert.equal(problemOf('APIError: Not Found'), 'no-model');
+  const app = await pub('app.js');
+  assert.match(app, /OPENCODE_WAY_OUT = new Set\(\[[^\]]*'opencode-default-model-missing'\]\)/);
+});

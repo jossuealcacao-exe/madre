@@ -45,7 +45,7 @@ const OPENCODE_PICK = 'opencode/big-pickle';
 export const providerOf = (model) => (typeof model === 'string' && model.includes('/') ? model.split('/')[0] : null);
 
 // Which of MADRE's known conditions this failure is, said as what the provider needs.
-const KINDS = { 'provider-credit-exhausted': 'no-credit', 'opencode-default-provider': 'bad-key' };
+const KINDS = { 'provider-credit-exhausted': 'no-credit', 'opencode-default-provider': 'bad-key', 'opencode-default-model-missing': 'no-model' };
 export function problemOf(error) {
   for (const condition of diagnose(error, 'opencode')) if (KINDS[condition.id]) return KINDS[condition.id];
   return null;

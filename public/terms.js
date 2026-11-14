@@ -12,7 +12,7 @@
 import { browserLanguage, language, setLanguage, t } from './i18n.js';
 import { MADRE_LOGO, playOpening } from './loader.js';
 import { trazo } from './icons.js';
-import { createTermsField } from './terms-field.js';
+import { PRELUDE, createTermsField } from './terms-field.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -221,5 +221,12 @@ function askTerms(answer, done) {
   paintAsk();
   document.body.append(dialog);
   if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
-  field.start();
+  // The story begins before the card (2026-11-13, the author): the AIs come as points of light and open
+  // into the smoke, one line says where it all starts, and then the card arrives over the smoke.
+  dialog.classList.add('prelude');
+  const story = el('p', 'terms-prelude', t('It all starts with your AIs.'));
+  story.setAttribute('aria-hidden', 'true');
+  dialog.append(story);
+  const born = field.start({ prelude: true });
+  setTimeout(() => { dialog.classList.remove('prelude'); setTimeout(() => story.remove(), 900); }, born ? (PRELUDE.done - 0.55) * 1000 : 0);
 }

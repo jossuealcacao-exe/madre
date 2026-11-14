@@ -7,6 +7,11 @@
 // else. `smoke()` says where each one is at that moment, so the opening starts from exactly there. It
 // follows the look on (light or dark), stops when the gate goes, and a person who asked for less motion
 // gets one still frame.
+//
+// THE PRELUDE (2026-11-13, the author: «a micro animation before "Before you start" that begins to tell
+// the story»): `start({ prelude: true })` lets the smoke be born. Six points of light, one per AI, each
+// in its colour and each on its own, come one after another, beat once, and open into the spheres the
+// anteroom keeps — the smoke is the AIs; the opening later condenses it into MADRE.
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -25,6 +30,10 @@ const LOOKS = {
 };
 // Where each sphere floats, as a share of the window: spread round the card, never all on one side.
 const HOMES = [[0.16, 0.22], [0.84, 0.2], [0.1, 0.7], [0.9, 0.74], [0.52, 0.08], [0.5, 0.94]];
+// The prelude, in seconds: when each point comes, when they open into smoke, and when it is over.
+export const PRELUDE = { first: 0.25, step: 0.14, open: 1.35, done: 2.8 };
+const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
+const easeInOut = (x) => { const v = clamp01(x); return v < 0.5 ? 4 * v * v * v : 1 - ((-2 * v + 2) ** 3) / 2; };
 
 export function createTermsField({ still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false } = {}) {
   const canvas = document.createElement('canvas');
@@ -39,6 +48,7 @@ export function createTermsField({ still = globalThis.matchMedia?.('(prefers-red
   let begun = 0;
   let stopped = false;
   let scheme = 'dark';
+  let prelude = false;
   // Each colour on its own slow orbit round the dot, at its own distance, breathing at its own pace.
   const fields = COLOURS.dark.map((_, i) => ({
     home: HOMES[i],
@@ -99,8 +109,31 @@ export function createTermsField({ still = globalThis.matchMedia?.('(prefers-red
     if (!ctx || !w) return;
     ctx.clearRect(0, 0, w, h);
     ctx.globalCompositeOperation = LOOKS[scheme].blend;
-    for (const one of spheres(t)) glow(one.x, one.y, one.r, one.hex, one.alpha);
+    const since = t - 8;
+    if (prelude && since < PRELUDE.done) drawBirth(since, spheres(t));
+    else for (const one of spheres(t)) glow(one.x, one.y, one.r, one.hex, one.alpha);
     ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // The smoke being born: each AI a point of its own round the middle, apart from the others, which
+  // beats once as it comes; then each opens into its sphere, travelling to where the sphere floats now.
+  function drawBirth(since, smoke) {
+    const reach = Math.min(w, h);
+    const open = easeInOut((since - PRELUDE.open) / (PRELUDE.done - PRELUDE.open));
+    smoke.forEach((one, i) => {
+      const at = PRELUDE.first + i * PRELUDE.step;
+      const come = easeOut((since - at) / 0.35);
+      if (come <= 0) return;
+      const angle = -Math.PI / 2 + (i * Math.PI * 2) / smoke.length;
+      const px = w / 2 + Math.cos(angle) * reach * 0.26;
+      const py = h / 2 + Math.sin(angle) * reach * 0.17;
+      const beat = 1 + 0.55 * Math.exp(-(((since - at - 0.2) / 0.11) ** 2));
+      const x = px + (one.x - px) * open;
+      const y = py + (one.y - py) * open;
+      // The halo grows into the sphere; the bright core goes as it opens.
+      glow(x, y, (22 * beat) + (one.r - 22 * beat) * open, one.hex, (0.38 + (one.alpha - 0.38) * open) * come);
+      glow(x, y, 5.5 * beat * (1 - open * 0.6), one.hex, 0.95 * come * (1 - open));
+    });
   }
 
   function loop(now) {
@@ -117,11 +150,15 @@ export function createTermsField({ still = globalThis.matchMedia?.('(prefers-red
     node: canvas,
     // Where the smoke is right now, for the opening to begin from it.
     smoke: () => (w ? spheres(now) : null),
-    start() {
+    start({ prelude: born = false } = {}) {
       fit();
-      if (still || !ctx) { draw(8); canvas.classList.add('on'); return; }
+      if (still || !ctx) { draw(8); canvas.classList.add('on'); return false; }
+      prelude = born;
+      if (prelude) canvas.classList.add('on', 'born');
       frame = requestAnimationFrame(loop);
       requestAnimationFrame(() => canvas.classList.add('on'));
+      // Whether the prelude plays (the gate waits for it before showing its card).
+      return prelude;
     },
     stop() {
       stopped = true;

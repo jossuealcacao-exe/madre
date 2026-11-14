@@ -8876,7 +8876,7 @@ function partialWork(partial) {
 // that works on this computer (src/opencode-health.mjs: the one that answered last, or one of
 // OpenCode's own free models) with two keys: send the same request again on it, or keep it as
 // OpenCode's default. Nothing changes on its own: the person sees which model and presses.
-const OPENCODE_WAY_OUT = new Set(['provider-credit-exhausted', 'opencode-default-provider']);
+const OPENCODE_WAY_OUT = new Set(['provider-credit-exhausted', 'opencode-default-provider', 'opencode-default-model-missing']);
 let openCodeSuggest = null;
 function openCodeWayOut({ messageId, failed }) {
   const box = el('div', 'fail-actions');
