@@ -24,7 +24,7 @@ import { questionsFor } from './asking.mjs';
 import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE, saysFor } from './exam.mjs';
 import { MADRE_ADAPTER, MADRE_AGENT_ID } from './adapters/madre.mjs';
 import { ControlDesk } from './room/control.mjs';
-import { takeChangeSummary, turnChanges } from './room/changes.mjs';
+import { takeChangeSummary, takeModuleNeeds, turnChanges } from './room/changes.mjs';
 import { RunDesk } from './room/runs.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
@@ -192,6 +192,11 @@ export class Room {
   #runsEnabled = false;
   #runDesk = new RunDesk();
   #runBusy = false;
+  // Lines pressed while another AI held the project or another command ran (2026-11-14, the author:
+  // «I could not run the commands because Codex held the project»): they wait their turn, in the
+  // order pressed, and run on their own when the project is free.
+  #runQueue = [];
+  #runQueueTimer = null;
 
   constructor({
     store,
@@ -790,7 +795,7 @@ export class Room {
       // is the human's own #3 for a while: it reaches any agent whose CLI can write.
       const byCopilot = copilot === true && wanted === 3 && this.copilotOn() && Boolean(scopes.write?.capable);
       if (scopes.maxMode < wanted && !byCopilot) return { ok: false, status: 403, mode: wanted, maxMode: scopes.maxMode, error: `@${parsed.target} is capped at #${scopes.maxMode} ${MODES[scopes.maxMode].label}; raise its max mode to #${wanted} in Settings › Permissions to unlock ${MODES[wanted].label}.` };
-      if (this.#controlDesk.holder) return { ok: false, status: 409, mode: wanted, maxMode: scopes.maxMode, error: `@${this.#controlDesk.holder.agent} already holds ${MODES[this.#controlDesk.holder.mode ?? 3].label} of this project; one holder at a time. STOPALL revokes it.` };
+      if (this.#controlDesk.holder) return { ok: false, status: 409, mode: wanted, maxMode: scopes.maxMode, error: `@${this.#controlDesk.holder.agent} is already using #${this.#controlDesk.holder.mode ?? 3} ${(this.#controlDesk.holder.mode ?? 3) === 4 ? 'Full access' : 'Can edit'} in this project, and only one AI can at a time. Wait for it to finish, or press Stop all to take it back.` };
       return { ok: true, mode: wanted, maxMode: scopes.maxMode, agent };
     }
     // #2 above the agent's ceiling still goes out: the room answers read-only
@@ -931,20 +936,43 @@ export class Room {
   // The human pressed one line of a ```pulse-run an agent wrote. The client names the request and
   // the line, never the command: what runs is read back from the room's own record of what the
   // agent asked, so a page cannot run anything that was not shown to the human as a button.
-  async runRequested({ responseMessageId, index, returnCap = 3, auto = false }) {
+  async runRequested({ responseMessageId, index, returnCap = 3, auto = false, fromQueue = false }) {
     if (!this.#runsEnabled) return { ok: false, status: 412, error: t('Command requests are off. Enable them in MODULES.') };
     const events = await this.#store.readAll();
     const request = events.find((event) => event.type === 'run.requested' && event.payload.responseMessageId === responseMessageId)?.payload;
     const command = request?.commands?.[index];
     if (!command) return { ok: false, status: 404, error: t('That command request is not in this project.') };
     if (!command.argv) return { ok: false, status: 422, error: `That line does not run: it ${whyText(command)}.` };
-    if (this.#runBusy || this.#runDesk.busy) return { ok: false, status: 409, error: t('A command is already running; wait for it to finish or press STOP ALL.') };
-    if (this.#controlDesk.holder) return { ok: false, status: 409, error: t('@{agent} is working in {mode} on this project; run it when its turn ends.', { agent: this.#controlDesk.holder.agent, mode: MODES[this.#controlDesk.holder.mode ?? 3].label }) };
+    // Busy: the line waits in line and runs by itself when its turn comes; the press is the yes.
+    if (this.#runBusy || this.#runDesk.busy || this.#controlDesk.holder || (this.#runQueue.length && !fromQueue)) {
+      if (!auto && !this.#runQueue.some((one) => one.responseMessageId === responseMessageId && one.index === index)) {
+        this.#runQueue.push({ responseMessageId, index, returnCap });
+        this.#drainRunsSoon();
+      }
+      return { ok: true, status: 202, result: { queued: true, behind: this.#controlDesk.holder?.agent ?? null, ahead: this.#runQueue.length - 1 } };
+    }
     // A line pressed from a phone hands its results back at #2 at most, the phone's own ceiling.
     this.#returnCap.set(responseMessageId, Math.min(this.#returnCap.get(responseMessageId) ?? 3, Number(returnCap) || 1));
     // Taken before the first await below: two presses in a row must not both get through.
     this.#runBusy = true;
     try { return await this.#runCommand({ request, command, responseMessageId, index, auto }); } finally { this.#runBusy = false; }
+  }
+
+  // The waiting lines, one after another, as soon as nobody holds the project and nothing runs.
+  #drainRunsSoon() {
+    if (this.#runQueueTimer || !this.#runQueue.length) return;
+    this.#runQueueTimer = setInterval(() => {
+      if (!this.#runQueue.length) { clearInterval(this.#runQueueTimer); this.#runQueueTimer = null; return; }
+      if (this.#runBusy || this.#runDesk.busy || this.#controlDesk.holder || this.#shuttingDown) return;
+      const next = this.#runQueue.shift();
+      void this.runRequested({ ...next, fromQueue: true }).catch((error) => console.error(`MADRE could not run a waiting command: ${error.message}`));
+    }, 1500);
+    this.#runQueueTimer.unref?.();
+  }
+  // STOP ALL empties the line too: nothing pressed before it runs after it.
+  #dropRunQueue() {
+    this.#runQueue = [];
+    if (this.#runQueueTimer) { clearInterval(this.#runQueueTimer); this.#runQueueTimer = null; }
   }
 
   async #runCommand({ request, command, responseMessageId, index, auto = false }) {
@@ -1487,7 +1515,7 @@ export class Room {
     }));
     const plans = [...this.#plans.values()].map((plan) => ({
       kind: 'plan', planId: plan.planId, orchestrator: plan.orchestrator, step: plan.step, total: plan.steps.length + (plan.closing ? 1 : 0),
-      startedAt: plan.startedAt, steps: plan.steps.map((one) => ({ agent: one.agent, text: clip(one.text, 160) })),
+      startedAt: plan.startedAt, steps: plan.steps.map((one) => ({ agent: one.agent, text: clip(one.text, 160), ...(Number.isInteger(one.mode) ? { mode: one.mode } : {}) })),
     }));
     const runs = this.#runDesk.live().map((one) => ({ kind: 'run', ...one }));
     return [...plans, ...turns, ...runs];
@@ -1499,6 +1527,7 @@ export class Room {
     const turns = this.#turns.size;
     for (const plan of this.#plans.values()) plan.stopped = reason;
     this.#escalation.settleAll(null, 'stopped');
+    this.#dropRunQueue();
     // Results waiting to go back stay with the human: STOP ALL means nothing starts by itself.
     for (const id of [...this.#returns.keys(), ...this.#returning.keys()]) this.#dropped.add(id);
     this.#returns.clear();
@@ -1857,9 +1886,11 @@ export class Room {
       // CONTROL: the project itself is the writable root, and a checkpoint
       // taken now makes every change of this turn reversible. A plan step gets
       // it when the orchestrator, itself in #3, named #3 for that step.
-      if (this.#controlDesk.holder) {
-        await this.#alert('control-busy', `@${this.#controlDesk.holder.agent} still holds EDIT; @${agent.id} answers read-only this turn.`, `control-busy:${agent.id}`);
-      } else {
+      // Another AI holds the project: this turn waits its turn for it (2026-11-14, the author: a plan
+      // step that needed #4 answered read-only and «could not run» what it was asked). The wait is
+      // said in the room (write.waiting), STOP ALL ends it, and a plan starts only after the turn
+      // that made it let go of the project, so a step never waits on its own orchestrator.
+      {
         await this.#sayWaitingToWrite({ messageId, agent });
         const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode, signal }).catch((error) => (error?.code === 'ABORT_ERR' ? null : { failed: error }));
         if (!seat) { await this.#emit('message.failed', { messageId, target: agent.id, planId, error: `Stopped while waiting for the project: another turn was writing in it.`, stopped: true }); return null; }
@@ -2041,6 +2072,9 @@ export class Room {
       // anything reads it (the plan parser, the buttons, the archivist), and travels beside it.
       const toldChanges = takeChangeSummary(result.text);
       if (toldChanges.text !== String(result.text ?? '')) result.text = toldChanges.text;
+      // The modules it says it needs leave the reply too, and ride beside it for the page to offer.
+      const toldNeeds = takeModuleNeeds(result.text);
+      if (toldNeeds.text !== String(result.text ?? '')) result.text = toldNeeds.text;
       // CREATE: what appeared stays and is shown; what existed before is put back and said.
       const createChanges = createRun ? await this.#controlDesk.settleOrSay(createRun) : null;
       // Images an agent's own tool made outside the project (Codex keeps them under its home) come
@@ -2124,6 +2158,7 @@ export class Room {
         // What the turn changed, said for the card under the reply: its restore point, and the
         // agent's own sentence when nothing it did was put back (src/room/changes.mjs).
         changes: turnChanges({ summary: toldChanges.summary, created: artifacts, create: createChanges, control: controlChanges }) ?? undefined,
+        needsModules: toldNeeds.needs.length ? toldNeeds.needs : undefined,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
         // Who helped, from the CLI's own subagents: folded under the answer («Helped by…»).
         subagents: keepHelpers(result.subagents),

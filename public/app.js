@@ -2933,15 +2933,30 @@ function paintPorts(read) {
   menu.replaceChildren(head);
   fillPorts(menu, read);
 }
-// The way to the switch when Preview is off, as a row of the list.
+// The way to the switch when Preview is off, as a row of the list: the switch itself first, one
+// press (2026-11-14, the author: guide the person to turn on what is needed, without friction), and
+// Modules after it for whoever wants to see the rest.
 function portsModulesRow() {
+  const box = el('div', 'ports-turn-on');
+  const on = el('button', 'ports-on');
+  on.type = 'button';
+  on.textContent = t('Turn on Preview');
+  on.addEventListener('click', async () => {
+    on.disabled = true;
+    try {
+      const ripley = modules.items?.find((one) => one.id === 'ripley') ?? { id: 'ripley', name: 'Preview' };
+      if (!ripley.status?.installed) await switchModule(ripley);
+      await refreshBrowserServers(on);
+    } catch (error) { toast(`${t('Diagnostics › ')}${resay(error.message)}`); on.disabled = false; }
+  });
   const go = el('button', 'ports-row');
   go.type = 'button';
   const gear = el('b', 'ports-gear');
   gear.innerHTML = GEAR_ICON; // trusted: our own SVG string
   go.append(gear, el('span', null, t('OPEN MODULES')));
   go.addEventListener('click', () => { portsMenuShown(false); document.querySelector('#modules-button, [aria-controls="modules"]')?.click(); });
-  return go;
+  box.append(el('p', 'ports-why', t('Preview shows here the pages and servers of this project, in a sealed frame. Nothing leaves your computer.')), on, go);
+  return box;
 }
 function portsRefreshKey() {
   const refresh = el('button', 'ports-refresh');
@@ -4335,6 +4350,57 @@ function whenChips(bubble) {
     if (last < text.length) pieces.append(text.slice(last));
     textNode.replaceWith(pieces);
   }
+}
+
+// A module an answer needs and the person does not have on (2026-11-14, the author): what it lets
+// the AI do, in a line, and the switch, so nobody has to find it in Modules. Asked by the agent with a
+// line MADRE took out of its reply (src/room/changes.mjs, takeModuleNeeds); offered only while off.
+const MODULE_ASKS = {
+  ripley: { name: 'Preview', icon: 'mod-viewer', why: 'Shows here the pages and servers of this project, so you see what the AI builds.' },
+  playwright: { name: 'Test browser', icon: 'mod-browser', why: 'Lets the AI open your pages, click through them and take screenshots to check they work.' },
+  'image-studio': { name: 'Images', icon: 'mod-image', why: 'Lets the AI make pictures, with your own key.' },
+  'git-pulse': { name: 'Git', icon: 'mod-git', why: 'Brings your version history into the chat.' },
+  runs: { name: 'Commands', icon: 'mod-runs', why: 'Lets the AI ask you to run a command; nothing runs until you press it.' },
+  reminders: { name: 'Reminders', icon: 'mod-reminders', why: 'Lets the AI set reminders for you.' },
+  notes: { name: 'Notes', icon: 'mod-notes', why: 'Lets the AI keep notes for you.' },
+};
+function moduleAsks(ids, agent) {
+  const wanted = ids.filter((id) => MODULE_ASKS[id]);
+  if (!wanted.length) return null;
+  const box = el('div', 'module-asks');
+  for (const id of wanted) {
+    const ask = MODULE_ASKS[id];
+    const card = el('div', 'module-ask');
+    card.dataset.module = id;
+    const icon = el('span', 'module-ask-icon');
+    icon.innerHTML = trazo(ask.icon); // trusted: our own drawing (icons.js)
+    const words = el('div', 'module-ask-words');
+    words.append(el('b', null, t('@{agent} needs {name}', { agent, name: t(ask.name) })), el('span', null, t(ask.why)));
+    const on = el('button', 'module-ask-on', t('Turn on'));
+    on.type = 'button';
+    on.addEventListener('click', async () => {
+      on.disabled = true;
+      try {
+        if (!modules.items?.length) await refreshModules();
+        const item = modules.items?.find((one) => one.id === id) ?? { id, name: ask.name };
+        if (!item.status?.installed) await switchModule(item);
+        card.classList.add('done');
+        on.textContent = t('Turned on');
+        words.querySelector('span').textContent = t('Ask again and @{agent} can use it.', { agent });
+      } catch (error) { toast(`${t('Diagnostics › ')}${resay(error.message)}`); on.disabled = false; }
+    });
+    card.append(icon, words, on);
+    box.append(card);
+  }
+  // Already on (turned on since, or on all along): the card has nothing to offer.
+  const settle = () => {
+    for (const card of box.querySelectorAll('.module-ask:not(.done)')) {
+      if (modules.items?.find((one) => one.id === card.dataset.module)?.status?.installed) card.remove();
+    }
+    if (!box.querySelector('.module-ask')) box.remove();
+  };
+  if (modules.items?.length) settle(); else void refreshModules().then(settle).catch(() => {});
+  return box;
 }
 
 // Video, audio and maps among an answer's links (2026-11-14): a video or a song plays here once the
@@ -7266,6 +7332,7 @@ function renderAssistantMessage(event) {
   if (sources) bubble.append(sources);
   mediaCards(bubble);
   whenChips(bubble);
+  if (event.payload.needsModules?.length && !delegated) { const asks = moduleAsks(event.payload.needsModules, sender); if (asks) bubble.append(asks); }
   // Written as the human's copilot: a green round robot on the agent's own circle.
   if (event.payload.copilot) {
     node.classList.add('copilot');
@@ -8276,7 +8343,7 @@ async function sendPermission({ agent, mode, quoted }) {
     if (mode >= 3 && !overrideGraceLeft(mode, agent)) overridePasses.delete(`${mode}:${agent}`);
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
-      toast(`${t('Diagnostics › ')}${result.error ?? t('The project rejected the message.')}`);
+      toast(`${t('Diagnostics › ')}${result.error ? resay(result.error) : t('The project rejected the message.')}`);
       setMode(defaultModeFor(els.target.value));
       return false;
     }
@@ -9353,7 +9420,7 @@ function renderRunRequest(event) {
   const goesBack = Number.isInteger(mode) && mode > 1
     ? t('When they have run, the output goes back to @{agent} and it goes on at #{n} {label}.', { agent, n: mode, label: MODES[mode]?.label ?? '' })
     : t('When they have run, the output goes back to @{agent} and it goes on.', { agent });
-  node.append(list, el('p', 'run-summary', t('{done} of {total} commands finished', { done: 0, total: runnable })), actions, el('p', 'choice-foot', `${t('Each line runs when you press it · from the project root, no shell')} · ${goesBack}`));
+  node.append(list, el('p', 'run-summary', t('{done} of {total} commands finished', { done: 0, total: runnable })), actions, el('p', 'choice-foot', `${t('Each line runs when you press it · from the project root, no shell')} · ${t('One at a time, in the order you press them: if an AI is editing the project, they wait for it and start by themselves.')} · ${goesBack}`));
   state.lastSender = null;
   return node;
 }
@@ -9367,6 +9434,12 @@ async function pressRun(button, { responseMessageId, index, startedAt = null }) 
     const response = await fetch('/api/runs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ responseMessageId, index }) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+    // In line: another AI holds the project or another command runs; it starts by itself.
+    if (result.queued) {
+      markRun({ responseMessageId, index }, 'queued');
+      toast(result.behind ? t('It runs by itself as soon as @{agent} finishes.', { agent: result.behind }) : t('It runs by itself when the command before it finishes.'), { tone: 'done' });
+      return false;
+    }
     return result.serving ? true : result.ok !== false;
   } catch (error) {
     toast(`${t('Diagnostics › ')}${resay(error.message)}`);
@@ -9393,13 +9466,13 @@ function settleRunReturn(responseMessageId, agent, sequence) {
 function markRun({ responseMessageId, index }, status, where = null, startedAt = null) {
   const button = document.querySelector(`.run-request[data-run="${CSS.escape(String(responseMessageId))}"] .run-line[data-index="${Number(index)}"]`);
   if (!button || button.classList.contains('refused')) return;
-  button.classList.remove('running', 'serving', 'ran', 'failed');
+  button.classList.remove('running', 'serving', 'ran', 'failed', 'queued');
   if (status) button.classList.add(status);
   if (status === 'running') button.dataset.startedAt = startedAt ?? new Date().toISOString();
   else delete button.dataset.startedAt;
-  button.disabled = status === 'running' || status === 'serving';
+  button.disabled = status === 'running' || status === 'serving' || status === 'queued';
   const tag = button.querySelector('.choice-tag');
-  if (tag) tag.textContent = { running: t('RUNNING'), serving: t('SERVING'), ran: t('RUN AGAIN'), failed: t('RUN AGAIN') }[status] ?? t('RUN');
+  if (tag) tag.textContent = { running: t('RUNNING'), serving: t('SERVING'), ran: t('RUN AGAIN'), failed: t('RUN AGAIN'), queued: t('WAITING') }[status] ?? t('RUN');
   const group = button.closest('.run-request');
   const summary = group?.querySelector('.run-summary');
   const finished = group?.querySelectorAll('.run-line.ran, .run-line.failed').length ?? 0;

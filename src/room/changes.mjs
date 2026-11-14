@@ -57,3 +57,23 @@ export function turnChanges({ summary = null, created = [], create = null, contr
     ...(summary && !putBack ? { summary } : {}),
   };
 }
+
+// Modules an answer needs and the person may not have on (2026-11-14, the author: «the test browser
+// and any module that is needed must be announced, and the person guided to turn it on»). The agent
+// ends its reply with «MADRE-MODULE: <id>», one per module (src/room/prompt.mjs, block `modules`);
+// MADRE takes the lines out and the page offers each one that is really off, with a button.
+export const MODULE_MARK = 'MADRE-MODULE';
+export const ASKABLE_MODULES = ['ripley', 'playwright', 'image-studio', 'git-pulse', 'runs', 'reminders', 'notes'];
+const MODULE_LINE = /^[ \t>*_`-]*MADRE-MODULE[ \t*_`]*:[ \t*_`]*([a-z][a-z0-9-]*)[ \t*_`.]*$/gim;
+export function takeModuleNeeds(text) {
+  const source = String(text ?? '');
+  if (!source.toUpperCase().includes(MODULE_MARK)) return { text: source, needs: [] };
+  const needs = [];
+  const rest = source.replace(MODULE_LINE, (whole, id) => {
+    const known = id.toLowerCase();
+    if (ASKABLE_MODULES.includes(known) && !needs.includes(known)) needs.push(known);
+    return '';
+  });
+  if (rest === source) return { text: source, needs: [] };
+  return { text: rest.replace(/\n{3,}/g, '\n\n').trim(), needs };
+}

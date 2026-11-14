@@ -21,7 +21,7 @@ export const ALWAYS = new Set(['room', 'who', 'mode', 'inspect', 'style', 'priva
 // at the head of the prompt so the longest possible run of it comes back from the CLI's own
 // cache instead of being charged again. Anything that can change between two turns belongs
 // after them, however short it is: one differing byte early throws away everything after it.
-export const STABLE = ['room', 'who', 'style', 'shapes', 'privacy', 'madre', 'memory-server'];
+export const STABLE = ['room', 'who', 'style', 'shapes', 'modules', 'privacy', 'madre', 'memory-server'];
 
 // How much of a prompt could be read back from a cache: the run of unchanging blocks at its
 // head, in the order they were actually built. It stops at the first block that can vary,

@@ -60,6 +60,7 @@ const SAID = [
   '@{agent} is capped at #{n} {label}; raise its max mode to #{wanted} in Settings › Permissions to arm {mode}.',
   '@{agent} is capped at #{n} {label}; raise its MAX MODE to #{wanted} in CONNECTIONS to unlock {mode}.',
   '@{agent} is capped at #{n} {label}; raise its MAX MODE to #{wanted} in CONNECTIONS to arm {mode}.',
+  '@{agent} is already using #{n} {label} in this project, and only one AI can at a time. Wait for it to finish, or press Stop all to take it back.',
   '@{agent} already holds {mode} of this project; one holder at a time. STOPALL revokes it.',
   '@{agent} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.',
   '@{agent} left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.',

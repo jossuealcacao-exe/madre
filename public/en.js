@@ -186,7 +186,6 @@ export const EN = {
   "WHAT SEEMS TRUE": "What seems true",
   "Connecting to a service from outside is almost always possible, if that service lets you get your own key in minutes and revoke it. Your module declares the key it needs, where it reaches and which of its tools send; MADRE draws the field, answers for the traffic and holds sending until #4 FULL ACCESS.": "Connecting to a service from outside is almost always possible, if that service lets you get your own key in minutes and revoke it. Your module declares the key it needs, where it reaches and which of its tools send; MADRE draws the field, answers for the traffic and holds sending until «#4 Full access».",
   // ux/refresh · avisos del servidor que salen en el hilo
-  "A command is already running; wait for it to finish or press STOP ALL.": "A command is already running; wait for it to finish or press «Stop all».",
   "A turn is running in this conversation. Let it finish, or STOP ALL, and try again.": "An answer is on its way in this chat. Let it finish, or press «Stop all», and try again.",
   "STOP ALL held these results; hand them back from their card.": "«Stop all» held these results; hand them back from their card.",
   "Command requests are off. Enable them in MODULES.": "Command requests are off. Enable them in «Modules».",

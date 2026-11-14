@@ -192,3 +192,11 @@ test('what changed: the page draws one card inside the reply, in place of the ED
   ]);
   assert.ok(server.includes("'/changes.js'") && policy.includes("'/changes.js'"));
 });
+
+test('modules an answer needs: the line leaves the reply and only known modules are offered (2026-11-14)', async () => {
+  const { takeModuleNeeds } = await import('../src/room/changes.mjs');
+  const said = takeModuleNeeds('Para probar la página necesito el navegador de pruebas.\n\nMADRE-MODULE: playwright\n**MADRE-MODULE:** `ripley`\nMADRE-MODULE: rm-rf\nMADRE-MODULE: playwright');
+  assert.equal(said.text, 'Para probar la página necesito el navegador de pruebas.');
+  assert.deepEqual(said.needs, ['playwright', 'ripley'], 'an unknown id is dropped and a repeated one counted once');
+  assert.deepEqual(takeModuleNeeds('Sin pedir nada.'), { text: 'Sin pedir nada.', needs: [] });
+});

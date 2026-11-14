@@ -212,3 +212,40 @@ test('prompt: #4 is told it may change the project and run commands, never that 
   assert.doesNotMatch(mode(4), /I need #3/);
   assert.doesNotMatch(mode(0), /I need #3/);
 });
+
+test('runs: a line pressed while another AI holds the project waits in line and runs by itself after (2026-11-14)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-queue-'));
+  const logDir = await mkdtemp(join(tmpdir(), 'pulse-queue-log-'));
+  try {
+    await gitInit(root);
+    await writeFile(join(root, 'README.md'), 'v1\n');
+    const store = await new EventStore(join(logDir, 'events.jsonl')).initialize();
+    const agents = [
+      { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' },
+      { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '1' },
+    ];
+    let open;
+    const gate = new Promise((resolve) => { open = resolve; });
+    let codexIn = false;
+    const room = new Room({ store, agents, projectRoot: root, invokers: {
+      'claude-readonly': async () => ({ text: `Hay que comprobarlo.\n\n\`\`\`pulse-run\nComprobar\n$ ${say('hola')}\n\`\`\``, usage: null }),
+      'codex-readonly': async () => { codexIn = true; await gate; return { text: 'Listo.', usage: null }; },
+    } });
+    room.setRuns(true);
+    room.setScopes({ codex: { maxMode: 3 } });
+    await room.send({ text: 'revisa', target: 'claude' });
+    const { responseMessageId } = (await store.readAll()).find((event) => event.type === 'run.requested').payload;
+    const holding = room.send({ text: 'cambia el README', target: 'codex', mode: 3 });
+    await until(() => codexIn);
+    const pressed = await room.runRequested({ responseMessageId, index: 0 });
+    assert.equal(pressed.status, 202, 'the press was refused instead of waiting');
+    assert.deepEqual([pressed.result.queued, pressed.result.behind], [true, 'codex']);
+    assert.equal((await store.readAll()).some((event) => event.type === 'run.started'), false, 'it ran while Codex held the project');
+    open();
+    await holding;
+    await waitFor(store, (all) => all.find((event) => event.type === 'run.started' && event.payload.responseMessageId === responseMessageId));
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

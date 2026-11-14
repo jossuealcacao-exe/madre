@@ -24,6 +24,7 @@ export const DELEGATION_HELP = (self, others, maxSteps) => [
   `@${self}: <what you will do with their answers, optional closing turn for you>`,
   '```',
   'A step may name the mode it needs, "@codex #2: create the page" or "@claude #3: fix the router"; MADRE uses the human permission for this turn as the ceiling. A higher mode pauses for the human to unlock it for that agent, and #4 always does. Without a number a step only reads, or creates files when the plan may create; ask for #3 by name.',
+  'Only one agent at a time can hold #3 or #4 in the project: a step that needs one waits until the agent holding it finishes, so give #3 or #4 to as few steps as you can. A step at #1 or #2 cannot run commands: when one must run, give that one step #4, or leave it out of the plan and ask the human for the command in a ```pulse-run block in a later reply.',
   `MADRE runs the steps in order (at most ${maxSteps}), shows every answer in the room, then hands you a closing turn to review progress. If work remains within the human permission, you may end that turn with another pulse plan; at most three waves run from one request.`,
   'The plan block must be the very last thing in your reply: nothing after it, not even a closing sentence. Say everything else before it.',
   'Address each agent once. Do not delegate what you can answer yourself.',
