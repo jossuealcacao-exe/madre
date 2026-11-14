@@ -14730,3 +14730,25 @@ dialog.viewer .code-crumbs.empty { display: none !important; }
 .code-picks .code-sample > span { display: block; max-width: 100%; overflow: hidden; text-overflow: clip; }
 .code-pick-about { margin: 0; font: 12px/1.45 var(--read, var(--sans)); color: var(--text-2); }
 .code-pick-about.peek { color: var(--text-3); }
+
+/* Images · with what it draws (2026-11-14): what the person already has, ready to choose, and what
+   they do not, with its steps and a field to paste the key. Built on the sheet's own rows. */
+/* A model's name and its few words can be longer than the sheet is wide: the list shrinks with it
+   and cuts the words, never the sheet. */
+.img-sources .sx-row .sx-control { min-width: 0; }
+.img-sources .img-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.img-sources select.img-model { flex: 1 1 180px; width: auto; min-width: 0; max-width: 300px; text-overflow: ellipsis; }
+.img-sources .img-current { background: color-mix(in srgb, var(--phosphor) 5%, transparent); }
+.img-sources .img-current > .sx-words b { color: var(--phosphor); }
+.img-connect .img-offer { padding-bottom: 6px; }
+.img-connect .img-how { display: grid; gap: 10px; padding: 0 16px 14px; }
+.img-connect .img-steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.img-connect .img-steps li::marker { color: color-mix(in srgb, var(--text) 45%, transparent); font-variant-numeric: tabular-nums; }
+.img-connect .img-paste { display: flex; gap: 8px; align-items: center; }
+.img-connect .img-paste .sx-input { flex: 1; width: auto; }
+.img-connect .img-paste .sx-btn { flex: none; }
+@media (max-width: 560px) {
+  .img-sources .sx-row .sx-control { flex: 1 1 100%; }
+  .img-sources .img-controls { justify-content: flex-start; }
+  .img-sources select.img-model { flex-basis: 100%; max-width: 100%; }
+}

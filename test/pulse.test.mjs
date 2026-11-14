@@ -2393,6 +2393,7 @@ test('Image Studio MCP server: protocol, tool, path containment, Google errors e
     // real path with a stubbed fetch: base64 image data is decoded and saved
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64');
     const made = await generateImage({ prompt: 'p', fileName: 'real.png', outDir: out, env: { GEMINI_API_KEY: 'k' }, fetchImpl: async (url, init) => {
+      // No model chosen: the first provider whose key is found draws, with its first model.
       assert.match(url, /gemini-2\.5-flash-image:generateContent$/);
       assert.equal(init.headers['x-goog-api-key'], 'k');
       return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: png } }] } }] }) };
@@ -2622,7 +2623,9 @@ test('Image Studio module: always on, as Options and Commands are; its model per
   // A config from before, with Images turned off: it is on all the same.
   await mkdir(root, { recursive: true });
   await writeFile(join(root, 'config.json'), JSON.stringify({ modules: { imageStudio: { enabled: false } } }));
-  const { server } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {}, imageKey: async () => key });
+  // Where Images finds keys is this computer's; the test says it instead (src/modules/image-providers.mjs).
+  const imageSources = async () => ({ gemini: key ? { from: 'gemini-cli' } : null, openai: null, xai: null });
+  const { server } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {}, imageKey: async () => key, imageSources });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   const api = (path, options) => fetch(`http://127.0.0.1:${port}${path}`, options).then(async (response) => ({ status: response.status, body: await response.json() }));
@@ -2632,7 +2635,7 @@ test('Image Studio module: always on, as Options and Commands are; its model per
     assert.equal(studio.fixed, true, 'Images still has a switch');
     assert.equal(studio.status.installed, true);
     // Without a key it says so: an image asked for would fail.
-    assert.match(studio.status.detail, /no Gemini key found/);
+    assert.match(studio.status.detail, /no image key found/);
     assert.equal(studio.preflight.ok, false);
     assert.equal((await api('/api/state')).body.capabilities.gemini.imageGen, true, 'the agents are not offered the image tool');
     assert.equal((await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' })).status, 405);

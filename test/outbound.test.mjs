@@ -56,6 +56,7 @@ test('outbound: every declaration answers for itself, and no address hides from 
     'myaccount.google.com',       // where a person makes the app password CORREO asks them for
     'cursor.com',                 // Cursor's own installer, a line the person copies into a terminal
     'x.ai',                       // Grok's own installer, named as the other way in beside npm
+    'console.x.ai',               // where an xAI key is made, and its credit added (Modules › Images)
     // OpenCode's providers before its catalogue is written (credentials.mjs, OPENCODE_BUNDLED): the
     // page of each one's documentation, a link the person opens to find their key.
     'console.groq.com', 'api-docs.deepseek.com', 'docs.mistral.ai', 'docs.x.ai', 'docs.together.ai', 'fireworks.ai',

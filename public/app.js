@@ -19602,6 +19602,13 @@ function moduleGlance(item) {
   } else if (item.id === 'ollama') {
     const info = item.ollama ?? {};
     fill([[t('Server'), info.running ? t('Running') : t('Stopped'), info.host ?? null], [t('Models'), String(info.models?.length ?? 0)], [t('Search by meaning'), info.embedModel ?? t('none')], [t('State'), standing]]);
+  } else if (item.id === 'image-studio') {
+    // Images (2026-11-14): who draws, and how many of the providers already have a key here.
+    const drawing = item.drawing ?? {};
+    const providers = drawing.providers ?? [];
+    const drawer = providers.find((one) => one.id === drawing.provider);
+    const ready = providers.filter((one) => one.ready).length;
+    fill([[t('Draws with'), drawer?.name ?? t('Nothing yet'), drawer ? (drawer.ready ? drawing.model : t('no key yet')) : t('connect a key below')], [t('Keys found'), t('{n} of {total}', { n: ready, total: providers.length })], [t('State'), standing]]);
   }
   // A module that keeps no figures of its own gets none made up: its sheet opens on what it does.
   return strip.childElementCount || strip.classList.contains('loading') ? strip : document.createDocumentFragment();
@@ -19684,8 +19691,9 @@ function moduleVersionRow(about, item) {
   versionRow.querySelector('.sx-words').after(keys);
 }
 function moduleRest(host, item, { inSettings = false, about = null } = {}) {
-  // Its own settings, declared by the module and drawn as rows.
-  if (item.controls?.length) {
+  // Its own settings, declared by the module and drawn as rows. Images chooses its model in its own
+  // list of what it draws with (imageSourcesBlock), not in a bare select of every model.
+  if (item.controls?.length && item.id !== 'image-studio') {
     const block = inSettings && about ? about : sxBlock(host, t('Settings'), t('What this module lets you set. Each change is saved as you make it.'));
     const save = async (control, value, field) => {
       field.disabled = true;
@@ -19734,6 +19742,7 @@ function moduleRest(host, item, { inSettings = false, about = null } = {}) {
     intentsReading(block.rows);
   }
   if (item.id === 'ollama') { ollamaBlock(host, item); hardwareBlock(host, item.recommended?.hardware); }
+  if (item.id === 'image-studio') imageSourcesBlock(host, item);
   if (item.id === 'notes') notesBlock(host, item);
   if (item.id === 'reminders') remindersBlock(host, item);
 
@@ -19750,6 +19759,142 @@ function moduleRest(host, item, { inSettings = false, about = null } = {}) {
 
 // What this computer can do with a local AI (public/hardware.js), drawn with this page's rows.
 const hardwareBlock = (host, fit) => drawHardware(host, fit, { el, sxBlock, sxRow, sxChip });
+
+// IMAGES · WITH WHAT IT DRAWS (2026-11-14, the author: «facilitarle al usuario la creación de imágenes
+// con sus agentes»). What the person already has, found without asking and ready to choose; what they
+// do not, with what it is, what it costs, where the key is made and a field to paste it. The key goes
+// where every key of MADRE's goes: a Gemini one where Gemini CLI reads it (the same call as Settings ›
+// Your AIs), an OpenAI or xAI one into MADRE's vault (src/modules/image-studio.mjs). The page is told
+// where a key was found, never the key.
+const IMAGE_KEY_FROM = {
+  madre: () => t('Pasted here · MADRE keeps it only to draw'),
+  env: (provider) => t('From the variable {name} of the terminal MADRE was opened from', { name: provider.variable }),
+  'gemini-cli': () => t('The key Gemini CLI uses on this computer'),
+  keychain: () => t('The key Gemini CLI keeps in the keychain'),
+  opencode: (provider) => t('The key OpenCode uses for {vendor}', { vendor: provider.vendor }),
+  codex: () => t('The key Codex signed in with'),
+  gemini: () => t('Your Gemini key'),
+};
+const IMAGE_PROVIDER_ABOUT = {
+  gemini: () => t('Google\'s image models (Nano Banana). Paid: Google charges each image to the key, a few cents of a dollar; images have no free tier.'),
+  openai: () => t('OpenAI\'s image models (GPT Image). Paid: each image is charged to your OpenAI credit, a few cents of a dollar.'),
+  xai: () => t('xAI\'s image models (Grok Imagine). Paid: each image is charged to your xAI credit, a few cents of a dollar.'),
+};
+const IMAGE_PROVIDER_STEPS = {
+  gemini: () => [t('Open Google AI Studio with your Google account and make a key («Create API key»).'), t('Turn on billing for that project in AI Studio: Google does not draw images for free.'), t('Paste the key here. It is kept where Gemini CLI reads it, readable only by you, and Gemini can also answer you in MADRE with it.')],
+  openai: () => [t('Open the OpenAI platform, sign in and add credit to your account.'), t('In API keys, make a new key and copy it.'), t('Paste it here. MADRE keeps it on this computer, readable only by you, and uses it only to draw.')],
+  xai: () => [t('Open the xAI console, sign in and add credit to your team.'), t('In API Keys, make a new key and copy it.'), t('Paste it here. MADRE keeps it on this computer, readable only by you, and uses it only to draw.')],
+};
+async function chooseImageModel(model) {
+  const response = await reach('/api/extensions/image-studio/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: 'model', value: model }) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) toast(`${t('Diagnostics › ')}${result.error ?? t('{name} could not save {label}.', { name: t('Images'), label: t('MODEL') })}`);
+  return response.ok;
+}
+function imageModelPicker(provider, value) {
+  const select = el('select', 'sx-input img-model');
+  select.setAttribute('aria-label', t('{name} model', { name: provider.name }));
+  for (const model of provider.models) {
+    const option = el('option', null, model.hint ? `${model.label} · ${model.hint}` : model.label);
+    option.value = model.id;
+    if (model.id === value) option.selected = true;
+    select.append(option);
+  }
+  return select;
+}
+function imageSourcesBlock(host, item) {
+  const drawing = item.drawing;
+  if (!drawing?.providers) return;
+  const ready = drawing.providers.filter((one) => one.ready);
+  const missing = drawing.providers.filter((one) => !one.ready);
+  const mine = sxBlock(host, t('With what it draws'), t('Claude, Gemini and OpenCode draw with the model you choose here, on your own key. Codex and Grok draw with their own account.'), { className: 'img-sources' });
+  if (!ready.length) sxRow(mine, t('Nothing yet'), t('Connect one below: it takes a couple of minutes.'));
+  for (const provider of ready) {
+    const current = drawing.provider === provider.id;
+    const from = IMAGE_KEY_FROM[provider.from]?.(provider) ?? null;
+    const hint = current && drawing.auto ? `${from} · ${t('Chosen for you: it is the first key MADRE found')}` : from;
+    const picker = imageModelPicker(provider, current ? drawing.model : provider.models[0]?.id);
+    const controls = el('div', 'img-controls');
+    controls.append(picker);
+    if (current) {
+      // The one in use: a different model of the same provider is saved as it is chosen.
+      picker.addEventListener('change', async () => { picker.disabled = true; if (await chooseImageModel(picker.value)) await refreshImageSheet(); else picker.disabled = false; });
+      controls.append(sxChip(t('In use'), 'on'));
+    } else {
+      const use = sxButton(t('Use this one'), async () => {
+        use.disabled = true;
+        if (await chooseImageModel(picker.value)) { toast(t('Ready: Images draws with {name}.', { name: provider.name }), { tone: 'note' }); await refreshImageSheet(); } else use.disabled = false;
+      });
+      controls.append(use);
+    }
+    if (provider.from === 'madre') controls.append(sxButton(t('Forget the key'), () => void forgetImageKey(provider), { title: t('MADRE forgets the key it kept for {name}.', { name: provider.name }) }));
+    const row = sxRow(mine, provider.name, hint, controls);
+    if (current) row.classList.add('img-current');
+  }
+  sxFoot(mine, t('Each image is charged to the account of the key it is drawn with. Ask for it in the conversation with «Create» on: a logo, a banner, an illustration.'));
+  if (!missing.length) return;
+  const more = sxBlock(host, t('To connect'), t('What you do not have yet. Each one asks for a key of its own; paste it here and it is ready.'), { className: 'img-sources img-connect' });
+  for (const provider of missing) {
+    const get = sxButton(t('Get a key ↗'), () => window.open(provider.keyUrl, '_blank', 'noopener'));
+    const row = sxRow(more, provider.name, IMAGE_PROVIDER_ABOUT[provider.id]?.() ?? null, get);
+    row.classList.add('img-offer');
+    const steps = el('ol', 'img-steps');
+    for (const step of IMAGE_PROVIDER_STEPS[provider.id]?.() ?? []) steps.append(el('li', null, step));
+    const paste = el('div', 'img-paste');
+    const input = el('input', 'sx-input mono');
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.placeholder = t('Paste the key here');
+    input.setAttribute('aria-label', t('{name} key', { name: provider.name }));
+    const connect = sxButton(t('Connect'), () => void connectImageKey(provider, input, connect), { tone: 'primary' });
+    input.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); connect.click(); } });
+    paste.append(input, connect);
+    const detail = el('div', 'img-how');
+    detail.append(steps, paste);
+    more.rows.append(detail);
+  }
+}
+async function connectImageKey(provider, input, button) {
+  const key = input.value.trim();
+  if (!key) { input.focus(); return; }
+  button.disabled = true;
+  input.disabled = true;
+  const gemini = provider.id === 'gemini';
+  // A Gemini key goes where Gemini CLI reads it, the same call Settings › Your AIs makes.
+  const response = await reach(gemini ? '/api/agents/gemini/key' : '/api/image-studio/key', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(gemini ? { key } : { provider: provider.id, key }) });
+  const result = await response.json().catch(() => ({}));
+  input.value = '';
+  if (!response.ok) {
+    button.disabled = false;
+    input.disabled = false;
+    toast(`${t('Diagnostics › ')}${result.error ?? t('The key could not be kept.')}`);
+    return;
+  }
+  // What was just connected is what draws (the OpenAI and xAI call already chose it).
+  if (gemini && provider.models[0]) await chooseImageModel(provider.models[0].id);
+  toast(t('Ready: Images draws with {name}.', { name: provider.name }), { tone: 'note' });
+  await refreshImageSheet();
+}
+async function forgetImageKey(provider) {
+  const response = await reach('/api/image-studio/key/forget', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: provider.id }) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) toast(`${t('Diagnostics › ')}${result.error ?? t('The key could not be forgotten.')}`);
+  await refreshImageSheet();
+}
+// The sheet is drawn again with what changed, and stays where the person was reading. The board is
+// drawn twice — with the modules, and again when the skills beside them arrive — so the place is put
+// back each time it is drawn in the next moment, before it is painted.
+async function refreshImageSheet() {
+  const sheet = () => modules.list?.querySelector('.mods-sheet .settings-scroll');
+  const top = sheet()?.scrollTop ?? 0;
+  const keep = () => { const scroll = sheet(); if (scroll && scroll.scrollTop !== top) scroll.scrollTop = top; };
+  const watch = modules.list ? new MutationObserver(keep) : null;
+  watch?.observe(modules.list, { childList: true });
+  setTimeout(() => watch?.disconnect(), 2000);
+  await refreshModules();
+  keep();
+}
 
 // Ollama's local brain as rows: the server, its models, the roles it takes in this room.
 function ollamaBlock(host, item) {

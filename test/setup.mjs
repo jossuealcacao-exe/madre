@@ -18,6 +18,9 @@ process.env.PULSE_REPORT_URL ??= 'http://127.0.0.1:9/v1/reports';
 process.env.PULSE_ANTHROPIC_URL ??= 'http://127.0.0.1:9';
 // Nor Google, for a Gemini key or an answer through its API (src/credentials.mjs, adapters/gemini-rest.mjs).
 process.env.PULSE_GEMINI_API_URL ??= 'http://127.0.0.1:9';
+// Nor OpenAI or xAI, for a key pasted in Modules › Images (src/modules/image-providers.mjs).
+process.env.PULSE_OPENAI_API_URL ??= 'http://127.0.0.1:9';
+process.env.PULSE_XAI_API_URL ??= 'http://127.0.0.1:9';
 // Nor asks madre.run for the author's notices (src/notices.mjs).
 process.env.PULSE_NOTICES_URL ??= 'http://127.0.0.1:9/api/avisos';
 // Nor does the suite's own load make the memory's background work wait (src/room/busy.mjs, L-11):

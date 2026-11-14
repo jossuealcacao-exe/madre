@@ -2,94 +2,47 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // MADRE Image Studio: a tiny MCP server (stdio, JSON-RPC 2.0) that exposes one
-// tool, generate_image, backed by the Gemini API image models and the user's
-// own Gemini key. MADRE attaches it to the isolated homes of the CLIs that
-// cannot generate images natively (Gemini CLI, Claude Code, OpenCode), only
-// during a creation lease whose image scope is on. Files are written inside
-// the lease directory given in PULSE_IMAGE_OUT_DIR, never anywhere else.
+// tool, generate_image, backed by the image model chosen in MODULES › Images —
+// Google's Gemini, OpenAI's GPT Image or xAI's Grok Imagine — and the person's
+// own key for it (src/modules/image-providers.mjs). MADRE attaches it to the
+// isolated homes of the CLIs that cannot generate images natively (Gemini CLI,
+// Claude Code, OpenCode), only during a creation lease whose image scope is on.
+// Files are written inside the lease directory given in PULSE_IMAGE_OUT_DIR,
+// never anywhere else.
 //
 // Environment:
 //   PULSE_IMAGE_OUT_DIR   required, absolute lease directory
-//   PULSE_IMAGE_MODEL     default gemini-2.5-flash-image
+//   PULSE_IMAGE_MODEL     the model chosen; without one, the first provider whose key is found
+//   PULSE_IMAGE_HOME      the person's home, where each CLI keeps its key (default: this HOME)
+//   PULSE_IMAGE_STATE     MADRE's own folder, whose vault keeps a key pasted in MODULES › Images
 //   GEMINI_API_KEY        optional; otherwise ~/.gemini/.env, then the macOS keychain entry the
 //                         Gemini CLI stores (service gemini-cli-api-key)
-//   PULSE_IMAGE_FAKE=1    write a 1×1 PNG without calling Google (tests)
+//   PULSE_IMAGE_FAKE=1    write a 1×1 PNG without calling any provider (tests)
+//
+// No key travels in this server's environment but the Gemini one it always took: Claude Code is
+// handed its MCP servers in its arguments, where `ps` shows them. The server reads the key itself,
+// from the same places MODULES › Images says it found it, at the moment it draws.
 
-import { execFile } from 'node:child_process';
-import { mkdir, readFile, writeFile, realpath } from 'node:fs/promises';
+import { mkdir, writeFile, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, extname, join, resolve, sep } from 'node:path';
-import { promisify } from 'node:util';
+import { basename, extname, resolve, sep } from 'node:path';
 import { OutboundLog } from '../outbound.mjs';
+import { IMAGE_PROVIDERS, defaultModel, drawImage, imageProvider, providerOf, resolveImageKey } from '../modules/image-providers.mjs';
 
-const execFileAsync = promisify(execFile);
+export { explainGoogleError, keyFromGeminiEnvFile, resolveGeminiKey } from '../modules/image-providers.mjs';
+
 const SERVER_NAME = 'pulse-image';
-const SERVER_VERSION = '0.1.0';
-const DEFAULT_MODEL = 'gemini-2.5-flash-image';
+const SERVER_VERSION = '0.2.0';
 const FAKE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-
-// Where a Gemini key can be, in the order the room should trust them: what this process was
-// given, then the file the CLI reads on every run — which is also the file MADRE itself writes
-// when a key is pasted into Settings › Agents — and last the macOS keychain, which only exists when
-// the CLI's own sign-in put it there. Leaving the file out meant MADRE saved a key in a place it
-// then refused to look, and on Linux, where there is no keychain, that was the only place it
-// could have been: Image Studio could never find a key there at all.
-export async function keyFromGeminiEnvFile(env) {
-  const home = env.GEMINI_CLI_HOME ?? homedir();
-  let text;
-  try { text = await readFile(join(home, '.gemini', '.env'), 'utf8'); } catch { return null; }
-  for (const line of text.split('\n')) {
-    const match = line.match(/^\s*(?:export\s+)?(GEMINI_API_KEY|GOOGLE_API_KEY)\s*=\s*(.*)$/);
-    if (!match) continue;
-    const value = match[2].trim().replace(/^(['"])(.*)\1$/, '$2').trim();
-    if (value) return value;
-  }
-  return null;
-}
-
-export async function resolveGeminiKey(env = process.env) {
-  if (env.GEMINI_API_KEY) return env.GEMINI_API_KEY;
-  if (env.GOOGLE_API_KEY) return env.GOOGLE_API_KEY;
-  const fromFile = await keyFromGeminiEnvFile(env);
-  if (fromFile) return fromFile;
-  if (process.platform !== 'darwin') return null;
-  // The keychain occasionally answers empty under concurrent reads; one retry.
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const { stdout } = await execFileAsync('/usr/bin/security', ['find-generic-password', '-s', 'gemini-cli-api-key', '-w'], { timeout: 4000 });
-      const raw = stdout.trim();
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw);
-        return parsed?.token?.accessToken ?? parsed?.token?.apiKey ?? parsed?.apiKey ?? null;
-      } catch {
-        return raw;
-      }
-    } catch {
-      if (attempt === 1) return null;
-    }
-  }
-  return null;
-}
 
 export function safeImageName(name, fallback = 'image.png') {
   const cleaned = basename(String(name ?? fallback)).replace(/[^\w.\- ]+/g, '_').replace(/^\.+/, '') || fallback;
   return extname(cleaned) ? cleaned : `${cleaned}.png`;
 }
 
-// Google's error strings, turned into something a human can act on.
-export function explainGoogleError(status, body) {
-  const message = body?.error?.message ?? '';
-  if (/prepayment credits are depleted|billing/i.test(message)) return { code: 'CREDITS_DEPLETED', message: 'Google reports the AI Studio project has no prepaid credits left. Top up at https://ai.studio/projects and try again.' };
-  if (status === 429) return { code: 'RATE_LIMITED', message: 'Google is rate-limiting this key (HTTP 429). Wait a minute and retry.' };
-  if (status === 401 || status === 403) return { code: 'AUTH', message: `Google rejected the Gemini key (HTTP ${status}). Check GEMINI_API_KEY or sign in again with the Gemini CLI.` };
-  if (status === 404) return { code: 'MODEL', message: `Image model not available to this key (HTTP 404): ${message}` };
-  return { code: 'ERROR', message: message || `Google returned HTTP ${status}.` };
-}
-
 // The image studio runs in a process of its own, so it writes its own line into the room's
-// outbound log. Without this, the one request MADRE makes that carries somebody's words to
-// Google would be the one request the log could not see.
+// outbound log. Without this, the one request MADRE makes that carries somebody's words to an
+// image provider would be the one request the log could not see.
 let outboundLog = null;
 function outboundFetch(fetchImpl, file) {
   if (!file) return fetchImpl;
@@ -97,7 +50,29 @@ function outboundFetch(fetchImpl, file) {
   return outboundLog.watch(fetchImpl);
 }
 
-export async function generateImage({ prompt, fileName, outDir, model = process.env.PULSE_IMAGE_MODEL || DEFAULT_MODEL, env = process.env, fetchImpl = fetch }) {
+// Which model draws and with which key: the one chosen, or — until one is chosen — the first
+// provider whose key is found, with its first model (the same choice MODULES › Images shows).
+async function keyedModel(model, lookup) {
+  if (model) {
+    const providerId = providerOf(model);
+    if (!providerId) throw Object.assign(new Error(`MADRE does not know which provider draws ${model}. Choose another model in MODULES › Images.`), { code: 'MODEL' });
+    return { model, providerId, key: (await resolveImageKey(providerId, lookup))?.key ?? null };
+  }
+  for (const provider of IMAGE_PROVIDERS) {
+    const hit = await resolveImageKey(provider.id, lookup).catch(() => null);
+    if (hit) return { model: defaultModel(provider.id), providerId: provider.id, key: hit.key };
+  }
+  return { model: null, providerId: null, key: null };
+}
+
+// The name the file keeps follows what came back: a JPEG is not saved as .png.
+function namedFor(target, mimeType) {
+  if (/jpe?g/.test(mimeType) && !/\.jpe?g$/i.test(target)) return target.replace(/\.(png|webp)$/i, '.jpg');
+  if (/webp/.test(mimeType) && !/\.webp$/i.test(target)) return target.replace(/\.png$/i, '.webp');
+  return target;
+}
+
+export async function generateImage({ prompt, fileName, outDir, model = null, env = process.env, fetchImpl = fetch }) {
   if (!prompt || typeof prompt !== 'string') throw Object.assign(new Error('A text prompt is required.'), { code: 'INVALID' });
   const root = await realpath(outDir).catch(() => null);
   if (!root) throw Object.assign(new Error('The lease directory does not exist.'), { code: 'NO_LEASE' });
@@ -109,35 +84,29 @@ export async function generateImage({ prompt, fileName, outDir, model = process.
     await writeFile(target, FAKE_PNG);
     return { path: target, bytes: FAKE_PNG.length, mimeType: 'image/png', model: 'fake' };
   }
-  const key = await resolveGeminiKey(env);
-  if (!key) throw Object.assign(new Error('No Gemini API key: set GEMINI_API_KEY or sign in with the Gemini CLI (/auth → API key).'), { code: 'NO_KEY' });
-  const response = await outboundFetch(fetchImpl, env.PULSE_OUTBOUND_LOG)(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const explained = explainGoogleError(response.status, body);
-    throw Object.assign(new Error(explained.message), { code: explained.code, status: response.status });
+  const lookup = { env, home: env.PULSE_IMAGE_HOME || homedir(), stateRoot: env.PULSE_IMAGE_STATE || null };
+  const chosen = await keyedModel(model ?? env.PULSE_IMAGE_MODEL ?? null, lookup);
+  if (!chosen.key) {
+    const provider = imageProvider(chosen.providerId);
+    const message = provider
+      ? `No ${provider.vendor} key for ${chosen.model}: the human connects one in MODULES › Images (or sets ${provider.variable}).`
+      : 'No image key yet: the human connects Gemini, OpenAI or Grok in MODULES › Images. Each image is billed to that key.';
+    throw Object.assign(new Error(message), { code: 'NO_KEY' });
   }
-  const part = body.candidates?.[0]?.content?.parts?.find((item) => item.inlineData?.data);
-  if (!part) throw Object.assign(new Error('Google returned no image data.'), { code: 'EMPTY', detail: body.candidates?.[0]?.finishReason ?? null });
-  const bytes = Buffer.from(part.inlineData.data, 'base64');
-  const mimeType = part.inlineData.mimeType ?? 'image/png';
-  const finalPath = /jpe?g/.test(mimeType) && !/\.jpe?g$/i.test(target) ? target.replace(/\.png$/i, '.jpg') : target;
+  const { bytes, mimeType } = await drawImage({ model: chosen.model, prompt, key: chosen.key, fetchImpl: outboundFetch(fetchImpl, env.PULSE_OUTBOUND_LOG) });
+  const finalPath = namedFor(target, mimeType);
   await writeFile(finalPath, bytes);
-  return { path: finalPath, bytes: bytes.length, mimeType, model };
+  return { path: finalPath, bytes: bytes.length, mimeType, model: chosen.model };
 }
 
 export const TOOL = {
   name: 'generate_image',
-  description: 'Generate an image from a text prompt with a Gemini image model and save it as a PNG inside the current creation lease directory. Returns the saved path.',
+  description: 'Generate an image from a text prompt with the image model the human chose in MADRE (Gemini, OpenAI or Grok, on their own key) and save it inside the current creation lease directory. Returns the saved path.',
   inputSchema: {
     type: 'object',
     properties: {
       prompt: { type: 'string', description: 'What the image should show; be specific about style, colors and composition.' },
-      file_name: { type: 'string', description: 'File name for the PNG, e.g. poster.png. Saved inside the lease directory.' },
+      file_name: { type: 'string', description: 'File name for the image, e.g. poster.png. Saved inside the lease directory; a JPEG answer is saved as .jpg.' },
     },
     required: ['prompt', 'file_name'],
   },

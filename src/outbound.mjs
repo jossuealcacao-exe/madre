@@ -84,6 +84,37 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // The other two providers Images draws with (2026-11-14, src/modules/image-providers.mjs). Same
+    // process of its own as Google's, same line in this log; the key travels in a header.
+    id: 'image-openai', host: 'api.openai.com', match: (url) => url.pathname.startsWith('/v1/images/'), to: 'OpenAI · GPT Image model',
+    what: 'The prompt an AI wrote for an image, with your OpenAI API key, to be drawn by the model you chose.',
+    when: 'an AI uses the image tool during a permission to create, while Images draws with OpenAI',
+    where: 'Modules › Images · choose another provider, or forget the key there',
+    inside: true,
+  },
+  {
+    id: 'image-xai', host: 'api.x.ai', match: (url) => url.pathname.startsWith('/v1/images/'), to: 'xAI · Grok Imagine image model',
+    what: 'The prompt an AI wrote for an image, with your xAI API key, to be drawn by the model you chose.',
+    when: 'an AI uses the image tool during a permission to create, while Images draws with Grok',
+    where: 'Modules › Images · choose another provider, or forget the key there',
+    inside: true,
+  },
+  {
+    // Whether the provider takes a key pasted in Modules › Images: listing the models spends nothing.
+    id: 'image-key', host: 'api.openai.com', match: (url) => /^\/v1\/models\/?$/.test(url.pathname), to: 'OpenAI · whether it takes your key',
+    what: 'The OpenAI API key you paste in Modules › Images, so OpenAI says whether it takes it. It lists models and spends no credit. Nothing about you or your project.',
+    when: 'once, when you save an OpenAI key in Modules › Images',
+    where: 'Modules › Images · without a pasted key it is never asked',
+    inside: true,
+  },
+  {
+    id: 'image-key-xai', host: 'api.x.ai', match: (url) => /^\/v1\/models\/?$/.test(url.pathname), to: 'xAI · whether it takes your key',
+    what: 'The xAI API key you paste in Modules › Images, so xAI says whether it takes it. It lists models and spends no credit. Nothing about you or your project.',
+    when: 'once, when you save an xAI key in Modules › Images',
+    where: 'Modules › Images · without a pasted key it is never asked',
+    inside: true,
+  },
+  {
     id: 'npm', host: 'registry.npmjs.org', to: 'the npm registry',
     what: 'The name of a package, to read the version of its latest release. Nothing about you or your project.',
     when: 'at most once a day per package, while Look for new versions is on',
