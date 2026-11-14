@@ -856,6 +856,21 @@ async function webPreviews(urls) {
 }
 
 function renderInline(text, into) {
+  // Formulas first, outside code: «$x^2$», «\\(\\frac{a}{b}\\)».
+  if (!String(text).includes('`') && /\$|\\\(/.test(text)) {
+    INLINE_MATH.lastIndex = 0;
+    if (INLINE_MATH.test(text)) {
+      let from = 0;
+      INLINE_MATH.lastIndex = 0;
+      for (const match of text.matchAll(INLINE_MATH)) {
+        if (match.index > from) renderInline(text.slice(from, match.index), into);
+        into.append(mathNode(match[1] ?? match[2] ?? match[3]));
+        from = match.index + match[0].length;
+      }
+      if (from < text.length) renderInline(text.slice(from), into);
+      return;
+    }
+  }
   const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(!\[[^\]\n]*\]\(([^)\s]+)\))|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))|((?<![\w/])!((?:[\w.-]+\/)*[\w.-]+\.[A-Za-z0-9]{1,8})(?::(\d+)(?:-(\d+))?)?(?![\w/]))|(\[([^\]\n]+)\]\(([^)\s]+)\))/g;
   let last = 0;
   for (const match of text.matchAll(pattern)) {
@@ -4093,6 +4108,290 @@ function flowDiagram(lines) {
   return figure;
 }
 
+// JSON as a tree, CSV as a table (2026-11-14, the author): data an agent prints is read as data.
+function jsonTree(value, key = null, depth = 0) {
+  const isList = Array.isArray(value);
+  if (value && typeof value === 'object') {
+    const entries = isList ? value.map((one, at) => [at, one]) : Object.entries(value);
+    const node = el('details', 'jt-node');
+    if (depth < 2) node.open = true;
+    const head = el('summary', 'jt-head');
+    if (key !== null) head.append(el('span', 'jt-key', String(key)), ': ');
+    head.append(el('span', 'jt-count', isList ? `[${entries.length}]` : `{${entries.length}}`));
+    node.append(head);
+    const kids = el('div', 'jt-kids');
+    for (const [childKey, child] of entries.slice(0, 500)) kids.append(jsonTree(child, childKey, depth + 1));
+    if (entries.length > 500) kids.append(el('div', 'jt-more', t('… and {n} more', { n: entries.length - 500 })));
+    node.append(kids);
+    return node;
+  }
+  const row = el('div', 'jt-leaf');
+  if (key !== null) row.append(el('span', 'jt-key', String(key)), ': ');
+  const kind = value === null ? 'null' : typeof value;
+  row.append(el('span', `jt-${kind}`, kind === 'string' ? JSON.stringify(value) : String(value)));
+  return row;
+}
+function parseCsv(text, separator) {
+  const rows = [];
+  let row = []; let cell = ''; let quoted = false;
+  for (let at = 0; at < text.length; at += 1) {
+    const char = text[at];
+    if (quoted) {
+      if (char === '"' && text[at + 1] === '"') { cell += '"'; at += 1; } else if (char === '"') quoted = false; else cell += char;
+    } else if (char === '"' && !cell) quoted = true;
+    else if (char === separator) { row.push(cell.trim()); cell = ''; }
+    else if (char === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
+    else if (char !== '\r') cell += char;
+  }
+  if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
+  return rows.filter((one) => one.some(Boolean));
+}
+function csvTable(lines, kind) {
+  const text = lines.join('\n');
+  const separator = kind === 'tsv' || (!text.includes(',') && text.includes('\t')) ? '\t' : (text.split('\n')[0].split(';').length > text.split('\n')[0].split(',').length ? ';' : ',');
+  const rows = parseCsv(text, separator);
+  if (rows.length < 2 || rows[0].length < 2) return null;
+  const [head, ...body] = rows;
+  const escape = (cell) => cell.replace(/\|/g, '\\|');
+  const aligns = head.map((_, column) => (body.every((row) => !row[column] || cellNumber(row[column]) !== null) ? 'right' : null));
+  return liveTable(head.map(escape), aligns, body.map((row) => head.map((_, column) => escape(row[column] ?? ''))));
+}
+
+// Formulas (2026-11-14): the TeX agents write — fractions, roots, powers, indices, Greek letters
+// and the usual signs — set as a formula, without a library. What it does not know stays as written.
+const TEX_SYMBOLS = {
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', varepsilon: 'ε', zeta: 'ζ', eta: 'η', theta: 'θ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ', varphi: 'φ', chi: 'χ', psi: 'ψ', omega: 'ω',
+  Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ', Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
+  cdot: '·', times: '×', div: '÷', pm: '±', mp: '∓', leq: '≤', le: '≤', geq: '≥', ge: '≥', neq: '≠', ne: '≠', approx: '≈', equiv: '≡', sim: '∼', propto: '∝',
+  infty: '∞', sum: '∑', prod: '∏', int: '∫', partial: '∂', nabla: '∇', to: '→', rightarrow: '→', leftarrow: '←', Rightarrow: '⇒', Leftrightarrow: '⇔', implies: '⇒',
+  in: '∈', notin: '∉', subset: '⊂', cup: '∪', cap: '∩', forall: '∀', exists: '∃', emptyset: '∅', degree: '°', circ: '∘', ldots: '…', cdots: '⋯', percent: '%',
+};
+export function texNodes(tex) {
+  let at = 0;
+  const out = el('span', 'mrow');
+  const atom = () => {
+    const char = tex[at];
+    if (char === '{') {
+      at += 1;
+      const inner = el('span', 'mrow');
+      while (at < tex.length && tex[at] !== '}') inner.append(...item());
+      at += 1;
+      return inner;
+    }
+    const [one] = item();
+    return one ?? el('span');
+  };
+  const item = () => {
+    const char = tex[at];
+    if (char === '\\') {
+      const name = tex.slice(at + 1).match(/^([A-Za-z]+|.)/)?.[1] ?? '';
+      at += 1 + name.length;
+      if (name === 'frac' || name === 'dfrac' || name === 'tfrac') {
+        const frac = el('span', 'mfrac');
+        const top = el('span', 'mnum'); top.append(atom());
+        const bottom = el('span', 'mden'); bottom.append(atom());
+        frac.append(top, bottom);
+        return [frac];
+      }
+      if (name === 'sqrt') {
+        const root = el('span', 'msqrt');
+        root.append(el('span', 'mradix', '√'));
+        const under = el('span', 'mrad'); under.append(atom());
+        root.append(under);
+        return [root];
+      }
+      if (/^(text|mathrm|operatorname|textbf|mathbf)$/.test(name)) {
+        const start = at + 1;
+        let end = tex.indexOf('}', start);
+        if (tex[at] !== '{' || end < 0) end = start;
+        const words = tex.slice(start, end);
+        at = end + 1;
+        return [el('span', `mtext${/bf$/.test(name) ? ' mbold' : ''}`, words)];
+      }
+      if (/^(left|right|big|Big|bigg|displaystyle|limits|nolimits)$/.test(name)) return [];
+      if (name === ',' || name === ';' || name === ':' || name === 'quad' || name === 'qquad' || name === ' ') return [el('span', 'mspace')];
+      if (name === '!') return [];
+      if (/^(sin|cos|tan|log|ln|exp|lim|max|min)$/.test(name)) return [el('span', 'mtext', name)];
+      return [el('span', 'mop', TEX_SYMBOLS[name] ?? (name.length === 1 ? name : `\\${name}`))];
+    }
+    if (char === '^' || char === '_') {
+      at += 1;
+      const mark = el(char === '^' ? 'sup' : 'sub');
+      mark.append(atom());
+      return [mark];
+    }
+    at += 1;
+    if (/[A-Za-z]/.test(char)) return [el('i', 'mvar', char)];
+    if (/[=+\-<>]/.test(char)) return [el('span', 'mop', char === '-' ? '−' : char)];
+    if (char === ' ') return [];
+    return [document.createTextNode ? document.createTextNode(char) : char];
+  };
+  let guard = 0;
+  while (at < tex.length && guard < 4000) { out.append(...item()); guard += 1; }
+  return out;
+}
+function mathNode(tex, block = false) {
+  const node = el(block ? 'div' : 'span', block ? 'math math-block' : 'math');
+  node.title = tex;
+  node.append(texNodes(tex.trim()));
+  return node;
+}
+// «$…$» is a formula only when it reads as one: a backslash, a power or an index inside, or a single
+// letter («$r$»), and no price — «$16,500 y $17,300» stays money.
+const INLINE_MATH = /\\\((.+?)\\\)|(?<![\w$])\$(?!\s)([^$\n]*?[\\^_][^$\n]*?)(?<!\s)\$(?!\d)|(?<![\w$])\$([A-Za-z])\$(?![\w$])/g;
+
+// Dates in an answer become a reminder a press away (2026-11-14, the author). The exact ones are
+// worked out here — Reminders reads «mañana a las 9» or «el lunes» well, not «16 de noviembre» — and
+// the rest are handed to it in words.
+const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const MONTHS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+const WHEN_TIME = '(?:\\s+(?:a\\s+las?|at|@)\\s+\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a\\.\\s?m\\.|p\\.\\s?m\\.|hrs|h)?)';
+const WEEKDAYS = 'lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday';
+const WHEN_PHRASE = new RegExp([
+  `\\b\\d{1,2}\\s+de\\s+(?:${MONTHS_ES.join('|')}|setiembre)(?:\\s+(?:de|del)\\s+\\d{4})?${WHEN_TIME}?`,
+  `\\b(?:${MONTHS_EN.join('|')})\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?${WHEN_TIME}?`,
+  `\\b\\d{4}-\\d{2}-\\d{2}(?:[ T]\\d{2}:\\d{2})?`,
+  `\\b(?:el\\s+|this\\s+|next\\s+|pr[oó]ximo\\s+)?(?:${WEEKDAYS})(?:\\s+\\d{1,2}${WHEN_TIME}?|${WHEN_TIME})`,
+  `\\b(?:pasado\\s+ma[nñ]ana|ma[nñ]ana|hoy|tomorrow|today)${WHEN_TIME}`,
+].join('|'), 'giu');
+function clockOf(phrase) {
+  const time = phrase.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.\s?m\.|p\.\s?m\.)?\s*(?:hrs|h)?\s*$/i);
+  if (!time || !/(a\s+las?|at|@)\s+\d/i.test(phrase)) return null;
+  let hour = Number(time[1]);
+  const minutes = Number(time[2] ?? 0);
+  const half = (time[3] ?? '').toLowerCase().replace(/[.\s]/g, '');
+  if (half === 'pm' && hour < 12) hour += 12;
+  if (half === 'am' && hour === 12) hour = 0;
+  return hour < 24 && minutes < 60 ? [hour, minutes] : null;
+}
+export function exactDue(phrase, now = new Date()) {
+  const text = phrase.toLowerCase();
+  const clock = clockOf(phrase) ?? [9, 0];
+  let year = null; let month = null; let day = null;
+  const iso = text.match(/(\d{4})-(\d{2})-(\d{2})(?:[ t](\d{2}):(\d{2}))?/);
+  if (iso) {
+    const due = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), iso[4] ? Number(iso[4]) : clock[0], iso[5] ? Number(iso[5]) : clock[1]);
+    return Number.isNaN(due.getTime()) ? null : due;
+  }
+  const es = text.match(/(\d{1,2})\s+de\s+([a-zé]+)(?:\s+(?:de|del)\s+(\d{4}))?/);
+  const en = text.match(/\b([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?/);
+  if (es && (MONTHS_ES.includes(es[2]) || es[2] === 'setiembre')) { day = Number(es[1]); month = es[2] === 'setiembre' ? 8 : MONTHS_ES.indexOf(es[2]); year = es[3] ? Number(es[3]) : null; }
+  else if (en && MONTHS_EN.includes(en[1])) { day = Number(en[2]); month = MONTHS_EN.indexOf(en[1]); year = en[3] ? Number(en[3]) : null; }
+  else {
+    // «el sábado 16»: the next 16th, this month or the next.
+    const numbered = text.match(new RegExp(`(?:${WEEKDAYS})\\s+(\\d{1,2})`, 'iu'));
+    if (!numbered) return null;
+    day = Number(numbered[1]);
+    month = now.getMonth();
+    const probe = new Date(now.getFullYear(), month, day, ...clock);
+    if (probe < now) month += 1;
+  }
+  let due = new Date(year ?? now.getFullYear(), month, day, ...clock);
+  if (!year && due < now) due = new Date(now.getFullYear() + 1, month, day, ...clock);
+  return Number.isNaN(due.getTime()) || due.getDate() !== day ? null : due;
+}
+function whenChips(bubble) {
+  if (typeof document.createTreeWalker !== 'function') return;
+  const walker = document.createTreeWalker(bubble, NodeFilter.SHOW_TEXT, { acceptNode: (node) => (node.parentElement?.closest('pre, code, a, button, .codeblock, .bubble-foot, .math, .when, .chart, .flow, .link-card .lc-site') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+  const found = [];
+  while (walker.nextNode()) { WHEN_PHRASE.lastIndex = 0; if (WHEN_PHRASE.test(walker.currentNode.nodeValue)) found.push(walker.currentNode); }
+  for (const textNode of found.slice(0, 20)) {
+    const text = textNode.nodeValue;
+    const pieces = document.createDocumentFragment();
+    let last = 0;
+    WHEN_PHRASE.lastIndex = 0;
+    for (const match of text.matchAll(WHEN_PHRASE)) {
+      if (match.index > last) pieces.append(text.slice(last, match.index));
+      const phrase = match[0].trimEnd();
+      const chip = el('span', 'when');
+      chip.append(phrase);
+      const set = el('button', 'when-set');
+      set.type = 'button';
+      set.innerHTML = trazo('calendar'); // trusted: our own drawing (icons.js)
+      set.title = t('Remind me');
+      set.setAttribute('aria-label', `${t('Remind me')}: ${phrase}`);
+      set.addEventListener('click', async () => {
+        set.disabled = true;
+        // What to remember: the sentence the date is in, short.
+        const block = chip.closest('p, li, td, .lc-text, blockquote') ?? chip.parentElement;
+        const sentence = (block?.textContent ?? phrase).split(/(?<=[.!?;])\s+/).find((one) => one.includes(phrase)) ?? phrase;
+        const due = exactDue(phrase);
+        const body = { text: sentence.trim().slice(0, 160), ...(due ? { due: due.toISOString() } : { when: phrase }) };
+        try {
+          const response = await fetch('/api/reminders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+          const made = await response.json().catch(() => ({}));
+          if (response.status === 404) throw new Error(t('Turn on Reminders in Modules to set it.'));
+          if (!response.ok) throw new Error(made.error ?? `HTTP ${response.status}`);
+          const at = made.reminder?.due ?? made.due ?? due?.toISOString();
+          chip.classList.add('set');
+          set.title = t('Reminder set');
+          toast(at ? t('Reminder set for {when}.', { when: new Date(at).toLocaleString(language(), { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) }) : t('Reminder set'));
+        } catch (error) { set.disabled = false; toast(resay(error.message)); }
+      });
+      chip.append(set);
+      pieces.append(chip);
+      last = match.index + phrase.length;
+    }
+    if (last < text.length) pieces.append(text.slice(last));
+    textNode.replaceWith(pieces);
+  }
+}
+
+// Video, audio and maps among an answer's links (2026-11-14): a video or a song plays here once the
+// person asks for it — nothing is fetched before — and a place opens in Maps.
+function mediaOf(href) {
+  let url;
+  try { url = new URL(href); } catch { return null; }
+  const host = url.hostname.replace(/^www\.|^m\./, '');
+  const youtube = host === 'youtu.be' ? url.pathname.slice(1) : /youtube\.com$/.test(host) ? (url.searchParams.get('v') ?? url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]+)/)?.[1]) : null;
+  if (youtube && /^[\w-]{6,}$/.test(youtube)) return { kind: 'video', embed: `https://www.youtube-nocookie.com/embed/${youtube}`, site: 'YouTube' };
+  const vimeo = host === 'vimeo.com' ? url.pathname.match(/^\/(\d+)/)?.[1] : null;
+  if (vimeo) return { kind: 'video', embed: `https://player.vimeo.com/video/${vimeo}?dnt=1`, site: 'Vimeo' };
+  if (/\.(mp4|webm|mov|m4v)$/i.test(url.pathname)) return { kind: 'video', file: href, site: host };
+  if (/\.(mp3|m4a|wav|ogg|oga|flac|aac)$/i.test(url.pathname)) return { kind: 'audio', file: href, site: host };
+  if (/(^|\.)google\.[a-z.]+$/.test(host) && url.pathname.startsWith('/maps') || /^maps\.(app\.goo\.gl|apple\.com)$/.test(host) || host === 'goo.gl' && url.pathname.startsWith('/maps') || /openstreetmap\.org$/.test(host)) return { kind: 'map', site: host };
+  return null;
+}
+function mediaCards(bubble) {
+  for (const link of bubble.querySelectorAll('a.web-link[href]')) {
+    if (link.closest('.link-card, .sources')) continue;
+    const media = mediaOf(link.href);
+    if (!media) continue;
+    if (media.kind === 'map') {
+      link.classList.add('map-link');
+      const pin = el('span', 'map-pin');
+      pin.innerHTML = trazo('map'); // trusted: our own drawing (icons.js)
+      link.prepend(pin);
+      link.title = t('Open in Maps');
+      continue;
+    }
+    const card = el('div', `media-card ${media.kind}`);
+    const play = el('button', 'media-play', media.kind === 'audio' ? t('Listen here') : t('Watch here'));
+    play.type = 'button';
+    play.title = t('{site} is asked for it only when you press here.', { site: media.site });
+    card.append(play, el('span', 'media-site', media.site));
+    play.addEventListener('click', () => {
+      let player;
+      if (media.embed) {
+        player = el('iframe', 'media-frame');
+        player.src = media.embed;
+        player.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
+        player.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        player.title = link.textContent;
+      } else {
+        player = el(media.kind === 'audio' ? 'audio' : 'video', 'media-file');
+        player.controls = true;
+        player.preload = 'metadata';
+        player.src = media.file;
+      }
+      card.replaceChildren(player);
+      card.classList.add('playing');
+    });
+    const block = link.closest('p, li') ?? link;
+    if (typeof block.after === 'function') block.after(card);
+  }
+}
+
 // Charts drawn here, without a library (2026-11-14, the author): a ```chart block, or a table with
 // figures seen as one. Bars across (their names read whole, also on a phone), a line for what moves
 // in time, a ring for parts of a whole. The block takes JSON — {"type", "title", "labels",
@@ -4299,6 +4598,25 @@ function codeBlock(lines, lang, info = '') {
   } else code.append(lines.join('\n'));
   pre.append(code);
   wrapper.append(pre);
+  // JSON is read as a tree, its text a press away.
+  let tree = null;
+  if ((kind === 'json' || (!kind && /^\s*[[{]/.test(lines[0] ?? ''))) && lines.length > 3) {
+    try { tree = jsonTree(JSON.parse(lines.join('\n'))); } catch { tree = null; }
+  }
+  if (tree) {
+    const view = el('div', 'code-render code-tree');
+    view.append(tree);
+    const seg = el('span', 'code-views-seg');
+    const seeIt = el('button', 'code-view on', t('Tree'));
+    const seeCode = el('button', 'code-view', t('Code'));
+    for (const key of [seeIt, seeCode]) { key.type = 'button'; seg.append(key); }
+    const show = (rendered) => { wrapper.classList.toggle('rendered', rendered); seeIt.classList.toggle('on', rendered); seeCode.classList.toggle('on', !rendered); };
+    seeIt.addEventListener('click', () => show(true));
+    seeCode.addEventListener('click', () => show(false));
+    head.insertBefore?.(seg, copy);
+    wrapper.append(view);
+    show(true);
+  }
   // HTML and SVG are seen as what they make (2026-11-14), with their code a press away. An SVG is a
   // picture (as a picture it runs nothing); a page is drawn in a sealed frame that reaches nothing
   // outside itself and runs no script until the person allows it.
@@ -4717,10 +5035,34 @@ export function renderMarkdown(text) {
       const fenceKind = fence[1]?.toLowerCase();
       const chart = fenceKind === 'chart' || fenceKind === 'grafica' || fenceKind === 'gráfica' ? chartSpec(body.join('\n')) : null;
       const diagram = fenceKind === 'mermaid' ? flowDiagram(body) : null;
-      fragment.append(fenceKind === 'pulse' ? planCard(body) : chart ? chartBlock(chart) : diagram ?? codeBlock(body, fence[1], fence[2]));
+      const sheet = fenceKind === 'csv' || fenceKind === 'tsv' ? csvTable(body, fenceKind) : null;
+      const formula = fenceKind === 'math' || fenceKind === 'latex' || fenceKind === 'tex' ? mathNode(body.join(' '), true) : null;
+      fragment.append(fenceKind === 'pulse' ? planCard(body) : chart ? chartBlock(chart) : diagram ?? sheet ?? formula ?? codeBlock(body, fence[1], fence[2]));
       continue;
     }
     if (!line.trim()) { flushParagraph(); index += 1; continue; }
+    // A formula on its own lines: «$$ … $$» or «\[ … \]».
+    const mathOpen = line.match(/^\s*(\$\$|\\\[)(.*)$/);
+    if (mathOpen) {
+      const close = mathOpen[1] === '$$' ? '$$' : '\\]';
+      const body = [];
+      let rest = mathOpen[2];
+      let at = index;
+      for (;;) {
+        const end = rest.indexOf(close);
+        if (end >= 0) { body.push(rest.slice(0, end)); break; }
+        body.push(rest);
+        at += 1;
+        if (at >= lines.length || at - index > 40) { body.length = 0; break; }
+        rest = lines[at];
+      }
+      if (body.length && body.join('').trim()) {
+        flushParagraph();
+        fragment.append(mathNode(body.join(' '), true));
+        index = at + 1;
+        continue;
+      }
+    }
 
     const heading = line.match(/^(#{1,6})\s+(.*)$/);
     if (heading) {
@@ -6909,6 +7251,8 @@ function renderAssistantMessage(event) {
   if (photos && typeof lastCards?.after === 'function') lastCards.after(photos); else if (photos) bubble.append(photos);
   const sources = numberSources(bubble);
   if (sources) bubble.append(sources);
+  mediaCards(bubble);
+  whenChips(bubble);
   // Written as the human's copilot: a green round robot on the agent's own circle.
   if (event.payload.copilot) {
     node.classList.add('copilot');

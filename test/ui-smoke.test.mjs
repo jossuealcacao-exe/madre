@@ -265,6 +265,25 @@ test('the room UI boots against a real transcript without throwing', async () =>
     assert.equal(frame.attributes.sandbox, '', 'a page runs no script until the person allows it');
     assert.match(frame.srcdoc, /default-src 'none'/);
     assert.ok(find(page, (node) => node.classList?.contains('code-run-scripts')));
+    // Data, formulas and dates (2026-11-14).
+    const sheet = app.renderMarkdown('```csv\nZona,Renta\nChapalita,"$16,500"\nProvidencia,"$17,300"\n```').children.find((node) => node.classList?.contains('table-wrap'));
+    assert.ok(sheet, 'a CSV block is a live table');
+    assert.equal(find(sheet, (node) => node.tagName === 'TBODY').children[0].children[1].textContent, '$16,500', 'a quoted comma stays in its cell');
+    const data = app.renderMarkdown('```json\n{\n  "zona": "Chapalita",\n  "renta": 16500,\n  "fotos": [1, 2]\n}\n```').children.find((node) => node.classList?.contains('codeblock'));
+    assert.ok(find(data, (node) => node.classList?.contains('code-tree')), 'JSON is a tree');
+    const money = app.renderMarkdown('Cuesta $16,500 y la otra $17,300.');
+    assert.equal(find(money, (node) => node.classList?.contains('math')), null, 'prices are not formulas');
+    const formula = app.renderMarkdown('El pago es $P = \\frac{r}{1 - (1+r)^{-n}}$ al mes.');
+    const mathSpan = find(formula, (node) => node.classList?.contains('math'));
+    assert.ok(mathSpan && find(mathSpan, (node) => node.classList?.contains('mfrac')), 'a fraction is set as one');
+    assert.ok(find(app.renderMarkdown('$$\nx^2 + y^2 = z^2\n$$'), (node) => node.classList?.contains('math-block')));
+    const now = new Date(2026, 10, 14, 12, 0);
+    assert.deepEqual([app.exactDue('16 de noviembre a las 10:30', now)].map((d) => [d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()]), [[10, 16, 10, 30]]);
+    assert.deepEqual([app.exactDue('20 de diciembre', now)].map((d) => [d.getMonth(), d.getDate(), d.getHours()]), [[11, 20, 9]]);
+    assert.equal(app.exactDue('3 de enero', now).getFullYear(), 2027, 'a date already gone this year is next year\'s');
+    assert.deepEqual([app.exactDue('November 20 at 3pm', now)].map((d) => [d.getMonth(), d.getDate(), d.getHours()]), [[10, 20, 15]]);
+    assert.equal(app.exactDue('el sábado 16 a las 11:00', now).getDate(), 16);
+    assert.equal(app.exactDue('mañana a las 9', now), null, 'words Reminders reads well are handed to it');
     // Answers with links (2026-11-14): a link in bold is a link, a numbered list keeps its numbers
     // across blank lines, and a point that starts with a link is a card with its price and its site.
     const bold = app.renderMarkdown('Mira **[la guía](https://example.org/guia)** hoy.');

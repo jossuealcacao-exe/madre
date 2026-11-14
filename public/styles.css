@@ -14062,3 +14062,49 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
 .bubble .flow-source { position: absolute; top: 8px; right: 8px; height: 24px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--text-3); font: 500 12px var(--read, var(--sans)); cursor: pointer; }
 .bubble .flow-source:hover, .bubble .flow-source.on { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
 .bubble .flow > .codeblock { margin: 10px 0 0; }
+/* Data, formulas, dates and media in an answer (2026-11-14, the author). JSON as a tree. */
+.bubble .codeblock .code-tree { background: none; padding: 8px 14px 10px; font: 12.5px/1.6 var(--mono); }
+.bubble .jt-node > summary { cursor: pointer; list-style: none; }
+.bubble .jt-node > summary::-webkit-details-marker { display: none; }
+.bubble .jt-node > summary::before { content: '▸'; display: inline-block; width: 12px; color: var(--text-3); transition: transform .15s ease; }
+.bubble .jt-node[open] > summary::before { transform: rotate(90deg); }
+.bubble .jt-kids { padding-left: 16px; border-left: 1px solid color-mix(in srgb, var(--text) 8%, transparent); margin-left: 4px; }
+.bubble .jt-leaf { padding-left: 12px; }
+.bubble .jt-key { color: var(--text-2); }
+.bubble .jt-count, .bubble .jt-more { color: var(--text-3); }
+.bubble .jt-string { color: color-mix(in srgb, #10b981 75%, var(--text)); } .bubble .jt-number { color: color-mix(in srgb, #3b82f6 75%, var(--text)); } .bubble .jt-boolean { color: color-mix(in srgb, #a855f7 75%, var(--text)); } .bubble .jt-null { color: var(--text-3); }
+/* Formulas, set as formulas. */
+.bubble .math { font-family: 'Cambria Math', 'STIX Two Math', 'Latin Modern Math', Georgia, serif; font-size: 1.06em; white-space: nowrap; }
+.bubble .math-block { display: block; margin: 10px 0; padding: 6px 0; text-align: center; font-size: 1.18em; overflow-x: auto; }
+.bubble .math .mvar { font-style: italic; }
+.bubble .math .mop { padding: 0 .16em; }
+.bubble .math .mtext { font-style: normal; }
+.bubble .math .mbold { font-weight: 700; }
+.bubble .math .mspace { display: inline-block; width: .3em; }
+.bubble .math .mfrac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 .12em; font-size: .9em; }
+.bubble .math .mnum { padding: 0 .2em; border-bottom: 1px solid currentColor; line-height: 1.2; }
+.bubble .math .mden { padding: 0 .2em; line-height: 1.2; }
+.bubble .math .msqrt { display: inline-flex; align-items: flex-start; }
+.bubble .math .mradix { font-size: 1.1em; }
+.bubble .math .mrad { border-top: 1px solid currentColor; padding: 0 .1em; margin-top: .18em; }
+.bubble .math sup, .bubble .math sub { font-size: .72em; }
+/* Dates: a quiet underline and a calendar a press away from a reminder. */
+.bubble .when { white-space: nowrap; border-bottom: 1px dotted color-mix(in srgb, var(--phosphor) 60%, transparent); }
+.bubble .when-set { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 3px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--text-3); vertical-align: -4px; cursor: pointer; }
+.bubble .when-set svg { width: 14px; height: 14px; }
+.bubble .when-set:hover { background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--phosphor); }
+.bubble .when.set { border-bottom-style: solid; }
+.bubble .when.set .when-set { color: var(--phosphor); }
+/* Video and audio, played here when asked; places open in Maps. */
+.bubble .media-card { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; }
+.bubble .media-play { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font: 500 12.5px var(--read, var(--sans)); cursor: pointer; }
+.bubble .media-play::before { content: '▶'; margin-right: 7px; font-size: 10px; color: var(--phosphor); }
+.bubble .media-play:hover { background: color-mix(in srgb, var(--text) 11%, transparent); }
+.bubble .media-site { color: var(--text-3); font-size: 12px; }
+.bubble .media-card.playing { display: block; }
+.bubble .media-frame { display: block; width: 100%; max-width: 640px; aspect-ratio: 16 / 9; border: 0; border-radius: 12px; background: #000; }
+.bubble .media-file { display: block; width: 100%; max-width: 640px; border-radius: 12px; }
+.bubble audio.media-file { height: 40px; }
+.bubble a.map-link { display: inline-flex; align-items: center; gap: 4px; }
+.bubble .map-pin { display: inline-grid; width: 14px; height: 14px; }
+.bubble .map-pin svg { width: 100%; height: 100%; }
