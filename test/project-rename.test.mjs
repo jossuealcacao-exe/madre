@@ -135,3 +135,14 @@ test('13 nov · the opening runs again, the language key lives on the window, th
   assert.match(terms, /t\('MADRE is free for you\. Two quick things and you are in\.'\)/);
   assert.ok(!/terms-daily/.test(terms));
 });
+
+test('13 nov · the app icon in the news and the manual is the official one, not a day-old copy', async () => {
+  // Brand images are kept a day (server.mjs, brandAssets): the old gradient mark stayed in a copy
+  // updated the same day. A new mark goes with a new address.
+  const scenes = await pub('news-scenes.js');
+  const manual = await pub('manual.js');
+  const salas = await pub('salas.html');
+  assert.match(scenes, /'\/assets\/brand\/madre-app\.svg\?v=2'/);
+  assert.equal((manual.match(/madre-app\.svg(?!\?v=2)/g) ?? []).length, 0);
+  assert.match(salas, /madre-app-180\.png\?v=2/);
+});

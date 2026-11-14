@@ -178,7 +178,8 @@ SCENES.desktopapp = (stage, { os = 'mac' } = {}) => {
   const apps = os === 'windows' ? ['search', 'folder', 'globe'] : ['folder', 'globe', 'chat'];
   for (const name of apps) shelf.append(icon(name, 'ns-aw-app'));
   const madre = node('img', 'ns-aw-madre');
-  madre.src = '/assets/brand/madre-app.svg';
+  // Versioned (2026-11-13): the mark changed and pages keep images a day; a copy updated today kept the old one.
+  madre.src = '/assets/brand/madre-app.svg?v=2';
   madre.alt = '';
   shelf.append(madre);
   if (os === 'linux') { const top = node('div', 'ns-aw-topbar'); top.append(node('span', null, '10:24')); stage.append(top); }

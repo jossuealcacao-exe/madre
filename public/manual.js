@@ -226,7 +226,7 @@ function draw(lang, madre) {
   if (!printing) {
     const bar = el('nav', 'manual-bar');
     const brand = el('span', 'manual-brand');
-    brand.innerHTML = '<img src="/assets/brand/madre-app.svg" alt="" width="22" height="22">'; // trusted: our own markup
+    brand.innerHTML = '<img src="/assets/brand/madre-app.svg?v=2" alt="" width="22" height="22">'; // trusted: our own markup
     brand.append(el('b', null, 'MADRE'));
     const keys = el('div', 'manual-keys');
     const swap = el('a', 'manual-key', copy.language);
@@ -242,7 +242,7 @@ function draw(lang, madre) {
   // The cover.
   const cover = el('header', 'manual-cover');
   const mark = el('img', 'manual-mark');
-  mark.src = '/assets/brand/madre-app.svg';
+  mark.src = '/assets/brand/madre-app.svg?v=2';
   mark.alt = '';
   cover.append(mark, el('h1', null, copy.title), el('p', 'manual-subtitle', copy.subtitle));
   if (madre) cover.append(el('p', 'manual-version', `MADRE ${madre}`));
