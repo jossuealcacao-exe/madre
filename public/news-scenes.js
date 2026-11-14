@@ -35,6 +35,19 @@ const WORDS = {
   address: { es: '127.0.0.1:4317', en: '127.0.0.1:4317' },
   finished: { es: 'Claude terminó', en: 'Claude finished' },
   finishedLine: { es: 'Tu página ya está lista.', en: 'Your page is ready.' },
+  // What changed, and what an AI makes opening by itself (1.1.4).
+  changedTitle: { es: 'Qué cambió', en: 'What changed' },
+  changedLine: { es: 'Agregué tu botón de WhatsApp', en: 'I added your WhatsApp button' },
+  view: { es: 'Ver', en: 'View' },
+  undo: { es: 'Deshacer', en: 'Undo' },
+  pageButton: { es: 'Escríbenos', en: 'Message us' },
+  // First steps (1.1.4): three of the five, checked one after another.
+  stepsTitle: { es: 'Primeros pasos', en: 'First steps' },
+  steps: [
+    { es: 'Crea tu primera página', en: 'Make your first page' },
+    { es: 'Pregúntale a dos IAs', en: 'Ask two AIs' },
+    { es: 'Deshaz un cambio', en: 'Undo a change' },
+  ],
 };
 
 const node = (tag, cls, text) => {
@@ -177,13 +190,58 @@ SCENES.desktopapp = (stage, { os = 'mac' } = {}) => {
   return [300, 1400, 2500, 3500];
 };
 
+// «You see what changed» (1.1.4): an AI answers, the card of what it changed comes under the answer
+// with «View» and «Undo», and the page it made opens beside, by itself.
+SCENES.changes = (stage) => {
+  const left = node('div', 'ns-ans');
+  const msg = node('div', 'ns-ans-msg');
+  const lines = node('div', 'ns-ans-lines');
+  for (let i = 0; i < 2; i += 1) lines.append(node('i'));
+  msg.append(face('claude'), lines);
+  const card = node('div', 'ns-cc');
+  const head = node('div', 'ns-cc-head');
+  head.append(icon('pencil', 'ns-cc-icon'), node('b', null, pick(WORDS.changedTitle)));
+  const keys = node('div', 'ns-cc-keys');
+  keys.append(node('span', 'ns-cc-key view', pick(WORDS.view)), node('span', 'ns-cc-key', pick(WORDS.undo)));
+  card.append(head, node('span', 'ns-cc-line', pick(WORDS.changedLine)), keys);
+  left.append(msg, card);
+  const page = node('div', 'ns-page');
+  page.append(node('i', 'ns-page-bar'), node('i', 'ns-page-hero'), node('i', 'ns-page-line'), node('i', 'ns-page-line short'));
+  const cta = node('span', 'ns-page-btn');
+  cta.append(icon('chat', 'ns-page-btn-icon'), node('span', null, pick(WORDS.pageButton)));
+  page.append(cta);
+  stage.append(left, page);
+  return [300, 1200, 2200, 2900];
+};
+
+// «Learn by doing» (1.1.4): First steps, three of its five checked one after another, the bar filling.
+SCENES.missions = (stage) => {
+  const box = node('div', 'ns-steps');
+  const head = node('div', 'ns-steps-head');
+  head.append(node('b', null, pick(WORDS.stepsTitle)), node('span', 'ns-steps-count'));
+  const bar = node('div', 'ns-progress');
+  bar.append(node('i'));
+  const list = node('div', 'ns-step-list');
+  WORDS.steps.forEach((word, i) => {
+    const row = node('div', 'ns-step');
+    row.style.setProperty('--i', i);
+    row.append(icon('check', 'ns-step-box'), node('span', null, pick(word)));
+    list.append(row);
+  });
+  box.append(head, bar, list);
+  stage.append(box);
+  return [300, 1200, 2000, 2800];
+};
+
 export const NEWS_SCENES = Object.keys(SCENES);
 
 // One stage. `stop()` clears its timers when the sheet closes. `options` go to the scene (`os`).
 export function createNewsScene(id, options = {}) {
   const stage = node('div', `ns ns-${id}`);
   stage.setAttribute('aria-hidden', 'true');
-  const beats = SCENES[id]?.(stage, options) ?? [];
+  // The desktop this page is on, for the scene of the app (1.1.4: the news board does not say it).
+  const desk = /Mac/i.test(globalThis.navigator?.platform ?? '') ? 'mac' : /Win/i.test(globalThis.navigator?.platform ?? '') ? 'windows' : /Linux|X11/i.test(globalThis.navigator?.platform ?? '') ? 'linux' : 'mac';
+  const beats = SCENES[id]?.(stage, { os: desk, ...options }) ?? [];
   const timers = new Set();
   const later = (ms, fn) => { const timer = setTimeout(() => { timers.delete(timer); fn(); }, ms); timers.add(timer); };
   const still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;

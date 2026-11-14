@@ -31,6 +31,67 @@ const FILE = 'whats-new.json';
 export const NEWS_ACTIONS = ['settings', 'errors', 'mother', 'intents', 'permissions', 'github', 'bar', 'modules', 'nostromo', 'room', 'looks', 'finder'];
 
 export const NOTES = {
+  // 1.1.4 (2026-11-13, the first beta of the app): said to whoever comes from 1.1.3 — MADRE is an app
+  // now, and two things that change how an answer is read and how MADRE is learned. Whoever already
+  // reads it inside the app (`inApp`, and `introApp`) is told what the app gives them instead of being
+  // asked to get it. After the board, in the browser, Home asks whether to stay or download the app
+  // (salas-mac.js, offerApp).
+  '1.1.4': {
+    title: { es: 'MADRE ya es una app', en: 'MADRE is an app now' },
+    intro: {
+      es: 'Desde hoy MADRE se abre como cualquier app de tu computadora. Y trae dos cosas nuevas para que trabajes con tus IAs sin perderte.',
+      en: 'From today MADRE opens like any other app on your computer. And it brings two new things so you can work with your AIs without getting lost.',
+    },
+    introApp: {
+      es: 'Ya la abres como cualquier app de tu computadora. Y trae dos cosas nuevas para que trabajes con tus IAs sin perderte.',
+      en: 'You now open it like any other app on your computer. And it brings two new things so you can work with your AIs without getting lost.',
+    },
+    items: [
+      {
+        id: 'app',
+        icon: 'home',
+        scene: 'desktopapp',
+        title: { es: 'Ábrela como cualquier app', en: 'Open it like any other app' },
+        body: {
+          es: 'Sin terminal ni pestañas: la app se abre desde tus aplicaciones, te avisa cuando una IA termina y trae su propio navegador y su terminal. Así aprovechas mejor lo que MADRE puede hacer en tu sistema, y tus proyectos llegan tal como están.',
+          en: 'No terminal, no tabs: the app opens from your applications, tells you when an AI finishes and brings its own browser and terminal. That way you get more out of what MADRE can do on your system, and your projects come along as they are.',
+        },
+        inApp: {
+          title: { es: 'Ya estás en la app', en: 'You are in the app' },
+          body: {
+            es: 'La abres desde tus aplicaciones, sin terminal. Te avisa cuando una IA termina, trae su propio navegador y su terminal, y te dice cuando hay una versión nueva.',
+            en: 'You open it from your applications, with no terminal. It tells you when an AI finishes, brings its own browser and terminal, and tells you when there is a new version.',
+          },
+        },
+        where: { es: 'madre.run/app', en: 'madre.run/app' },
+        action: null,
+      },
+      {
+        id: 'changes',
+        icon: 'list',
+        scene: 'changes',
+        title: { es: 'Ves qué cambió en cada respuesta', en: 'You see what changed in every answer' },
+        body: {
+          es: 'Bajo cada respuesta que toca tu proyecto, una tarjeta te dice en palabras simples qué cambió, con «Ver» y «Deshacer». Y lo que una IA crea, una página, una imagen o un PDF, se abre solo al lado.',
+          en: 'Under every answer that touches your project, a card tells you in plain words what changed, with «View» and «Undo». And what an AI makes, a page, an image or a PDF, opens by itself beside it.',
+        },
+        where: { es: 'En cada respuesta', en: 'Under every answer' },
+        action: null,
+      },
+      {
+        id: 'steps',
+        icon: 'check',
+        scene: 'missions',
+        title: { es: 'Aprende haciendo', en: 'Learn by doing' },
+        body: {
+          es: 'Primeros pasos te propone cinco cosas cortas, como crear tu primera página o preguntarle lo mismo a dos IAs. Cada una toma un par de minutos y te enseña algo de verdad.',
+          en: 'First steps offers you five short things, like making your first page or asking two AIs the same question. Each takes a couple of minutes and teaches you something real.',
+        },
+        where: { es: 'Primeros pasos, en la barra de arriba', en: 'First steps, in the top bar' },
+        action: null,
+      },
+    ],
+  },
   // 1.1.3 (borrador del 2026-11-08, por aprobar): said as a person would to someone who comes back,
   // with the three things that change their day, each with its own moving picture (`scene`, drawn by
   // public/welcome-scene.js) instead of a screenshot.
@@ -398,6 +459,17 @@ export const NOTES = {
 };
 
 export const notesFor = (version) => NOTES[version] ?? null;
+// The notes as read inside the desktop app (1.1.4): its own intro and, for an item that has them, its
+// own words; read anywhere else, those are left out.
+export function notesWhere(notes, app = false) {
+  if (!notes || (!notes.introApp && !(notes.items ?? []).some((item) => item.inApp))) return notes;
+  const { introApp, ...rest } = notes;
+  return {
+    ...rest,
+    intro: app && introApp ? introApp : rest.intro,
+    items: (rest.items ?? []).map(({ inApp, ...item }) => (app && inApp ? { ...item, ...inApp } : item)),
+  };
+}
 // The newest version that has a sheet: what a preview opens on a copy whose own version has none.
 export const newestNotes = () => Object.keys(NOTES).sort(compareVersions).at(-1) ?? null;
 
@@ -463,5 +535,5 @@ export const INVITE_ANSWERS = ['shown', 'picked', 'sample', 'later'];
 export async function whatsNew({ root, version, returning, any = false }) {
   const seen = await readSeen(root);
   const show = shouldShow({ version, seen, returning });
-  return { version, show, notes: show || any ? notesFor(version) : null };
+  return { version, show, notes: show || any ? notesWhere(notesFor(version), process.env.MADRE_APP === '1') : null };
 }

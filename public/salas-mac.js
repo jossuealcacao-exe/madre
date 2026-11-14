@@ -7173,9 +7173,9 @@ globalThis.addEventListener?.('madre-notifications', () => askNoticesAgain());
 // desktop, to look at it: nothing is answered or counted.
 const tellApp = (answer) => fetch('/api/invite/app', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ answer }) }).catch(() => null);
 const APP_WORDS = {
-  mac: { title: () => t('MADRE can live on your Mac now'), take: () => t('Download it for my Mac'), open: () => t('You open it from the Dock, without opening the terminal.') },
-  windows: { title: () => t('MADRE can live on your PC now'), take: () => t('Download it for my PC'), open: () => t('You open it from the Start menu, without opening the terminal.') },
-  linux: { title: () => t('MADRE can live on your Linux now'), take: () => t('Download it for my Linux'), open: () => t('You open it from your applications, without opening the terminal.') },
+  mac: { name: () => 'Mac', title: () => t('MADRE can live on your Mac now'), take: () => t('Download it for my Mac'), open: () => t('You open it from the Dock, without opening the terminal.') },
+  windows: { name: () => 'PC', title: () => t('MADRE can live on your PC now'), take: () => t('Download it for my PC'), open: () => t('You open it from the Start menu, without opening the terminal.') },
+  linux: { name: () => 'Linux', title: () => t('MADRE can live on your Linux now'), take: () => t('Download it for my Linux'), open: () => t('You open it from your applications, without opening the terminal.') },
 };
 // «mi-tienda», «mi-tienda and recetas», «mi-tienda, recetas and 3 more».
 function namesOf(names, count) {
@@ -7204,11 +7204,14 @@ async function offerApp(said, { preview = false } = {}, tries = 0) {
   title.id = 'sm-app-choice-title';
   const names = namesOf(said.projects ?? [], said.count ?? 0);
   const one = (said.count ?? 0) === 1;
+  // What the app is for, said to the person (1.1.4, the author): getting more out of MADRE on their own
+  // computer, named — and what comes with them.
+  const computer = words.name();
   const lead = el('p', 'sm-app-lead', !names
-    ? t('You are on the new version. From today you can open MADRE like any other app, and everything it remembers comes with you.')
+    ? t('You are on the new version. From today you can open MADRE like any other app and get more out of what it can do on your {computer}. Everything it remembers comes with you.', { computer })
     : one
-      ? t('You are on the new version. From today you can open MADRE like any other app: {project} comes with you as it is, with its chats and everything MADRE remembers.', { project: names })
-      : t('You are on the new version. From today you can open MADRE like any other app: {projects} come with you as they are, with their chats and everything MADRE remembers.', { projects: names }));
+      ? t('You are on the new version. From today you can open MADRE like any other app and get more out of what it can do on your {computer}: {project} comes with you as it is, with its chats and everything MADRE remembers.', { computer, project: names })
+      : t('You are on the new version. From today you can open MADRE like any other app and get more out of what it can do on your {computer}: {projects} come with you as they are, with their chats and everything MADRE remembers.', { computer, projects: names }));
   const options = el('div', 'sm-app-options');
   const option = (kind, drawing, head, lines, act) => {
     const card = el('button', `sm-app-option ${kind}`);

@@ -2992,6 +2992,49 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .ns-face { display: grid; place-items: center; flex: none; width: 1.9em; height: 1.9em; border-radius: 50%; background: var(--ns-brand); color: var(--ns-ink); box-shadow: 0 .1em .3em rgba(0, 0, 0, .25); }
 .ns-face svg { width: 74%; height: 74%; }
 
+/* What changed (1.1.4): the answer, its card of what changed under it, and the page it made opening
+   beside by itself. */
+.ns-ans { display: grid; gap: .55em; flex: none; width: 9.8em; }
+.ns-ans-msg { display: flex; align-items: flex-start; gap: .45em; opacity: 0; transform: translateY(.6em); transition: opacity .45s var(--ns-glide), transform .6s var(--ns-glide); }
+.ns-changes.b1 .ns-ans-msg { opacity: 1; transform: none; }
+.ns-ans-lines { display: grid; gap: .32em; flex: 1; padding: .6em .65em; border-radius: .8em; background: var(--ns-glass); box-shadow: inset 0 0 0 1px var(--ns-edge); }
+.ns-ans-lines i { display: block; height: .34em; border-radius: 1em; background: var(--ns-glass-2); }
+.ns-ans-lines i:nth-child(2) { width: 68%; }
+.ns-cc { padding: .55em .65em .6em; border-radius: .8em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); opacity: 0; transform: translateY(.8em) scale(.96); transition: opacity .45s var(--ns-glide), transform .65s var(--ns-spring); }
+.ns-changes.b2 .ns-cc { opacity: 1; transform: none; }
+.ns-cc-head { display: flex; align-items: center; gap: .4em; font-size: .82em; white-space: nowrap; }
+.ns-cc-icon { display: grid; place-items: center; flex: none; width: 1.45em; height: 1.45em; padding: .22em; border-radius: .42em; background: color-mix(in srgb, var(--ns-accent) 18%, transparent); color: var(--ns-accent); }
+.ns-cc-line { display: block; margin: .35em 0 .5em; font-size: .7em; color: var(--ns-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-cc-keys { display: flex; gap: .35em; }
+.ns-cc-key { padding: .16em .6em; border-radius: 1em; background: var(--ns-glass-2); font-size: .66em; }
+.ns-cc-key.view { background: color-mix(in srgb, var(--ns-accent) 18%, transparent); color: var(--ns-accent); }
+.ns-page { display: grid; align-content: start; gap: .42em; flex: none; width: 7.2em; height: 8.4em; padding: .6em; border-radius: .8em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); opacity: 0; transform: translateX(-1.4em) scale(.88); transition: opacity .45s var(--ns-glide), transform .7s var(--ns-glide); }
+.ns-changes.b3 .ns-page { opacity: 1; transform: none; }
+.ns-page-bar { display: block; width: 42%; height: .45em; border-radius: 1em; background: var(--ns-glass-2); }
+.ns-page-hero { display: block; height: 2.2em; border-radius: .5em; background: linear-gradient(135deg, color-mix(in srgb, var(--ns-accent) 30%, transparent), color-mix(in srgb, var(--ns-accent) 8%, transparent)); }
+.ns-page-line { display: block; height: .34em; border-radius: 1em; background: var(--ns-glass-2); }
+.ns-page-line.short { width: 60%; }
+.ns-page-btn { justify-self: start; display: flex; align-items: center; gap: .3em; margin-top: .15em; padding: .28em .55em; border-radius: 1em; background: var(--ns-accent); color: #022c22; font-size: .6em; font-weight: 600; white-space: nowrap; transform: scale(0); transform-origin: left center; transition: transform .55s var(--ns-spring); }
+.ns-page-btn-icon { display: grid; width: 1.1em; height: 1.1em; }
+.ns-changes.b4 .ns-page-btn { transform: scale(1); }
+/* First steps (1.1.4): three of the five checked one after another, the bar filling with each. */
+.ns-steps { display: grid; gap: .55em; width: 12.6em; padding: .75em .85em .85em; border-radius: .9em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); --done: 0; }
+.ns-missions.b2 .ns-steps { --done: 1; } .ns-missions.b3 .ns-steps { --done: 2; } .ns-missions.b4 .ns-steps { --done: 3; }
+.ns-steps-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6em; font-size: .82em; }
+.ns-steps-count { color: var(--ns-text-2); font-size: .88em; font-variant-numeric: tabular-nums; }
+.ns-steps-count::after { content: '0 / 5'; }
+.ns-missions.b2 .ns-steps-count::after { content: '1 / 5'; } .ns-missions.b3 .ns-steps-count::after { content: '2 / 5'; } .ns-missions.b4 .ns-steps-count::after { content: '3 / 5'; }
+.ns-progress { height: .34em; border-radius: 1em; background: var(--ns-glass-2); overflow: hidden; }
+.ns-progress i { display: block; width: calc(var(--done) * 20%); height: 100%; border-radius: inherit; background: var(--ns-accent); transition: width .6s var(--ns-glide); }
+.ns-step-list { display: grid; gap: .45em; margin-top: .1em; }
+.ns-step { display: flex; align-items: center; gap: .5em; font-size: .78em; white-space: nowrap; opacity: 0; transform: translateX(-.8em); transition: opacity .4s var(--ns-glide) calc(var(--i) * .12s), transform .55s var(--ns-glide) calc(var(--i) * .12s), color .3s ease; }
+.ns-missions.b1 .ns-step { opacity: 1; transform: none; }
+.ns-step-box { display: grid; place-items: center; flex: none; width: 1.3em; height: 1.3em; padding: .2em; border-radius: .38em; box-shadow: inset 0 0 0 1.5px var(--ns-edge), inset 0 0 0 1.5px var(--ns-glass-2); color: transparent; transition: background-color .3s var(--ns-glide), color .3s var(--ns-glide), box-shadow .3s var(--ns-glide); }
+.ns-step-box svg { transform: scale(0); transition: transform .45s var(--ns-spring); }
+.ns-missions.b2 .ns-step:nth-child(1) .ns-step-box, .ns-missions.b3 .ns-step:nth-child(-n+2) .ns-step-box, .ns-missions.b4 .ns-step:nth-child(-n+3) .ns-step-box { background: var(--ns-accent); color: #022c22; box-shadow: none; }
+.ns-missions.b2 .ns-step:nth-child(1) .ns-step-box svg, .ns-missions.b3 .ns-step:nth-child(-n+2) .ns-step-box svg, .ns-missions.b4 .ns-step:nth-child(-n+3) .ns-step-box svg { transform: scale(1); }
+.ns-missions.b2 .ns-step:nth-child(1), .ns-missions.b3 .ns-step:nth-child(-n+2), .ns-missions.b4 .ns-step:nth-child(-n+3) { color: var(--ns-text-2); }
+
 /* Skills: the card is written alone in the middle, moves aside, and each AI takes it up. */
 .ns-doc { position: relative; display: grid; gap: .42em; flex: none; width: 8.4em; padding: .8em .85em .75em; border-radius: .9em; background: var(--ns-glass); box-shadow: var(--ns-shadow), inset 0 0 0 1px var(--ns-edge); backdrop-filter: blur(12px); transform: translateX(var(--ns-doc-shift, 5.4em)) scale(1.06); opacity: 0; transition: transform .8s var(--ns-glide), opacity .5s var(--ns-glide); }
 .ns-skills.b1 .ns-doc { opacity: 1; }

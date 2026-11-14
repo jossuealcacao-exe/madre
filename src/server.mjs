@@ -4542,7 +4542,8 @@ export async function createPulseServer({
         const asked = url.searchParams.get('version');
         const version = any && asked && notesFor(asked) ? asked : PACKAGE.version;
         const news = await whatsNew({ root, version, returning: novelty.returning, any });
-        return sendJson(response, 200, { ...news, preview: version !== PACKAGE.version, newest: newestNotes(), changes: { es: releaseUrl(PACKAGE.repository, version, 'es'), en: releaseUrl(PACKAGE.repository, version, 'en') } });
+        // `app`: read inside the desktop app, where the notes say what the app gives instead of asking for it.
+        return sendJson(response, 200, { ...news, app: process.env.MADRE_APP === '1', preview: version !== PACKAGE.version, newest: newestNotes(), changes: { es: releaseUrl(PACKAGE.repository, version, 'es'), en: releaseUrl(PACKAGE.repository, version, 'en') } });
       }
       if (request.method === 'POST' && url.pathname === '/api/whats-new/seen') {
         await markSeen(root, PACKAGE.version);
