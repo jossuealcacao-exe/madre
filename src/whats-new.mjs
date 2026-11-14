@@ -120,10 +120,10 @@ export const NOTES = {
         scene: 'newagent',
         title: { es: 'Grok, ahora entre tus IAs', en: 'Grok, now among your AIs' },
         body: {
-          es: 'Si pagas SuperGrok, ya lo usas en tus proyectos: se conecta desde Ajustes › Agentes con tu cuenta, y lee, escribe, busca en internet y hace imágenes.',
-          en: 'If you pay for SuperGrok, you can now use it in your projects: it connects from Settings › Agents with your account, and it reads, writes, looks things up on the internet and makes images.',
+          es: 'Si pagas SuperGrok, ya lo usas en tus proyectos: se conecta desde Ajustes › Tus IAs con tu cuenta, y lee, escribe, busca en internet y hace imágenes.',
+          en: 'If you pay for SuperGrok, you can now use it in your projects: it connects from Settings › Your AIs with your account, and it reads, writes, looks things up on the internet and makes images.',
         },
-        where: { es: 'Ajustes › Agentes', en: 'Settings › Agents' },
+        where: { es: 'Ajustes › Tus IAs', en: 'Settings › Your AIs' },
         action: 'settings',
       },
       {

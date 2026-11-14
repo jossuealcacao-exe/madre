@@ -51,7 +51,8 @@ test('EDIT and UNDO are each said once, with today\'s name (Q-15)', async () => 
     await desk.release(run);
     const undone = await desk.undo(changes.checkpointId);
     assert.equal(undone.ok, true);
-    assert.equal(undone.message, 'Project restored to the restore point taken before @codex\'s EDIT turn: 1 file(s) restored, 0 removed.');
+    // In plain English since 2026-11-14 (en.js): the permission by the name the box shows, «Can edit».
+    assert.equal(undone.message, 'Project put back as it was before @codex\'s «Can edit» answer: 1 file(s) restored, 0 removed.');
     assert.doesNotMatch(undone.message, /CONTROL/);
     assert.equal(await readFile(join(root, 'index.html'), 'utf8'), '<h1>Bienvenidos</h1>\n');
     const { ES } = await import('../public/es.js');

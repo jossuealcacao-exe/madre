@@ -141,8 +141,8 @@ export function roundTable(text, { crew = [], maxSteps = 4 } = {}) {
   const agents = crew.slice(0, maxSteps);
   if (!agents.length) {
     return { question, agents, text: es
-      ? 'No hay agentes CLI en la fila para convocar. Conecta uno en Ajustes › Agentes y vuelve a pedírmelo.'
-      : 'No CLI agent is in the row to convene. Connect one in Settings › Agents and ask me again.' };
+      ? 'No hay ninguna IA conectada a quien llamar. Conecta una en Ajustes › Tus IAs y vuelve a pedírmelo.'
+      : 'No AI is connected to call in. Connect one in Settings › Your AIs and ask me again.' };
   }
   const list = agents.map((id) => `@${id}`).join(', ');
   const step = es

@@ -153,7 +153,7 @@ test('@madre settles identity, memory requests and round tables without the mode
   assert.match(roundTable('Directiva, convoca a una reunión con el crew y comparte los detalles del proyecto', { crew }).question, /^comparte los detalles del proyecto$/);
   assert.match(roundTable('convoca al crew', { crew }).question, /^¿Qué sabes de este proyecto/, 'no question given: the default one, in Spanish');
   assert.equal(parseDirectives(roundTable('ask the crew which files changed', { crew: ['codex', 'gemini'] }).text, { self: 'madre', available: ['codex', 'gemini'] }).steps.length, 2);
-  assert.match(roundTable('convoca al crew', { crew: [] }).text, /No hay agentes CLI en la fila/);
+  assert.match(roundTable('convoca al crew', { crew: [] }).text, /No hay ninguna IA conectada a quien llamar/);
   assert.equal(roundTable('¿qué decidimos sobre RIPLEY?', { crew }), null);
 
   // The dispatcher: order, who may convene, what passes through.
