@@ -81,16 +81,18 @@ export function whoAmI(text, { model = null, crew = [] } = {}) {
   const list = crew.length ? crew.map((id) => `@${id}`).join(', ') : null;
   return lang(body) === 'es'
     ? [
-      `Soy @madre, la memoria de esta sala hablando${model ? `, con ${model} sobre Ollama en esta máquina` : ''}.`,
-      'El archivista es mi otra mitad: el mismo modelo, de fondo, lee lo que la sala dice cada pocos intercambios o tras unos minutos de reposo y guarda hechos, decisiones, preferencias y preguntas abiertas. Eso es lo que ves en NOSTROMO y lo que yo cito con [#n].',
-      'No escribo archivos, no ejecuto ni tomo decisiones por nadie. Sí puedo convocar a los agentes si me lo pides: «@madre, pregúntale al equipo …» abre una ronda con cada agente en línea y cierro con un resumen citado.',
-      `Para enseñarme algo no hace falta dictármelo: trabaja en la sala y se destila solo. Si quieres una nota ahora mismo, pídesela a ${list ?? 'un agente CLI'}: ellos la guardan con memory_note.`,
+      // Who speaks, said the way the rest of MADRE says it (2026-11-14, docs/private/NARRATIVA-TEXTOS.md):
+      // MADRE is the place; @madre is the local AI, one of the AIs that work in it.
+      `Soy @madre, la IA local de esta computadora${model ? ` (uso ${model} con Ollama)` : ''}. No soy MADRE: MADRE es el lugar donde trabajan tus IAs, y yo soy una de ellas, la que vive aquí y funciona sin internet.`,
+      'Quien resume la memoria es mi otra mitad: el mismo modelo, de fondo, lee lo que se dice en el proyecto y guarda hechos, decisiones, preferencias y preguntas abiertas. Eso es lo que ves en el Mapa de memoria y lo que cito con [#n].',
+      'No escribo archivos, no ejecuto nada ni decido por nadie. Sí puedo preguntarles a tus otras IAs si me lo pides: «@madre, pregúntales a las IAs …» abre una ronda con cada IA conectada y cierro con un resumen citado.',
+      `Para enseñarme algo no hace falta dictármelo: trabaja en el proyecto y se resume solo. Si quieres una nota ahora mismo, pídesela a ${list ?? 'otra de tus IAs'}: la guardan con memory_note.`,
     ].join(' ')
     : [
-      `I am @madre, this room's memory speaking${model ? `, running ${model} on Ollama on this machine` : ''}.`,
-      'The archivist is my other half: the same model, in the background, reads what the room says every few exchanges or after a few quiet minutes and keeps facts, decisions, preferences and open questions. That is what NOSTROMO shows and what I quote as [#n].',
-      'I do not write files, run anything or decide for anyone. I can convene the agents if you ask: "@madre, ask the team …" opens a round with every agent online and I close with a cited summary.',
-      `You do not need to dictate to teach me: work in the room and it distils on its own. For a note right now, ask ${list ?? 'a CLI agent'}: they save it with memory_note.`,
+      `I am @madre, the local AI on this computer${model ? ` (running ${model} on Ollama)` : ''}. I am not MADRE: MADRE is the place where your AIs work, and I am one of them, the one that lives here and works without internet.`,
+      'The memory summarizer is my other half: the same model, in the background, reads what is said in the project and keeps facts, decisions, preferences and open questions. That is what the Memory map shows and what I quote as [#n].',
+      'I do not write files, run anything or decide for anyone. I can ask your other AIs if you want: "@madre, ask everyone …" opens a round with every connected AI and I close with a cited summary.',
+      `You do not need to dictate to teach me: work in the project and it is summed up on its own. For a note right now, ask ${list ?? 'another of your AIs'}: they save it with memory_note.`,
     ].join(' ');
 }
 
@@ -108,8 +110,8 @@ export function memoryRequest(text, { requester = 'you' } = {}) {
       : 'I do not write memories, I read them. The archivist distils the room on its own, and you can save a note right now with the memory_note tool of pulse-memory (kind, one sentence, sources). Ask me what the room remembers.';
   }
   return es
-    ? 'La memoria no se dicta, se destila. El archivista, el mismo modelo local que yo, lee lo que la sala dice cada pocos intercambios o tras unos minutos de reposo y guarda hechos, decisiones, preferencias y preguntas abiertas; lo de esta conversación entra ahí solo. Si quieres una nota ahora mismo, dile a un agente CLI que la guarde con memory_note. Lo guardado se ve en NOSTROMO, o pregúntamelo y te lo cito.'
-    : 'Memory is not dictated, it is distilled. The archivist, the same local model as me, reads what the room says every few exchanges or after a few quiet minutes and keeps facts, decisions, preferences and open questions; this conversation goes in on its own. For a note right now, tell a CLI agent to save it with memory_note. NOSTROMO shows what is kept, or ask me and I will quote it.';
+    ? 'La memoria no se dicta, se resume sola. Quien resume la memoria, el mismo modelo local que yo, lee lo que se dice en el proyecto cada pocos mensajes o tras unos minutos de calma y guarda hechos, decisiones, preferencias y preguntas abiertas; lo de este chat entra ahí solo. Si quieres una nota ahora mismo, pídele a otra de tus IAs que la guarde con memory_note. Lo guardado se ve en el Mapa de memoria, o pregúntamelo y te lo cito.'
+    : 'Memory is not dictated, it sums itself up. The memory summarizer, the same local model as me, reads what is said in the project every few messages or after a few quiet minutes and keeps facts, decisions, preferences and open questions; this chat goes in on its own. For a note right now, ask another of your AIs to save it with memory_note. The Memory map shows what is kept, or ask me and I will quote it.';
 }
 
 // "@madre, ask the crew …": the room itself opens a plan with one step per agent online and
@@ -174,8 +176,8 @@ export function actionRequest(text = '', { requester = 'you' } = {}) {
       : 'I do not convene, delegate, run or write: I only answer from the room\'s memory. Ask me what the room remembers about this; to save something use memory_note.';
   }
   return es
-    ? 'Solo respondo desde la memoria de la sala: no delego, no ejecuto ni escribo. Para eso escríbele a @codex, @claude, @gemini u @opencode, los que estén en la fila. Si quieres que le pregunte algo a todos los agentes, dímelo así: «@madre, pregúntale al equipo …».'
-    : 'I only answer from the room\'s memory: I do not delegate, run or write. For that, write to @codex, @claude, @gemini or @opencode, whichever is in the row. If you want me to put a question to every agent, say: "@madre, ask the team …".';
+    ? 'Solo respondo desde la memoria del proyecto: no delego, no ejecuto ni escribo. Para eso escríbele a @codex, @claude, @gemini u @opencode, las IAs que tengas conectadas. Si quieres que les pregunte algo a todas, dímelo así: «@madre, pregúntales a las IAs …».'
+    : 'I only answer from the project\'s memory: I do not delegate, run or write. For that, write to @codex, @claude, @gemini or @opencode, whichever you have connected. If you want me to put a question to all of them, say: "@madre, ask everyone …".';
 }
 
 // "Responde únicamente con: CANARY-071": the whole message dictates the reply word for word.

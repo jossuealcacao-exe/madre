@@ -61,7 +61,7 @@ test('@madre: answers from the whole archive with a grounded system prompt, and 
     assert.match(declined.text, /Solo respondo desde la memoria[\s\S]*@codex, @claude, @gemini u @opencode/);
     assert.equal(declined.synthetic, 'declined');
     assert.deepEqual([declined.declined, declined.usage.totalTokens, declined.usage.local, calls.length], ['action', 0, true, before]);
-    assert.match((await invoke({ prompt: 'p', text: 'Convene the crew and tell @codex to start' })).text, /I only answer from the room's memory/, 'delegation off: convening is declined');
+    assert.match((await invoke({ prompt: 'p', text: 'Convene the crew and tell @codex to start' })).text, /I only answer from the project's memory/, 'delegation off: convening is declined');
     assert.equal(actionRequest('No realizaste la reunión convoca a todos')?.startsWith('Solo respondo'), true);
     assert.equal(actionRequest('¿qué decidimos sobre la reunión del lunes?'), null, 'questions pass through');
     assert.equal(actionRequest('what did we decide about RIPLEY and scripts?'), null);
@@ -130,15 +130,16 @@ test('@madre: joins the roster when Ollama is up, answers a turn, is never the a
 
 test('@madre settles identity, memory requests and round tables without the model; closing turns and questions reach it', async () => {
   const crew = ['codex', 'claude', 'gemini', 'opencode'];
-  // Identity, in the asker's language, naming the archivist as its other half.
-  assert.match(whoAmI('madre que haces?', { model: 'qwen2.5:7b' }), /Soy @madre[\s\S]*qwen2\.5:7b[\s\S]*archivista es mi otra mitad[\s\S]*memory_note/);
+  // Identity, in the asker's language, naming the memory summarizer as its other half; since
+  // 2026-11-14 it says it is the local AI, not MADRE (docs/private/NARRATIVA-TEXTOS.md).
+  assert.match(whoAmI('madre que haces?', { model: 'qwen2.5:7b' }), /Soy @madre, la IA local[\s\S]*qwen2\.5:7b[\s\S]*No soy MADRE[\s\S]*Quien resume la memoria es mi otra mitad[\s\S]*memory_note/);
   assert.match(whoAmI('Pero se supone que tu eres el archivista'), /Soy @madre/);
-  assert.match(whoAmI('who are you?'), /I am @madre[\s\S]*archivist is my other half/);
+  assert.match(whoAmI('who are you?'), /I am @madre, the local AI[\s\S]*memory summarizer is my other half/);
   assert.equal(whoAmI('what did we decide about RIPLEY?'), null);
 
   // Memory requests: agents are pointed at memory_note, humans at the archivist.
   assert.match(memoryRequest('Genera una memoria nueva de esta sala, tipo fact/summary, sobre la ronda', { requester: 'codex' }), /Yo no escribo memorias[\s\S]*memory_note/);
-  assert.match(memoryRequest('La directiva actual es que aprendas de las respuestas que te comparte el crew', { requester: 'you' }), /La memoria no se dicta, se destila/);
+  assert.match(memoryRequest('La directiva actual es que aprendas de las respuestas que te comparte el crew', { requester: 'you' }), /La memoria no se dicta, se resume sola/);
   assert.match(memoryRequest('remember this: the API key lives in the keychain', { requester: 'you' }), /Memory is not dictated/);
   assert.equal(memoryRequest('¿recuerdas qué decidimos sobre el empaque?'), null, 'a question about memory goes to the archive');
 
