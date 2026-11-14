@@ -48,6 +48,17 @@ const GLYPH = {
   next: trazo('next'),
   search: trazo('search'),
 };
+// Back, the way Settings goes back (2026-11-13, the author: «the Market's back key, more coherent with
+// the rest»): the same round key with its chevron, and where it goes in its name.
+const backKey = (where, onClick) => {
+  const key = button('settings-back mk-back', null, onClick);
+  key.title = where;
+  key.setAttribute('aria-label', where);
+  const mark = el('span', 'settings-back-icon chev-icon');
+  mark.innerHTML = trazo('chevron'); // trusted: our own SVG string
+  key.append(mark);
+  return key;
+};
 const glyph = (node, name) => { node.insertAdjacentHTML('afterbegin', GLYPH[name]); return node; }; // trusted: our own SVG strings
 
 // A module from the catalog says its name and what it does in the room's language (market.js).
@@ -438,7 +449,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // does and what it touches.
   const detail = (item, { choose = false } = {}) => {
     const page = el('div', 'mk-page mk-product');
-    page.append(glyph(button('mk-back', t('Market'), () => go({ tab: 'shop' })), 'back'));
+    page.append(backKey(t('Back to the Market'), () => go({ tab: 'shop' })));
     const top = el('section', 'mk-product-top');
     const words = el('div', 'mk-product-words');
     words.append(el('h1', null, nameOf(item)), el('p', null, lineOf(item)));
@@ -825,7 +836,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // the review — which is the one thing a module's page can never offer.
   const skillPage = (skill) => {
     const page = el('div', 'mk-page mk-skill-page');
-    page.append(glyph(button('mk-back', t('Skills'), () => go({ tab: 'skills' })), 'back'));
+    page.append(backKey(t('Back to Skills'), () => go({ tab: 'skills' })));
     const head = el('header', 'mk-skill-head');
     head.append(el('h2', null, skill.name));
     const meta = el('div', 'mk-skill-meta');

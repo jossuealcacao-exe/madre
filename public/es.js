@@ -3530,6 +3530,8 @@ export const ES = {
   'Gemini API key': 'Llave de API de Gemini',
   'Provider key': 'Llave de API del proveedor',
   'Back to settings': 'Volver a Ajustes',
+  'Back to the Market': 'Volver al Mercado',
+  'Back to Skills': 'Volver a Habilidades',
   'Colour': 'Color',
   'Each colour in dark (top) and in light (bottom). The permission modes keep their own.': 'Cada color en oscuro (arriba) y en claro (abajo). Los niveles de permiso conservan sus colores.',
   'Interface': 'Interfaz',

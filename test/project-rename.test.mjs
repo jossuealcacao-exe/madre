@@ -146,3 +146,54 @@ test('13 nov · the app icon in the news and the manual is the official one, not
   assert.equal((manual.match(/madre-app\.svg(?!\?v=2)/g) ?? []).length, 0);
   assert.match(salas, /madre-app-180\.png\?v=2/);
 });
+
+test('13 nov · the gate logo stays drawn on a change of language; the widgets ✕ is not chosen; the Market goes back as Settings does', async () => {
+  const terms = await pub('terms.js');
+  const styles = await pub('styles.css');
+  // Put back in the card, the logo drew itself in again with every change of language.
+  assert.match(terms, /setLanguage\(code\);\n[^\n]*\n[^\n]*\n\s*askLogo\.classList\.add\('still'\);\n\s*paintAsk\(\);/);
+  assert.match(styles, /\.terms-logo\.still \.brand-logo \.beat \{ animation: none; stroke-dashoffset: 0; \}/);
+  // Opening a dialog hands the focus to its first key: the ✕ was lit red as if pointed at.
+  const salas = await pub('salas-mac.js');
+  assert.match(salas, /sheetNow\.tabIndex = -1;\n\s*sheetNow\.focus\(\{ preventScroll: true \}\);/);
+  assert.match(styles, /\.sm-add-sheet:focus \{ outline: none; \}/);
+  // Back in the Market is the round key with its chevron that Settings uses, named for where it goes.
+  const market = await pub('market-view.js');
+  assert.match(market, /button\('settings-back mk-back', null, onClick\)/);
+  assert.match(market, /backKey\(t\('Back to the Market'\)/);
+  assert.match(market, /backKey\(t\('Back to Skills'\)/);
+  assert.ok(!/button\('mk-back', t\(/.test(market));
+});
+
+test('13 nov · the tool column folds without a bounce: one movement, both edges one way', async () => {
+  const app = await pub('app.js');
+  const styles = await pub('styles.css');
+  // The glide is drawn from the edge that moves less, so neither edge goes back before going on.
+  const source = app.match(/function glideFrom\(was, now, byEdge\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source, 'glideFrom is there');
+  const glideFrom = new Function(`${source}; return glideFrom;`)();
+  const box = (left, right) => ({ left, right, width: right - left });
+  // Files closing on the right: the thread widens from 20..680 to 220..1180.
+  const closing = glideFrom(box(20, 680), box(220, 1180), false);
+  assert.equal(closing, -200);
+  for (const [was, now, dx] of [[20, 220, closing], [680, 1180, closing]]) {
+    const start = now + dx;
+    assert.ok((start - was) * (now - start) >= 0, `edge ${was} → ${start} → ${now} goes one way`);
+  }
+  // Opening: from 364..1348 to 332..876.
+  const opening = glideFrom(box(364, 1348), box(332, 876), false);
+  assert.equal(opening, 32);
+  // Edges going opposite ways: the part takes its place at once.
+  assert.equal(glideFrom(box(100, 500), box(50, 600), false), 0);
+  // The bar keeps gliding by its left edge.
+  assert.equal(glideFrom(box(300, 1400), box(0, 1400), true), 300);
+  // Inside a view transition the thread and composer are not glided a second time.
+  assert.match(app, /if \(morphed && node\.matches\(MORPHED_PARTS\)\) return;/);
+  // A morph asked for inside another's change folds into it.
+  assert.match(app, /if \(morphing \|\| !document\.startViewTransition/);
+  // The column's close asks Files first, then puts everything away in one transition.
+  assert.match(app, /async function putToolsAway\(list\) \{[\s\S]*?if \(await viewerMayClose\(\)\) shut\.push[\s\S]*?void morph\('tool', \(\) => \{/);
+  assert.match(app, /t\('Close'\), \(\) => \{ void putToolsAway\(rightTools\(\)\); \}\)\);/);
+  assert.match(styles, /:root\[data-morph="tool"\] dialog\.viewer\.split \{ view-transition-name: madre-tool; \}/);
+  assert.match(styles, /::view-transition-old\(madre-tool\):only-child, ::view-transition-old\(madre-tool-tabs\):only-child \{ animation: pane-leave/);
+});

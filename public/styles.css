@@ -2922,7 +2922,7 @@ dialog.whats-new::backdrop { background: rgba(0, 0, 0, .45); backdrop-filter: bl
 dialog.whats-new.intro .wn-sheet { opacity: 0; }
 dialog.whats-new.intro::backdrop { background: var(--wl-stage); }
 dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease) both; }
-.wn-sheet:focus { outline: none; }
+.wn-sheet:focus, .sm-add-sheet:focus { outline: none; }
 .wn-sheet {
   display: flex; flex-direction: column; width: min(980px, 100%); height: min(720px, 100%); box-sizing: border-box; overflow: hidden;
   border-radius: 16px; font-family: var(--read); color: var(--text);
@@ -3395,9 +3395,19 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 :root[data-morph="switch"] .shell > .thread,
 :root[data-morph="swap"] .shell > .thread,
 :root[data-morph="split"] .shell > .thread,
-:root[data-morph="dock"] .shell > .thread { view-transition-name: madre-thread; }
+:root[data-morph="dock"] .shell > .thread,
+:root[data-morph="tool"] .shell > .thread { view-transition-name: madre-thread; }
 :root[data-morph="split"] .shell > .composer,
-:root[data-morph="dock"] .shell > .composer { view-transition-name: madre-composer; }
+:root[data-morph="dock"] .shell > .composer,
+:root[data-morph="tool"] .shell > .composer { view-transition-name: madre-composer; }
+/* The tool column put away (putToolsAway): Files and the strip of tabs over it leave as the
+   browser's pane does, toward their edge, while the conversation widens. */
+:root[data-morph="tool"] dialog.viewer.split { view-transition-name: madre-tool; }
+:root:is([data-morph="tool"], [data-morph="dock"]) .shell > .tool-tabs:not([hidden]) { view-transition-name: madre-tool-tabs; }
+::view-transition-old(madre-tool):only-child, ::view-transition-old(madre-tool-tabs):only-child { animation: pane-leave calc(240ms * var(--motion-scale)) var(--ease-leave) both; }
+::view-transition-new(madre-tool-tabs):only-child { animation: pane-arrive var(--glide) var(--ease-glide) both; }
+::view-transition-group(madre-tool), ::view-transition-group(madre-tool-tabs) { animation-duration: var(--glide); animation-timing-function: var(--ease-glide); }
+::view-transition-old(madre-tool-tabs), ::view-transition-new(madre-tool-tabs) { height: 100%; object-fit: cover; object-position: left top; }
 ::view-transition-group(madre-thread), ::view-transition-group(madre-composer) { overflow: clip; animation-duration: var(--glide); animation-timing-function: var(--ease-glide); }
 ::view-transition-old(madre-thread), ::view-transition-new(madre-thread) { height: 100%; width: auto; object-fit: none; object-position: center bottom; }
 ::view-transition-old(madre-composer), ::view-transition-new(madre-composer) { height: 100%; width: auto; object-fit: none; object-position: center; }
@@ -10712,8 +10722,7 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 
 /* A module's page. */
 .mk-product { gap: 30px; }
-.mk-back { justify-self: start; display: inline-flex; align-items: center; gap: 2px; padding: 4px 8px 4px 0; border: 0; background: none; color: var(--madre-green); font-size: 15px; font-weight: 600; cursor: pointer; }
-.mk-back svg { width: 17px; height: 17px; }
+.mk-back { justify-self: start; }
 .mk-product-top { display: flex; align-items: center; gap: 28px; }
 .mk-product-words { display: grid; gap: 8px; min-width: 0; }
 .mk-product-words h1 { margin: 0; font-size: clamp(26px, 3.4vw, 36px); font-weight: 760; letter-spacing: -.02em; line-height: 1.08; }
@@ -12345,7 +12354,6 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
 /* A module's page: icon, name, line and key at the top; the facts in one strip; then the pictures,
    sideways, and the words. */
 .mk.flat .mk-product { gap: 26px; }
-.mk.flat .mk-back { padding: 2px 8px 2px 0; font: 500 14px var(--read); }
 .mk.flat .mk-product-top { gap: 22px; }
 .mk.flat .mk-product-top > .mk-icon { --mk-size: 112px !important; }
 .mk.flat .mk-product-words { gap: 4px; }
@@ -13107,6 +13115,8 @@ dialog.terms-gate.intro .terms-field { opacity: 0; transition-duration: .35s; }
 dialog.terms-gate :is(.terms-block, .terms-about-list li) { -webkit-backdrop-filter: blur(16px) saturate(1.15); backdrop-filter: blur(16px) saturate(1.15); }
 .terms-logo { height: 26px; color: var(--text); }
 .terms-logo svg { height: 100%; width: auto; display: block; }
+.terms-logo.still .brand-logo .beat { animation: none; stroke-dashoffset: 0; }
+.terms-logo.still .brand-logo .beat-dot, .terms-logo.still .brand-logo .word { animation: none; opacity: 1; }
 .terms-title { margin: 6px 0 0; font: 650 26px/1.15 var(--read, inherit); letter-spacing: -.02em; }
 .terms-lead { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--text-2); }
 /* ES · EN, by hand, in the window's top right corner (2026-11-11): a small sunk track, the language on

@@ -88,6 +88,9 @@ function askTerms(answer, done) {
       key.addEventListener('click', async () => {
         if (language() === code) return;
         setLanguage(code);
+        // Drawn in once: put back in the card it would draw itself in again (2026-11-13, the author: the
+        // logo «animates as when changing language»), so from here it is the drawn mark, still.
+        askLogo.classList.add('still');
         paintAsk();
         await fetch('/api/language', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ language: code }) }).catch(() => null);
       });

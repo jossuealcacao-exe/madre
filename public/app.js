@@ -3884,10 +3884,14 @@ const keepAttachmentUI = (() => {
   });
   return { show(attachment) { current = attachment; button.hidden = !attachment; close(); } };
 })();
-viewer.close.addEventListener('click', async () => {
+// Whether Files may close now: an edit still open is put aside (docked) or asked about first.
+async function viewerMayClose() {
   let docked = false;
   try { docked = codeOn(); } catch { /* not yet */ }
-  if (await leaveEditor({ stash: docked })) viewer.dialog.close();
+  return leaveEditor({ stash: docked });
+}
+viewer.close.addEventListener('click', async () => {
+  if (await viewerMayClose()) viewer.dialog.close();
 });
 
 function codeBlock(lines, lang) {
@@ -11327,6 +11331,23 @@ const COLUMN_PARTS = '.shell > .thread .thread-inner, .shell > .composer, .shell
 // The bar glides with them (2026-11-09): left out, it jumped the sidebar's whole width at once while
 // the conversation under it glided. It runs the room's width, so it glides by its left edge.
 const EDGE_PARTS = '.shell > .bar';
+// The parts a view transition moves when a pane docks or leaves (styles.css, data-morph).
+const MORPHED_KINDS = new Set(['dock', 'split', 'tool']);
+const MORPHED_PARTS = '.shell > .thread .thread-inner, .shell > .composer';
+// The part that takes its new width on the way instead of at once.
+const RESIZED_PARTS = '.shell > .composer';
+// Where a part of the column is drawn from, so it glides into its new place. Its two edges move by
+// different amounts when its width changes; drawn from its middle, the near edge went back before
+// going forward — the conversation stepped toward the closing panel and then away from it, a
+// bounce (2026-11-13). Drawn from whichever edge moves less, both edges go one way only; when they
+// go opposite ways, the part simply takes its place.
+function glideFrom(was, now, byEdge) {
+  const left = was.left - now.left;
+  if (byEdge) return left;
+  const right = was.right - now.right;
+  if (Math.sign(left) !== Math.sign(right)) return 0;
+  return Math.abs(left) < Math.abs(right) ? left : right;
+}
 // On screen, not merely un-hidden: below their widths the stylesheet takes both panels away, and
 // a panel counted as open there floated an invisible card and veiled the thread behind nothing.
 const panelShown = (surface) => {
@@ -11616,16 +11637,26 @@ function layoutPanels() {
     requestAnimationFrame(() => requestAnimationFrame(() => shellBox.classList.remove('rails-snap')));
   }
   shellBox.dataset.railsSet = '1';
+  // Inside a view transition (a pane docking or leaving) the thread and the composer are moved by
+  // the transition itself; gliding them too ran a second movement under it, and when it ended they
+  // were found half way and jumped (2026-11-13, the author: putting the browser away «bounces»).
+  const morphed = MORPHED_KINDS.has(document.documentElement.dataset.morph ?? '');
   parts.forEach((node, index) => {
+    if (morphed && node.matches(MORPHED_PARTS)) return;
     const was = before[index];
     const now = node.getBoundingClientRect();
-    const byEdge = node.matches(EDGE_PARTS);
-    const dx = byEdge ? was.left - now.left : (was.left + was.width / 2) - (now.left + now.width / 2);
-    if (Math.abs(dx) < 1 || typeof node.animate !== 'function') return;
+    const dx = glideFrom(was, now, node.matches(EDGE_PARTS));
+    const resized = node.matches(RESIZED_PARTS) && Math.abs(was.width - now.width) >= 1;
+    if ((Math.abs(dx) < 1 && !resized) || typeof node.animate !== 'function') return;
     // A second layout in the same moment (the browser docking, then the grid making room for it)
     // replaces the glide in flight instead of stacking a second one on it.
     glides.get(node)?.cancel();
-    glides.set(node, node.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: motion(420), easing: 'cubic-bezier(.22, 1, .36, 1)' }));
+    // The composer is one box and cheap to draw again: it takes its width on the way too, so both
+    // its edges travel with the panel's, as in the apps people know.
+    const frames = resized
+      ? [{ transform: `translateX(${was.left - now.left}px)`, width: `${was.width}px` }, { transform: 'none', width: `${now.width}px` }]
+      : [{ transform: `translateX(${dx}px)` }, { transform: 'none' }];
+    glides.set(node, node.animate(frames, { duration: motion(420), easing: 'cubic-bezier(.22, 1, .36, 1)' }));
   });
   let over = false;
   const floated = [];
@@ -12612,8 +12643,11 @@ document.addEventListener?.('click', (event) => {
 // One way for the room to change its arrangement in front of the human: the stylesheet names
 // what moves for each kind (data-morph) and the browser animates between the two states. Where
 // it cannot, or the human asked for less motion, the change simply happens.
+// A morph asked for while another one is making its change (the browser put away by the tool
+// column's close) is part of that one: a second view transition would cut the first short.
+let morphing = false;
 function morph(kind, change) {
-  if (!document.startViewTransition || reducedMotion() || document.visibilityState === 'hidden') {
+  if (morphing || !document.startViewTransition || reducedMotion() || document.visibilityState === 'hidden') {
     return Promise.resolve(change());
   }
   const root = document.documentElement;
@@ -12628,7 +12662,10 @@ function morph(kind, change) {
     node.style.setProperty('view-transition-name', `madre-held-${index}`);
     node.style.setProperty('view-transition-class', 'madre-held');
   });
-  const transition = document.startViewTransition(change);
+  const transition = document.startViewTransition(() => {
+    morphing = true;
+    try { return change(); } finally { morphing = false; }
+  });
   // A transition that another one interrupts is skipped, and says so by rejecting: the change
   // itself still happened, so there is nothing to report.
   transition.ready.catch(() => {});
@@ -25487,7 +25524,7 @@ function paintToolTabs(tools, width) {
     close.setAttribute('aria-label', t('Close'));
     tab.append(close);
     tab.addEventListener('click', (event) => {
-      if (event.target.closest('.tool-tab-x')) { surface.close(); return; }
+      if (event.target.closest('.tool-tab-x')) { void putToolsAway([surface]); return; }
       noteShown(surface);
       layoutPanels();
     });
@@ -25498,7 +25535,25 @@ function paintToolTabs(tools, width) {
       const front = frontOf(rightTools()) ?? tools.front;
       if (front === BROWSER_TOOL) setBrowserFloating(true); else setSurfaceMode(front, 'window');
     }),
-    shellKey(SIDEBAR_ICON.replace('M7.8 3.8v12.4', 'M12.2 3.8v12.4'), t('Close'), () => { for (const one of rightTools()) one.close(); }));
+    shellKey(SIDEBAR_ICON.replace('M7.8 3.8v12.4', 'M12.2 3.8v12.4'), t('Close'), () => { void putToolsAway(rightTools()); }));
+}
+// The tool column put away in one movement, the way the browser leaves (2026-11-13, the author:
+// the browser and Files «bounce» when collapsed, «it must work as in Claude»): the panel slides out
+// to its edge while the conversation widens into the room, all in one view transition. Before,
+// Files vanished at once and the conversation jumped after it.
+// What Files asks before closing is asked first, with the page still moving: inside the transition
+// the page is a still picture, and its close came after the picture of «after» was taken.
+async function putToolsAway(list) {
+  const shut = [];
+  for (const one of list) {
+    if (one.key !== 'viewer') { shut.push(() => one.close()); continue; }
+    if (await viewerMayClose()) shut.push(() => viewer.dialog.close());
+  }
+  if (!shut.length) return;
+  void morph('tool', () => {
+    for (const close of shut) close();
+    layoutPanels();
+  });
 }
 
 function leaveTo(url) {

@@ -1970,6 +1970,10 @@ async function openHomeAdd() {
     sheetNow.show();
     framed.raise();
   } else sheetNow.showModal();
+  // The window holds the focus, not its ✕ (2026-11-13, the author: «it looks already chosen»): opening
+  // a dialog hands the focus to its first key, and the ✕ was lit red as if pointed at. Tab reaches it.
+  sheetNow.tabIndex = -1;
+  sheetNow.focus({ preventScroll: true });
   void homeTour.hint('home-add', list, { inside: true, title: t('Add to Home'), text: t('The tiles you took off and the widgets you can add. A widget shows up only when this Mac has something to put in it. Right-click any tile to move it, change its size or take it off.') });
   // The author's widget is asked about before the list is drawn: where it cannot be read, it is not listed at all.
   // All asked at once (2026-11-10): one after another, the list came in a row at a time.
