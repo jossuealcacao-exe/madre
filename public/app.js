@@ -4067,6 +4067,111 @@ function numberSources(bubble) {
   return foot;
 }
 
+// A table in an answer is alive (2026-11-14, the author): a press on a heading sorts by it (up,
+// down, back to how the agent wrote it), a long one keeps its headings in sight, it copies as text a
+// spreadsheet takes and comes down as CSV, and in a narrow column each row is a card.
+function cellNumber(text) {
+  const plain = String(text ?? '').replace(/[*_`]/g, '').trim();
+  const bare = plain.replace(/\s|US\$|MX\$|[$€£%]|MXN|USD|EUR/gi, '').replace(/,(?=\d{3}(?:\D|$))/g, '');
+  const read = bare.match(/^[~≈±+]?(-?\d+(?:\.\d+)?)([kKMB]?)(?:ms|s|h|min|tok|x|×|m²|m2)?$/);
+  if (!read) return null;
+  return Number(read[1]) * ({ k: 1e3, K: 1e3, M: 1e6, B: 1e9 }[read[2]] ?? 1);
+}
+function liveTable(headCells, aligns, bodyRows) {
+  const wrap = el('div', 'table-wrap live');
+  if (headCells.length >= 4) wrap.classList.add('many');
+  if (bodyRows.length > 12) wrap.classList.add('tall');
+  const table = el('table');
+  const thead = el('thead');
+  const headRow = el('tr');
+  const tbody = el('tbody');
+  const labels = headCells.map((cell) => cell.replace(/[*_`]/g, '').trim());
+  const rows = bodyRows.map((row, at) => {
+    const tr = el('tr');
+    tr.dataset.at = String(at);
+    row.forEach((cell, column) => {
+      const td = el('td');
+      if (aligns[column]) td.style.textAlign = aligns[column];
+      td.dataset.label = labels[column] ?? '';
+      renderInline(cell, td);
+      tr.append(td);
+    });
+    tbody.append(tr);
+    return { tr, cells: row };
+  });
+  // Sorting: figures as figures when every cell of the column is one, words as words.
+  let sorted = { column: -1, way: 0 };
+  const heads = [];
+  const sortBy = (column) => {
+    const way = sorted.column === column ? (sorted.way + 1) % 3 : 1;
+    sorted = { column, way };
+    const figures = rows.every((row) => { const cell = (row.cells[column] ?? '').replace(/[*_`]/g, '').trim(); return !cell || cell === '—' || cell === '-' || cellNumber(cell) !== null; });
+    const order = way === 0 ? [...rows] : [...rows].sort((a, b) => {
+      const x = a.cells[column] ?? '';
+      const y = b.cells[column] ?? '';
+      const result = figures ? (cellNumber(x) ?? -Infinity) - (cellNumber(y) ?? -Infinity) : x.replace(/[*_`]/g, '').localeCompare(y.replace(/[*_`]/g, ''), language(), { numeric: true, sensitivity: 'base' });
+      return way === 1 ? result : -result;
+    });
+    tbody.replaceChildren(...order.map((row) => row.tr));
+    heads.forEach((th, at) => {
+      th.setAttribute('aria-sort', at === column && way ? (way === 1 ? 'ascending' : 'descending') : 'none');
+      th.classList.toggle('sorted', at === column && way > 0);
+    });
+  };
+  headCells.forEach((cell, column) => {
+    const th = el('th');
+    if (aligns[column]) th.style.textAlign = aligns[column];
+    th.setAttribute('aria-sort', 'none');
+    if (bodyRows.length > 1) {
+      const key = el('button', 'th-sort');
+      key.type = 'button';
+      key.title = t('Sort by this column');
+      renderInline(cell, key);
+      key.append(el('span', 'th-arrow'));
+      key.addEventListener('click', () => sortBy(column));
+      th.append(key);
+    } else renderInline(cell, th);
+    heads.push(th);
+    headRow.append(th);
+  });
+  thead.append(headRow);
+  table.append(thead, tbody);
+  // The table and its line of tools, as wide as the table: the tools sit under it, not across the answer.
+  const box = el('div', 'table-box');
+  box.append(table);
+  wrap.append(box);
+  if (bodyRows.length < 2) return wrap;
+  // What the table is, and what can be done with it, in one quiet line under it.
+  const tools = el('div', 'table-tools');
+  tools.append(el('span', 'table-count', bodyRows.length === 1 ? t('1 row') : t('{n} rows', { n: bodyRows.length })));
+  const plainRows = () => [labels, ...[...tbody.children].map((tr) => [...tr.children].map((td) => td.textContent.trim()))];
+  const copy = el('button', 'table-tool', t('Copy'));
+  copy.type = 'button';
+  copy.title = t('Copies the table so a spreadsheet takes it as columns');
+  copy.addEventListener('click', async () => {
+    const tsv = plainRows().map((row) => row.map((cell) => cell.replace(/[\t\n]+/g, ' ')).join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(tsv); copy.textContent = t('Copied'); setTimeout(() => { copy.textContent = t('Copy'); }, 1600); } catch { toast(t('The table could not be copied.')); }
+  });
+  const csv = el('button', 'table-tool', t('Download CSV'));
+  csv.type = 'button';
+  csv.addEventListener('click', () => {
+    const cell = (value) => `"${String(value ?? '').replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+    // A BOM, or a spreadsheet opens the accents as mojibake.
+    const blob = new Blob([`\uFEFF${plainRows().map((row) => row.map(cell).join(',')).join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = el('a');
+    link.href = url;
+    link.download = `madre-tabla-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+  tools.append(copy, csv);
+  box.append(tools);
+  return wrap;
+}
+
 export function renderMarkdown(text) {
   const fragment = document.createDocumentFragment();
   const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
@@ -4125,22 +4230,7 @@ export function renderMarkdown(text) {
         const cells = bodyRows.map((row) => (row[column] ?? '').replace(/[*_`]/g, '').trim()).filter((cell) => cell && cell !== '—' && cell !== '-');
         if (cells.length && cells.every((cell) => FIGURE.test(cell))) aligns[column] = 'right';
       });
-      const wrap = el('div', 'table-wrap');
-      const table = el('table');
-      const thead = el('thead');
-      const headRow = el('tr');
-      headCells.forEach((cell, column) => { const th = el('th'); if (aligns[column]) th.style.textAlign = aligns[column]; renderInline(cell, th); headRow.append(th); });
-      thead.append(headRow);
-      table.append(thead);
-      const tbody = el('tbody');
-      for (const row of bodyRows) {
-        const tr = el('tr');
-        row.forEach((cell, column) => { const td = el('td'); if (aligns[column]) td.style.textAlign = aligns[column]; renderInline(cell, td); tr.append(td); });
-        tbody.append(tr);
-      }
-      table.append(tbody);
-      wrap.append(table);
-      fragment.append(wrap);
+      fragment.append(liveTable(headCells, aligns, bodyRows));
       continue;
     }
 

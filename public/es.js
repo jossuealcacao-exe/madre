@@ -1795,6 +1795,12 @@ export const ES = {
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
   // Answers with links (2026-11-14).
+  'Sort by this column': 'Ordenar por esta columna',
+  '1 row': '1 fila',
+  '{n} rows': '{n} filas',
+  'Copies the table so a spreadsheet takes it as columns': 'Copia la tabla para que una hoja de cálculo la reciba en columnas',
+  'Download CSV': 'Descargar CSV',
+  'The table could not be copied.': 'No se pudo copiar la tabla.',
   'Show photo': 'Mostrar foto',
   'Show photos ({n})': 'Mostrar fotos ({n})',
   'MADRE asks each site for its photo only when you press here.': 'MADRE le pide su foto a cada sitio solo cuando presionas aquí.',

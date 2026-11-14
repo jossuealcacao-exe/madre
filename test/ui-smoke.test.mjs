@@ -207,9 +207,22 @@ test('the room UI boots against a real transcript without throwing', async () =>
     const cells = [];
     (function walk(node) { for (const child of node.children ?? []) { if (typeof child === 'string') continue; if (/^(td|th)$/i.test(child.tagName)) cells.push(child.textContent); walk(child); } })(tableNode);
     assert.deepEqual(cells, ['Claim', 'State', 'a | b', 'ok', 'c', 'd']);
+    const find = (node, test) => { for (const child of node.children ?? []) { if (typeof child === 'string') continue; if (test(child)) return child; const deeper = find(child, test); if (deeper) return deeper; } return null; };
+    // Live tables (2026-11-14): a heading sorts figures as figures, both ways and back.
+    const live = app.renderMarkdown('| Zona | Renta |\n|---|---|\n| Chapalita | $16,500 |\n| Providencia | $17,300 |\n| Línea 3 | $9,900 |');
+    const wrapNode = live.children.find((node) => node.classList?.contains('table-wrap'));
+    const order = () => find(wrapNode, (node) => node.tagName === 'TBODY').children.map((tr) => tr.children[0].textContent);
+    const rentKey = find(wrapNode, (node) => node.tagName === 'TH' && node.textContent === 'Renta').children[0];
+    assert.equal(rentKey.classList.contains('th-sort'), true);
+    rentKey.listeners.click[0]();
+    assert.deepEqual(order(), ['Línea 3', 'Chapalita', 'Providencia'], '$9,900 is less than $16,500');
+    rentKey.listeners.click[0]();
+    assert.deepEqual(order(), ['Providencia', 'Chapalita', 'Línea 3']);
+    rentKey.listeners.click[0]();
+    assert.deepEqual(order(), ['Chapalita', 'Providencia', 'Línea 3'], 'the third press is the order the agent wrote');
+    assert.equal(find(wrapNode, (node) => node.classList?.contains('table-count')).textContent, '3 filas');
     // Answers with links (2026-11-14): a link in bold is a link, a numbered list keeps its numbers
     // across blank lines, and a point that starts with a link is a card with its price and its site.
-    const find = (node, test) => { for (const child of node.children ?? []) { if (typeof child === 'string') continue; if (test(child)) return child; const deeper = find(child, test); if (deeper) return deeper; } return null; };
     const bold = app.renderMarkdown('Mira **[la guía](https://example.org/guia)** hoy.');
     const strong = find(bold, (node) => node.tagName === 'STRONG');
     assert.equal(strong.textContent, 'la guía', 'the brackets and the address are not printed');

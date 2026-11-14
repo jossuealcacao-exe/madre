@@ -13927,3 +13927,39 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
   .bubble .lc-photo { width: 84px; height: 72px; }
   .bubble .lc-top { flex-wrap: wrap; row-gap: 2px; }
 }
+/* Live tables (2026-11-14, the author): a heading sorts, a long table keeps its headings in sight,
+   one quiet line under it says how many rows and copies or downloads them, and in a narrow column
+   a wide table becomes one card per row. */
+.bubble .table-wrap.live { overflow: visible; container-type: inline-size; }
+.bubble .table-wrap.live > .table-box { width: fit-content; max-width: 100%; }
+.bubble .table-wrap.live table { display: block; max-width: 100%; overflow: auto; }
+.bubble .table-wrap.live.tall table { max-height: 440px; }
+.bubble .table-wrap.live th { position: sticky; top: 0; z-index: 1; background: color-mix(in srgb, var(--bubble-ink, var(--text)) 6%, var(--cs-canvas, var(--panel, var(--bg)))); }
+.bubble .th-sort { all: unset; display: inline-flex; align-items: center; gap: 5px; width: 100%; cursor: pointer; font: inherit; color: inherit; }
+.bubble th[style*="right"] .th-sort { flex-direction: row-reverse; justify-content: flex-start; }
+.bubble th[style*="center"] .th-sort { justify-content: center; }
+.bubble .th-sort:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; border-radius: 4px; }
+.bubble .th-arrow { width: 8px; flex: none; opacity: 0; transition: opacity .15s ease; }
+.bubble .th-arrow::before { content: '↕'; font-size: 10px; }
+.bubble th:hover .th-arrow { opacity: .45; }
+.bubble th.sorted .th-arrow { opacity: .9; color: var(--phosphor); }
+.bubble th[aria-sort="ascending"] .th-arrow::before { content: '↑'; }
+.bubble th[aria-sort="descending"] .th-arrow::before { content: '↓'; }
+.bubble .table-tools { display: flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--text-3); font-size: 12px; }
+.bubble .table-count { margin-right: auto; }
+.bubble .table-tool { height: 24px; padding: 0 9px; border: 0; border-radius: 999px; background: none; color: var(--text-3); font: 500 12px var(--read, var(--sans)); cursor: pointer; }
+.bubble .table-tool:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.bubble .table-wrap.live:not(:hover):not(:focus-within) .table-tool { opacity: .75; }
+@container (max-width: 520px) {
+  .bubble .table-wrap.live.many > .table-box { width: auto; }
+  .bubble .table-wrap.live.many table { display: block; overflow: visible; max-height: none; border: 0; min-width: 0; }
+  .bubble .table-wrap.live.many thead { display: none; }
+  .bubble .table-wrap.live.many tbody { display: grid; gap: 8px; }
+  .bubble .table-wrap.live.many tr { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 2.5%, transparent); box-shadow: 0 0 0 .5px var(--cs-line, var(--line)); }
+  .bubble .table-wrap.live.many :is(tr, td) { background-color: transparent; }
+  .bubble .table-wrap.live.many tr { background: color-mix(in srgb, var(--text) 2.5%, transparent) !important; }
+  .bubble .table-wrap.live.many td { display: grid; grid-template-columns: minmax(84px, 38%) 1fr; gap: 10px; padding: 0; border: 0; text-align: left !important; }
+  .bubble .table-wrap.live.many td::before { content: attr(data-label); color: var(--text-3); font-size: 12px; }
+  .bubble .table-wrap.live.many td:first-child { grid-template-columns: 1fr; font-weight: 600; }
+  .bubble .table-wrap.live.many td:first-child::before { display: none; }
+}
