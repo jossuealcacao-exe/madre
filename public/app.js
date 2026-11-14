@@ -4815,7 +4815,8 @@ function cellNumber(text) {
 }
 function liveTable(headCells, aligns, bodyRows) {
   const wrap = el('div', 'table-wrap live');
-  if (headCells.length >= 4) wrap.classList.add('many');
+  // Three columns or more become one card per row in a narrow column (a phone, a side panel).
+  if (headCells.length >= 3) wrap.classList.add('many');
   if (bodyRows.length > 12) wrap.classList.add('tall');
   const table = el('table');
   const thead = el('thead');
@@ -4872,6 +4873,18 @@ function liveTable(headCells, aligns, bodyRows) {
   });
   thead.append(headRow);
   table.append(thead, tbody);
+  // Each column as wide as what it holds (2026-11-14, the author: «Prioridad» stood one letter wide,
+  // «P ri o ri d a d», «Alt a»): a column of short words never breaks them, a column of long sentences
+  // keeps a comfortable measure, and the rest share what is left.
+  headCells.forEach((cell, column) => {
+    const sizes = [cell, ...bodyRows.map((row) => row[column] ?? '')].map((one) => one.replace(/[*_`]|\[([^\]]*)\]\([^)]*\)/g, '$1').trim().length);
+    const longest = Math.max(...sizes);
+    const average = sizes.reduce((sum, one) => sum + one, 0) / sizes.length;
+    const kind = longest <= 18 ? 'short' : average > 48 ? 'long' : null;
+    if (!kind) return;
+    heads[column]?.classList.add(kind);
+    for (const row of rows) row.tr.children[column]?.classList.add(kind);
+  });
   // The table and its line of tools, as wide as the table: the tools sit under it, not across the answer.
   const box = el('div', 'table-box');
   box.append(table);

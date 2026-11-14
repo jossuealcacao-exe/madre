@@ -37,6 +37,9 @@ const whereOf = (project) => (project.home ? t('Coordinator') : project.name ?? 
 // What runs, counted for the key: a plan once (its steps are inside it), never an outdated project.
 const counted = (one) => one.kind !== 'turn' || !one.planId;
 
+// A step's permission in the words the box uses (#1 Just chat … #4 Full access).
+const MODE_WORDS = { 0: () => t('Not saved'), 1: () => t('Just chat'), 2: () => t('Can create'), 3: () => t('Can edit'), 4: () => t('Full access') };
+
 function avatar(agent, { busy = false } = {}) {
   const brand = brandOf(agent);
   const face = el('span', `ap-av${busy ? ' busy' : ''}`);
@@ -59,7 +62,7 @@ function sysAvatar(icon, { busy = false } = {}) {
  */
 export function mountActivity({ key, badge, openChat, toast = () => {} }) {
   if (!key) return null;
-  const state = { data: null, said: '', open: false, timer: 0, ticking: 0, opened: new Set(), confirmAll: 0, failing: 0, pressing: false, stale: false };
+  const state = { data: null, said: '', open: false, timer: 0, ticking: 0, opened: new Set(), seen: new Set(), confirmAll: 0, failing: 0, pressing: false, stale: false };
   const panel = el('div', 'activity-panel');
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', t('Running now'));
@@ -216,39 +219,69 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
         progress: item.timeoutMs ? () => since(item.startedAt)() / item.timeoutMs : null,
         more: (inside) => {
           if (helpers.length) inside.append(subChips(helpers));
-          inside.append(el('p', 'ap-meta', item.timeoutMs ? t('With your permission #{mode} · the limit counts from when it started', { mode: item.mode ?? 1 }) : t('With your permission #{mode}', { mode: item.mode ?? 1 })));
+          inside.append(el('p', 'ap-meta', `${t('Permission: {mode}', { mode: `#${item.mode ?? 1} ${MODE_WORDS[item.mode ?? 1]?.() ?? ''}`.trim() })}${item.timeoutMs ? ` · ${t('it has up to {limit} to answer', { limit: clock(item.timeoutMs) })}` : ''}`));
           inside.append(actions([t('Go to the chat'), 'go', () => goTo(project, item.chat, item.messageId)], [t('Stop'), 'stop', () => stop(project, item)]));
         },
       });
     }
     if (item.kind === 'plan') {
+      // A plan reads as a road (2026-11-14, the author: «Plan actual is very confusing»): who made it
+      // and what it is for, one segment per step on a bar, and each step on a line of its own — the
+      // AI's face, what it was asked, with which permission, and whether it is done, at work or
+      // waiting its turn. Open by default the first time it shows.
+      if (!state.seen.has(uid)) { state.seen.add(uid); state.opened.add(uid); }
+      const listed = item.steps ?? [];
+      const closes = item.total > listed.length;
+      const stepNow = Math.max(1, item.step);
+      const working = steps[0] ? brandOf(steps[0].agent).label : null;
+      const others = new Set(listed.map((one) => one.agent).filter((one) => one !== item.orchestrator));
       return row({
         id: uid, face: avatar(item.orchestrator, { busy: true }), tint: brandOf(item.orchestrator).color,
-        title: t('Plan by {agent} · {n} steps', { agent: brandOf(item.orchestrator).label, n: item.total }),
-        sub: `${where} · ${t('Step {step} of {total}', { step: Math.max(1, item.step), total: item.total })}${steps.length ? ` · ${t('{agent} is answering', { agent: brandOf(steps[0].agent).label })}` : ''}`,
+        title: others.size ? t('{agent} puts {n} AIs to work', { agent: brandOf(item.orchestrator).label, n: others.size }) : t('Plan by {agent} · {n} steps', { agent: brandOf(item.orchestrator).label, n: item.total }),
+        sub: `${where} · ${t('Step {step} of {total}', { step: stepNow, total: item.total })}${working ? ` · ${t('{agent} is answering', { agent: working })}` : ''}`,
         time: () => clock(since(item.startedAt)()),
         progress: () => Math.max(0, item.step - 1) / Math.max(1, item.total),
         more: (inside) => {
-          const list = el('ol', 'ap-steps');
-          (item.steps ?? []).forEach((step, index) => {
-            const li = el('li', index + 1 < item.step ? 'done' : index + 1 === item.step ? 'now' : '');
-            li.append(el('b', null, brandOf(step.agent).label), document.createTextNode(` ${step.text}`));
+          inside.classList.add('ap-plan');
+          inside.append(el('p', 'ap-plan-lead', t('{agent} split the request into {n} steps. Each AI works when the one before it finishes, and its answer reaches the next.', { agent: brandOf(item.orchestrator).label, n: item.total })));
+          const road = [...listed.map((step) => ({ agent: step.agent, text: step.text, mode: step.mode })), ...(closes ? [{ agent: item.orchestrator, text: t('reads the answers and gives you the final answer'), closing: true }] : [])];
+          // One segment per step, in each AI's colour: full when done, breathing while at work.
+          const segs = el('div', 'ap-segs');
+          segs.setAttribute('aria-hidden', 'true');
+          road.forEach((step, index) => {
+            const seg = el('i', index + 1 < stepNow ? 'done' : index + 1 === stepNow ? 'now' : 'wait');
+            seg.style.setProperty('--seg', brandOf(step.agent).color);
+            segs.append(seg);
+          });
+          inside.append(segs);
+          const list = el('ol', 'ap-road');
+          road.forEach((step, index) => {
+            const at = index + 1 < stepNow ? 'done' : index + 1 === stepNow ? 'now' : 'wait';
+            const li = el('li', `ap-step ${at}${step.closing ? ' closing' : ''}`);
+            const mark = el('span', 'ap-step-mark');
+            mark.append(avatar(step.agent, { busy: at === 'now' }));
+            const badge = el('span', `ap-step-badge ${at}`);
+            if (at === 'done') badge.innerHTML = trazo('check'); // trusted: our own SVG
+            else badge.textContent = String(index + 1);
+            mark.append(badge);
+            const words = el('div', 'ap-step-words');
+            const head = el('div', 'ap-step-head');
+            head.append(el('b', null, brandOf(step.agent).label));
+            if (Number.isInteger(step.mode)) head.append(el('span', `ap-step-mode m${step.mode}`, MODE_WORDS[step.mode]?.() ?? `#${step.mode}`));
+            const said = el('span', `ap-step-state ${at}`);
+            const turn = at === 'now' ? steps.find((one) => one.agent === step.agent) : null;
+            const sayState = () => (at === 'done' ? t('Done') : at === 'now' ? (turn ? t('Working · {time}', { time: clock(since(turn.startedAt)()) }) : t('Starting…')) : t('Waits its turn'));
+            said.textContent = sayState();
+            if (at === 'now' && turn) state.tickers.push(() => { said.textContent = sayState(); });
+            head.append(said);
+            const text = el('p', 'ap-step-text', step.text);
+            text.title = step.text;
+            words.append(head, text);
+            if (turn?.subagents?.length) words.append(subChips(turn.subagents));
+            li.append(mark, words);
             list.append(li);
           });
-          // The last step is the one who made the plan reading the answers: counted, so it is listed.
-          const listed = item.steps?.length ?? 0;
-          if (item.total > listed) {
-            const li = el('li', item.step > listed ? 'now' : '');
-            li.append(el('b', null, brandOf(item.orchestrator).label), document.createTextNode(` ${t('reads the answers and closes the plan')}`));
-            list.append(li);
-          }
           inside.append(list);
-          for (const turn of steps) {
-            const said = el('p', 'ap-meta', t('{agent} is answering step {step} · {time}', { agent: brandOf(turn.agent).label, step: item.step, time: clock(since(turn.startedAt)()) }));
-            state.tickers.push(() => { said.textContent = t('{agent} is answering step {step} · {time}', { agent: brandOf(turn.agent).label, step: item.step, time: clock(since(turn.startedAt)()) }); });
-            inside.append(said);
-            if (turn.subagents?.length) inside.append(subChips(turn.subagents));
-          }
           inside.append(actions([t('Go to the chat'), 'go', () => goTo(project, item.chat)], [t('Stop the plan'), 'stop', () => stop(project, item)]));
         },
       });

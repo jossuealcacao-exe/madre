@@ -14108,3 +14108,109 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
 .bubble a.map-link { display: inline-flex; align-items: center; gap: 4px; }
 .bubble .map-pin { display: inline-grid; width: 14px; height: 14px; }
 .bubble .map-pin svg { width: 100%; height: 100%; }
+/* QA 2026-11-14 (the author) · 1. The «thinking» line never runs past its column: what the AI is doing
+   gives way with «…» and the time, the count and the stop key always stay whole at its end (a long
+   command pushed the stop key out of the answer). */
+#messages#messages .row.thinking { grid-template-columns: 28px minmax(0, 1fr); }
+#messages#messages .row.thinking > .bubble { display: flex; flex-wrap: nowrap; min-width: 0; max-width: 100%; overflow: hidden; }
+#messages#messages .row.thinking > .bubble > .status { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#messages#messages .row.thinking > .bubble > :is(.tokens, .elapsed, .stop-turn) { flex: none; white-space: nowrap; }
+@media (max-width: 760px) {
+  #messages#messages .row.thinking > .bubble { flex-wrap: wrap; }
+  #messages#messages .row.thinking > .bubble > .status { flex: 1 1 100%; }
+}
+/* 3. A plan's stop key stands apart from its title (2026-11-14, the author: «too close to plan»). */
+#messages#messages .system.plan > b:first-child { gap: 14px; }
+#messages#messages .system.plan > b:first-child > .act.stop { margin-left: 4px; }
+/* 4. The chip of an answer holds the AI and what it did; what it spent shows when the pointer is over
+   the chip (or it has focus), the chip growing to make room (2026-11-14, the author). On a touch
+   screen, with no pointer to hover, it stays in view. */
+@media (hover: hover) {
+  :root #messages#messages .row.assistant .col > .who .spent { max-width: 0; opacity: 0 !important; overflow: hidden; padding-left: 0 !important; padding-right: 0 !important; transition: max-width calc(280ms * var(--motion-scale, 1)) var(--ease-out, ease), opacity calc(200ms * var(--motion-scale, 1)) ease, padding calc(280ms * var(--motion-scale, 1)) ease; }
+  :root #messages#messages .row.assistant .col > .who:is(:hover, :focus-within) .spent { max-width: 180px; opacity: .85 !important; padding-left: 6px !important; padding-right: 7px !important; }
+}
+/* 5. «Stop all», quieter (2026-11-14, the author: a red block with green words «looks very bad»): a
+   soft capsule with a hint of red, its square drawn in the same red, stronger under the pointer —
+   never a solid red fill, never a blink. */
+:root .shell .bar > #stop-all.armed, html.chat-shell .shell > .bar > #stop-all.armed {
+  height: 30px; padding: 0 12px 0 10px; gap: 7px; border: 0 !important; border-radius: 999px; opacity: 1; animation: none; text-shadow: none;
+  background: color-mix(in srgb, var(--terror) 9%, transparent) !important;
+  box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--terror) 32%, transparent) !important;
+  color: color-mix(in srgb, var(--terror) 82%, var(--text)) !important;
+  font: 500 12.5px var(--read, var(--sans)); letter-spacing: 0;
+}
+:root .shell .bar > #stop-all.armed svg :is(rect, path) { stroke: currentColor !important; fill: color-mix(in srgb, currentColor 18%, transparent) !important; }
+:root .shell .bar > #stop-all.armed:is(:hover, :focus-visible), html.chat-shell .shell > .bar > #stop-all.armed:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--terror) 16%, transparent) !important;
+  box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--terror) 50%, transparent) !important;
+  color: var(--terror) !important;
+}
+@media (max-width: 900px) {
+  :root .shell .bar > #stop-all.armed, html.chat-shell .shell > .bar > #stop-all.armed { width: 34px; padding: 0; gap: 0; font-size: 0; justify-content: center; }
+}
+/* 7. Tables read as tables (2026-11-14, the author): a cell breaks between words, never inside one
+   (the conversation lets any letter break, and a column of «Alta» shrank to «Alt / a»); a column of
+   short words stays on one line; a column of long sentences keeps a readable measure. */
+.bubble .table-wrap.live :is(th, td) { overflow-wrap: break-word; word-break: normal; hyphens: manual; }
+.bubble .table-wrap.live :is(th, td).short { white-space: nowrap; }
+.bubble .table-wrap.live :is(th, td).long { min-width: 16em; max-width: 34em; }
+.bubble .table-wrap.live :is(th, td):not(.short):not(.long) { min-width: 8em; }
+.bubble .table-wrap.live td code { white-space: nowrap; }
+@container (max-width: 520px) {
+  .bubble .table-wrap.live.many :is(th, td) { min-width: 0 !important; max-width: none !important; white-space: normal !important; }
+}
+/* 2. «Plan actual» as a road (2026-11-14, the author): a line that says what the plan is for, a bar
+   with one segment per step in each AI's colour, and each step on its own line — the AI's face with
+   its number or a check, its name, its permission, how it is doing, and what it was asked. */
+.ap-more.ap-plan { gap: 10px; padding-left: 8px; }
+.ap-plan-lead { margin: 2px 0 0; font: 12.5px/1.5 var(--read, inherit); color: var(--text-2); }
+.ap-segs { display: flex; gap: 4px; }
+.ap-segs i { flex: 1; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--seg, var(--phosphor)) 16%, transparent); }
+.ap-segs i.done { background: var(--seg, var(--phosphor)); }
+.ap-segs i.now { background: color-mix(in srgb, var(--seg, var(--phosphor)) 60%, transparent); animation: ap-breathe calc(1.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes ap-breathe { 50% { opacity: .45; } }
+.ap-road { position: relative; margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.ap-step { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 7px 8px 7px 4px; border-radius: 10px; }
+.ap-step:not(:last-child)::before { content: ''; position: absolute; left: 21px; top: 38px; bottom: -6px; width: 2px; border-radius: 1px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.ap-step.done:not(:last-child)::before { background: color-mix(in srgb, var(--phosphor) 45%, transparent); }
+.ap-step.now { background: color-mix(in srgb, var(--text) 4%, transparent); }
+.ap-step-mark { position: relative; display: grid; place-items: center; width: 34px; height: 34px; }
+.ap-step-mark .ap-av { width: 30px; height: 30px; }
+.ap-step.wait .ap-step-mark .ap-av { opacity: .45; filter: grayscale(.5); }
+.ap-step-badge { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 0 0 1.5px var(--cs-canvas, var(--panel)); font: 600 10px/1 var(--read, inherit); color: var(--text-2); }
+.ap-step-badge.done { background: var(--phosphor); color: var(--phosphor-ink, #fff); }
+.ap-step-badge.done svg { width: 11px; height: 11px; }
+.ap-step-badge.now { background: var(--text); color: var(--cs-canvas, var(--panel)); }
+.ap-step-words { min-width: 0; display: grid; gap: 3px; }
+.ap-step-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 13px; }
+.ap-step-head b { font-weight: 600; }
+.ap-step-mode { padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text-2); font: 500 11px/1.6 var(--read, inherit); }
+.ap-step-mode.m2 { background: color-mix(in srgb, var(--mode-2, #3b82f6) 14%, transparent); }
+.ap-step-mode.m3 { background: color-mix(in srgb, var(--mode-3, #f59e0b) 16%, transparent); }
+.ap-step-mode.m4 { background: color-mix(in srgb, var(--danger, #e5484d) 13%, transparent); }
+.ap-step-state { margin-left: auto; font: 11.5px/1 var(--read, inherit); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ap-step-state.done { color: var(--phosphor); }
+.ap-step-state.now { color: var(--text); font-weight: 500; }
+.ap-step-text { margin: 0; font: 12.5px/1.45 var(--read, inherit); color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ap-step.done .ap-step-text { color: var(--text-3); }
+.ap-step.closing .ap-step-text { font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .ap-segs i.now { animation: none; } }
+/* 8. A command pressed while the project is busy waits its turn, and says so. */
+.run-request .run-line.queued { cursor: default; opacity: .85; }
+.run-request .run-line.queued .choice-tag { background: color-mix(in srgb, var(--text) 8%, transparent) !important; color: var(--text-2) !important; }
+/* Turning on what an answer needs (2026-11-14, the author): a card under the answer with what the
+   module lets the AI do and its switch; in the browser, Preview's switch first and Modules after. */
+.bubble .module-asks { display: grid; gap: 8px; margin: 10px 0 4px; }
+.bubble .module-ask { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--phosphor) 7%, transparent); box-shadow: 0 0 0 .5px color-mix(in srgb, var(--phosphor) 30%, transparent); }
+.bubble .module-ask-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--phosphor); }
+.bubble .module-ask-icon svg { width: 18px; height: 18px; }
+.bubble .module-ask-words { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.bubble .module-ask-words b { font-weight: 600; font-size: 13.5px; }
+.bubble .module-ask-words span { color: var(--text-2); font-size: 12.5px; line-height: 1.45; }
+.bubble .module-ask-on { flex: none; height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--phosphor); color: var(--phosphor-ink, #fff); font: 600 12.5px var(--read, var(--sans)); cursor: pointer; }
+.bubble .module-ask-on:disabled { opacity: .7; cursor: default; }
+.bubble .module-ask.done .module-ask-on { background: color-mix(in srgb, var(--phosphor) 18%, transparent); color: var(--phosphor); }
+.ports-turn-on { display: grid; gap: 8px; padding: 6px 4px 2px; }
+.ports-turn-on .ports-why { margin: 0; font: 12.5px/1.5 var(--read, var(--sans)); color: var(--text-2); }
+.ports-turn-on .ports-on { justify-self: start; height: 32px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--phosphor); color: var(--phosphor-ink, #fff); font: 600 13px var(--read, var(--sans)); cursor: pointer; }
+.ports-turn-on .ports-on:disabled { opacity: .7; cursor: progress; }
