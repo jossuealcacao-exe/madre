@@ -221,6 +221,31 @@ test('the room UI boots against a real transcript without throwing', async () =>
     rentKey.listeners.click[0]();
     assert.deepEqual(order(), ['Chapalita', 'Providencia', 'Línea 3'], 'the third press is the order the agent wrote');
     assert.equal(find(wrapNode, (node) => node.classList?.contains('table-count')).textContent, '3 filas');
+    // Code, tasks and notices (2026-11-14): a change counts its lines and names its file, a terminal
+    // copies without its prompt, «- [ ]» is a box, and «> [!WARNING]» is a notice.
+    const changed = app.renderMarkdown('```diff\n--- a/src/precio.js\n+++ b/src/precio.js\n@@ -1,2 +1,2 @@\n-renta: 18000\n+renta: 16500\n mismo\n```');
+    const block = changed.children.find((node) => node.classList?.contains('codeblock'));
+    assert.equal(block.classList.contains('code-diff'), true);
+    assert.equal(find(block, (node) => node.classList?.contains('code-file'))?.textContent, 'src/precio.js');
+    assert.equal(find(block, (node) => node.classList?.contains('diff-count'))?.textContent, '+1−1');
+    assert.equal(find(block, (node) => node.classList?.contains('add') && node.classList?.contains('dl'))?.textContent, '+renta: 16500\n');
+    const named = app.renderMarkdown('```js src/app.js\nconst a = 1;\n```').children.find((node) => node.classList?.contains('codeblock'));
+    assert.equal(find(named, (node) => node.classList?.contains('code-file'))?.textContent, 'src/app.js', 'the file after the language is the block\'s');
+    let copiedShell = null;
+    globalThis.navigator ??= {};
+    const clipboard = globalThis.navigator.clipboard;
+    Object.defineProperty(globalThis.navigator, 'clipboard', { value: { writeText: async (value) => { copiedShell = value; } }, configurable: true });
+    const shellBlock = app.renderMarkdown('```bash\n$ npm install\n$ npm run dev\n```').children.find((node) => node.classList?.contains('codeblock'));
+    await find(shellBlock, (node) => node.classList?.contains('copy')).listeners.click[0]();
+    assert.equal(copiedShell, 'npm install\nnpm run dev', 'a terminal block copies without the «$ »');
+    Object.defineProperty(globalThis.navigator, 'clipboard', { value: clipboard, configurable: true });
+    const todo = app.renderMarkdown('- [x] Visitar Chapalita\n- [ ] Pedir contrato\n- [ ] Firmar');
+    const todoList = todo.children.find((node) => node.tagName === 'UL');
+    assert.equal(todoList.classList.contains('tasks'), true);
+    assert.equal(find(todoList, (node) => node.classList?.contains('task-count'))?.textContent, '1 de 3 hechas');
+    const warn = app.renderMarkdown('> [!WARNING]\n> Dos anuncios tienen precios raros.').children.find((node) => node.classList?.contains('callout'));
+    assert.equal(warn.classList.contains('warning'), true);
+    assert.match(warn.textContent, /Cuidado.*Dos anuncios tienen precios raros\./);
     // Answers with links (2026-11-14): a link in bold is a link, a numbered list keeps its numbers
     // across blank lines, and a point that starts with a link is a card with its price and its site.
     const bold = app.renderMarkdown('Mira **[la guía](https://example.org/guia)** hoy.');

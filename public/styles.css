@@ -13963,3 +13963,47 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
   .bubble .table-wrap.live.many td:first-child { grid-template-columns: 1fr; font-weight: 600; }
   .bubble .table-wrap.live.many td:first-child::before { display: none; }
 }
+/* Code, tasks and notices in an answer (2026-11-14, the author). The code's head: what it is, its
+   file (a press opens it in Files), the count of a change and Copy; a change in red and green; a
+   terminal's prompt quieter than its command; a long block folded. */
+.bubble .codeblock .code-head { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 4px 6px 4px 12px; border-bottom: 1px solid color-mix(in srgb, var(--text) 7%, transparent); }
+.bubble .codeblock .code-head .lang { position: static; font: 600 11px var(--read, var(--sans)); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+.bubble .codeblock .code-file { all: unset; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11.5px var(--mono); color: var(--text-2); }
+.bubble .codeblock button.code-file { cursor: pointer; border-bottom: 1px dashed currentColor; }
+.bubble .codeblock button.code-file:hover { color: var(--text); }
+.bubble .codeblock .diff-count { display: inline-flex; gap: 6px; font: 600 11px var(--mono); }
+.bubble .codeblock .diff-count .add { color: #16a34a; }
+.bubble .codeblock .diff-count .del { color: #dc2626; }
+.bubble .codeblock .code-head .copy { position: static; margin-left: auto; height: 24px; padding: 0 10px; border: 0; border-radius: 999px; background: none; font: 500 12px var(--read, var(--sans)); letter-spacing: 0; color: var(--text-3); }
+.bubble .codeblock .code-head .copy:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.bubble .codeblock.has-lang pre { padding-top: 10px; }
+.bubble .codeblock.code-diff pre { padding: 6px 0; color: var(--text-2); }
+.bubble .codeblock .dl { display: block; padding: 0 14px; white-space: pre-wrap; }
+.bubble .codeblock .dl.add { background: color-mix(in srgb, #16a34a 13%, transparent); color: color-mix(in srgb, #15803d 80%, var(--text)); }
+.bubble .codeblock .dl.del { background: color-mix(in srgb, #dc2626 12%, transparent); color: color-mix(in srgb, #b91c1c 80%, var(--text)); }
+.bubble .codeblock .dl.hunk { color: var(--text-3); background: color-mix(in srgb, var(--text) 4%, transparent); }
+.bubble .codeblock .dl.meta { color: var(--text-3); }
+.bubble .codeblock.code-shell .prompt { color: var(--text-3); user-select: none; }
+.bubble .codeblock.code-shell .sl.comment { color: var(--text-3); }
+.bubble .codeblock.folded pre { max-height: 26em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.bubble .codeblock .code-more-lines { display: block; width: 100%; height: 30px; border: 0; border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent); background: none; color: var(--text-2); font: 500 12px var(--read, var(--sans)); cursor: pointer; }
+.bubble .codeblock .code-more-lines:hover { background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); }
+/* Tasks: a box per point, ticked ones quieter, and a bar of how many are done. */
+.bubble ul.tasks, .bubble ol.tasks { list-style: none; padding-left: 0; }
+.bubble li.task label { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+.bubble li.task input { flex: none; width: 16px; height: 16px; margin: 3px 0 0; accent-color: var(--phosphor); cursor: pointer; }
+.bubble li.task.done .task-text { color: var(--text-3); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text) 30%, transparent); }
+.bubble li.task-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--text-3); font-size: 12px; }
+.bubble .task-track { flex: 0 1 160px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; }
+.bubble .task-fill { display: block; height: 100%; border-radius: inherit; background: var(--phosphor); transition: width .25s ease; }
+/* Notices: note, tip, important, warning, caution, each with its colour. */
+.bubble .callout { --c: #2563eb; margin: 10px 0; padding: 10px 14px; border-radius: 0 10px 10px 0; border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); }
+.bubble .callout.tip { --c: #059669; }
+.bubble .callout.important { --c: #7c3aed; }
+.bubble .callout.warning { --c: #d97706; }
+.bubble .callout.caution { --c: #dc2626; }
+.bubble .callout-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: color-mix(in srgb, var(--c) 80%, var(--text)); font-weight: 600; font-size: .92em; }
+.bubble .callout-icon { display: inline-grid; width: 15px; height: 15px; }
+.bubble .callout-icon svg { width: 100%; height: 100%; }
+.bubble .callout > :not(.callout-title):first-of-type { margin-top: 0; }
+.bubble .callout p:last-child { margin-bottom: 0; }

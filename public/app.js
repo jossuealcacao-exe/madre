@@ -3922,24 +3922,89 @@ viewer.close.addEventListener('click', async () => {
   if (await viewerMayClose()) viewer.dialog.close();
 });
 
-function codeBlock(lines, lang) {
-  const wrapper = el('div', `codeblock${lang ? ' has-lang' : ''}`);
-  if (lang) wrapper.append(el('span', 'lang', lang));
-  const copy = el('button', 'copy', 'copy');
+// Code in an answer (2026-11-14, the author): a head with what it is and the file it belongs to,
+// changes in red and green with their count, a long block folded, and Copy in the person's words.
+// A terminal block copies its commands without the «$ » in front. Running a command stays where it
+// is: an agent asks for it in a ```pulse-run card and the person presses it there, with its
+// permissions; a key here would be a second way in without them.
+const SHELLS = new Set(['bash', 'sh', 'zsh', 'shell', 'console', 'terminal', 'powershell', 'ps1', 'cmd', 'fish']);
+const LANG_NAMES = { js: 'JavaScript', mjs: 'JavaScript', javascript: 'JavaScript', ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX', jsx: 'JSX', py: 'Python', python: 'Python', rb: 'Ruby', go: 'Go', rs: 'Rust', rust: 'Rust', java: 'Java', kt: 'Kotlin', swift: 'Swift', c: 'C', cpp: 'C++', cs: 'C#', php: 'PHP', html: 'HTML', css: 'CSS', scss: 'SCSS', json: 'JSON', yaml: 'YAML', yml: 'YAML', toml: 'TOML', xml: 'XML', sql: 'SQL', md: 'Markdown', markdown: 'Markdown', dockerfile: 'Dockerfile', svg: 'SVG' };
+function looksLikeDiff(lines) {
+  if (lines.some((line) => /^@@ .* @@/.test(line))) return true;
+  const marked = lines.filter((line) => /^[+-](?![+-]{2}\s)/.test(line)).length;
+  return lines.length >= 2 && lines.some((line) => /^(---|\+\+\+) [ab]?\/?\S/.test(line)) && marked > 0;
+}
+const CODE_FOLD = 30;
+function codeBlock(lines, lang, info = '') {
+  const kind = String(lang ?? '').toLowerCase();
+  const diff = kind === 'diff' || kind === 'patch' || (!SHELLS.has(kind) && looksLikeDiff(lines));
+  const shell = SHELLS.has(kind);
+  const wrapper = el('div', `codeblock${lang ? ' has-lang' : ''}${diff ? ' code-diff' : ''}${shell ? ' code-shell' : ''}`);
+  // The file it is: named after the language («```js src/app.js», «```js:src/app.js», title="…»), or
+  // read from the change's own head (+++ b/src/app.js).
+  let file = String(info ?? '').replace(/^title\s*=\s*/i, '').replace(/^["']|["']$/g, '').trim() || null;
+  if (!file && diff) file = lines.map((line) => line.match(/^\+\+\+ (?:b\/)?(\S+)/)?.[1]).find((one) => one && one !== '/dev/null') ?? null;
+  const head = el('div', 'code-head');
+  const what = el('span', 'lang', diff ? t('Changes') : shell ? t('Terminal') : (LANG_NAMES[kind] ?? lang ?? ''));
+  head.append(what);
+  if (file) {
+    const rel = projectRelative(file);
+    const name = el(rel ? 'button' : 'span', 'code-file', file);
+    if (rel) { name.type = 'button'; name.title = t('Open in Files'); name.addEventListener('click', () => openViewer({ root: 'project', path: rel })); }
+    head.append(name);
+  }
+  if (diff) {
+    const added = lines.filter((line) => /^\+(?!\+\+ )/.test(line)).length;
+    const removed = lines.filter((line) => /^-(?!-- )/.test(line)).length;
+    const count = el('span', 'diff-count');
+    count.append(el('b', 'add', `+${added}`), el('b', 'del', `−${removed}`));
+    head.append(count);
+  }
+  // What a copy takes: the commands without their prompt; a change as written.
+  const copied = () => (shell ? lines.map((line) => line.replace(/^\s*(?:\$|PS [^>]*>|>)\s+/, '')).filter((line) => !/^\s*#/.test(line) || lines.length === 1) : lines).join('\n');
+  const copy = el('button', 'copy', t('Copy'));
   copy.type = 'button';
   copy.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(lines.join('\n'));
-      copy.textContent = 'copied';
-      setTimeout(() => { copy.textContent = 'copy'; }, 1500);
+      await navigator.clipboard.writeText(copied());
+      copy.textContent = t('Copied');
+      setTimeout(() => { copy.textContent = t('Copy'); }, 1500);
     } catch {
       copy.textContent = t('select & copy');
     }
   });
-  wrapper.append(copy);
+  head.append(copy);
+  wrapper.append(head);
   const pre = el('pre');
-  pre.append(el('code', null, lines.join('\n')));
+  const code = el('code');
+  if (diff) {
+    for (const line of lines) {
+      const type = /^@@/.test(line) ? 'hunk' : /^(\+\+\+|---) /.test(line) || /^diff --git|^index [0-9a-f]/.test(line) ? 'meta' : line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : 'same';
+      code.append(el('span', `dl ${type}`, `${line}\n`));
+    }
+  } else if (shell) {
+    for (const line of lines) {
+      const prompt = line.match(/^(\s*(?:\$|PS [^>]*>|>)\s+)(.*)$/);
+      const comment = /^\s*#/.test(line);
+      const row = el('span', `sl${comment ? ' comment' : ''}`);
+      if (prompt) row.append(el('span', 'prompt', prompt[1]), prompt[2]); else row.append(line);
+      row.append('\n');
+      code.append(row);
+    }
+  } else code.append(lines.join('\n'));
+  pre.append(code);
   wrapper.append(pre);
+  // A long block folds: the first lines, and the rest a press away.
+  if (lines.length > CODE_FOLD) {
+    wrapper.classList.add('folded');
+    const more = el('button', 'code-more-lines', t('Show all ({n} lines)', { n: lines.length }));
+    more.type = 'button';
+    more.addEventListener('click', () => {
+      const open = wrapper.classList.toggle('folded');
+      more.textContent = open ? t('Show all ({n} lines)', { n: lines.length }) : t('Show less');
+    });
+    wrapper.append(more);
+  }
   return wrapper;
 }
 
@@ -4172,8 +4237,88 @@ function liveTable(headCells, aligns, bodyRows) {
   return wrap;
 }
 
+// A list of tasks (2026-11-14): «- [ ]» is a box the person ticks, kept on this computer with the
+// answer it belongs to; three or more show how many are done.
+function textSeed(text) {
+  let hash = 2166136261;
+  for (const char of String(text ?? '')) { hash ^= char.codePointAt(0); hash = Math.imul(hash, 16777619); }
+  return (hash >>> 0).toString(36);
+}
+function readTicks() { try { return JSON.parse(localStorage.getItem('madre.tasks') ?? '{}') ?? {}; } catch { return {}; } }
+function taskItem(done, text, key) {
+  const li = el('li', 'task');
+  const box = el('input');
+  box.type = 'checkbox';
+  const kept = readTicks()[key];
+  box.checked = typeof kept === 'boolean' ? kept : done;
+  li.classList.toggle('done', box.checked);
+  const words = el('span', 'task-text');
+  renderInline(text, words);
+  const label = el('label');
+  label.append(box, words);
+  li.append(label);
+  box.addEventListener('change', () => {
+    li.classList.toggle('done', box.checked);
+    try {
+      const ticks = readTicks();
+      ticks[key] = box.checked;
+      const keys = Object.keys(ticks);
+      if (keys.length > 2000) for (const old of keys.slice(0, keys.length - 2000)) delete ticks[old];
+      localStorage.setItem('madre.tasks', JSON.stringify(ticks));
+    } catch { /* a browser that keeps nothing still ticks the box */ }
+    li.parentElement?.dispatchEvent?.(new Event('tasks'));
+  });
+  return li;
+}
+function taskProgress(list) {
+  const tasks = () => [...list.children].filter((one) => one.classList?.contains('task'));
+  if (tasks().length < 3) return;
+  const bar = el('li', 'task-progress');
+  const fill = el('span', 'task-fill');
+  const words = el('span', 'task-count');
+  const track = el('span', 'task-track');
+  track.append(fill);
+  bar.append(track, words);
+  const paint = () => {
+    const all = tasks();
+    const done = all.filter((one) => one.classList.contains('done')).length;
+    fill.style.width = `${Math.round((done / all.length) * 100)}%`;
+    words.textContent = t('{done} of {total} done', { done, total: all.length });
+  };
+  paint();
+  list.addEventListener('tasks', paint);
+  list.prepend(bar);
+}
+
+// A notice in an answer, with its colour and its name in the person's words.
+const CALLOUTS = {
+  note: { icon: 'help', name: 'Note' }, nota: { icon: 'help', name: 'Note' },
+  tip: { icon: 'spark', name: 'Tip' }, consejo: { icon: 'spark', name: 'Tip' },
+  important: { icon: 'alert', name: 'Important' }, importante: { icon: 'alert', name: 'Important' },
+  warning: { icon: 'warning', name: 'Warning' }, advertencia: { icon: 'warning', name: 'Warning' }, cuidado: { icon: 'warning', name: 'Warning' },
+  caution: { icon: 'stop', name: 'Caution' }, peligro: { icon: 'stop', name: 'Caution' },
+};
+const CALLOUT_KIND = { nota: 'note', consejo: 'tip', importante: 'important', advertencia: 'warning', cuidado: 'warning', peligro: 'caution' };
+function calloutBlock(kindRaw, body) {
+  const key = kindRaw.toLowerCase();
+  const kind = CALLOUT_KIND[key] ?? key;
+  const one = CALLOUTS[key] ?? CALLOUTS.note;
+  const box = el('div', `callout ${kind}`);
+  box.setAttribute('role', kind === 'warning' || kind === 'caution' ? 'alert' : 'note');
+  const title = el('div', 'callout-title');
+  const icon = el('span', 'callout-icon');
+  icon.innerHTML = trazo(one.icon); // trusted: our own drawing (icons.js)
+  title.append(icon, el('span', null, t(one.name)));
+  box.append(title, renderMarkdown(body.join('\n')));
+  return box;
+}
+
 export function renderMarkdown(text) {
   const fragment = document.createDocumentFragment();
+  // Where a list of tasks keeps what was ticked: the text it was written in, so the same answer opens
+  // with the same ticks and another answer starts clean.
+  let seed = null;
+  const taskSeed = () => (seed ??= textSeed(text));
   const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
   let index = 0;
   let paragraph = [];
@@ -4188,7 +4333,7 @@ export function renderMarkdown(text) {
 
   while (index < lines.length) {
     const line = lines[index];
-    const fence = line.match(/^\s*```\s*([\w+-]*)\s*$/);
+    const fence = line.match(/^\s*```\s*([\w+-]*)(?:[:\s]+(.+?))?\s*$/);
     if (fence) {
       flushParagraph();
       const body = [];
@@ -4197,7 +4342,7 @@ export function renderMarkdown(text) {
       index += 1;
       // In the room of Salas, BISHOP's block of orders becomes its own card under the reply.
       if (fence[1]?.toLowerCase() === 'pulse-salas' && state.salas) continue;
-      fragment.append(fence[1]?.toLowerCase() === 'pulse' ? planCard(body) : codeBlock(body, fence[1]));
+      fragment.append(fence[1]?.toLowerCase() === 'pulse' ? planCard(body) : codeBlock(body, fence[1], fence[2]));
       continue;
     }
     if (!line.trim()) { flushParagraph(); index += 1; continue; }
@@ -4262,8 +4407,9 @@ export function renderMarkdown(text) {
           }
           break;
         }
-        const li = linkCard(item[1]) ?? el('li');
-        if (!li.classList.contains('link-card')) renderInline(item[1], li);
+        const task = item[1].match(/^\[([ xX])\]\s+(.*)$/);
+        const li = task ? taskItem(task[1] !== ' ', task[2], `${taskSeed()}:${list.children.length}`) : (linkCard(item[1]) ?? el('li'));
+        if (!task && !li.classList.contains('link-card')) renderInline(item[1], li);
         list.append(li);
         index += 1;
       }
@@ -4275,15 +4421,19 @@ export function renderMarkdown(text) {
           if (top && !top.querySelector('.lc-n')) top.prepend(el('span', 'lc-n', String(Number(list.start || 1) + at)));
         });
       }
+      if ([...list.children].some((one) => one.classList?.contains('task'))) { list.classList.add('tasks'); taskProgress(list); }
       if (!going) fragment.append(list);
       continue;
     }
     const quote = line.match(/^\s*>\s?(.*)$/);
     if (quote) {
       flushParagraph();
-      const block = el('blockquote');
       const body = [];
       while (index < lines.length && /^\s*>/.test(lines[index])) body.push(lines[index++].replace(/^\s*>\s?/, ''));
+      // «> [!WARNING]» and its kin are a notice with its colour (2026-11-14), the way GitHub reads them.
+      const notice = body[0]?.match(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|NOTA|CONSEJO|IMPORTANTE|ADVERTENCIA|CUIDADO|PELIGRO)\]\s*(.*)$/i);
+      if (notice) { fragment.append(calloutBlock(notice[1], [notice[2], ...body.slice(1)].filter((one, at) => at > 0 || one.trim()))); continue; }
+      const block = el('blockquote');
       renderInline(body.join(' '), block);
       fragment.append(block);
       continue;

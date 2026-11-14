@@ -1795,6 +1795,15 @@ export const ES = {
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
   // Answers with links (2026-11-14).
+  'Tip': 'Consejo',
+  'Warning': 'Cuidado',
+  'Caution': 'Peligro',
+  'Changes': 'Cambios',
+  'Terminal': 'Terminal',
+  'Open in Files': 'Abrir en Archivos',
+  'Show less': 'Ver menos',
+  'Show all ({n} lines)': 'Ver todo ({n} líneas)',
+  '{done} of {total} done': '{done} de {total} hechas',
   'Sort by this column': 'Ordenar por esta columna',
   '1 row': '1 fila',
   '{n} rows': '{n} filas',
