@@ -26,6 +26,7 @@
 import { appendFile, mkdir, open, stat, writeFile } from 'node:fs/promises';
 import { t } from './i18n.mjs';
 import { dirname } from 'node:path';
+import { askedByPerson } from './web-preview.mjs';
 
 export const KEEP = 200;                 // lines held for the screen
 export const MAX_BYTES = 512 * 1024;     // the file is trimmed to the last KEEP lines past this
@@ -210,6 +211,15 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // The cards of an answer's links (web-preview.mjs, 2026-11-14): any site, so no host here; the
+    // addresses come from the person's press, and classify() knows them by that.
+    id: 'web-page', host: null, to: 'the sites of the links in an answer',
+    what: 'A request for the page of each link an agent gave, and for its photo, to show them as cards. Only the address of that page; nothing about you, your project or the conversation.',
+    when: 'only when you press «Show photos» under an answer with links',
+    where: 'never without that press · the links still open in your browser without it',
+    inside: true,
+  },
+  {
     id: 'ollama', host: null, local: true, to: 'Ollama, on this computer',
     what: 'Memories to embed, exchanges to distil, and whatever you ask @madre. It goes to a port on this machine and stops there.',
     when: 'while Ollama is running',
@@ -268,6 +278,7 @@ export function classify(rawUrl, { reportHost = null } = {}) {
     // and a module's are both honest; they are not the same promise.
     return { id: one.id, to: one.to, local: false, ...(one.module ? { module: one.module } : {}) };
   }
+  if (askedByPerson(url.href)) return { id: 'web-page', to: host, local: false };
   return { id: 'unknown', to: host, local: false };
 }
 

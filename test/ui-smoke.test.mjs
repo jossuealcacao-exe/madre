@@ -207,6 +207,29 @@ test('the room UI boots against a real transcript without throwing', async () =>
     const cells = [];
     (function walk(node) { for (const child of node.children ?? []) { if (typeof child === 'string') continue; if (/^(td|th)$/i.test(child.tagName)) cells.push(child.textContent); walk(child); } })(tableNode);
     assert.deepEqual(cells, ['Claim', 'State', 'a | b', 'ok', 'c', 'd']);
+    // Answers with links (2026-11-14): a link in bold is a link, a numbered list keeps its numbers
+    // across blank lines, and a point that starts with a link is a card with its price and its site.
+    const find = (node, test) => { for (const child of node.children ?? []) { if (typeof child === 'string') continue; if (test(child)) return child; const deeper = find(child, test); if (deeper) return deeper; } return null; };
+    const bold = app.renderMarkdown('Mira **[la guía](https://example.org/guia)** hoy.');
+    const strong = find(bold, (node) => node.tagName === 'STRONG');
+    assert.equal(strong.textContent, 'la guía', 'the brackets and the address are not printed');
+    assert.equal(find(strong, (node) => node.tagName === 'A')?.href, 'https://example.org/guia');
+    const counted = app.renderMarkdown('1. uno\n\n2. dos\n\n3. tres');
+    const lists = counted.children.filter((node) => node.tagName === 'OL');
+    assert.equal(lists.length, 1, 'points split by blank lines are one list');
+    assert.equal(lists[0].children.length, 3);
+    assert.equal(app.renderMarkdown('1. a\n\n1. b\n\n1. c').children.filter((node) => node.tagName === 'OL')[0].children.length, 3, '«1. 1. 1.» is one list');
+    assert.equal(app.renderMarkdown('Texto\n\n4. cuatro').children.find((node) => node.tagName === 'OL').start, 4);
+    const cards = app.renderMarkdown('1. **[Chapalita · Privada de las Rosas](https://www.inmuebles24.com/propiedades/151174175.html)** — $16,500, 96 m², 1 estacionamiento.\n2. [Providencia](https://www.inmuebles24.com/p/2.html): $17,300 con mantenimiento.');
+    const ol = cards.children.find((node) => node.tagName === 'OL');
+    const card = ol.children[0];
+    assert.ok(card.classList.contains('link-card'));
+    assert.equal(card.dataset.url, 'https://www.inmuebles24.com/propiedades/151174175.html');
+    assert.equal(find(card, (node) => node.classList?.contains('lc-price'))?.textContent, '$16,500');
+    assert.equal(find(card, (node) => node.classList?.contains('lc-title'))?.textContent, 'Chapalita · Privada de las Rosas');
+    assert.match(find(card, (node) => node.classList?.contains('lc-site'))?.textContent, /^inmuebles24\.com/);
+    assert.equal(find(card, (node) => node.classList?.contains('lc-text'))?.textContent, '96 m², 1 estacionamiento.');
+    assert.equal(find(ol.children[1], (node) => node.classList?.contains('lc-price'))?.textContent, '$17,300');
     // A message BISHOP's channel brought reads as BISHOP's (or as the human's, from another room),
     // never with the header its agent reads; both header formats, and the order that left on its own.
     const pressed = app.relayedOf({ via: 'bishop', text: 'BISHOP › 1/2 · plan p-abcdef · from Salas, sent by the human. Answer in this room only; this turn cannot pass anything on to other rooms.\n\nResume el README.' });

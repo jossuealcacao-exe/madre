@@ -1794,6 +1794,17 @@ export const ES = {
     'El Ollama viejo ({running}) no se detuvo. Ciérralo a mano y dale «Encender Ollama».',
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
+  // Answers with links (2026-11-14).
+  'Show photo': 'Mostrar foto',
+  'Show photos ({n})': 'Mostrar fotos ({n})',
+  'MADRE asks each site for its photo only when you press here.': 'MADRE le pide su foto a cada sitio solo cuando presionas aquí.',
+  'Asking each site for its photo…': 'Pidiendo su foto a cada sitio…',
+  '{n} of {total} sites gave their photo; the others open in your browser.': '{n} de {total} sitios dieron su foto; los demás se abren en tu navegador.',
+  'These sites did not give their photos; they open in your browser.': 'Estos sitios no dieron sus fotos; se abren en tu navegador.',
+  'Sources': 'Fuentes',
+  'Asking {site} for it…': 'Pidiéndosela a {site}…',
+  '{site} did not give the picture. It opens in your browser.': '{site} no dio la imagen. Se abre en tu navegador.',
+  'No link to show.': 'No hay ningún enlace que mostrar.',
   'Preview is off. Enable it in MODULES to render files.': '«Vista previa» está apagada. Enciéndela en «Módulos» para mostrar archivos.',
   'No such report, or no repository to file it in.': 'No existe ese reporte, o no hay repositorio donde publicarlo.',
   'The project has no memory.': 'El proyecto no tiene memoria.',

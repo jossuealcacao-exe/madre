@@ -13887,3 +13887,43 @@ dialog.terms-gate .terms-lang { transition: opacity calc(600ms * var(--motion-sc
 .terms-prelude { position: fixed; left: 50%; top: 50%; z-index: 1; margin: 0; transform: translate(-50%, -50%); font: 600 clamp(17px, 2vw, 24px)/1.3 var(--read, inherit); letter-spacing: -.016em; color: var(--text); white-space: nowrap; pointer-events: none; opacity: 0; animation: terms-prelude calc(2300ms * var(--motion-scale, 1)) ease .35s both; }
 @keyframes terms-prelude { 0% { opacity: 0; filter: blur(4px); } 25%, 62% { opacity: 1; filter: none; } 100% { opacity: 0; filter: blur(3px); } }
 @media (prefers-reduced-motion: reduce) { .terms-prelude { display: none; } dialog.terms-gate.prelude .terms-card { transition: none; } }
+/* Answers with links (2026-11-14, the author chose the cards): a point that starts with a link is a
+   card — photo once asked for, title, price, what the agent said, the site — and the whole card
+   opens the page. With two links or more in the words, each has its number and the sites go
+   together at the foot. */
+#messages .bubble ol.link-cards, #messages .bubble ul.link-cards, .bubble .link-cards { display: grid; gap: 8px; margin: 10px 0; padding: 0; list-style: none; }
+.bubble .link-card { display: flex; gap: 12px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--text) 2.5%, transparent); box-shadow: 0 0 0 .5px var(--cs-line, var(--line)); cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
+.bubble .link-card:hover { background: color-mix(in srgb, var(--text) 5%, transparent); box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 22%, transparent); }
+.bubble .link-card::marker { content: none; }
+.bubble .lc-photo { flex: none; display: grid; place-items: center; width: 112px; height: 84px; overflow: hidden; border-radius: 10px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text-3); }
+.bubble .lc-photo svg { width: 22px; height: 22px; opacity: .7; }
+.bubble .lc-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bubble .link-card.asking .lc-photo { animation: lc-asking 1.1s ease-in-out infinite alternate; }
+@keyframes lc-asking { from { opacity: .45; } to { opacity: 1; } }
+.bubble .link-card.no-photo .lc-photo svg { opacity: .35; }
+.bubble .lc-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bubble .lc-top { display: flex; align-items: baseline; gap: 8px; }
+.bubble .lc-n { flex: none; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--phosphor); font: 600 11.5px/1 var(--read, var(--sans)); }
+.bubble a.lc-title { flex: 1 1 auto; min-width: 0; color: var(--text); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.bubble a.lc-title:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.bubble .lc-price { flex: none; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bubble .lc-text { color: var(--text-2); font-size: .94em; line-height: 1.5; }
+.bubble .lc-site { display: flex; align-items: center; gap: 6px; margin-top: auto; color: var(--text-3); font-size: 12px; }
+.bubble .lc-go { margin-left: auto; opacity: .7; }
+.bubble .lc-ask { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 10px; }
+.bubble .lc-show { height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text-2); font: 500 12.5px var(--read, var(--sans)); cursor: pointer; }
+.bubble .lc-show:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.bubble .lc-show:disabled { opacity: .7; cursor: progress; }
+.bubble .lc-note { color: var(--text-3); font-size: 12px; }
+.bubble a.src-n { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin: 0 1px 0 3px; padding: 0 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-2); font: 600 10.5px/1 var(--read, var(--sans)); text-decoration: none; vertical-align: 2px; }
+.bubble a.src-n:hover { background: color-mix(in srgb, var(--phosphor) 18%, transparent); color: var(--text); }
+.bubble .sources { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; padding-top: 10px; border-top: .5px solid var(--cs-line, var(--line)); }
+.bubble .sources-label { color: var(--text-3); font-size: 12px; margin-right: 2px; }
+.bubble a.src-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px 0 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text-2); font-size: 12px; text-decoration: none; }
+.bubble a.src-chip b { display: inline-grid; place-items: center; min-width: 16px; height: 16px; border-radius: 999px; background: color-mix(in srgb, var(--text) 9%, transparent); font-size: 10.5px; }
+.bubble a.src-chip:hover { background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); }
+button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inherit; cursor: pointer; }
+@media (max-width: 560px) {
+  .bubble .lc-photo { width: 84px; height: 72px; }
+  .bubble .lc-top { flex-wrap: wrap; row-gap: 2px; }
+}

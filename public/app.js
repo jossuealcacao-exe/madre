@@ -841,6 +841,20 @@ function imageSource(src) {
   return rel ? `/api/files?path=${encodeURIComponent(rel)}` : null;
 }
 
+// The site of an address as a person says it: «inmuebles24.com», not «https://www.inmuebles24.com/…».
+function siteOf(href) {
+  try { return new URL(href).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+// The photo and title of each link, asked of its site by MADRE when the person presses (server,
+// /api/web/preview). Never throws: what did not come back is simply not there.
+async function webPreviews(urls) {
+  try {
+    const response = await fetch('/api/web/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ urls }) });
+    const read = await response.json().catch(() => ({}));
+    return read.previews ?? {};
+  } catch { return {}; }
+}
+
 function renderInline(text, into) {
   const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(!\[[^\]\n]*\]\(([^)\s]+)\))|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))|((?<![\w/])!((?:[\w.-]+\/)*[\w.-]+\.[A-Za-z0-9]{1,8})(?::(\d+)(?:-(\d+))?)?(?![\w/]))|(\[([^\]\n]+)\]\(([^)\s]+)\))/g;
   let last = 0;
@@ -867,11 +881,22 @@ function renderInline(text, into) {
       } else if (SAFE_URL.test(match[5])) {
         let host = match[5];
         try { host = new URL(match[5]).host; } catch { /* the address as written */ }
-        const away = el('a', 'image-away', t('External image · {host}', { host }));
-        away.href = match[5];
-        away.target = '_blank';
-        away.rel = 'noopener noreferrer';
+        // A press brings it here (2026-11-14): MADRE asks that site for it, as with the photos of
+        // the cards; before, the press only opened the site.
+        const away = el('button', 'image-away', t('External image · {host}', { host }));
+        away.type = 'button';
         away.title = alt || match[5];
+        const address = match[5];
+        away.addEventListener('click', async () => {
+          away.disabled = true;
+          away.textContent = t('Asking {site} for it…', { site: host });
+          const got = (await webPreviews([address]))[address];
+          if (!got?.image) { away.disabled = false; away.textContent = t('External image · {host}', { host }); toast(t('{site} did not give the picture. It opens in your browser.', { site: host })); window.open(address, '_blank', 'noopener'); return; }
+          const img = el('img', 'inline');
+          img.src = got.image; img.alt = alt; img.title = host;
+          img.addEventListener('click', () => openViewer({ url: got.image, label: alt || host }));
+          away.replaceWith(img);
+        });
         into.append(away);
       } else into.append(el('code', null, match[5]));
     }
@@ -884,8 +909,10 @@ function renderInline(text, into) {
       ref.addEventListener('click', () => openViewer({ root: 'project', path: match[9], line: from, lines: from ? { from, to } : null }));
       into.append(ref);
     }
-    else if (match[2]) into.append(el('strong', null, token.slice(2, -2)));
-    else if (match[3]) into.append(el('em', null, token.slice(1, -1)));
+    // What is inside bold or italics is read too (2026-11-14, the author): «**[Chapalita](https://…)**»
+    // printed the brackets and the whole address in bold.
+    else if (match[2]) { const strong = el('strong'); renderInline(token.slice(2, -2), strong); into.append(strong); }
+    else if (match[3]) { const em = el('em'); renderInline(token.slice(1, -1), em); into.append(em); }
     else if (match[12]) {
       // A link to a file: the project's own opens in the viewer, at its line when it names one; a
       // link to somewhere else on this machine keeps its words and drops the address nobody can open.
@@ -900,12 +927,13 @@ function renderInline(text, into) {
       } else into.append(match[13]);
     }
     else if (match[6]) {
-      const anchor = el('a', null, token.slice(1, token.indexOf(']')));
+      const anchor = el('a', 'web-link', token.slice(1, token.indexOf(']')));
       const href = match[7];
       if (SAFE_URL.test(href)) {
         anchor.href = href;
         anchor.target = '_blank';
         anchor.rel = 'noopener noreferrer';
+        anchor.title = siteOf(href);
       }
       into.append(anchor);
     }
@@ -3932,6 +3960,113 @@ function planCard(lines) {
   return card;
 }
 
+// A point of a list that starts with a link is a card (2026-11-14, the author chose it): the photo
+// (once asked for), the title, the price when the point has one, what the agent said about it, and
+// the site it is on. The long address is never seen; the whole card opens it.
+const CARD_POINT = /^\s*(?:\*\*)?\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)(?:\*\*)?\s*(?:[—–:|-]+\s*)?(.*)$/;
+const PRICE = /(?:US\$|MX\$|\$|€|£)\s?\d(?:[\d,.]*\d)?(?:\s?(?:MXN|USD|EUR|mil|k))?(?:\s?(?:al mes|\/mes|por mes|a month|\/mo))?/i;
+function linkCard(raw) {
+  const point = String(raw ?? '').match(CARD_POINT);
+  if (!point) return null;
+  const [, title, href] = point;
+  let rest = point[3] ?? '';
+  // A picture the agent put in the point is the card's photo, still asked for before it is shown.
+  const picture = rest.match(/!\[[^\]\n]*\]\((https?:\/\/[^)\s]+)\)/);
+  if (picture) rest = rest.replace(picture[0], '').trim();
+  const price = rest.match(PRICE)?.[0] ?? null;
+  if (price) {
+    rest = rest.replace(price, '').replace(/^\s*\**\s*\**[,;:—–-]?\s*/, '').replace(/\s+([,.;])/g, '$1').replace(/\(\s*\)/g, '').trim();
+    // What is left starts a sentence: «con mantenimiento…» reads «Con mantenimiento…».
+    rest = rest.charAt(0).toLocaleUpperCase() + rest.slice(1);
+  }
+  const card = el('li', 'link-card');
+  card.dataset.url = href;
+  if (picture) card.dataset.photo = picture[1];
+  const photo = el('div', 'lc-photo');
+  photo.innerHTML = trazo('image'); // trusted: our own drawing (icons.js)
+  const main = el('div', 'lc-body');
+  const top = el('div', 'lc-top');
+  const name = el('a', 'lc-title web-link');
+  renderInline(title, name);
+  name.href = href; name.target = '_blank'; name.rel = 'noopener noreferrer';
+  top.append(name);
+  if (price) top.append(el('span', 'lc-price', price.replace(/\*/g, '')));
+  main.append(top);
+  if (rest) { const said = el('div', 'lc-text'); renderInline(rest, said); main.append(said); }
+  const foot = el('div', 'lc-site', siteOf(href));
+  foot.append(el('span', 'lc-go', '↗'));
+  main.append(foot);
+  card.append(photo, main);
+  // The whole card opens the page, unless what was pressed is a link or a key of its own.
+  card.addEventListener('click', (event) => {
+    if (event.target.closest('a, button')) return;
+    window.open(href, '_blank', 'noopener');
+  });
+  return card;
+}
+
+// Under an answer with cards: one press asks each site for its photo (nothing is fetched before).
+function cardPhotos(bubble) {
+  const cards = [...bubble.querySelectorAll('.link-card')];
+  if (!cards.length) return null;
+  const bar = el('div', 'lc-ask');
+  const ask = el('button', 'lc-show', cards.length === 1 ? t('Show photo') : t('Show photos ({n})', { n: cards.length }));
+  ask.type = 'button';
+  ask.title = t('MADRE asks each site for its photo only when you press here.');
+  bar.append(ask);
+  ask.addEventListener('click', async () => {
+    ask.disabled = true;
+    ask.textContent = t('Asking each site for its photo…');
+    for (const card of cards) card.classList.add('asking');
+    const wanted = cards.map((card) => card.dataset.photo || card.dataset.url);
+    const got = await webPreviews([...new Set(wanted)]);
+    let shown = 0;
+    cards.forEach((card, at) => {
+      card.classList.remove('asking');
+      const one = got[wanted[at]];
+      const holder = card.querySelector('.lc-photo');
+      if (one?.image && holder) {
+        const img = el('img');
+        img.src = one.image; img.alt = card.querySelector('.lc-title')?.textContent ?? ''; img.loading = 'lazy';
+        holder.replaceChildren(img);
+        holder.classList.add('has');
+        shown += 1;
+      } else card.classList.add('no-photo');
+    });
+    if (shown === cards.length) bar.remove();
+    else {
+      ask.remove();
+      bar.append(el('span', 'lc-note', shown ? t('{n} of {total} sites gave their photo; the others open in your browser.', { n: shown, total: cards.length }) : t('These sites did not give their photos; they open in your browser.')));
+    }
+  });
+  return bar;
+}
+
+// The sources of an answer (2026-11-14): with two links or more in its words, each gets its number
+// and the sites go together at the foot, so the text reads as text. Cards are their own source.
+function numberSources(bubble) {
+  const links = [...bubble.querySelectorAll('a.web-link[href]')].filter((one) => !one.closest('.link-card, .bubble-foot, .sources'));
+  const order = [...new Set(links.map((one) => one.href))];
+  if (order.length < 2) return null;
+  for (const one of links) {
+    const n = order.indexOf(one.href) + 1;
+    const mark = el('a', 'src-n', String(n));
+    mark.href = one.href; mark.target = '_blank'; mark.rel = 'noopener noreferrer';
+    mark.title = siteOf(one.href);
+    if (typeof one.after === 'function') one.after(mark);
+  }
+  const foot = el('div', 'sources');
+  foot.append(el('span', 'sources-label', t('Sources')));
+  order.forEach((href, at) => {
+    const chip = el('a', 'src-chip');
+    chip.href = href; chip.target = '_blank'; chip.rel = 'noopener noreferrer';
+    chip.title = links.find((one) => one.href === href)?.textContent ?? href;
+    chip.append(el('b', null, String(at + 1)), siteOf(href));
+    foot.append(chip);
+  });
+  return foot;
+}
+
 export function renderMarkdown(text) {
   const fragment = document.createDocumentFragment();
   const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
@@ -4010,28 +4145,47 @@ export function renderMarkdown(text) {
     }
 
     const bullet = line.match(/^\s*[-*+]\s+(.*)$/);
-    const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    const numbered = line.match(/^\s*(\d+)[.)]\s+(.*)$/);
     if (bullet || numbered) {
       flushParagraph();
-      const list = el(bullet ? 'ul' : 'ol');
+      // A numbered list keeps its numbers (2026-11-14, the author: every point read «1.»): points an
+      // agent separates with blank lines are one list, counted as markdown counts them (from the first
+      // number, whatever the others say — «1. 1. 1.» reads 1, 2, 3), and one that starts at 3 starts at 3.
+      const first = numbered ? Number(numbered[1]) : null;
+      const before = fragment.lastChild;
+      const going = numbered && before?.tagName === 'OL';
+      const list = going ? before : el(bullet ? 'ul' : 'ol');
+      if (numbered && !going && first > 1) list.start = first;
       const test = bullet ? /^\s*[-*+]\s+(.*)$/ : /^\s*\d+[.)]\s+(.*)$/;
       while (index < lines.length) {
         const item = lines[index].match(test);
         if (!item) {
           if (lines[index].trim() && /^\s{2,}/.test(lines[index]) && list.lastChild) {
-            list.lastChild.append(' ');
-            renderInline(lines[index].trim(), list.lastChild);
+            let into = list.lastChild;
+            if (into.classList?.contains('link-card')) {
+              into = into.querySelector('.lc-text') ?? (() => { const said = el('div', 'lc-text'); list.lastChild.querySelector('.lc-site')?.before(said); return said; })();
+            }
+            into.append(' ');
+            renderInline(lines[index].trim(), into);
             index += 1;
             continue;
           }
           break;
         }
-        const li = el('li');
-        renderInline(item[1], li);
+        const li = linkCard(item[1]) ?? el('li');
+        if (!li.classList.contains('link-card')) renderInline(item[1], li);
         list.append(li);
         index += 1;
       }
-      fragment.append(list);
+      if ([...list.children].some((one) => one.classList?.contains('link-card'))) {
+        list.classList.add('link-cards');
+        // A numbered list of cards keeps its numbers on the cards: the list's own marks are hidden.
+        if (list.tagName === 'OL') [...list.children].forEach((one, at) => {
+          const top = one.querySelector?.('.lc-top');
+          if (top && !top.querySelector('.lc-n')) top.prepend(el('span', 'lc-n', String(Number(list.start || 1) + at)));
+        });
+      }
+      if (!going) fragment.append(list);
       continue;
     }
     const quote = line.match(/^\s*>\s?(.*)$/);
@@ -6134,6 +6288,12 @@ function renderAssistantMessage(event) {
   }
   const bubble = el('div', 'bubble');
   bubble.append(renderMarkdown(shown));
+  // «Show photos» right under the cards it is for, not after the words that follow them.
+  const photos = cardPhotos(bubble);
+  const lastCards = [...bubble.querySelectorAll('.link-cards')].at(-1);
+  if (photos && typeof lastCards?.after === 'function') lastCards.after(photos); else if (photos) bubble.append(photos);
+  const sources = numberSources(bubble);
+  if (sources) bubble.append(sources);
   // Written as the human's copilot: a green round robot on the agent's own circle.
   if (event.payload.copilot) {
     node.classList.add('copilot');

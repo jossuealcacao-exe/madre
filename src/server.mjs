@@ -33,6 +33,7 @@ import { updateBuiltins } from './builtin-updates.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, forgetCorpus, keepCorpus, keptCorpus, pruneCorpora, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
+import { webPreview } from './web-preview.mjs';
 import { Telemetry, telemetryOn } from './telemetry.mjs';
 import { hostFacts, inRoomLanguage, language as roomLanguage, say, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
@@ -4339,6 +4340,15 @@ export async function createPulseServer({
         } catch (error) {
           return sendJson(response, 200, { framable: true, status: null, unreachable: true });
         }
+      }
+      // The photo and title of a link an agent gave, only when the person pressed «Show photos»
+      // (web-preview.mjs): a page on the internet, never one on this computer or its network.
+      if (request.method === 'POST' && url.pathname === '/api/web/preview') {
+        const asked = await body(request);
+        const links = (Array.isArray(asked?.urls) ? asked.urls : [asked?.url]).filter((one) => typeof one === 'string' && /^https?:\/\//i.test(one)).slice(0, 12);
+        if (!links.length) return sendJson(response, 400, { error: t('No link to show.') });
+        const previews = await Promise.all(links.map((one) => webPreview(one)));
+        return sendJson(response, 200, { previews: Object.fromEntries(links.map((one, index) => [one, previews[index]])) });
       }
       if (request.method === 'GET' && url.pathname === '/api/ports') {
         if (!(await ripleyOn())) return sendJson(response, 412, { error: t('Preview is off. Enable it in MODULES to render files.') });
