@@ -10,6 +10,7 @@ import { formatConversationContext } from '../conversation-context.mjs';
 import { formatRecall, formatMemories } from '../memory.mjs';
 import { leaseInstructions } from '../lease.mjs';
 import { formatSkills } from '../skills.mjs';
+import { CHANGES_MARK } from './changes.mjs';
 
 // The names of the blocks a prompt is made of, in the order an agent reads them. Naming them is
 // what lets the room measure what each one costs, and later decide which of them a given turn
@@ -38,6 +39,7 @@ export const BLOCK_SOURCES = {
   bishop: { when: 'BISHOP is on in Salas and this is its chosen agent', where: 'MODULES → BISHOP' },
   sdk: { when: 'the message asks for a module and the turn may create files', where: null },
   lease: { when: 'the turn is #2 or higher and this agent may write', where: 'Settings › Permissions for the agent\'s max mode · Settings › Agents for its abilities' },
+  changes: { when: 'the turn is #2 or higher and this agent may write', where: null },
   copilot: { when: 'the human turned the copilot on and wrote to this agent at #3', where: 'the robot beside mode · model · effort' },
   'control-held': { when: 'another agent holds CONTROL while this one works', where: null },
   escalation: { when: 'a plan step asked for permission and was refused or ran out of time', where: null },
@@ -57,7 +59,7 @@ export const BLOCK_SOURCES = {
   ask: { when: 'the human is the one asking', where: null },
 };
 
-export const PROMPT_BLOCKS = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'skills', 'skill-sdk', 'ash', 'mother', 'mcp', 'bishop', 'sdk', 'lease', 'copilot', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'linked', 'context', 'delegation', 'choices', 'runs', 'abilities', 'attachments', 'references', 'returned', 'ask'];
+export const PROMPT_BLOCKS = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'skills', 'skill-sdk', 'ash', 'mother', 'mcp', 'bishop', 'sdk', 'lease', 'changes', 'copilot', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'linked', 'context', 'delegation', 'choices', 'runs', 'abilities', 'attachments', 'references', 'returned', 'ask'];
 
 // Whether this turn could plausibly produce a MADRE module. The SDK block is long and is only
 // ever of use when the human is asking for one, so it is not carried by every leased turn. The
@@ -156,6 +158,9 @@ export function promptParts({
     { id: 'bishop', text: bishop },
     { id: 'sdk', text: lease && sdk && wantsModule(text) ? `Building a MADRE module: MADRE is modular and the human may ask you for a module (a slash command, a tool for the agents, an integration). Read the SDK guide at ${sdk.guide} and the complete example at ${sdk.example}. If it talks to a service outside this machine, read ${sdk.connector} too: a connector is ONE file that is both the module and the MCP server it spawns, and that shape is not guessable. Then write ONE file named <id>.module.mjs (default export a plain spec object) in ${lease.scratchDir ? `${lease.outDir}/${lease.scratchDir}` : lease.outDir}. Do not touch ~/.pulse/modules or .madre/modules: MADRE shows the human an INSTALL card and they decide. An installed module runs in a restricted process and a tool server must use that same file, so keep it small and honest about what it reaches. Never hardcode a credential or invent somewhere to keep one: declare 'secrets' and read them back with ctx.vault, which is where MADRE keeps them and the only place that is safe. Give it its own icon, as part of the module: 'icon: { svg, color }', a simple drawing of what it does (lines or shapes, any grid) and a #rrggbb color; MADRE fits it to its tile and draws it in one color, so keep it to one clear idea.` : null },
     { id: 'lease', text: lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: scopesFor(agent.id), imageStudio, control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock), scratchDir: lease.scratchDir ?? null }) : null },
+    // «What changed» (2026-11-11): one line MADRE takes out of the reply and shows as a card under
+    // it, for someone who does not program (src/room/changes.mjs).
+    { id: 'changes', text: lease ? `If you created, changed or deleted files of the project in this turn, end your reply with one line of its own: "${CHANGES_MARK}: <what changed>", one or two short sentences in the human's language, in the first person, saying what they will notice rather than file names or code, like "${CHANGES_MARK}: Changed the color of your page and added a button to delete tasks." Say only what you really did. MADRE shows that line as a card under your reply and hides it from the text. If you changed nothing, leave it out. If your reply ends with a fenced block, put the line just before it.` : null },
     { id: 'copilot', text: copilot },
     { id: 'control-held', text: !lease?.control && controlHolder && controlHolder !== agent.id ? `Heads-up: @${controlHolder} currently holds CONTROL and may be changing project files while you work; cite the state you actually read.` : null },
     { id: 'escalation', text: escalation ? `The human was asked to allow file creation for this step and ${escalation === 'timeout' ? 'did not answer in time' : escalation === 'stopped' ? 'stopped the plan' : 'declined'}. Answer read-only: say plainly what you would have created and what it would contain, without creating it.` : null },

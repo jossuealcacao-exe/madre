@@ -24,6 +24,7 @@ import { questionsFor } from './asking.mjs';
 import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE, saysFor } from './exam.mjs';
 import { MADRE_ADAPTER, MADRE_AGENT_ID } from './adapters/madre.mjs';
 import { ControlDesk } from './room/control.mjs';
+import { takeChangeSummary, turnChanges } from './room/changes.mjs';
 import { RunDesk } from './room/runs.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
@@ -2036,6 +2037,10 @@ export class Room {
       // the archivist or any other agent can see it. The reply says how many, not which.
       const guarded = this.#privacy?.redact(result.text ?? '') ?? { text: result.text, hits: 0 };
       if (guarded.hits) result.text = guarded.text;
+      // «What changed»: the closing line a writing turn was asked for leaves the reply here, before
+      // anything reads it (the plan parser, the buttons, the archivist), and travels beside it.
+      const toldChanges = takeChangeSummary(result.text);
+      if (toldChanges.text !== String(result.text ?? '')) result.text = toldChanges.text;
       // CREATE: what appeared stays and is shown; what existed before is put back and said.
       const createChanges = createRun ? await this.#controlDesk.settleOrSay(createRun) : null;
       // Images an agent's own tool made outside the project (Codex keeps them under its home) come
@@ -2116,6 +2121,9 @@ export class Room {
         copilot: asCopilot && controlRun ? true : undefined,
         leaseId: lease?.leaseId,
         artifacts: artifacts.length ? artifacts : undefined,
+        // What the turn changed, said for the card under the reply: its restore point, and the
+        // agent's own sentence when nothing it did was put back (src/room/changes.mjs).
+        changes: turnChanges({ summary: toldChanges.summary, created: artifacts, create: createChanges, control: controlChanges }) ?? undefined,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
         // Who helped, from the CLI's own subagents: folded under the answer («Helped by…»).
         subagents: keepHelpers(result.subagents),
