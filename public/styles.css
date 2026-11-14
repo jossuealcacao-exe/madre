@@ -14633,3 +14633,24 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
 .ports-turn-on .ports-why { margin: 0; font: 12.5px/1.5 var(--read, var(--sans)); color: var(--text-2); }
 .ports-turn-on .ports-on { justify-self: start; height: 32px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--phosphor); color: var(--phosphor-ink, #fff); font: 600 13px var(--read, var(--sans)); cursor: pointer; }
 .ports-turn-on .ports-on:disabled { opacity: .7; cursor: progress; }
+/* Images · with what it draws (2026-11-14): what the person already has, ready to choose, and what
+   they do not, with its steps and a field to paste the key. Built on the sheet's own rows. */
+/* A model's name and its few words can be longer than the sheet is wide: the list shrinks with it
+   and cuts the words, never the sheet. */
+.img-sources .sx-row .sx-control { min-width: 0; }
+.img-sources .img-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.img-sources select.img-model { flex: 1 1 180px; width: auto; min-width: 0; max-width: 300px; text-overflow: ellipsis; }
+.img-sources .img-current { background: color-mix(in srgb, var(--phosphor) 5%, transparent); }
+.img-sources .img-current > .sx-words b { color: var(--phosphor); }
+.img-connect .img-offer { padding-bottom: 6px; }
+.img-connect .img-how { display: grid; gap: 10px; padding: 0 16px 14px; }
+.img-connect .img-steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.img-connect .img-steps li::marker { color: color-mix(in srgb, var(--text) 45%, transparent); font-variant-numeric: tabular-nums; }
+.img-connect .img-paste { display: flex; gap: 8px; align-items: center; }
+.img-connect .img-paste .sx-input { flex: 1; width: auto; }
+.img-connect .img-paste .sx-btn { flex: none; }
+@media (max-width: 560px) {
+  .img-sources .sx-row .sx-control { flex: 1 1 100%; }
+  .img-sources .img-controls { justify-content: flex-start; }
+  .img-sources select.img-model { flex-basis: 100%; max-width: 100%; }
+}

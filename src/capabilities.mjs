@@ -86,11 +86,13 @@ export function setAgentsViaApi(agents = []) {
 }
 
 // MADRE modules can add abilities a CLI lacks. Image Studio (MADRE's own MCP
-// image server on the Gemini API) gives Gemini CLI, Claude Code and OpenCode
-// image generation; Codex keeps its native one.
+// image server on the image model chosen in MODULES › Images: Gemini, OpenAI or
+// Grok) gives Gemini CLI, Claude Code and OpenCode image generation; Codex and
+// Grok keep their native one. `stateRoot` and `home` are where its server looks
+// for the key (2026-11-14): paths, never a key.
 let imageModule = { enabled: false };
 export function setImageModule(state) {
-  imageModule = { enabled: Boolean(state?.enabled), model: state?.model ?? null };
+  imageModule = { enabled: Boolean(state?.enabled), model: state?.model ?? null, stateRoot: state?.stateRoot ?? null, home: state?.home ?? null };
 }
 export const imageModuleState = () => ({ ...imageModule });
 
@@ -98,7 +100,7 @@ export const capabilityOf = (agentId) => {
   if (viaApi.has(agentId)) return API_ONLY;
   const base = CAPABILITIES[agentId] ?? { read: true, imageIn: false, write: false, imageGen: false, web: false };
   if (!base.imageGen && imageModule.enabled && ['gemini', 'claude', 'opencode'].includes(agentId)) {
-    return { ...base, imageGen: { how: 'MADRE Image Studio (MCP tool generate_image, Gemini API)', note: `Attached only inside a creation lease with the image scope on${imageModule.model ? ` · model ${imageModule.model}` : ''}.`, module: 'image-studio' } };
+    return { ...base, imageGen: { how: 'MADRE Image Studio (MCP tool generate_image, the model chosen in Modules › Images)', note: `Attached only inside a creation lease with the image scope on${imageModule.model ? ` · model ${imageModule.model}` : ''}.`, module: 'image-studio' } };
   }
   return base;
 };

@@ -122,6 +122,7 @@ import { summarizeHistory } from './history.mjs';
 import { migrateOpenCodeHealth, noteOpenCodeTurn, openCodeHealth, suggestOpenCodeModel } from './opencode-health.mjs';
 import { normalizeMode, setAgentsViaApi, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
+import { findImageSources } from './modules/image-providers.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { listDirectory, searchFiles, readServable, storeAttachment, keepAttachment, attachmentPlaceRefused, ATTACHMENT_REFUSED, resolveInside, createEmptyFile, writeEdited, MAX_ATTACHMENT_BYTES, MAX_EDIT_BYTES } from './files.mjs';
 import { planFileOp, freeCopyPath, needsDesignationOnDisk, CREATIONS } from './file-ops.mjs';
@@ -294,6 +295,8 @@ export async function createPulseServer({
   credentialHome = homedir(),
   probe = probeAll,
   imageKey = resolveGeminiKey,
+  // Where Images finds each provider's key (src/modules/image-providers.mjs); null reads this computer.
+  imageSources = null,
   // The sentinel's outbound channel; tests hand in a fake.
   reportFetch = globalThis.fetch,
   // The Market's catalog and module files from madre.run (src/market-remote.mjs); tests hand in a
@@ -2219,7 +2222,9 @@ export async function createPulseServer({
   // before every message, so a switch moved in Home reaches a project that is already open.
   function applyModuleSwitches(target, config) {
     // Images, Options and Commands have no switch (2026-11-06): always on, whatever an old config says.
-    setImageModule({ ...settingsIn(config.modules?.imageStudio ?? {}, scopeRoom), enabled: true });
+    // Where its server looks for the key: MADRE's own folder (a key pasted in Images) and the home
+    // where each CLI keeps its own.
+    setImageModule({ ...settingsIn(config.modules?.imageStudio ?? {}, scopeRoom), enabled: true, stateRoot: root, home: credentialHome });
     target.setAsh(moduleOnHere(config, 'ash'));
     target.setChoices(true);
     target.setRuns(true);
@@ -2323,6 +2328,10 @@ export async function createPulseServer({
         },
         imageKey,
         setImageModule,
+        // Images (2026-11-14): where each provider's key was found — never the key — and the home
+        // a CLI keeps its own in. Tests hand in their own sources.
+        imageSources: imageSources ?? (() => findImageSources({ env: process.env, home: credentialHome, stateRoot: root })),
+        imageHome: credentialHome,
         // Intenciones keeps its measurements beside the project's room, reads the open
         // conversation, and asks agents through the same bench EYECAT and the archivist draw on.
         intents: {

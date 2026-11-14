@@ -1956,7 +1956,7 @@ export class Room {
     const native = Boolean(CAPABILITIES[agent.id]?.imageGen);
     const studio = imageModuleState();
     const imageStudio = lease?.scopes?.imageGen && enabled.imageGen && !native && studio.enabled
-      ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : lease.outDir })
+      ? imageStudioFor({ enabled: true, model: studio.model, stateRoot: studio.stateRoot, home: studio.home, outDir: lease.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : lease.outDir })
       : null;
     // The turn's effective mode: #0 for ghosts, #3 in control, #2 only while it holds a lease.
     const turnMode = mode === 0 ? 0 : controlRun ? controlRun.mode : lease ? 2 : 1;
