@@ -23,7 +23,8 @@ export const TERMS_LINKS = {
 // not the source code's. The MADRE on GitHub and npm keeps the Business Source License, unchanged. A
 // text of its own is a version of its own: whoever accepted the source's in a browser is asked again
 // the first time MADRE opens inside the app, and the other way round.
-export const APP_TERMS_VERSION = 'app-2026-11-11';
+// 2026-11-13: the personal license (free for a person, not for organizations; ~/madre-app/LICENCIA-DE-USO.md).
+export const APP_TERMS_VERSION = 'app-2026-11-13';
 export const APP_TERMS_LINKS = {
   license: { es: 'https://madre.run/app/licencia/', en: 'https://madre.run/en/app/license/' },
   privacy: TERMS_LINKS.privacy,
