@@ -13904,6 +13904,9 @@ if (!SPLIT_CHAT && browser.dialog) {
   windowEdgesFor(node, { active: browserFloating, box: () => browserWindow.box, place: placeBrowserWindow, done: rememberBrowserWindow, minW: BROWSER_MIN_W, minH: BROWSER_MIN_H });
   node.addEventListener('pointerdown', () => { if (browserFloating()) bringWindowForward(node); });
   if (head) carryWindowBy(head, node, { active: browserFloating, box: () => browserWindow.box, place: placeBrowserWindow, done: rememberBrowserWindow });
+  // The tabs' line carries it too (2026-11-14, the author): in the app it is the window's top line and
+  // the address fills the bar under it, so the head alone left nothing to take the window by.
+  if (browser.tabsBar) carryWindowBy(browser.tabsBar, node, { active: browserFloating, box: () => browserWindow.box, place: placeBrowserWindow, done: rememberBrowserWindow });
   window.addEventListener?.('resize', () => { if (browserFloating() && browserWindow.box) placeBrowserWindow(browserWindow.box); });
 }
 

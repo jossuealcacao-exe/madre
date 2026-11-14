@@ -657,8 +657,8 @@ export const CONDITIONS = [
     severity: 'informational',
     title: 'Web access for an agent',
     match: /scope-[a-z]+-web/,
-    diagnosis: 'Every CLI can browse: Codex with --search, Claude Code with WebFetch/WebSearch, Gemini with google_web_search/web_fetch, OpenCode with webfetch/websearch. MADRE keeps it off until you enable it per agent.',
-    remedy: 'Switch on Web access for that agent in Settings → Agents; it saves at once. It applies to every turn of that agent; content fetched is sent to its provider.',
+    diagnosis: 'Every CLI can browse: Codex with --search, Claude Code with WebFetch/WebSearch, Gemini with google_web_search/web_fetch, OpenCode with webfetch/websearch. MADRE has it on for every agent; you can turn it off per agent.',
+    remedy: 'To turn it off, switch off Web access for that agent in Settings → Agents; it saves at once. It applies to every turn of that agent; content fetched is sent to its provider.',
     fixes: same(['# Settings → Agents → the agent → Web access']),
   },
   {

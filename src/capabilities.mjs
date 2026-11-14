@@ -19,21 +19,21 @@ export const CAPABILITIES = {
     imageIn: { how: '-i <file>', note: 'Images attach to the prompt directly.' },
     write: { how: '-C <outdir> --sandbox workspace-write', note: 'Reads the whole project, writes only inside the lease directory.' },
     imageGen: { how: 'features.image_generation (stable, enabled)', note: 'Generated with the ChatGPT account; saved into the lease directory.' },
-    web: { how: '--search (live web_search tool)', note: 'Off until turned on in Settings › Agents › Web access.' },
+    web: { how: '--search (live web_search tool)', note: 'On by default; turned off per agent in Settings › Agents › Web access.' },
   },
   claude: {
     read: true,
     imageIn: { how: 'Read tool on the attachment path', note: 'The attachments folder is added with --add-dir.' },
     write: { how: '--tools Write,Edit + permission rules', note: 'Write/Edit allowed only under the lease directory.' },
     imageGen: false,
-    web: { how: '--tools WebFetch,WebSearch', note: 'Off until turned on in Settings › Agents › Web access.' },
+    web: { how: '--tools WebFetch,WebSearch', note: 'On by default; turned off per agent in Settings › Agents › Web access.' },
   },
   gemini: {
     read: true,
     imageIn: { how: 'read_file on the attachment path', note: 'The attachments folder is added with --include-directories.' },
     write: { how: 'policy: allow write_file/edit with argsPattern', note: 'Paths outside the lease directory stay denied.' },
     imageGen: false,
-    web: { how: 'policy: allow google_web_search, web_fetch', note: 'Off until turned on in Settings › Agents › Web access.' },
+    web: { how: 'policy: allow google_web_search, web_fetch', note: 'On by default; turned off per agent in Settings › Agents › Web access.' },
   },
   // Cursor reads in its own ask mode and, from 2026-10-21, writes and runs commands at the modes
   // that allow it (adapters/cursor.mjs). Attachments are named in the briefing.
@@ -45,7 +45,7 @@ export const CAPABILITIES = {
     // Its own WebSearch and WebFetch (2026-11-10, tried against the real CLI): in print mode they wait
     // for an approval nobody gives, so a reading turn with the web on runs ask mode with --force, while
     // the turn's configuration still denies every command and every write (nothing was written or run).
-    web: { how: '--mode ask --force, Shell(*) and Write(**) denied', note: 'Off until turned on in Settings › Agents › Web access.' },
+    web: { how: '--mode ask --force, Shell(*) and Write(**) denied', note: 'On by default; turned off per agent in Settings › Agents › Web access.' },
   },
   // Grok (adapters/grok.mjs, 2026-11-06): reads, and from the same day writes at #2 and #3 and runs
   // commands at #4, each mode tried against the real CLI first. Attachments are named in the briefing.
@@ -57,14 +57,14 @@ export const CAPABILITIES = {
     // draft folder at #2 and into imagenes/ at #3 and #4 (src/lease.mjs, grokImagesDir).
     imageGen: { how: 'image_gen, copied by MADRE into the project', note: 'Generated with the Grok account; MADRE copies each image into the draft folder at #2 and into imagenes/ at #3 and #4.' },
     // Its own search and page reader (2026-11-07): off until Web access is turned on for it.
-    web: { how: '--tools …,web_search,web_fetch', note: 'Off until turned on in Settings › Agents › Web access.' },
+    web: { how: '--tools …,web_search,web_fetch', note: 'On by default; turned off per agent in Settings › Agents › Web access.' },
   },
   opencode: {
     read: true,
     imageIn: { how: '-f <file>', note: 'Files attach to the message.' },
     write: { how: 'permission.edit patterns', note: 'Edit allowed only under the lease directory.' },
     imageGen: false,
-    web: { how: 'permission.webfetch / websearch = allow', note: 'Off until turned on in Settings › Agents › Web access.' },
+    web: { how: 'permission.webfetch / websearch = allow', note: 'On by default; turned off per agent in Settings › Agents › Web access.' },
   },
 };
 
@@ -146,7 +146,8 @@ export function resolveScopes(agentId, configured = {}) {
   const scopes = {};
   for (const scope of SCOPES) {
     const capable = Boolean(caps[scope]);
-    const wanted = configured[scope] ?? (scope !== 'web');
+    // Web access is on unless the person turns it off in Settings › Agents (2026-11-14, the author).
+    const wanted = configured[scope] ?? true;
     scopes[scope] = { capable, enabled: capable && wanted, wired: true };
   }
   // One ceiling per agent: MAX MODE. Writing follows from it: an agent capped at #1 never

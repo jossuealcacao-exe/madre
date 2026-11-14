@@ -1959,10 +1959,10 @@ export const ES = {
     'Enciende Imágenes en Módulos, activa Generar imágenes para OpenCode en Ajustes → Agentes y usa «Crear». O mándale ese paso a @codex.',
 
   'Web access for an agent': "Dejar que una IA busque en internet",
-  'Every CLI can browse: Codex with --search, Claude Code with WebFetch/WebSearch, Gemini with google_web_search/web_fetch, OpenCode with webfetch/websearch. MADRE keeps it off until you enable it per agent.':
-    'Todas las apps de los agentes pueden navegar: Codex con --search, Claude Code con WebFetch/WebSearch, Gemini con google_web_search/web_fetch, OpenCode con webfetch/websearch. MADRE lo deja apagado hasta que tú lo enciendas para cada agente.',
-  "Switch on Web access for that agent in Settings → Agents; it saves at once. It applies to every turn of that agent; content fetched is sent to its provider.":
-    'Activa Acceso a la web para ese agente en Ajustes → Agentes; se guarda al instante. Aplica a todas sus respuestas; lo que traiga de la web se envía a su proveedor.',
+  'Every CLI can browse: Codex with --search, Claude Code with WebFetch/WebSearch, Gemini with google_web_search/web_fetch, OpenCode with webfetch/websearch. MADRE has it on for every agent; you can turn it off per agent.':
+    'Todas las apps de los agentes pueden navegar: Codex con --search, Claude Code con WebFetch/WebSearch, Gemini con google_web_search/web_fetch, OpenCode con webfetch/websearch. MADRE lo deja encendido para todos los agentes; puedes apagarlo para cada uno.',
+  "To turn it off, switch off Web access for that agent in Settings → Agents; it saves at once. It applies to every turn of that agent; content fetched is sent to its provider.":
+    'Para apagarlo, desactiva Acceso a la web para ese agente en Ajustes → Agentes; se guarda al instante. Aplica a todas sus respuestas; lo que traiga de la web se envía a su proveedor.',
 
   'Commands and mentions in the Write box': 'Comandos y menciones en la caja de Escribir',
   'Type "/" for the project\'s commands: /create turns on permission to create, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git) and /ahp (Continuity) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label. Type "!" to point at a project file ("!src/room.mjs:12-20" for lines): the agent reads it first. In the viewer, click a line number (Shift+click for a range) and ASK offers what to ask about those lines, and whom.':

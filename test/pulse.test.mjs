@@ -2240,14 +2240,14 @@ test('scopes: what the human enabled, per agent; CREATE is refused with a reason
   const codex = resolveScopes('codex');
   assert.deepEqual(codex.write, { capable: true, enabled: true, wired: true, always: false });
   assert.deepEqual(codex.imageGen, { capable: true, enabled: true, wired: true });
-  assert.equal(codex.web.enabled, false, 'web is off by default');
+  assert.equal(codex.web.enabled, true, 'web is on by default');
   const gemini = resolveScopes('gemini');
   assert.deepEqual(gemini.imageGen, { capable: false, enabled: false, wired: true });
   assert.equal(resolveScopes('gemini', { imageGen: true }).imageGen.enabled, false, 'cannot enable what the CLI lacks');
   assert.equal(resolveScopes('codex', { write: false }).write.enabled, false);
   assert.equal(resolveScopes('codex', { write: false, alwaysCreate: true }).write.always, false);
   assert.match(abilityLine('codex', codex), /@codex: can create files, generate images/);
-  assert.match(abilityLine('gemini', gemini), /@gemini: can create files; cannot generate images/);
+  assert.match(abilityLine('gemini', gemini), /@gemini: can create files, web access; cannot generate images/);
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-scopes-'));
   try {
@@ -2278,10 +2278,10 @@ test('scopes: what the human enabled, per agent; CREATE is refused with a reason
     await orchestrating.send({ text: 'poster', target: 'claude', create: true });
     events = await store.readAll();
     const granted = events.find((event) => event.type === 'lease.granted');
-    assert.deepEqual(granted.payload.scopes, ['write']);
+    assert.deepEqual(granted.payload.scopes, ['write', 'web']);
     assert.deepEqual(granted.payload.unavailable, ['imageGen']);
     assert.match(seen.claude.prompt, /@codex: can create files, generate images/, 'the orchestrator is told who can generate images');
-    assert.match(seen.claude.prompt, /@gemini: can create files; cannot generate images/);
+    assert.match(seen.claude.prompt, /@gemini: can create files, web access; cannot generate images/);
     assert.equal(seen.codex.lease.scopes.imageGen, true, 'the delegate gets its own scopes inside the shared lease');
     assert.match(seen.codex.prompt, /You can generate images/);
     assert.equal(seen.gemini.lease.scopes.imageGen, false);
@@ -2333,10 +2333,10 @@ test('idle detection ignores stderr chatter and counts only complete stdout line
   assert.ok(Date.now() - started < 5000, 'stderr noise did not postpone the idle stop');
 });
 
-test('web scope: wired into every CLI, standing per agent, off by default', async () => {
+test('web scope: wired into every CLI, standing per agent, on by default', async () => {
   assert.equal(resolveScopes('codex').web.wired, true);
-  assert.equal(resolveScopes('codex').web.enabled, false, 'off until the human enables it');
-  assert.equal(resolveScopes('codex', { web: true }).web.enabled, true);
+  assert.equal(resolveScopes('codex').web.enabled, true, 'on until the human turns it off');
+  assert.equal(resolveScopes('codex', { web: false }).web.enabled, false);
   const web = { web: true, imageGen: true };
   assert.ok(buildCodexArgs({ projectRoot: '/p', prompt: 'q', scopes: web }).indexOf('--search') < buildCodexArgs({ projectRoot: '/p', prompt: 'q', scopes: web }).indexOf('exec'), 'Codex --search is a global flag before exec');
   assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--search'), false);
@@ -2358,13 +2358,13 @@ test('web scope: wired into every CLI, standing per agent, off by default', asyn
     const seen = [];
     const room = new Room({ store, agents, projectRoot: root, invokers: { 'claude-readonly': async ({ prompt, scopes, lease }) => { seen.push({ prompt, scopes, lease }); return { text: 'ok', usage: null }; } } });
     await room.send({ text: 'latest node version?', target: 'claude' });
-    assert.deepEqual(seen[0].scopes, { web: false, imageGen: false });
-    assert.match(seen[0].prompt, /Do not access the web/);
-    room.setScopes({ claude: { web: true } });
+    assert.deepEqual(seen[0].scopes, { web: true, imageGen: false });
+    assert.match(seen[0].prompt, /WEB ACCESS: the human enabled web search/);
+    assert.equal(seen[0].lease, null, 'web does not need a lease');
+    room.setScopes({ claude: { web: false } });
     await room.send({ text: 'latest node version?', target: 'claude' });
-    assert.deepEqual(seen[1].scopes, { web: true, imageGen: false });
-    assert.match(seen[1].prompt, /WEB ACCESS: the human enabled web search/);
-    assert.equal(seen[1].lease, null, 'web does not need a lease');
+    assert.deepEqual(seen[1].scopes, { web: false, imageGen: false });
+    assert.match(seen[1].prompt, /Do not access the web/);
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

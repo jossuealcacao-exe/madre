@@ -120,7 +120,7 @@ Cada mensaje sale con un modo. Tu modo es el techo de cualquier plan que ese men
 
 **Imágenes** es un módulo de MADRE: un servidor MCP propio que expone `generate_image` sobre los modelos de imagen de la API de Gemini, con tu propia key y tus créditos. Hoy **solo Gemini**, y por una razón: es la única cuenta de los agentes cuya llave MADRE ya encuentra sin pedirte una nueva, y tiene capa gratis. Anthropic no genera imágenes —Claude las lee, no las hace—, la cuenta de ChatGPT con la que se firma Codex no da acceso a la API de imágenes, y OpenCode depende del proveedor al que lo apuntes. Se conecta a Claude, Gemini y OpenCode solo dentro de un permiso CREAR con el alcance de imágenes encendido, en sus homes aislados, y la imagen cae en la carpeta del turno como cualquier artefacto. `/image <petición>` arma el permiso y enruta al agente que puede generar. Con los cuatro agentes puedes pedir una imagen; Codex la hace con lo suyo, los demás con Imágenes.
 
-El acceso web es un permiso permanente por agente, apagado por defecto, que se enciende en Ajustes → Agentes, con Acceso a la web.
+El acceso web es un permiso permanente por agente, encendido por defecto, que se apaga en Ajustes → Agentes, con Acceso a la web.
 
 ### Subagentes de cada IA
 

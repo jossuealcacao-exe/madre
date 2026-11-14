@@ -3624,7 +3624,8 @@ dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--mot
 .browser-errors-menu .be-all { background: var(--text); color: var(--panel); }
 .browser-errors-menu .be-all:hover { background: color-mix(in srgb, var(--text) 85%, transparent); }
 .browser-errors-menu .be-foot { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 10px 6px; border-top: 1px solid var(--cs-line, var(--line)); margin-top: 4px; }
-.browser-dock.window .browser-head { cursor: grab; }
+.browser-dock.window :is(.browser-head, .browser-tabs) { cursor: grab; }
+.browser-dock.window .browser-tabs :is(button, .tab-close) { cursor: pointer; }
 .browser-dock .browser-head :is(button, input, a, select) { cursor: pointer; }
 .browser-dock.window {
   position: fixed; z-index: 35; margin: 0; grid-column: auto; grid-row: auto; min-width: 0; min-height: 0;
@@ -13838,6 +13839,13 @@ html.chat-shell dialog.viewer.code > .viewer-head { flex-wrap: wrap !important; 
 html.chat-shell dialog.viewer.code > .viewer-head > .code-views { order: 1; }
 html.chat-shell dialog.viewer.code > .viewer-head > .viewer-seg:not(.code-views) { order: 2; margin-left: auto; }
 html.chat-shell dialog.viewer.code > .viewer-head > .code-more { order: 3; }
+/* What is seen and how it is read, together on one line at the left (2026-11-14, the author): Code ·
+   Both · Preview, then Read · Edit · Open raw; the window's keys (beside, window, close) always at
+   the top right, as on every window of MADRE — they had no order and fell to the start of the line. */
+html.chat-shell dialog.viewer.code > .viewer-head > .code-views { margin-right: 0; }
+html.chat-shell dialog.viewer.code > .viewer-head > .viewer-seg:not(.code-views) { margin-left: 4px; padding-left: 8px !important; box-shadow: inset 1px 0 0 var(--cs-line, var(--line)); border-radius: 0; }
+html.chat-shell dialog.viewer.code > .viewer-head > .surface-modes { order: 4; margin-left: auto !important; }
+html.chat-shell dialog.viewer.code > .viewer-head > .code-more { margin-left: 4px; }
 html.chat-shell dialog.viewer.code > .viewer-head > .code-tabs { order: 10; flex: 1 1 100%; min-width: 0; }
 .code-more { display: none; place-items: center; width: 30px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 600 16px/1 var(--read); cursor: pointer; }
 .code-more:hover, .code-more[aria-expanded="true"] { background: var(--cs-hover, color-mix(in srgb, var(--text) 7%, transparent)); color: var(--text); }
