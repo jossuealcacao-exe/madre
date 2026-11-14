@@ -21,6 +21,7 @@ import { LOADER_MARK, MADRE_LOGO, finishLoader, makeLoader, setLoader } from './
 import { hostWords, keyWords, language, t } from './i18n.js';
 import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
 import { trazo } from './icons.js';
+import { brandOf } from './brands.js';
 import { MISSIONS, missionsLeft, missionsState, onMissions, openMissions, setMissions } from './missions.js';
 
 const say = (pair) => (typeof pair === 'string' ? pair : pair?.[language()] ?? pair?.es ?? '');
@@ -35,8 +36,6 @@ const CLOSE_ICON = trazo('close');
 // The × of every window of MADRE (2026-11-13): the same key, in the same channel, as the Market's,
 // Modules' and Settings' — not a round plate of its own.
 const closeKeys = (close) => { const keys = document.createElement('span'); keys.className = 'surface-modes window-close'; keys.append(close); return keys; };
-const FOLDER = '<svg viewBox="0 0 32 26" aria-hidden="true"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h7.2l3 3.2h12.8A2.5 2.5 0 0 1 30 8.7v12.8a2.5 2.5 0 0 1-2.5 2.5h-23A2.5 2.5 0 0 1 2 21.5z" fill="currentColor"/></svg>';
-const ROBOT = trazo('robot');
 
 function el(tag, className = null, text = null) {
   const node = document.createElement(tag);
@@ -57,35 +56,296 @@ const tourApi = {
     .then((response) => (response.ok ? response.json() : null)).catch(() => null),
 };
 
-// The scenes: one short drawing per chapter, made of a few shapes that move once and loop slowly.
-// With reduced motion they stand still and say the same.
-const SCENES = {
-  moved: () => '',
-  home: () => `<div class="ts-bar"><i class="ts-logo"></i><span class="ts-pin"></span><span class="ts-pin"></span><span class="ts-pin ts-arrive"></span></div>
-    <div class="ts-grid"><span class="ts-card"></span><span class="ts-card ts-lift"></span><span class="ts-card"></span><span class="ts-card ts-dim"></span></div>`,
-  project: () => `<div class="ts-bar"><i class="ts-logo"></i><span style="flex:1"></span><span class="ts-key"></span><span class="ts-key ts-lamp"></span><span class="ts-key"></span><span class="ts-key"></span></div>
-    <div class="ts-switch"><span class="ts-tile"><i>${FOLDER}</i></span><span class="ts-tile on"><i>${FOLDER}</i></span><span class="ts-tile"><i>${FOLDER}</i></span></div>`,
-  talk: () => `<div class="ts-bubble"></div><div class="ts-bubble mine"></div>
-    <div class="ts-box"><span class="ts-type"><b>@codex</b><b>#2</b><b>!app.js</b><b>/gh</b></span></div>`,
-  modes: () => `<div class="ts-modes">${[0, 1, 2, 3, 4].map((n) => `<span class="ts-mode m${n}">#${n}${n >= 3 ? '<i class="ts-lock"></i>' : ''}</span>`).join('')}</div>`,
-  coordinator: () => `<svg class="ts-wires" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true"><path id="ts-c1" d="M160 75L60 40"/><path id="ts-c2" d="M160 75L262 42"/><path id="ts-c3" d="M160 75L160 132"/>
-    ${still() ? '' : ['ts-c1', 'ts-c2', 'ts-c3'].map((id, index) => `<path d="M0 0h0" class="ts-note"><animateMotion dur="2.6s" begin="${index * 0.8}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></path>`).join('')}</svg>
-    <span class="ts-node" style="left:18.75%;top:26.6%">${FOLDER}</span><span class="ts-node" style="left:81.9%;top:28%">${FOLDER}</span><span class="ts-node" style="left:50%;top:88%">${FOLDER}</span>
-    <span class="ts-hub">${ROBOT}</span>`,
-  links: () => `<svg class="ts-wires" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true"><path id="ts-l1" class="ts-dash" d="M86 75C140 50 180 100 234 75"/>
-    ${still() ? '' : [0, 0.9, 1.8].map((lag) => `<path d="M0 0h0" class="ts-note"><animateMotion dur="2.7s" begin="${lag}s" repeatCount="indefinite"><mpath href="#ts-l1"/></animateMotion></path>`).join('')}</svg>
-    <span class="ts-node big" style="left:23%;top:50%">${FOLDER}</span><span class="ts-node big" style="left:77%;top:50%">${FOLDER}</span>`,
-  maps: () => `<div class="ts-orbit"><i class="ts-core"></i>${[0, 1, 2, 3, 4, 5].map((n) => `<b class="ts-star s${n}"></b>`).join('')}</div>`,
-  settings: () => `<div class="ts-window"><span class="ts-search"><i></i><em></em></span><div class="ts-tiles"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><span class="ts-cap">⌘ ,</span>`,
-  modules: () => `<div class="ts-modules">${[0, 1, 2, 3, 4, 5].map((n) => `<span class="ts-module m${n}"><i></i></span>`).join('')}</div>`,
-  phone: () => `<span class="ts-mac"><i></i></span><svg class="ts-wires" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true"><path id="ts-p1" class="ts-dash" d="M206 80C178 62 150 62 124 76"/>
-    ${still() ? '' : '<path d="M0 0h0" class="ts-note"><animateMotion dur="2.4s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;.5;1" calcMode="linear"><mpath href="#ts-p1"/></animateMotion></path>'}</svg>
-    <span class="ts-phone"><i class="ts-qr"></i></span>`,
-  board: () => SCENES.home(),
-  widgets: () => `<div class="ts-grid ts-widgets"><span class="ts-card"><i style="--w:.62"></i><i style="--w:.34"></i></span><span class="ts-card"><i style="--w:.8"></i><i style="--w:.5"></i></span><span class="ts-card"><i style="--w:.4"></i><i style="--w:.7"></i></span><span class="ts-card ts-dim"><i style="--w:.25"></i><i style="--w:.55"></i></span></div>`,
-  local: () => SCENES.modules(),
-  gestures: () => `<div class="ts-caps"><span class="ts-cap c0">⌘ ,</span><span class="ts-cap c1">Esc</span><span class="ts-cap c2">?</span></div>`,
+// ---- The scenes (2026-11-14). Each chapter opens on the piece of MADRE it speaks of, drawn small
+// the way the room and Home look today (the chat shell): the sidebar, the conversation with its green
+// bubble and the answer's chip, the box with its chips, the row of AIs with their official marks
+// (brands.js), the tools that open at the side and the windows that float. Not a screenshot, which
+// ages with every change, and not abstract points, which say nothing (the pictures of What's new,
+// news-scenes.js, 2026-11-08): the piece itself, acting out what it does in a few beats.
+//
+// A beat adds a class to the scene (`b1`, `b2`…) and styles.css (.ts-*) moves what that beat moves;
+// after the last one the picture rests, fades and starts again, slowly. With reduced motion it stands
+// still on the beat that says the most. Its few words are MADRE's own labels from the catalogue, so
+// the picture says what the screen says, in the person's language.
+const h = (tag, className, ...kids) => {
+  const node = el(tag, className);
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) node.append(kid);
+  return node;
 };
+const glyph = (name, className = 'ts-i') => {
+  const node = el('span', className);
+  node.innerHTML = trazo(name); // trusted: our own SVG strings (icons.js)
+  return node;
+};
+const set = (node, vars) => { for (const [name, value] of Object.entries(vars)) node.style.setProperty(`--${name}`, String(value)); return node; };
+// Words not written out: a line of text, as long as a share of its room.
+const line = (width, className = 'ts-l') => set(el('i', className), { w: width });
+// An AI as the room draws it: its own colour and its official mark (brands.js).
+function face(id, className = 'ts-face') {
+  const brand = brandOf(id);
+  const node = el('span', className);
+  set(node, { 'ts-brand': brand.solid ?? brand.gradient ?? brand.color, 'ts-brand-ink': brand.ink ?? '#111' });
+  node.innerHTML = brand.mark(); // trusted: our own SVG strings (brands.js)
+  return node;
+}
+const CREW = ['codex', 'claude', 'gemini', 'opencode', 'grok'];
+const ROOM_KEYS = ['running', 'brain', 'puzzle', 'mother', 'code', 'globe'];
+const HOME_KEYS = ['running', 'links', 'map', 'market', 'puzzle', 'widgets'];
+
+// The sidebar: the logo, the ways in (Home's own in Home), the chats and the projects.
+function sidebar({ home = false, on = null, chats = 2, projects = 3 } = {}) {
+  const logo = el('span', 'ts-logo');
+  logo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
+  const side = h('div', 'ts-side', h('span', 'ts-side-head', logo));
+  const ways = home ? [['add', 'Add a project'], ['home', 'Home'], ['coordinator', 'Coordinator'], ['market', 'Market']] : [['add', 'New chat'], ['home', 'Home'], ['market', 'Market']];
+  for (const [icon, words] of ways) side.append(h('span', `ts-row ts-way w-${icon}${on === icon ? ' on' : ''}`, glyph(icon), el('span', 'ts-w', t(words))));
+  if (!home && chats) {
+    side.append(el('span', 'ts-sec', t('Chats')));
+    for (let i = 0; i < chats; i += 1) side.append(h('span', `ts-row ts-chat c${i}${i === 0 && on === 'chat' ? ' on' : ''}`, line([0.82, 0.64, 0.72][i] ?? 0.7)));
+  }
+  side.append(el('span', 'ts-sec', t('Projects')));
+  for (let i = 0; i < projects; i += 1) side.append(h('span', `ts-row ts-proj p${i}`, el('i', 'ts-dot'), line([0.56, 0.7, 0.48][i] ?? 0.6)));
+  return side;
+}
+// The bar over the conversation: its title, the row of AIs and the keys of the tools.
+function topBar({ title = null, keys = ROOM_KEYS, lit = null } = {}) {
+  return h('div', 'ts-top',
+    title ?? line(0.2, 'ts-l ts-title-l'),
+    h('span', 'ts-crew', CREW.map((id) => face(id))), glyph('agents', 'ts-i ts-crew-key'),
+    h('span', 'ts-keys', keys.map((name) => glyph(name, `ts-i k-${name}${name === lit ? ' lit' : ''}`))));
+}
+// The box at the bottom and its chips: who answers, the mode, the model and how hard it thinks.
+function composer({ typed = null, agent = 'claude' } = {}) {
+  const effort = h('span', 'ts-effort', [0, 1, 2, 3].map(() => el('i')));
+  return h('div', 'ts-box',
+    h('div', 'ts-box-text', typed ?? line(0.42, 'ts-l ts-hold')),
+    h('div', 'ts-box-chips', face(agent),
+      h('span', 'ts-chip ts-mode', el('span', 'ts-cw', t('Just chat')), glyph('chevron')),
+      h('span', 'ts-chip ts-model', el('span', 'ts-cw', t('Recommended model')), glyph('chevron')),
+      h('span', 'ts-chip', effort, glyph('chevron')),
+      glyph('robot', 'ts-i ts-extra'), glyph('attach', 'ts-i ts-extra'), el('span', 'ts-gap'), glyph('return')));
+}
+// What the person wrote: the green bubble on the right, and who it went to under it.
+const mine = (widths, to) => h('div', 'ts-mine', h('div', 'ts-bubble', widths.map((width) => line(width))), to ? el('span', 'ts-to', `→ @${to}`) : null);
+// An answer as the room writes it: the AI's chip and its tokens, the words, its keys.
+function answer(id, widths) {
+  const brand = brandOf(id);
+  const who = set(el('b', 'ts-who', brand.label), { 'ts-who': brand.color, 'ts-who-l': brand.colorLight ?? brand.color });
+  return h('div', 'ts-answer',
+    h('div', 'ts-answer-head', who, el('span', 'ts-tokens', '312↓ 268↑')),
+    h('div', 'ts-answer-text', widths.map((width, i) => set(line(width), { i }))),
+    h('div', 'ts-answer-keys', face(id), glyph('copy'), glyph('good', 'ts-i ts-rate'), glyph('reply')));
+}
+const card = (className, ...kids) => h('div', `ts-card ${className}`, ...kids);
+const meter = (share, words = null) => h('span', 'ts-meter', h('span', 'ts-track', set(el('i'), { share })), words ? el('em', null, words) : null);
+const switchKey = () => h('i', 'ts-switch', el('i'));
+
+const SCENES = {
+  // Home: every project on one board, the Coordinator and what needs you; a click on one and you
+  // are in it — its conversation where the board was, and it lit in the sidebar.
+  home(stage) {
+    const tiles = [0, 1, 2].map((i) => h('div', `ts-tile t${i}`,
+      line([0.62, 0.5, 0.7][i], 'ts-l ts-strong'), line(0.86, 'ts-l ts-path'),
+      h('span', 'ts-state', el('i', 'ts-dot'), line(0.42)),
+      h('span', 'ts-open', t('Open'), i === 1 ? glyph('pointer', 'ts-ptr') : null)));
+    const board = h('div', 'ts-board',
+      card('ts-coord', h('span', 'ts-coord-head', face('bishop'), h('span', 'ts-coord-words', el('b', null, t('Coordinator')), line(0.5))), el('i', 'ts-cta')),
+      card('ts-needs', el('b', null, t('Needs you')), el('span', 'ts-big', '0')),
+      h('div', 'ts-tiles', tiles));
+    const room = h('div', 'ts-room', h('div', 'ts-thread', mine([0.7], 'claude'), answer('claude', [0.9, 0.62])), composer());
+    const title = h('span', 'ts-titles', el('b', 'ts-title ts-at-home', t('Home')), line(0.5, 'ts-l ts-title-l ts-at-room'));
+    stage.append(h('div', 'ts-win ts-home', sidebar({ home: true, on: 'home' }), h('div', 'ts-main', topBar({ title, keys: HOME_KEYS }), board, room)));
+    // Still, it is the board with a project about to open: what Home is.
+    return Object.assign([250, 1300, 2200, 2800], { rest: 2 });
+  },
+
+  // Home as a board: a card carried to another place, another one's menu, and it changes its size.
+  board(stage) {
+    const cards = [0, 1, 2, 3, 4, 5].map((i) => h('div', `ts-card ts-slot s${i}`,
+      h('span', 'ts-slot-head', glyph(['gauge', 'server', 'brain', 'chip', 'coordinator', 'inbox'][i]), line(0.46, 'ts-l ts-strong')),
+      line([0.8, 0.6, 0.7, 0.5, 0.74, 0.66][i]), line([0.5, 0.7, 0.44, 0.62, 0.4, 0.54][i]),
+      i === 0 ? glyph('pointer', 'ts-ptr') : null));
+    const menu = h('div', 'ts-menu ts-ctx', [['move', 0.6], ['sliders', 0.74], ['trash', 0.5]].map(([icon, width], i) => h('span', `ts-option o${i}`, glyph(icon), line(width))));
+    stage.append(h('div', 'ts-win ts-boardwin', h('div', 'ts-main', topBar({ title: el('b', 'ts-title', t('Home')), keys: HOME_KEYS }), h('div', 'ts-grid6', cards, menu))));
+    return [250, 1100, 2000, 3100, 4000];
+  },
+
+  // Widgets: small cards of Home that say how the computer and each project are doing.
+  widgets(stage) {
+    const widget = (i, icon, ...body) => set(card(`ts-widget w${i}`, h('span', 'ts-widget-head', glyph(icon), line(0.5, 'ts-l ts-strong')), ...body), { i });
+    stage.append(h('div', 'ts-widgets',
+      widget(0, 'gauge', meter(0.34, '34%'), meter(0.62, '62%')),
+      widget(1, 'server', h('span', 'ts-serve', el('i', 'ts-dot'), el('em', null, ':5173')), h('span', 'ts-serve s2', el('i', 'ts-dot'), el('em', null, ':3000'))),
+      widget(2, 'brain', meter(0.74, '74%'), line(0.62)),
+      widget(3, 'chip', h('span', 'ts-count', el('b', null, '8'), el('em', null, '/300')), meter(0.08))));
+    return [250, 700, 1150, 1600];
+  },
+
+  // Inside a project: the conversations, the files beside them and every project in the sidebar,
+  // where a light says an AI is working and then that it finished.
+  project(stage) {
+    const files = h('div', 'ts-tool',
+      h('div', 'ts-tool-tabs', h('span', 'ts-tab', el('span', null, t('Files')), glyph('close'))),
+      h('div', 'ts-tool-body', [['folder', 0.5, 0], ['folder', 0.36, 0], ['file-new', 0.44, 1], ['file-new', 0.56, 1], ['file-new', 0.4, 0]].map(([icon, width, deep], i) => set(h('span', `ts-file${deep ? ' deep' : ''}`, glyph(icon), line(width)), { i }))));
+    stage.append(h('div', 'ts-win ts-project', sidebar({ on: 'chat', chats: 1 }), h('div', 'ts-main', topBar({}), h('div', 'ts-thread', mine([0.6], 'claude'), answer('claude', [0.92, 0.7])), composer()), files));
+    return [250, 1100, 2300, 3500];
+  },
+
+  // Talking: written in the box, it goes up as your green bubble; the AI you chose answers under
+  // its chip, with its tokens and the keys to copy, rate or reply.
+  talk(stage) {
+    const typed = h('span', 'ts-typed', el('b', 'ts-at', '@claude'), line(0.46, 'ts-l ts-grow'), el('i', 'ts-caret'));
+    stage.append(h('div', 'ts-win ts-talk', sidebar({ on: 'chat', projects: 2 }), h('div', 'ts-main', topBar({}), h('div', 'ts-thread', mine([0.66], 'claude'), answer('claude', [0.94, 0.8, 0.5])), composer({ typed }))));
+    return [250, 1700, 2500, 3200, 4200];
+  },
+
+  // Modes: the box's mode chip opens its five levels; #3 and #4 open only once you confirm, #4 twice.
+  modes(stage) {
+    // The box's own names for the five levels (public/app.js, MODES), so the scene reads like the box.
+    const words = ['Not saved', 'Just chat', 'Can create', 'Can edit', 'Full access'];
+    const options = words.map((word, n) => h('span', `ts-option o${n}`, el('b', 'ts-n', `#${n}`), el('span', 'ts-w', t(word)), el('span', 'ts-gap'),
+      n >= 3 ? h('span', 'ts-lockset', glyph('lock', 'ts-i ts-shut'), glyph('lock-open', 'ts-i ts-opened')) : null,
+      n === 4 ? h('span', 'ts-twice', el('i'), el('i')) : null));
+    const menu = h('div', 'ts-menu ts-levels', el('i', 'ts-pick'), options);
+    const chip = h('span', 'ts-chip ts-mode-chip', h('span', 'ts-mc-words ts-cw', words.map((word, n) => el('span', `ts-mc m${n}`, `#${n} ${t(word)}`))), glyph('chevron'));
+    stage.append(h('div', 'ts-modes', menu, h('div', 'ts-box ts-box-small', h('div', 'ts-box-chips', face('claude'), chip, el('span', 'ts-gap'), glyph('return')))));
+    return [250, 1300, 2500, 3700];
+  },
+
+  // Settings: ⌘ , opens them, / finds a setting, a change shows at once — light to dark here —, and
+  // Diagnostics says what to do when something fails.
+  settings(stage) {
+    const nav = [['appearance', 'Appearance'], ['agents', 'Agents'], ['shield', 'Permissions'], ['chip', 'Local AI'], ['mother', 'Diagnostics']];
+    const looks = h('div', 'ts-looks', ['light', 'dark', 'auto'].map((look) => h('span', `ts-look ${look}`, el('i'), el('em', null, t({ light: 'Light', dark: 'Dark', auto: 'Automatic' }[look])))));
+    const sheet = h('div', 'ts-sheet ts-settings',
+      h('div', 'ts-sheet-head', el('b', null, t('Settings')), h('span', 'ts-search', glyph('search'), el('em', 'ts-slash', '/'), line(0.5, 'ts-l ts-grow')), glyph('close', 'ts-i ts-x')),
+      h('div', 'ts-sheet-body',
+        h('div', 'ts-nav', el('i', 'ts-pick'), nav.map(([icon, word], i) => h('span', `ts-row n${i}`, glyph(icon), el('span', 'ts-w', t(word))))),
+        h('div', 'ts-pane',
+          h('div', 'ts-pane-look', el('b', 'ts-pane-title', t('Appearance')), looks, line(0.7), line(0.46)),
+          h('div', 'ts-pane-diag', el('b', 'ts-pane-title', t('Diagnostics')), h('div', 'ts-remedy', glyph('mother', 'ts-i ts-beat'), h('span', 'ts-remedy-words', line(0.9), line(0.6)), glyph('check', 'ts-i ts-fix'))))));
+    stage.append(sheet, el('kbd', 'ts-cap ts-cmd', keyWords('⌘ ,')));
+    // Still, it is Settings in the page's own look, a search under way and Appearance open.
+    return Object.assign([250, 900, 1900, 2900, 4300], { rest: 3 });
+  },
+
+  // Modules: a board of tiles, each with its switch; pressed first, switched on, and some open in a
+  // window of their own.
+  modules(stage) {
+    const icons = ['mod-ash', 'mod-intents', 'mod-github', 'mod-notes', 'mod-reminders', 'mod-mcp'];
+    const tiles = icons.map((icon, i) => set(h('div', `ts-mod m${i}`, glyph(icon, 'ts-i ts-mod-icon'), h('span', 'ts-mod-words', line(0.7, 'ts-l ts-strong'), line(0.9)), switchKey(), i === 0 ? glyph('pointer', 'ts-ptr') : null), { i }));
+    const note = h('div', 'ts-float', h('span', 'ts-float-head', glyph('mod-notes'), el('b', null, t('Notes')), el('span', 'ts-gap'), glyph('close')), line(0.86), line(0.62), line(0.74));
+    stage.append(h('div', 'ts-sheet ts-modules', h('div', 'ts-sheet-head', el('b', null, t('Modules')), h('span', 'ts-search', glyph('search'), line(0.4))), h('div', 'ts-mods', tiles)), note);
+    return [250, 1100, 1800, 2800];
+  },
+
+  // Local AI: a model that fits the computer comes down once, and you choose which projects use it.
+  local(stage) {
+    const size = `7B · ${(4.7).toLocaleString(language())} GB`;
+    const ai = card('ts-local',
+      h('span', 'ts-local-head', face('madre'), h('span', 'ts-local-words', el('b', null, t('Local AI')), line(0.7))),
+      h('span', 'ts-model', glyph('chip'), el('em', null, size)), meter(1));
+    const projects = h('div', 'ts-uses', [0, 1, 2].map((i) => set(card(`ts-use u${i}`, glyph('folder'), line([0.62, 0.5, 0.72][i], 'ts-l ts-strong'), el('span', 'ts-gap'), switchKey(), el('i', 'ts-wire')), { i })));
+    stage.append(h('div', 'ts-localset', ai, projects));
+    return [250, 800, 2500, 3200];
+  },
+
+  // The Coordinator: it sees every project and carries an order from one to another, up to #2 on
+  // its own; from any project you ask it with /bishop.
+  coordinator(stage) {
+    const projects = h('div', 'ts-row3', [0, 1, 2].map((i) => card(`ts-pc c${i}`, glyph('folder'), line([0.62, 0.5, 0.7][i], 'ts-l ts-strong'), el('i', 'ts-dot'))));
+    const wires = '<svg class="ts-wires" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true"><path d="M160 50L66 100"/><path d="M160 50L160 100"/><path d="M160 50L254 100"/></svg>';
+    const hub = h('div', 'ts-hub', face('bishop', 'ts-face ts-bishop'), el('span', 'ts-said', '/bishop'), el('span', 'ts-limit', '#2'));
+    const order = h('span', 'ts-order', line(0.7), line(0.5));
+    const stageWires = el('div', 'ts-wireset');
+    stageWires.innerHTML = wires; // trusted: our own markup
+    stage.append(h('div', 'ts-coordset', stageWires, hub, projects, order));
+    return [250, 1100, 2100, 3100];
+  },
+
+  // Connections: two projects joined with your signature; notes already in use go across, the files
+  // and the conversations stay where they are.
+  links(stage) {
+    const project = (side) => card(`ts-lp ${side}`,
+      h('span', 'ts-lp-head', glyph('folder'), line(0.6, 'ts-l ts-strong')),
+      [0, 1, 2].map((i) => set(h('span', `ts-note n${i}`, el('i', 'ts-dot'), line([0.8, 0.6, 0.7][i])), { i })),
+      h('span', 'ts-files', glyph('lock'), line(0.5)));
+    const link = h('div', 'ts-link', el('i', 'ts-wire'), h('span', 'ts-seal', glyph('links')), [0, 1, 2].map((i) => set(el('i', 'ts-flow'), { i })));
+    stage.append(h('div', 'ts-links', project('a'), link, project('b')));
+    return [250, 1100, 2000, 3000];
+  },
+
+  // The maps: what a project remembers, one star each; and the projects, joined by carrying one
+  // onto another.
+  maps(stage) {
+    const STARS = [[24, 30], [70, 22], [80, 58], [62, 80], [30, 74], [14, 52], [46, 14], [88, 36], [40, 88], [56, 42], [36, 46], [72, 70]];
+    const memory = h('div', 'ts-map ts-memory', el('i', 'ts-core'), STARS.map(([x, y], i) => set(el('i', `ts-star${i % 4 === 1 ? ' acc' : ''}`), { x: `${x}%`, y: `${y}%`, i })), el('span', 'ts-map-name', t('Memory map')));
+    const NODES = [[22, 34], [58, 26], [78, 66], [34, 72]];
+    const wires = el('div', 'ts-wireset');
+    wires.innerHTML = '<svg class="ts-wires" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true"><path d="M70 51L186 39"/><path class="ts-new" d="M109 108L186 39"/></svg>'; // trusted: our own markup
+    const nodes = NODES.map(([x, y], i) => set(h('span', `ts-node n${i}`, glyph('folder'), i === 3 ? glyph('pointer', 'ts-ptr') : null), { x: `${x}%`, y: `${y}%` }));
+    const projects = h('div', 'ts-map ts-projmap', wires, nodes, el('span', 'ts-map-name', t('Project map')));
+    stage.append(h('div', 'ts-maps', memory, projects));
+    return [250, 900, 2000, 2900];
+  },
+
+  // The phone: a code joins it to the computer; up to #2 from there, and what you start on one goes
+  // on on the other.
+  phone(stage) {
+    // A code, not an icon: a few squares in a fixed pattern, its three corners as a code's.
+    const QR = '1110101111001010110111100011110100101001111101011100101001101111';
+    const code = h('div', 'ts-qr', [...QR].map((bit) => el('i', bit === '1' ? 'on' : null)));
+    const mac = h('div', 'ts-win ts-mac', sidebar({ on: 'chat', chats: 1, projects: 1 }), h('div', 'ts-main', topBar({ keys: ['phone', 'code', 'globe'], lit: 'phone' }), h('div', 'ts-thread', mine([0.6]), answer('claude', [0.8, 0.5]), h('div', 'ts-mine ts-later', h('div', 'ts-bubble', line(0.7))))), h('div', 'ts-qrcard', code));
+    const phone = h('div', 'ts-phone', h('span', 'ts-phone-top', line(0.4, 'ts-l ts-strong')), h('div', 'ts-thread', mine([0.7]), answer('claude', [0.9, 0.6]), h('div', 'ts-mine ts-later', h('div', 'ts-bubble', line(0.7)))), h('span', 'ts-phone-box', el('span', 'ts-limit', '#2'), el('span', 'ts-gap'), glyph('return')));
+    stage.append(h('div', 'ts-phoneset', mac, h('span', 'ts-air', [0, 1, 2].map((i) => set(el('i'), { i }))), phone));
+    return [250, 1000, 2000, 3100];
+  },
+
+  // Gestures: ? opens the sheet of every shortcut, anywhere.
+  gestures(stage) {
+    const groups = [['⌘ ,', 'Esc', '?'], ['↵', '⌥ ↵', '@ # ! /'], ['⌘ P', '⌘ S', '⌘ F']];
+    const sheet = h('div', 'ts-sheet ts-gest',
+      h('div', 'ts-sheet-head', el('b', null, t('Gestures and shortcuts')), el('span', 'ts-gap'), glyph('close', 'ts-i ts-x')),
+      h('div', 'ts-groups', groups.map((rows, g) => h('div', `ts-group g${g}`, line(0.42, 'ts-l ts-strong'), rows.map((cap, i) => set(h('span', `ts-krow${g === 0 && i === 0 ? ' first' : ''}`, line([0.7, 0.5, 0.6][i]), el('kbd', null, keyWords(cap))), { i: g * 3 + i }))))));
+    stage.append(el('kbd', 'ts-cap ts-q', '?'), sheet);
+    return [250, 900, 1600, 2800];
+  },
+};
+
+// The beats of the scene in sight. One plays at a time: a new chapter stops the last one, and so does
+// closing the window; a scene taken off the page stops on its own.
+const SCENE_HOLD = 3400;
+const sceneTimers = new Set();
+function stopScene() {
+  for (const timer of sceneTimers) clearTimeout(timer);
+  sceneTimers.clear();
+}
+function playScene(scene, id) {
+  stopScene();
+  const stage = el('div', 'ts-stage');
+  scene.append(stage);
+  const beats = SCENES[id]?.(stage) ?? [];
+  if (!beats.length) return;
+  // Standing still it shows the beat that says the most (`rest`), the last one unless it says another.
+  if (still()) { for (let i = 0; i < (beats.rest ?? beats.length); i += 1) scene.classList.add(`b${i + 1}`); return; }
+  const later = (ms, act) => {
+    const timer = setTimeout(() => { sceneTimers.delete(timer); if (scene.isConnected) act(); }, ms);
+    sceneTimers.add(timer);
+  };
+  const run = () => {
+    beats.forEach((ms, i) => later(ms, () => scene.classList.add(`b${i + 1}`)));
+    const end = beats.at(-1) + SCENE_HOLD;
+    later(end, () => scene.classList.add('out'));
+    later(end + 460, () => {
+      scene.classList.add('reset');
+      beats.forEach((_, i) => scene.classList.remove(`b${i + 1}`));
+      void scene.offsetWidth; // the reset lands before the picture comes back
+      scene.classList.remove('reset', 'out');
+      run();
+    });
+  };
+  run();
+}
 
 // What a first-time card speaks of, lit, and the rest of the page a shade quieter: the card needs
 // no beak to say where it points (2026-10-15). A ring laid over the place, never the place itself
@@ -405,6 +665,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     sheet.append(head, body);
     windowNode.append(sheet);
     windowNode.addEventListener('close', () => {
+      stopScene();
       letGoIfDone();
       const list = chapters();
       const all = list.every((chapter) => state?.done.includes(chapter.id));
@@ -455,7 +716,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
         table.append(line);
       }
       scene.append(table);
-    } else scene.innerHTML = SCENES[chapter.id]?.() ?? ''; // trusted: our own markup
+    } else playScene(scene, chapter.id);
     const words = el('div', 'tour-words');
     words.append(el('span', 'tour-step', fill(t('{n} of {total}'), { n: index + 1, total: list.length })), el('h3', null, say(chapter.title)));
     // Whoever came from 0.7.2 reads first what is new or different here.
