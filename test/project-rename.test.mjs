@@ -123,3 +123,15 @@ test('13 nov · OpenCode on a model its provider does not have is MU-094, with t
   const app = await pub('app.js');
   assert.match(app, /OPENCODE_WAY_OUT = new Set\(\[[^\]]*'opencode-default-model-missing'\]\)/);
 });
+
+test('13 nov · the opening runs again, the language key lives on the window, the gate reads in seconds', async () => {
+  const loader = await pub('loader.js');
+  const terms = await pub('terms.js');
+  // A `const beat` inside the frame shadowed the M's path: «Cannot access 'beat' before initialization»
+  // stopped every frame and the opening stayed in the smoke.
+  assert.ok(!/const beat = since/.test(loader));
+  assert.match(loader, /const throb = since < 2600/);
+  assert.match(terms, /dialog\.querySelector\(':scope > \.terms-lang'\)\?\.remove\(\);\n    dialog\.append\(tongue\);/);
+  assert.match(terms, /t\('MADRE is free for you\. Two quick things and you are in\.'\)/);
+  assert.ok(!/terms-daily/.test(terms));
+});

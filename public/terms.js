@@ -93,13 +93,15 @@ function askTerms(answer, done) {
       });
       tongue.append(key);
     }
-    const title = el('h1', 'terms-title', returning ? (app ? t('The MADRE app has a license of its own') : t('MADRE 1.1 has a new license')) : t('Before you start'));
+    // Said to be read in seconds and to calm, not to warn (2026-11-13, the author: «I read that and I
+    // would not install it»): free, two quick things, and each one's detail one click away.
+    const title = el('h1', 'terms-title', returning ? (app ? t('MADRE is an app now') : t('MADRE 1.1 has a new license')) : t('Before you start'));
     title.id = 'terms-title';
     const lead = el('p', 'terms-lead', app
-      ? (returning ? t('MADRE is still free for you, now under the app\'s personal license. To go on, accept it and the privacy notice.') : t('MADRE is free for you, under its personal license. Before you start, accept it and the privacy notice.'))
+      ? (returning ? t('It is still free for you. Two quick things and you carry on where you left off.') : t('MADRE is free for you. Two quick things and you are in.'))
       : returning
-        ? t('It is still free for you and for teams of up to 10 people. To keep using it, accept the license and the privacy notice.')
-        : t('MADRE is free for you and for teams of up to 10 people, also when you use it to work for your clients.'));
+        ? t('It is still free for you and for teams of up to 10 people. Two quick things and you carry on where you left off.')
+        : t('MADRE is free for you and for teams of up to 10 people. Two quick things and you are in.'));
 
     // WHAT MADRE IS, before anything is asked (2026-11-11, the author: «a short description of what
     // MADRE is in the first window, where the license is accepted»): three lines, the same three ideas
@@ -124,21 +126,19 @@ function askTerms(answer, done) {
     about.append(points);
     const license = el('section', 'terms-block');
     license.append(
-      el('h2', null, t('Personal license')),
+      el('h2', null, app ? t('Free for you') : t('Free for you and your team')),
       el('p', null, app
-        ? t('Install it on your computers and use it in your projects, at no cost. What you make with it is yours. The license is for you as a person, and the app\'s code is private.')
-        : t('You can use MADRE, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
+        ? t('Use it on your computers and in your projects without paying anything. Everything you make with it is yours.')
+        : t('Use it, change it and share it. Everything you make with it is yours; a company of more than 10 people writes to us for its license.')),
       link(pick(answer.links?.license), t('Read the license')),
     );
 
     const help = el('section', 'terms-block terms-help');
     const head = el('div', 'terms-help-head');
     const words = el('div');
-    // What is shared, what never is, and the one notice that always goes (2026-11-13, the author chose
-    // the closest of four ways to say it): the switch turns off everything but that daily notice.
-    words.append(el('h2', null, t('Help make MADRE better')), el('p', null, returning
-      ? t('MADRE is made by one person, and from this version you can help me know what to fix first. If you leave it on, your copy tells me anonymously what fails and which features you use. It never sees your files, your projects or what you write.')
-      : t('MADRE is made by one person, and you help me know what to fix first. If you leave it on, your copy tells me anonymously what fails and which features you use. It never sees your files, your projects or what you write.')));
+    // What it is for and what never leaves, in two lines; what is sent, every detail of it (the daily
+    // notice too), is one click away (2026-11-13, the author: «summarise it very quickly»).
+    words.append(el('h2', null, t('Help make MADRE better')), el('p', null, t('If something fails, your copy tells me without saying who you are, and I fix it first. Your files and what you write never leave your computer.')));
     const knob = el('button', 'terms-switch');
     knob.type = 'button';
     knob.setAttribute('role', 'switch');
@@ -156,7 +156,7 @@ function askTerms(answer, done) {
     knob.addEventListener('click', () => { diagnostics = !diagnostics; paintKnob(); });
     paintKnob();
     head.append(words, knob);
-    help.append(head, el('p', 'terms-said terms-daily', t('Apart from that, once a day MADRE says it is still in use, with its version and its system.')), said);
+    help.append(head, said);
 
     const foot = el('p', 'terms-foot');
     foot.append(t('By continuing you accept MADRE\'s'), ' ', link(pick(answer.links?.license), t('license')), ' ', t('and its'), ' ', link(pick(answer.links?.privacy), t('privacy notice')), '.');
@@ -186,12 +186,17 @@ function askTerms(answer, done) {
       setTimeout(() => { field.stop(); dialog.close(); dialog.remove(); done(); }, 260);
     });
     actions.append(no, yes);
-    card.append(tongue, logo, title, lead, ...(returning ? [] : [about]), license, help, foot, error, actions);
+    // The language key belongs to the window's top right corner, never to the card (2026-11-13, the
+    // author): inside the card, the card's own movement as it arrives carried it next to the title.
+    dialog.querySelector(':scope > .terms-lang')?.remove();
+    dialog.append(tongue);
+    card.append(logo, title, lead, ...(returning ? [] : [about]), license, help, foot, error, actions);
     setTimeout(() => card.focus({ preventScroll: true }), 0);
   };
 
   const paintDeclined = () => {
     card.replaceChildren();
+    dialog.querySelector(':scope > .terms-lang')?.remove();
     const logo = el('div', 'terms-logo');
     logo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
     const title = el('h1', 'terms-title', t('MADRE cannot start without it'));
