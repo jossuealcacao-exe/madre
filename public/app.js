@@ -8317,6 +8317,9 @@ const modeAsks = [];   // { agent, wanted, card } still waiting for an answer in
 const threeAsks = new Map();
 function attachModeAsk(payload, { sequence = null } = {}) {
   if (!payload || payload.role !== 'assistant' || payload.sender === 'you') return null;
+  // Only an answer to the person asks the person (2026-11-15): a step of a plan answers the AI that
+  // runs the plan, and a step that needs more already waits for the key on its own (room.mjs).
+  if (payload.target && payload.target !== 'you') return null;
   const ran = state.userMessages.get(payload.messageId)?.mode ?? payload.mode ?? 1;
   const asked = modeAskedWithTime(payload.text, { ran });
   const wanted = asked?.mode ?? null;

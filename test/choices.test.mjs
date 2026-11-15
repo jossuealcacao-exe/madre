@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { access } from 'node:fs/promises';
 import { parseChoice, withoutChoice, MIN_OPTIONS, MAX_OPTIONS } from '../src/choices.mjs';
 
@@ -107,6 +109,33 @@ test('modes: the ladder is offered only when an agent says it needs a rung it wa
   // And never a rung at or below the one the turn already had.
   assert.equal(modeAsked('Necesito #3 para esto.', { ran: 3 }), null);
   assert.equal(modeAsked('', { ran: 1 }), null);
+});
+
+test('modes: describing the ladder is not asking for a rung, and a plan step never asks the person (contapp, 2026-11-15)', async () => {
+  const { modeAsked, modeAskedWithTime } = await import('../public/routing.js');
+  // Asked what they can do, three AIs described the ladder in a plan step, and each answer grew a
+  // card «pide el permiso #4» nobody had asked for. Their words, as they wrote them:
+  const described = [
+    'Solo puedo hacerlo con permiso #2 (crear archivos) o #3 (editar el proyecto).\n3. **Ejecutar y comprobar.** Con permiso #4 puedo correr comandos: pruebas, builds, linters y git.',
+    'Puedo crear archivos nuevos o editar los existentes (requiere permiso #2 o #3).\n3. **Investigación técnica externa:** busco en internet.\n4. **Ejecución y validación:** Con permiso #4, ejecuto de manera segura comandos en la terminal.',
+    'Hago diffs acotados. Requiere permiso **#2** (crear) o **#3** (editar).\n3. **Terminal y verificación.** Con **#4** ejecuto tests, builds, linters, git y servidores locales.',
+    'Todos coinciden en lo básico: leer el proyecto, escribir código, que necesita permiso #2 o #3, y probarlo, que necesita #4.',
+    'Ask the human only for a decision or a new #3/#4 key.',
+  ];
+  for (const text of described) assert.equal(modeAsked(text, { ran: 1 }), null, text);
+  // What really asked, in the same chat, still asks, with its time.
+  assert.deepEqual(modeAskedWithTime('En este modo solo puedo leer; el cambio necesitará #3.', { ran: 1 }), { mode: 3, minutes: null });
+  assert.deepEqual(modeAskedWithTime('Necesito #4 por 5 min para ejecutar `ahp project check` y aplicar el cambio.', { ran: 1 }), { mode: 4, minutes: 5 });
+  assert.deepEqual(modeAskedWithTime('Para seguir, concédeme #3 por 15 min: tengo que editar index.html.', { ran: 1 }), { mode: 3, minutes: 15 });
+  assert.deepEqual(modeAskedWithTime('I need #3 for 15 min to edit the existing file.', { ran: 1 }), { mode: 3, minutes: 15 });
+
+  // A step of a plan answers the AI that runs the plan: even a real ask there puts no card before the
+  // person (the step waits for its key on its own, in the room).
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const start = source.indexOf('function attachModeAsk(');
+  const body = source.slice(start, source.indexOf('\n}\n', start) + 2);
+  const attach = new Function('state', 'modeAskedWithTime', `${body}; return attachModeAsk;`)({ userMessages: new Map(), mode: 1, agents: new Map([['claude', { ready: true }]]) }, modeAskedWithTime);
+  assert.equal(attach({ role: 'assistant', sender: 'claude', target: 'codex', mode: 1, messageId: 'm1', text: 'Necesito #4 por 5 min para correr las pruebas.' }), null);
 });
 
 test('ports: only loopback, only HTTP, and never the room itself', async () => {

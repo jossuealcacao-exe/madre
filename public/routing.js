@@ -58,7 +58,31 @@ export function archiveQuestion(text = '') {
 //
 // It costs nothing in any prompt. And it never grants: #3 and #4 still open the ceremony where
 // the human types the project designation, exactly as if they had chosen it themselves.
-const NEEDS = /(necesit|requier|hace falta|no alcanza|insuficiente|permiso|conced|eleva|sub[ei]r|needs?|requires?|not enough|insufficient|permission|grant|raise|escalat)/i;
+//
+// Narrower since 2026-11-15 (the author's plan in contapp): asked what they can do, three AIs each
+// described the ladder — «Con permiso #4 puedo correr comandos», «requiere permiso #2 o #3», «Con
+// **#4** ejecuto tests» — and each answer grew a card «pide el permiso #4» nobody had asked for.
+// Three things made a description read as a request: the word «permiso» alone counted as need, a
+// rung named beside another («#2 o #3») counted as wanted, and a need word in the sentence before
+// the number counted for it. Now the need is a verb of need or a plea to the person, in the same
+// sentence as the number, the rung stands alone, and «que necesita #4» said of the work in general
+// is not this turn asking.
+const NEEDS = /(necesit|requier|hace falta|no alcanza|insuficiente|\bp[ií]do\b|solicito|conc[eé]deme|\bd[aá]me\b|s[uú]beme|el[eé]vame|\bneeds?\b|\brequires?\b|not enough|insufficient|\bgrant me\b|\bgive me\b|\bplease (?:grant|give|raise|allow)\b|escalat)/i;
+// A rung beside another is the ladder being described: «#2 o #3», «#3/#4», «**#2** (crear) o **#3**».
+const JOINED_BEFORE = /#[0-4]\**\s*(?:\([^)\n]{0,40}\))?\s*(?:o|u|y|e|or|and|a|to|,|\/|-|–)\s*\**$/i;
+const JOINED_AFTER = /^#[0-4]\**\s*(?:\([^)\n]{0,40}\))?\s*(?:o|u|y|e|or|and|a|to|,|\/|-|–)\s*\**#[0-4]/i;
+// Said of the work in general, not of this turn: «escribir código, que necesita #3».
+const GENERAL = /\b(?:que|which|that)\s+(?:necesita|requiere|needs|requires)\b/gi;
+// The sentence a rung stands in, at most 90 characters to each side: up to the last full stop, line
+// break or list item before it, and to the first one after it.
+function sentenceAround(reply, at) {
+  const left = reply.slice(Math.max(0, at - 90), at);
+  let start = left.lastIndexOf('\n') + 1;
+  for (const stop of left.matchAll(/[.!?](?=\s)/g)) start = Math.max(start, stop.index + 1);
+  const right = reply.slice(at, at + 90);
+  const end = right.slice(2).search(/\n|[.!?](?=\s|$)/);
+  return left.slice(start) + (end < 0 ? right : right.slice(0, end + 2));
+}
 
 export function modeAsked(text = '', { ran = 1 } = {}) {
   return modeAskedWithTime(text, { ran })?.mode ?? null;
@@ -74,8 +98,10 @@ export function modeAskedWithTime(text = '', { ran = 1 } = {}) {
   for (const match of reply.matchAll(/#([2-4])\b/g)) {
     const mode = Number(match[1]);
     if (mode <= ran) continue;
-    // The word of need has to sit beside the number, not anywhere in a long answer.
-    const around = reply.slice(Math.max(0, match.index - 90), match.index + 90);
+    // A rung named beside another describes the ladder; it does not ask for a step of it.
+    if (JOINED_BEFORE.test(reply.slice(Math.max(0, match.index - 60), match.index)) || JOINED_AFTER.test(reply.slice(match.index, match.index + 60))) continue;
+    // The word of need has to sit beside the number, in its sentence, not anywhere in a long answer.
+    const around = sentenceAround(reply, match.index).replace(GENERAL, '');
     if (!NEEDS.test(around)) continue;
     if (wanted === null || mode > wanted.mode) {
       const after = reply.slice(match.index, match.index + 60).match(TIME);
