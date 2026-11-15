@@ -14834,5 +14834,104 @@ dialog.intents-window .intents-page { gap: 12px; padding: 14px 16px 18px; }
 .intents-page .actions { gap: 8px; }
 .intents-page > .sx-actions { padding: 0; border: 0; }
 @media (prefers-reduced-motion: reduce) { .intents-page .intents-wait::before { animation: none; } }
-:root dialog.intents-window .intents-page .sx-btn:not(.primary):not(.danger) { background: color-mix(in srgb, var(--text) 7%, transparent); box-shadow: none !important; }
-:root dialog.intents-window .intents-page .sx-btn:not(.primary):not(.danger):hover:not(:disabled) { background: color-mix(in srgb, var(--text) 11%, transparent); }
+:root dialog.intents-window .intents-page .sx-btn:not(.primary):not(.danger) { background: color-mix(in srgb, var(--text) 9%, transparent); box-shadow: none !important; }
+:root dialog.intents-window .intents-page .sx-btn:not(.primary):not(.danger):hover:not(:disabled) { background: color-mix(in srgb, var(--text) 14%, transparent); }
+/* ==========================================================================================
+   LAS RESPUESTAS DE LAS IAS LLEGAN SIN BRINCOS, Y UN PLAN SE LEE PASO A PASO (2026-11-15)
+   ------------------------------------------------------------------------------------------
+   El autor, en un proyecto real: «noto lag y brincos entre cada respuesta… no hay una secuencia
+   natural en el proceso de un plan». Medido cuadro por cuadro en WebKit (app.js, renderEventNode,
+   followTurn, glideToEnd): cada fila nueva movía la conversación dos veces (su primer cuadro medía
+   los 140 px que content-visibility supone, el segundo su alto real) y siempre de golpe.
+   ========================================================================================== */
+/* 1 · Una fila que llega en vivo se dibuja entera desde su primer cuadro y sube a su lugar. Las que
+   tienen su propia entrada (una alerta, MU/TH/UR) la conservan. */
+@keyframes turn-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+#messages .thread-inner > .fresh { content-visibility: visible; }
+#messages .thread-inner > .fresh:not(.alert, .mother, .mother-alert, .folding) { animation: turn-in calc(280ms * var(--motion-scale, 1)) cubic-bezier(.2, .7, .2, 1) both; }
+@media (prefers-reduced-motion: reduce) { #messages .thread-inner > .fresh:not(.alert, .mother, .mother-alert, .folding) { animation: none; } }
+
+/* 2 · El plan en su tarjeta, paso por paso (app.js, bindPlanCard): el que trabaja respira en el color
+   de su IA, los hechos llevan su palomita, los que esperan quedan quietos y tenues, uno que falló se
+   marca y un plan detenido deja el resto a un lado. Sin el plan unido, la tarjeta es la de siempre. */
+:root:not([data-lab07]) #messages#messages .plan-card li { transition: color calc(220ms * var(--motion-scale, 1)) ease, opacity calc(220ms * var(--motion-scale, 1)) ease; }
+:root:not([data-lab07]) #messages#messages .plan-card li::before { transition: background-color calc(220ms * var(--motion-scale, 1)) ease, box-shadow calc(220ms * var(--motion-scale, 1)) ease; }
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="wait"] { color: var(--text-2); }
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="wait"] b { color: color-mix(in srgb, var(--agent) 65%, var(--text-2)); }
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="wait"]::before { background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 18%, transparent); }
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="now"]::before {
+  background: color-mix(in srgb, var(--agent) 14%, var(--plane-solid));
+  box-shadow: inset 0 0 0 1.5px var(--agent), 0 0 0 0 color-mix(in srgb, var(--agent) 40%, transparent);
+  animation: plan-step-now calc(1.6s * var(--motion-scale, 1)) ease-out infinite;
+}
+@keyframes plan-step-now {
+  0% { box-shadow: inset 0 0 0 1.5px var(--agent), 0 0 0 0 color-mix(in srgb, var(--agent) 40%, transparent); }
+  70%, 100% { box-shadow: inset 0 0 0 1.5px var(--agent), 0 0 0 6px color-mix(in srgb, var(--agent) 0%, transparent); }
+}
+:root:not([data-lab07]) #messages#messages .plan-card li:is([data-state="done"], [data-state="failed"])::before { background: var(--agent-solid, var(--agent)); box-shadow: none; }
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="failed"]::before { background: var(--danger); }
+/* La palomita (y la cruz de uno que falló), dibujadas sobre la casilla, en la tinta de su IA. */
+:root:not([data-lab07]) #messages#messages .plan-card li:is([data-state="done"], [data-state="failed"])::after {
+  content: ''; position: absolute; left: 6px; top: calc(6px + (1.45em - 17px) / 2 + 3px); width: 5px; height: 9px; box-sizing: border-box;
+  border: solid var(--agent-on, #ffffff); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="failed"]::after {
+  content: '×'; left: 0; top: calc(6px + (1.45em - 17px) / 2); width: 17px; height: 17px; border: 0; transform: none;
+  font: 700 14px/17px var(--sans); text-align: center; color: #ffffff;
+}
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="skipped"] { opacity: .5; }
+:root:not([data-lab07]) #messages#messages .plan-card li[data-state="skipped"]::before { background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 18%, transparent); }
+@media (prefers-reduced-motion: reduce) { :root:not([data-lab07]) #messages#messages .plan-card li[data-state="now"]::before { animation: none; } }
+
+/* 3 · Una sola familia de tarjetas, sin borde (el autor: «quiero coherencia visual en toda la UX y
+   esto lo rompe»): «Qué cambió», la píldora del plan y la tarjeta de permiso llevan el mismo fondo
+   suave que la tarjeta del plan, 14 px de esquina y ninguna línea alrededor; sus botones son
+   rellenos, de 30 px, 9 px de esquina, sin borde y con más contraste. */
+/* Qué cambió */
+#messages#messages .row .turn-changes { gap: 8px; margin: 12px 0 0; padding: 12px 14px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); box-shadow: none; }
+#messages#messages .row .turn-changes-acts { gap: 6px; margin-top: 2px; }
+#messages#messages .row .turn-changes-acts button {
+  height: 30px; padding: 0 14px; border: 0; border-radius: 9px; box-shadow: none;
+  font: 500 12.5px/30px var(--read, var(--sans)); letter-spacing: 0; text-transform: none; white-space: nowrap;
+  background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text);
+  transition: background-color calc(150ms * var(--motion-scale, 1)) ease, color calc(150ms * var(--motion-scale, 1)) ease;
+}
+#messages#messages .row .turn-changes-acts button:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--text) 14%, transparent); }
+#messages#messages .row .turn-changes-acts button:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor) 60%, transparent); outline-offset: 2px; }
+/* «Ver» es la acción principal: esmeralda lleno, con la tinta que contrasta en cada tema. */
+#messages#messages .row .turn-changes-acts .turn-changes-see { font-weight: 600; background: var(--phosphor); color: #052e20; }
+#messages#messages .row .turn-changes-acts .turn-changes-see:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--phosphor) 86%, #ffffff); }
+:root[data-scheme="light"] #messages#messages .row .turn-changes-acts .turn-changes-see { background: color-mix(in srgb, var(--phosphor) 80%, #000000); color: #ffffff; }
+:root[data-scheme="light"] #messages#messages .row .turn-changes-acts .turn-changes-see:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--phosphor) 68%, #000000); }
+#messages#messages .row .turn-changes-acts .undo.sure { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+#messages#messages .row .turn-changes-files > summary { color: var(--text-2); }
+#messages#messages .row .turn-changes-files > summary:hover { color: var(--text); }
+
+/* La píldora del plan: el mismo fondo, sin su línea alrededor (con foto de fondo conserva el suyo). */
+#messages#messages .thread-inner > .system.plan, html.chat-shell #messages#messages .thread-inner > .system.plan { box-shadow: none !important; border: 0 !important; }
+:is(:root:not([data-wallpaper]), :root[data-wallpaper="default"]) #messages#messages .thread-inner > .system.plan { background: color-mix(in srgb, var(--text) 4%, var(--cs-canvas, var(--plane-solid))) !important; }
+
+/* La tarjeta de permiso: su tono de petición en el relleno, sin la línea dorada alrededor; los
+   botones secundarios con el mismo relleno que los de «Qué cambió». */
+:root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) { border: 0 !important; box-shadow: none !important; background: color-mix(in srgb, var(--warn, #e2a022) 8%, var(--cs-canvas, var(--plane-solid))) !important; }
+:root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-alt { background: color-mix(in srgb, var(--text) 9%, transparent); }
+:root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-alt:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--text) 14%, transparent); }
+:root:not([data-lab11]) #messages#messages .mode-ask:not(.settled) .mode-windows { background: color-mix(in srgb, var(--text) 6%, transparent); }
+
+/* 4 · La cabecera de un turno, curvas concéntricas (el autor: «cuida las curvas… atención al
+   detalle»): los chips miden lo mismo (22 px) y su esquina es la mitad de su alto; la cápsula deja
+   el mismo aire alrededor (3 px) y su esquina es la del chip más ese aire, así las dos curvas corren
+   paralelas. Sin líneas: cada pieza la dibuja su relleno, la cápsula un poco más oscura que el
+   lienzo y los chips sobre el material sólido, teñidos por su IA. */
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who { --chip-h: 22px; --cap-pad: 3px; }
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who:not(:has(> .reply)) {
+  padding: var(--cap-pad); gap: 4px; border-radius: calc(var(--chip-h) / 2 + var(--cap-pad)); box-shadow: none !important;
+}
+/* Sobre el lienzo liso; con foto de fondo la cápsula conserva su vidrio. */
+:is(:root:not([data-wallpaper]), :root[data-wallpaper="default"]):not([data-lab04]) #messages#messages .row.assistant .col > .who:not(:has(> .reply)) { background: color-mix(in srgb, var(--text) 5%, var(--cs-canvas, var(--plane-solid))) !important; }
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who > span:first-child,
+:root:not([data-lab04]) #messages#messages .row.assistant .col > .who :is(.badge, .to-agent) {
+  height: var(--chip-h); line-height: var(--chip-h); border: 0; border-radius: calc(var(--chip-h) / 2); box-shadow: none;
+}
+/* En oscuro el nombre de la IA en su chip llevaba 4.3:1; con un poco más de tinta pasa 4.5:1. */
+:root:not([data-scheme="light"]):not([data-lab04]) #messages#messages .row.assistant .col > .who > span:first-child { color: color-mix(in srgb, var(--agent) 66%, var(--text)); }
