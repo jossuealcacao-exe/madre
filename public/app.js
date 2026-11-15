@@ -26737,12 +26737,15 @@ function paintShellTitle() {
   if (!shellUI.title) return;
   const here = chats.list.find((chat) => chat.id === chats.active);
   const project = document.querySelector('#project')?.textContent?.trim() ?? '';
-  const title = here?.title ?? t('First conversation');
+  const whole = here?.title ?? t('First conversation');
+  // A title made from the first message is cut at 80 characters (src/chats.mjs, CHAT_TITLE_MAX), often
+  // inside a word («…y un botón. Explíc»): the bar says it was cut, at the last whole word (2026-11-15).
+  const title = whole.length >= 80 ? `${whole.replace(/\s+\S*$/, '').replace(/[\s.,;:·-]+$/, '')}…` : whole;
   const said = `${title}\n${project}`;
   if (shellUI.title.dataset.said === said) return;
   shellUI.title.dataset.said = said;
   shellUI.title.replaceChildren(el('b', null, title), el('span', null, project));
-  shellUI.title.title = `${title} · ${project}`;
+  shellUI.title.title = `${whole} · ${project}`;
 }
 
 // The open projects, this one first: a press goes there, ⌘-press to a new tab. All of them, awake
