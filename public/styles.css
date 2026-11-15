@@ -6340,7 +6340,7 @@ dialog.settings-window.rail .settings-body { display: grid; grid-template-column
 .settings-host { display: grid; gap: 14px; }
 .settings-host + .settings-host { margin-top: 14px; }
 .settings-detail-head { margin-bottom: 12px; }
-.sx-intro { margin: 0 2px 2px; font-size: 13px; line-height: 1.55; color: var(--text-2); }
+.sx-intro { margin: 0 0 2px; font-size: 13px; line-height: 1.55; color: var(--text-2); }
 .sx-block { min-width: 0; border-radius: 14px; background: var(--surface, var(--panel)); box-shadow: var(--bevel), var(--float-sm); overflow: hidden; }
 .sx-head { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 12px; }
 .sx-head .sx-words { flex: 1; min-width: 0; display: grid; gap: 3px; }
@@ -6760,7 +6760,7 @@ dialog.skill-text .skill-text-foot { margin: 0; }
 .sx-slot .key-form :is(input, select) { height: 32px; padding: 0 10px; border: 0; border-radius: 9px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-family: var(--mono); font-size: 12.5px; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .16); }
 .sx-slot .key-form :is(input, select):focus { outline: none; box-shadow: inset 0 3px 9px rgba(0, 0, 0, .3), 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 40%, transparent); }
 .sx-slot .key-row { display: flex; align-items: center; gap: 12px; }
-.sx-slot .key-row button { height: 30px; padding: 0 13px; border: 0; border-radius: 9px; background: var(--phosphor); color: var(--phosphor-ink); font-family: var(--read); font-size: 12.5px; font-weight: 550; letter-spacing: 0; text-transform: lowercase; box-shadow: var(--key-rest); cursor: pointer; }
+.sx-slot .key-row button { height: 30px; padding: 0 13px; border: 0; border-radius: 9px; background: var(--phosphor); color: var(--phosphor-ink); font-family: var(--read); font-size: 12.5px; font-weight: 550; letter-spacing: 0; text-transform: none; box-shadow: var(--key-rest); cursor: pointer; }
 .sx-slot .key-row button::first-letter { text-transform: uppercase; }
 .sx-slot .key-row button:active { box-shadow: var(--key-down); transform: translateY(1px); }
 .sx-slot :is(.key-link, .key-note, .key-said) { font-family: var(--read); font-size: 12px; font-weight: var(--read-weight, 300); letter-spacing: 0; text-transform: none; color: var(--text-2); }
@@ -7598,7 +7598,7 @@ dialog.nostromo-key .room-ask-icon { --tone: #e5484d; }
 :is(#nostromo, .mv) .nostromo-actions .mother-close[aria-pressed="true"] { background: #f2f1ee; color: #111; }
 #nostromo .nostromo-help { font-family: var(--read); font-size: 11.5px; letter-spacing: 0; color: rgba(242, 241, 238, .42); }
 /* Under the sun, not across it (2026-11-10): over its light the words could not be read. */
-#nostromo .nostromo-empty { inset: auto 0 84px 0; font-family: var(--read); letter-spacing: 0; text-transform: lowercase; color: rgba(242, 241, 238, .6); }
+#nostromo .nostromo-empty { inset: auto 0 84px 0; font-family: var(--read); letter-spacing: 0; text-transform: none; color: rgba(242, 241, 238, .6); }
 #nostromo .nostromo-empty::first-letter { text-transform: uppercase; }
 /* A memory's card and the questions to ask: dark glass panels, the kind as a coloured dot and a
    word, labels in sentences, figures in small mono, and the one destructive key a soft red. */
@@ -8408,7 +8408,7 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
 .agent-pop .pop-limit.hot b { color: var(--crit); }
 .agent-pop .pop-note { margin: 0; font-family: var(--read, var(--sans)); font-size: 12px; line-height: 1.45; color: var(--text-2); }
 .agent-pop .pop-meta { margin: 10px 0 0; font-family: var(--read, var(--sans)); font-size: 11.5px; line-height: 1.45; color: var(--text-3); }
-.sx-train-how { display: grid; gap: 6px; margin: 4px 0 6px; padding: 0 0 0 4px; list-style: none; counter-reset: how; }
+.sx-train-how { display: grid; gap: 6px; margin: 4px 16px 6px; padding: 0; list-style: none; counter-reset: how; }
 .sx-train-how li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: baseline; font: 450 13px/1.45 var(--read, var(--sans)); color: var(--text); counter-increment: how; }
 .sx-train-how li::before { content: counter(how); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--text); font: 600 11px var(--read, var(--sans)); }
 /* The plan as small gauges and the connection as chips (1.1): less to read, more to see. */
@@ -11320,7 +11320,7 @@ dialog.note-window .surface-modes .surface-mode:not(.note-x):is(:hover, :focus-v
 .note-dot { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1px solid rgb(0 0 0 / .22); background: var(--note); cursor: pointer; transition: transform calc(160ms * var(--motion-scale)) var(--ease-out, ease); }
 .note-dot:is(:hover, :focus-visible) { transform: scale(1.18); }
 .note-dot[aria-checked="true"] { box-shadow: 0 0 0 2px rgb(28 25 23 / .55); }
-.note-dot.static { flex: none; align-self: center; margin-right: 10px; cursor: default; transform: none; }
+.note-dot.static { flex: none; align-self: center; margin-right: -6px; cursor: default; transform: none; }
 /* Larger notes read larger: the text grows a little with the note (container query on its body). */
 .note-body { container: note / size; }
 @container note (min-width: 420px) { .note-text { font-size: 17px; } .note-dot { width: 16px; height: 16px; } }
@@ -14642,8 +14642,12 @@ dialog.viewer .code-crumbs.empty { display: none !important; }
 /* ---- THE DETAILS, SCREEN BY SCREEN (2026-11-15, the author: «alineemos elementos, encajemos curvas,
    cuidemos esa atención al detalle»). Polish only: each rule lines up, sizes or evens out what was
    already there; none adds a piece or changes the look. Fixed in place the same day: .side-who (the
-   sidebar's foot starts at 18 px, where its labels and chats start; it was 16). It stands before
-   «Terminal and editor», which runs to the end of the file for test/code-themes.test.mjs. */
+   sidebar's foot starts at 18 px, where its labels and chats start; it was 16), .sx-intro (2 px to the
+   right of the cards under it), .sx-train-how (the three steps of «Entrena tu propia IA» stood outside
+   the card's 16 px), .note-dot.static (26 px from the note's name; now the 10 of the sidebar's dots),
+   .sx-slot .key-row button («Guardar llave de api»: the API kept), #nostromo .nostromo-empty (the
+   empty map said «… memorias. madre escribe…»). It stands before «Terminal and editor», which runs to
+   the end of the file for test/code-themes.test.mjs. */
 
 /* The room · the sidebar. A project's dot stands in the column the icons stand in (18 px), so its
    name starts where «Nuevo chat», «Inicio» and «Todos tus proyectos» start: it began 11 px before. */
@@ -14660,6 +14664,30 @@ html.chat-shell dialog.viewer.code > .viewer-head:not(:has(> :is(.viewer-nav, .v
 /* The keys over the tree (search, new file, reload) stood 2 px under the hairline and 6 px over the
    tree: an even 8 above them. */
 html.chat-shell dialog.viewer .code-files > .tree-search { padding-top: 8px; }
+
+/* Settings, Modules and Images · a field and a key side by side are one height. Fields are 32 px and
+   keys 30, so their edges missed by a pixel above and below (Skills: «Sola, cuando hables del tema»
+   beside «Usar» and «Qué dice»; a pasted key beside «Guardar»). */
+:is(div, form, label, span):has(> :is(.sx-input, .sx-num)) > .sx-btn { height: 32px; }
+/* Modules · who makes a module is a name and keeps its capitals: «Agent Handoff Protocol Plus», not
+   «Agent handoff protocol plus» (the card lowers its small lines and raises only the first letter). */
+.mods-detail .module-card .vendor { text-transform: none; }
+
+/* Help · its bar in two heights, as Settings' bar is: the search and the systems at 32 px (the
+   systems were 36), the round keys at 28 (the «?» was 30 wide). Track and key concentric, 9 = 7 + 2,
+   as the «Todas · Este proyecto · Bloqueantes» track under it. */
+#mother .mother-bar .mother-os { padding: 2px !important; border-radius: 9px !important; }
+#mother .mother-bar .mother-os button { min-height: 28px; border-radius: 7px !important; }
+#mother .mother-bar .mother-os .seg-thumb { top: 2px; bottom: 2px; border-radius: 7px; }
+#mother .mother-tools .tour-button { width: 28px; min-width: 28px; }
+
+/* The Market · its tabs as tall as the search beside them (31 → 32 px). */
+.mk.flat .mk-tab { min-height: 28px; }
+
+/* Light · a green word on its own green tint, readable: «Al día», «Sí», «Comprobado», «Siempre» and a
+   passed test stood at 2.9–3.3 : 1 in 11–12.5 px. The same green, deeper, as the light look already does
+   for the token saver (.ash-toggle): about 4.8 : 1 on the tint. */
+:root[data-scheme="light"] :is(.sx-chip.on, .sx-always, .exam.passed .verdict) { color: color-mix(in srgb, var(--phosphor) 78%, #000000); }
 
 /* ---- Terminal and editor: Coldbrew, Oldcode and Simple (2026-11-14, the author) ----
    Ajustes › Apariencia › Terminal y editor puts data-code-theme on the root (app.js, LOOKS.codeTheme).

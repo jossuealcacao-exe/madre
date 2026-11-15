@@ -26,6 +26,9 @@ export const EN = {
   "Open Agents in Settings": "Open Your AIs in Settings",
   "AGENTS": "Your AIs",
   "Agents in Settings": "Your AIs in Settings",
+  // The memory map with nothing in it yet (2026-11-15): written as it is read, so its second sentence and
+  // MADRE keep their capitals (the map lowered the whole line and raised only its first letter).
+  "NO MEMORIES YET. THE ARCHIVIST WRITES THE FIRST ONES AFTER A FEW EXCHANGES.": "No memories yet. MADRE writes the first ones after a few exchanges.",
   "Copilot: let the agent you write to drive the project for a while.": "Copilot: let the AI you write to drive the project for a while.",
   "The agent you write to edits the project without asking you to confirm each message, until it ends. It runs on its own only the commands that read; tests, builds and commits wait for your click.": "The AI you write to edits the project without asking you to confirm each message, until it ends. On its own it only runs the commands that read; tests, builds and saving versions wait for your click.",
   "Copilot on for {time}. Write to the agent that should drive.": "Copilot on for {time}. Write to the AI that should drive.",

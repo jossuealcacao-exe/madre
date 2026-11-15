@@ -579,7 +579,7 @@ dialog.sm-sheet > .sm-sheet-body { border: 0 solid transparent; border-width: 8p
 .sm-picker-head .seg-option { min-height: 28px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; }
 .sm-picker-head .seg-option[aria-checked="true"] { background: var(--surface, var(--panel)); box-shadow: 0 1px 2px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .06); }
 /* The room's search (styles.css, .settings-search), not the sheet's uppercase field label. */
-.sm-picker-head > .sm-picker-search { flex: 1 1 auto; max-width: none; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-2); }
+.sm-picker-head > .sm-picker-search { flex: 1 1 auto; max-width: none; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-2); }
 .sm-picker-search input::-webkit-search-cancel-button { cursor: pointer; }
 /* A project from nothing (2026-10-17): the name, where it goes, one key. */
 .sm-new-project { display: grid; gap: 12px; justify-items: start; padding: 18px 2px 6px; }
@@ -2046,7 +2046,7 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-tick svg { width: 13px; height: 13px; }
 .wl-check.later .wl-tick { background: color-mix(in srgb, var(--wl-warn) 14%, transparent); color: var(--wl-warn); }
 .wl-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--wl-line); }
-.wl-seg button { height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 450 13px var(--read); cursor: pointer; }
+.wl-seg button { height: 30px; padding: 0 14px; border: 0; border-radius: 7px; background: none; color: var(--text-2); font: 450 13px var(--read); cursor: pointer; }
 .wl-seg button[aria-checked="true"] { background: var(--wl-sel); color: var(--text); font-weight: 500; }
 
 .wl-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
@@ -2341,10 +2341,10 @@ html.home-shell dialog.sm-sheet .sm-tray { background: var(--cs-canvas); box-sha
 html.home-shell dialog.sm-sheet .sm-slot { box-shadow: inset 0 0 0 1px var(--cs-line); }
 /* The rails to choose among a few: a hairline track, the chosen one on the selection's tone. */
 html.home-shell dialog.sm-sheet :is(.custom-seg, .sm-picker-head .custom-seg) { padding: 3px; border-radius: 10px; background: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
-html.home-shell dialog.sm-sheet .seg-option { border-radius: 8px; background: none; box-shadow: none !important; color: var(--text-2); font: 450 12.5px var(--read); }
+html.home-shell dialog.sm-sheet .seg-option { border-radius: 7px; background: none; box-shadow: none !important; color: var(--text-2); font: 450 12.5px var(--read); }
 html.home-shell dialog.sm-sheet .seg-option:hover { color: var(--text); }
 html.home-shell dialog.sm-sheet .seg-option[aria-checked="true"] { background: var(--cs-sel) !important; box-shadow: none !important; color: var(--text); font-weight: 550; }
-html.home-shell dialog.sm-sheet .sm-picker-search { border-radius: 9px; background: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
+html.home-shell dialog.sm-sheet .sm-picker-search { border-radius: 10px; background: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
 /* Folders: hairline cards that lift under the pointer; a chosen one ringed in the accent. */
 html.home-shell dialog.sm-sheet .sm-fold-grid > .sm-fold { border-radius: 10px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line); }
 html.home-shell dialog.sm-sheet .sm-fold-grid > .sm-fold:hover { box-shadow: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .25); }
@@ -2673,7 +2673,11 @@ html.home-shell .mk.flat .mk-mine .mk-chip { display: inline-block; flex: 0 1 au
 .sm-sheet-body > .scene-link { overflow: visible; clip-path: inset(0 round 18px); }
 html.home-shell .sm-sheet-body > .scene-link { clip-path: inset(0 round 12px); }
 
-/* ---- THE DETAILS, SCREEN BY SCREEN (2026-11-15, the author: «alineemos elementos…»; the room's half
-   is in styles.css, before «Terminal and editor»). Home · the sidebar: a project's dot stands in the icons' column (16 px
-   here), so its name starts where «Inicio» and «Todos tus proyectos» start (44 px; it was 35). ---- */
+/* ---- THE DETAILS, SCREEN BY SCREEN (2026-11-15, the author: «alineemos elementos…»; the room's
+   half is in styles.css, before «Terminal and editor»). Home · the sidebar: a project's dot stands in
+   the icons' column (16 px here), so its name starts where «Inicio» and «Todos tus proyectos» start
+   (44 px; it was 35). Fixed in place the same day: in Home's sheets a rail's option is 7 px round in
+   its 10 px track with 3 px between them (it was 8: 8 + 3 ≠ 10), and the folder search of «Agregar
+   proyecto» is as tall and as round as the rail beside it (34 px and 10; it was 32 and 9); the
+   welcome's «Español · English» the same way, 7 in 10 with 3 between. ---- */
 html.home-shell .sm-side .side-project .side-dot { margin-inline: 4.5px; }
