@@ -14659,8 +14659,9 @@ html.chat-shell:not(.home-shell) .side-head { padding-left: 11px; }
 html.chat-shell .side-label.side-chats .chats-search-key { margin-right: -6px; }
 
 /* The room · Files. With no file open, the line over the tree had nothing to say and still drew its
-   21 px and its hairline: an empty band, two hairlines, between the tabs and the files. */
-html.chat-shell dialog.viewer.code > .viewer-head:not(:has(> :is(.viewer-nav, .viewer-lang, .code-tabs, .viewer-seg, .viewer-review):not([hidden]))):not(:has(> .viewer-path > .file:not(:empty))) { display: none; }
+   21 px and its hairline: an empty band, two hairlines, between the tabs and the files. Only docked
+   beside the chat (.split): in a window of its own the line also holds the window's keys. */
+html.chat-shell dialog.viewer.code.split > .viewer-head:not(:has(> :is(.viewer-nav, .viewer-lang, .code-tabs, .viewer-seg, .viewer-review):not([hidden]))):not(:has(> .viewer-path > .file:not(:empty))) { display: none; }
 /* The keys over the tree (search, new file, reload) stood 2 px under the hairline and 6 px over the
    tree: an even 8 above them. */
 html.chat-shell dialog.viewer .code-files > .tree-search { padding-top: 8px; }
