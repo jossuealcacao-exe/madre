@@ -24,6 +24,8 @@ export const EN = {
   "Back to the CLI default": "Back to its usual level",
   "This message goes with {level} effort. If the answer falls short, MADRE goes back to the agent's usual effort on the next one.": "This message goes with «{level}». If the answer falls short, MADRE goes back to that AI's usual level on the next one.",
   "Open Agents in Settings": "Open Your AIs in Settings",
+  "AGENTS": "Your AIs",
+  "Agents in Settings": "Your AIs in Settings",
   "Copilot: let the agent you write to drive the project for a while.": "Copilot: let the AI you write to drive the project for a while.",
   "The agent you write to edits the project without asking you to confirm each message, until it ends. It runs on its own only the commands that read; tests, builds and commits wait for your click.": "The AI you write to edits the project without asking you to confirm each message, until it ends. On its own it only runs the commands that read; tests, builds and saving versions wait for your click.",
   "Copilot on for {time}. Write to the agent that should drive.": "Copilot on for {time}. Write to the AI that should drive.",

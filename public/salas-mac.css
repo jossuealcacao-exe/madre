@@ -2672,3 +2672,8 @@ html.home-shell .mk.flat .mk-mine .mk-chip { display: inline-block; flex: 0 1 au
    it measures what it holds and keeps it; the sheet scrolls instead. */
 .sm-sheet-body > .scene-link { overflow: visible; clip-path: inset(0 round 18px); }
 html.home-shell .sm-sheet-body > .scene-link { clip-path: inset(0 round 12px); }
+
+/* ---- THE DETAILS, SCREEN BY SCREEN (2026-11-15, the author: «alineemos elementos…»; the room's half
+   is in styles.css, before «Terminal and editor»). Home · the sidebar: a project's dot stands in the icons' column (16 px
+   here), so its name starts where «Inicio» and «Todos tus proyectos» start (44 px; it was 35). ---- */
+html.home-shell .sm-side .side-project .side-dot { margin-inline: 4.5px; }

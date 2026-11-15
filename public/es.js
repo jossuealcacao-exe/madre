@@ -3350,8 +3350,9 @@ export const ES = {
   'NO CHAT MODEL': 'SIN MODELO DE CHAT',
   'YOU': 'TÚ',
   // The crew, from the one button that stands for the spheres.
-  'AGENTS': 'AGENTES',
-  '{ready} of {total} ready': '{ready} de {total} listos',
+  // Como el botón que lo abre, la sugerencia que lo explica y Ajustes (2026-11-15): «Tus IAs», no «AGENTES».
+  'AGENTS': 'Tus IAs',
+  '{ready} of {total} ready': '{ready} de {total} listas',
   'Back to the agents': 'Volver a los agentes',
   // The core's board: you, and your local model.
   'WHAT IS SENT': 'LO QUE SE ENVÍA',
@@ -3408,7 +3409,7 @@ export const ES = {
   'Reload in {language}': 'Recargar en {language}',
   'Back to default': 'Restablecer',
   'Copied': 'Copiado',
-  'Agents in Settings': 'Agentes en Ajustes',
+  'Agents in Settings': 'Tus IAs en Ajustes',
   'The memory could not be read.': 'No se pudo leer la memoria.',
   'Read at {time}': 'Leído a las {time}',
   'Nothing yet: the project has no memories saved.': 'Aún nada: el proyecto no tiene memorias guardadas.',

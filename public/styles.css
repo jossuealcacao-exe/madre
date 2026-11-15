@@ -11666,7 +11666,7 @@ html.chat-shell #chats .chat.working .chat-glyph, html.chat-shell #chats .chat.u
 .side-count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e6a417; color: #fff; font: 600 11px/18px var(--read); text-align: center; }
 .side-all { color: var(--text-3); }
 .side-foot { flex: none; display: flex; align-items: center; gap: 2px; padding: 8px; box-shadow: inset 0 1px 0 var(--cs-line); }
-.side-who { flex: 1; min-width: 0; display: grid; padding: 2px 8px; }
+.side-who { flex: 1; min-width: 0; display: grid; padding: 2px 10px; }
 .side-who b { font: 600 13px var(--read); color: var(--text); }
 .side-who small { font: 400 11.5px var(--read); color: var(--text-3); }
 
@@ -14638,6 +14638,28 @@ dialog.viewer .code-crumbs.empty { display: none !important; }
 /* WHAT IS SENT, SAID FOR SOMEONE NEW (2026-11-14): each pane opens with one plain sentence about what it
    shows, quiet under the tabs and above the pane's own heads. */
 .core .core-lead { margin: 2px 0 14px; max-width: 76ch; font: 400 13.5px/1.55 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2); }
+
+/* ---- THE DETAILS, SCREEN BY SCREEN (2026-11-15, the author: «alineemos elementos, encajemos curvas,
+   cuidemos esa atención al detalle»). Polish only: each rule lines up, sizes or evens out what was
+   already there; none adds a piece or changes the look. Fixed in place the same day: .side-who (the
+   sidebar's foot starts at 18 px, where its labels and chats start; it was 16). It stands before
+   «Terminal and editor», which runs to the end of the file for test/code-themes.test.mjs. */
+
+/* The room · the sidebar. A project's dot stands in the column the icons stand in (18 px), so its
+   name starts where «Nuevo chat», «Inicio» and «Todos tus proyectos» start: it began 11 px before. */
+.side-project .side-dot { margin-inline: 5.5px; }
+/* The key that folds the sidebar draws its icon over the rows' icons (it stood 1 px to their left). */
+html.chat-shell:not(.home-shell) .side-head { padding-left: 11px; }
+/* The magnifier of «Chats» in the column of the keys at the right, under «Nuevo chat» and over the
+   foot's keys (its centre stood 6 px to their left). */
+html.chat-shell .side-label.side-chats .chats-search-key { margin-right: -6px; }
+
+/* The room · Files. With no file open, the line over the tree had nothing to say and still drew its
+   21 px and its hairline: an empty band, two hairlines, between the tabs and the files. */
+html.chat-shell dialog.viewer.code > .viewer-head:not(:has(> :is(.viewer-nav, .viewer-lang, .code-tabs, .viewer-seg, .viewer-review):not([hidden]))):not(:has(> .viewer-path > .file:not(:empty))) { display: none; }
+/* The keys over the tree (search, new file, reload) stood 2 px under the hairline and 6 px over the
+   tree: an even 8 above them. */
+html.chat-shell dialog.viewer .code-files > .tree-search { padding-top: 8px; }
 
 /* ---- Terminal and editor: Coldbrew, Oldcode and Simple (2026-11-14, the author) ----
    Ajustes › Apariencia › Terminal y editor puts data-code-theme on the root (app.js, LOOKS.codeTheme).
