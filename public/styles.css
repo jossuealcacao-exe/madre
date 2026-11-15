@@ -14935,3 +14935,27 @@ dialog.intents-window .intents-page { gap: 12px; padding: 14px 16px 18px; }
 }
 /* En oscuro el nombre de la IA en su chip llevaba 4.3:1; con un poco más de tinta pasa 4.5:1. */
 :root:not([data-scheme="light"]):not([data-lab04]) #messages#messages .row.assistant .col > .who > span:first-child { color: color-mix(in srgb, var(--agent) 66%, var(--text)); }
+
+/* A STEP OF A PLAN, ONE QUIET LINE (2026-11-15, the author: «haz discretos los renglones de los pasos
+   del plan»; app.js, renderPlanStepLine). The dot stands in the avatars' column, in the colour of the
+   AI that takes the step; the line reads at the size of the thread's notes, and its instruction is
+   cut to one line until it is pressed. */
+#messages#messages .row.plan-step { align-items: start; margin-top: 10px; max-width: min(94%, 920px); }
+#messages#messages .row.plan-step > .plan-step-mark { align-self: start; justify-self: center; width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: var(--agent); opacity: .85; }
+#messages#messages .row.plan-step > .col { display: flex; align-items: baseline; gap: 8px; min-width: 0; font: 450 12.5px/1.5 var(--read, var(--sans)); color: var(--text-3); }
+#messages#messages .row.plan-step .plan-step-head { flex: none; color: var(--text-2); white-space: nowrap; }
+#messages#messages .row.plan-step .plan-step-head b { font-weight: 600; color: var(--agent); }
+#messages#messages .row.plan-step .plan-step-words { flex: 1 1 auto; min-width: 0; border-radius: 6px; cursor: pointer; outline: none; }
+#messages#messages .row.plan-step .plan-step-words:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--phosphor) 50%, transparent); }
+#messages#messages .row.plan-step .plan-step-plain { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#messages#messages .row.plan-step .plan-step-words:hover .plan-step-plain { color: var(--text-2); }
+#messages#messages .row.plan-step .plan-step-full { display: none; }
+#messages#messages .row.plan-step .plan-step-time { flex: none; font: 400 11px var(--mono); color: var(--text-3); opacity: .8; }
+/* Pressed: the whole instruction, as it was written, under its line. */
+#messages#messages .row.plan-step.open > .col { flex-wrap: wrap; }
+#messages#messages .row.plan-step.open .plan-step-words { order: 3; flex-basis: 100%; padding: 8px 12px; background: color-mix(in srgb, var(--text) 4%, transparent); color: var(--text-2); }
+#messages#messages .row.plan-step.open .plan-step-plain { display: none; }
+#messages#messages .row.plan-step.open .plan-step-full { display: block; font-size: 13px; line-height: 1.55; }
+#messages#messages .row.plan-step.open .plan-step-full > :first-child { margin-top: 0; }
+#messages#messages .row.plan-step.open .plan-step-full > :last-child { margin-bottom: 0; }
+#messages#messages .row.plan-step.open .plan-step-time { margin-left: auto; }

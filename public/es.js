@@ -2408,6 +2408,8 @@ export const ES = {
   'wrapping up': 'cerrando',
   'Reading what the others answered, to give you the final answer.': 'Leyendo lo que contestaron los demás para darte la respuesta final.',
   'step {n}/{total}': 'paso {n}/{total}',
+  'Show the whole step': 'Ver el paso completo',
+  'Show it in one line': 'Verlo en una línea',
   'Good reply · keep it for your model': 'Buena respuesta · guárdala para entrenar tu modelo',
   'Bad reply · keep it out of the dataset': 'Mala respuesta · déjala fuera de los datos de entrenamiento',
   'Copy this reply': 'Copiar esta respuesta',

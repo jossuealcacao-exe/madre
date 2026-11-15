@@ -7375,6 +7375,7 @@ function renderAssistantMessage(event) {
   // A closing the agent wrote in its plan (a «closing:» line) is its own words and stays as written.
   const closingAsk = delegated && target === sender;
   const shown = closingAsk && /^Review the delegated answers and the work completed\./.test(String(text ?? '')) ? t('Reading what the others answered, to give you the final answer.') : text;
+  if (delegated) return renderPlanStepLine(event, { closingAsk, shown });
   const compact = state.lastSender === sender && !delegated && !ash?.active && !event.ghost;
   const node = row('assistant', sender, { compact });
   if (event.ghost || mode === 0) node.classList.add('ghost');
@@ -7455,6 +7456,48 @@ function renderAssistantMessage(event) {
   if (needs) col.append(needs);
   node.append(col);
   state.lastSender = sender;
+  return node;
+}
+
+// A step of a plan, one quiet line (2026-11-15, the author: «haz discretos los renglones de los pasos
+// del plan»). The plan's card already lists every step with what it asks and lights the one at work
+// (bindPlanCard); the step's own row said it all again between the answers — the author's circle, a
+// capsule of chips and the instruction in a dashed bubble. Now a dot in the colour of the AI that
+// takes the step, «Paso 1/5 · @codex → @claude» and the instruction in one line, cut to fit; a press
+// on it opens the whole of it, as it was written, and another closes it.
+function renderPlanStepLine(event, { closingAsk, shown }) {
+  const { messageId, sender, target, step, totalSteps } = event.payload;
+  const node = el('article', `row plan-step${closingAsk ? ' closing' : ''}`);
+  node.id = `msg-${messageId}`;
+  paint(node, closingAsk ? sender : target);
+  node.append(el('span', 'plan-step-mark'));
+  const col = el('div', 'col');
+  const head = el('span', 'plan-step-head');
+  if (closingAsk) head.append(paint(el('b', null, `@${sender}`), sender), ` · ${t('wrapping up')}`);
+  else head.append(`${sentence(t('step {n}/{total}', { n: step, total: totalSteps }))} · `, paint(el('b', null, `@${sender}`), sender), ' → ', paint(el('b', null, `@${target}`), target));
+  const words = el('div', 'plan-step-words');
+  const plain = String(shown ?? '').replace(/[*_`#>]+/g, '').replace(/\s+/g, ' ').trim();
+  words.append(el('span', 'plan-step-plain', plain));
+  const full = el('div', 'plan-step-full');
+  full.append(renderMarkdown(shown));
+  words.append(full);
+  words.setAttribute('role', 'button');
+  words.tabIndex = 0;
+  words.setAttribute('aria-expanded', 'false');
+  words.title = t('Show the whole step');
+  const toggle = (event) => {
+    if (event?.target?.closest?.('a') || String(globalThis.getSelection?.() ?? '')) return;
+    const open = !node.classList.contains('open');
+    node.classList.toggle('open', open);
+    words.setAttribute('aria-expanded', String(open));
+    words.title = open ? t('Show it in one line') : t('Show the whole step');
+  };
+  words.addEventListener('click', toggle);
+  words.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); } });
+  col.append(head, words, el('span', 'plan-step-time', formatTime(event.timestamp)));
+  node.append(col);
+  // The line shows no header, so whatever its author says next shows its own.
+  state.lastSender = null;
   return node;
 }
 

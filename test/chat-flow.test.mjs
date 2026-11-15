@@ -137,3 +137,16 @@ test('chat flow · a plan\'s handoff goes straight to its dot; the cards have no
   assert.match(block, /prefers-reduced-motion: reduce\) \{ #messages \.thread-inner > \.fresh[^}]*\{ animation: none; \} \}/);
   assert.match(block, /prefers-reduced-motion: reduce\) \{[^}]*li\[data-state="now"\]::before \{ animation: none; \} \}/);
 });
+
+test('a step of a plan is one quiet line: who hands what to whom, the instruction cut to one line until pressed', () => {
+  // The plan's card already lists the steps; the step's row no longer repeats it in a full bubble.
+  assert.match(fn('renderAssistantMessage'), /if \(delegated\) return renderPlanStepLine\(event, \{ closingAsk, shown \}\);/);
+  const line = fn('renderPlanStepLine');
+  assert.match(line, /row plan-step/);
+  assert.match(line, /t\('step \{n\}\/\{total\}'/);
+  assert.match(line, /aria-expanded/);
+  // The line shows no header, so what its author says next shows its own.
+  assert.match(line, /state\.lastSender = null;/);
+  assert.match(styles, /\.row\.plan-step \.plan-step-plain \{ display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; \}/);
+  assert.match(styles, /\.row\.plan-step\.open \.plan-step-full \{ display: block;/);
+});
