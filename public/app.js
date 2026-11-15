@@ -640,7 +640,7 @@ function roomForToast(on) {
   if (root.classList.contains('toast-room') === room) return;
   root.classList.toggle('toast-room', room);
   const until = performance.now() + 340;
-  const follow = () => { keepPinned(); if (performance.now() < until) requestAnimationFrame(follow); };
+  const follow = () => { keepPinned({ instant: true }); if (performance.now() < until) requestAnimationFrame(follow); };
   requestAnimationFrame?.(follow);
 }
 
@@ -695,8 +695,59 @@ function setText(node, value) {
 }
 
 function scrollToEnd() {
+  readingHold = null;
+  stopGlide();
   scroller.to({ top: scroller.height, behavior: 'instant' });
   setPinned(true);
+}
+
+// THE THREAD GLIDES, AND THE ANSWER YOU ARE READING STAYS (2026-11-15, the author: «lag and jumps
+// between each answer»). Measured frame by frame in WebKit on a real plan: every new row moved the
+// whole conversation in one frame, by the row's height, and each answer of a plan was pushed off
+// the top in the same instant by the next step, its handoff and the next AI's working line. Now,
+// while the thread follows its end, it glides there: each frame closes part of the distance to
+// wherever the end is at that moment, so a row that grows or a second one that lands mid-way only
+// moves the goal, never parks the thread short of it (the reason the old smooth scroll was taken
+// out). And the newest answer holds its place: what comes after it fills the space below, and the
+// thread never goes past the answer's first line. The next answer, the person's own message or the
+// person scrolling lets it go. With reduced motion it is the same place, reached at once.
+let readingHold = null;            // the answer whose first line stays in view
+const HOLD_GAP = 14;               // the air left above that first line, in px
+const endGlide = { frame: 0, last: 0, since: 0 };
+let touchedAt = 0;                 // the last time the person moved the thread themselves
+function stopGlide() { if (endGlide.frame) cancelAnimationFrame(endGlide.frame); endGlide.frame = 0; }
+// Where following the end may go: the end, or no further than the held answer's first line.
+function followTop() {
+  const end = Math.max(0, scroller.height - scroller.view);
+  if (!readingHold?.isConnected) { readingHold = null; return end; }
+  const box = readingHold.getBoundingClientRect?.();
+  if (!box) return end;
+  const frameTop = pageScrolls() ? 0 : (els.thread?.getBoundingClientRect?.().top ?? 0);
+  const held = scroller.top + (box.top - frameTop) - HOLD_GAP;
+  return Math.max(0, Math.min(end, held));
+}
+function glideToEnd() {
+  if (!pinnedToEnd) return;
+  if (reducedMotion() || typeof requestAnimationFrame !== 'function') { keepPinned({ instant: true }); return; }
+  if (endGlide.frame) return;
+  endGlide.last = performance.now();
+  endGlide.since = endGlide.last;
+  const step = (now) => {
+    endGlide.frame = 0;
+    // The person took the thread: the glide is theirs to stop.
+    if (!pinnedToEnd || touchedAt > endGlide.since) return;
+    const target = followTop();
+    const gap = target - scroller.top;
+    if (Math.abs(gap) < 1) { if (gap) { ourScroll(); scroller.top = target; } return; }
+    const dt = Math.min(48, Math.max(1, now - endGlide.last));
+    endGlide.last = now;
+    // Most of the way in about a quarter of a second, slowing as it arrives.
+    const move = gap * (1 - Math.exp(-dt / 80));
+    ourScroll(200);
+    scroller.top += Math.abs(move) < 1 ? Math.sign(gap) : move;
+    endGlide.frame = requestAnimationFrame(step);
+  };
+  endGlide.frame = requestAnimationFrame(step);
 }
 
 // The thread is pinned to its own end, and anything that changes how tall it is has to put it
@@ -723,10 +774,12 @@ const measurePin = () => setPinned(distanceToEnd() < 64);
 // A turn of the wheel upward leaves the end at once: nothing may pull the thread back under it.
 els.thread?.addEventListener('wheel', (event) => {
   ourScrollUntil = 0;
+  touchedAt = performance.now();
   if (event.deltaY < 0 && scroller.top > 0) setPinned(false);
 }, { passive: true });
-for (const how of ['touchstart', 'pointerdown']) els.thread?.addEventListener(how, (event) => { if (how === 'touchstart' || event.target === els.thread) ourScrollUntil = 0; }, { passive: true });
-const onThreadScroll = () => { if (performance.now() >= ourScrollUntil) measurePin(); };
+for (const how of ['touchstart', 'pointerdown']) els.thread?.addEventListener(how, (event) => { if (how === 'touchstart' || event.target === els.thread) { ourScrollUntil = 0; touchedAt = performance.now(); } }, { passive: true });
+// A scroll of the person's own lets the held answer go: from there, they decide what they read.
+const onThreadScroll = () => { if (performance.now() >= ourScrollUntil) { readingHold = null; measurePin(); } };
 els.thread?.addEventListener('scroll', onThreadScroll, { passive: true });
 window.addEventListener?.('scroll', () => { if (pageScrolls()) onThreadScroll(); }, { passive: true });
 
@@ -737,13 +790,27 @@ window.addEventListener?.('scroll', () => { if (pageScrolls()) onThreadScroll();
 //
 // Instant, not smooth: the column is mid-relayout and an animated scroll is interrupted by the
 // next frame of it, which is how the thread ended up parked hundreds of pixels short of its end.
-function keepPinned() {
+// The conversation growing under a reader at the end glides instead (glideToEnd, 2026-11-15): that
+// glide aims at the end again on every frame, so a relayout cannot park it short. What changes the
+// thread's own size (the window, the divider, the browser beside it) still lands at once.
+function keepPinned({ instant = false } = {}) {
   if (!pinnedToEnd || !els.thread) return;
-  if (distanceToEnd() < 1) return;
-  scroller.to({ top: scroller.height, behavior: 'instant' });
+  if (endGlide.frame && !instant) return;
+  const target = followTop();
+  if (Math.abs(target - scroller.top) < 1) return;
+  if (!instant && !replaying && !drawingRecord && !reducedMotion()) { glideToEnd(); return; }
+  stopGlide();
+  ourScroll();
+  scroller.top = target;
 }
 if (typeof ResizeObserver === 'function' && els.thread) {
-  const watch = new ResizeObserver(() => { keepPinned(); requestAnimationFrame(keepPinned); });
+  const watch = new ResizeObserver((entries) => {
+    // The thread itself changed size: the window or a panel beside it. Everything else is the
+    // conversation growing or shrinking inside it.
+    const instant = entries.some((entry) => entry.target === els.thread || entry.target === els.composer);
+    keepPinned({ instant });
+    requestAnimationFrame(() => keepPinned({ instant }));
+  });
   watch.observe(els.thread);
   if (els.column) watch.observe(els.column);
   if (els.composer) watch.observe(els.composer);
@@ -8526,7 +8593,10 @@ function renderHandoff(event) {
     ? (messageCount === 1 ? t(' · {n} message carried', { n: messageCount }) : t(' · {n} messages carried', { n: messageCount })) + (omittedMessages ? (omittedMessages === 1 ? t(' · {n} older stays in the record', { n: omittedMessages }) : t(' · {n} older stay in the record', { n: omittedMessages })) : '')
     : t(' · no prior context'));
   // A step of a plan says so; the kind is a word of the record, never shown as it is written.
-  if (kind === 'delegated') node.append(t(' · delegated'));
+  // In a plan the step's own line already says who hands what to whom, so this one goes straight to
+  // its dot (scheduleFold), quiet, instead of standing between the step and the AI's working line
+  // and folding ten seconds later under it (2026-11-15).
+  if (kind === 'delegated') { node.append(t(' · delegated')); node.classList.add('step-handoff'); }
   node.title = t('The receiving agent gets the most recent transcript that fits its context allowance ({fit}). Adjust with PULSE_CONTEXT_MAX_CHARS.', { fit: omittedMessages ? t('{n} older messages did not fit; they remain in the project log', { n: omittedMessages }) : t('everything fit') });
   state.lastSender = null;
   return node;
@@ -9956,10 +10026,78 @@ function updateStopAll() {
       : t('Agents are working normally. STOP ALL arms itself on a Diagnostics alert; typing STOPALL always works.');
 }
 
+// THE PLAN, ONE STEP AFTER ANOTHER, IN ITS OWN CARD (2026-11-15, the author: «there is no natural
+// sequence in a plan»). The card the plan was written in (planCard, in the answer that made it) used
+// to stay a list of empty boxes while the steps ran below it. Now it is the plan's progress: the
+// step at work is lit and breathing in its AI's colour, the ones done are ticked, the ones waiting
+// stay quiet, one that failed is marked, and a stopped plan leaves the rest aside. The record says
+// it all (plan.created, each step handed over, each answer, the end), so a conversation opened
+// later shows the same card as the one that watched it happen.
+const planCards = new Map();       // planId -> { card, items: [li per step] }
+const planStepOf = new Map();      // the message that handed a step over -> { planId, step }
+function bindPlanCard(event) {
+  const { planId, parentMessageId, steps = [] } = event.payload;
+  const card = parentMessageId ? document.getElementById(`msg-${parentMessageId}`)?.querySelector('.plan-card') : null;
+  if (!card || card.dataset.plan) return;
+  const lines = [...card.querySelectorAll(':scope > ol > li')];
+  const taken = new Set();
+  // Each step to the first line of the card for the same AI not yet taken: the plan may have left a
+  // line out (an AI not ready, more steps than allowed), never put them in another order.
+  const items = steps.map((step) => {
+    const line = lines.find((one) => !taken.has(one) && one.dataset.agent === step.agent) ?? null;
+    if (line) taken.add(line);
+    return line;
+  });
+  for (const line of lines) if (!taken.has(line)) { line.dataset.state = 'skipped'; line.title = t('Stopped'); }
+  card.dataset.plan = planId;
+  card.dataset.state = 'running';
+  planCards.set(planId, { card, items });
+  items.forEach((line, index) => markPlanStep(planId, index + 1, 'wait'));
+}
+const PLAN_STEP_WORDS = { wait: () => t('Waits its turn'), now: () => t('Working on it…'), done: () => t('Done'), skipped: () => t('Stopped') };
+function markPlanStep(planId, step, how, agent = null) {
+  const line = planCards.get(planId)?.items[step - 1];
+  if (!line) return;
+  // What already ended stays as it ended.
+  if (how === 'now' && ['done', 'failed'].includes(line.dataset.state)) return;
+  line.dataset.state = how;
+  line.title = how === 'failed' ? t('{label} could not answer', { label: label(agent ?? line.dataset.agent) }) : PLAN_STEP_WORDS[how]?.() ?? '';
+  if (how === 'now') line.setAttribute('aria-current', 'step'); else line.removeAttribute('aria-current');
+}
+// A step handed over: the ones before it are behind, this one is at work. The closing turn (the
+// plan's author reading the answers) leaves every step behind and the card says it is closing.
+function planStepStarted(payload) {
+  const { messageId, planId, step, totalSteps, sender, target } = payload;
+  const plan = planCards.get(planId);
+  if (!plan || !Number.isInteger(step)) return;
+  if (messageId) planStepOf.set(messageId, { planId, step });
+  const closing = sender === target && step === totalSteps && step > plan.items.length;
+  plan.items.forEach((line, index) => {
+    if (!line || index + 1 >= step) return;
+    if (!['done', 'failed', 'skipped'].includes(line.dataset.state)) markPlanStep(planId, index + 1, 'done');
+  });
+  if (closing) plan.card.dataset.state = 'closing';
+  else markPlanStep(planId, step, 'now');
+}
+function planStepEnded(handedOver, how, agent) {
+  const at = planStepOf.get(handedOver);
+  if (at) markPlanStep(at.planId, at.step, how, agent);
+}
+function planEnded(payload, how) {
+  const plan = planCards.get(payload.planId);
+  if (!plan) return;
+  plan.items.forEach((line, index) => {
+    if (!line || ['done', 'failed', 'skipped'].includes(line.dataset.state)) return;
+    markPlanStep(payload.planId, index + 1, how === 'completed' ? 'done' : 'skipped');
+  });
+  plan.card.dataset.state = how === 'completed' ? 'done' : 'stopped';
+}
+
 function renderPlanEvent(event) {
   const { planId, orchestrator, steps = [], closing, stepsRun, reason } = event.payload;
   if (event.type === 'plan.created') state.plansRunning.add(planId); else state.plansRunning.delete(planId);
   updateStopAll();
+  if (event.type === 'plan.created') bindPlanCard(event); else planEnded(event.payload, event.type === 'plan.completed' ? 'completed' : 'stopped');
   const node = el('div', `system plan${event.type === 'plan.stopped' ? ' failed' : ''}`);
   tint(node, orchestrator);
   // The title stands on its own line, the stop key beside it while the plan runs: no dot after it.
@@ -10001,10 +10139,11 @@ function renderPlanEvent(event) {
   return node;
 }
 
-function renderFailure(event) {
+function renderFailure(event, { inPlace = false } = {}) {
   const { messageId, target, error, recovered, partial = null, timeout = null, subagents = null } = event.payload;
   recordFailure({ time: event.timestamp, agent: target, error, recovered });
-  removeThinking(messageId);
+  // Said where its AI was working, when renderEventNode puts it there.
+  if (!inPlace) removeThinking(messageId);
   const node = el('div', `system fail${recovered ? ' recovered' : ''}${!recovered && state.userMessages.has(messageId) ? ' answers-person' : ''}`);
   node.append(el('span', 'label', recovered ? t('{label} · turn recovered after restart', { label: label(target) }) : t('{label} could not answer', { label: label(target) })));
   // When MADRE knows the failure, the card says first, in the room's language, what it is and what
@@ -10270,9 +10409,35 @@ function renderEvent(event) {
   }
 }
 
+// Where an answer or a failure goes: the place its AI's working line holds. The line stays until
+// the answer takes its place (renderEventNode): taken away first, the thread was one line shorter
+// for a moment, and a reader at the end was pulled back by its height.
+function turnSlot(messageId) {
+  const working = messageId ? document.getElementById(`working-${messageId}`) : null;
+  return working?.isConnected ? working : null;
+}
+// An answer that takes a working line's place grows from the line's height to its own.
+function openInPlace(node, from) {
+  const full = node.getBoundingClientRect().height;
+  if (!(full > from + 1)) return;
+  node.style.overflow = 'clip';
+  const grow = node.animate([{ height: `${from}px` }, { height: `${full}px` }], { duration: 280, easing: 'cubic-bezier(.2, .7, .2, 1)' });
+  const done = () => node.style.removeProperty('overflow');
+  grow.onfinish = done;
+  grow.oncancel = done;
+}
+// The row right after `node`, if the person can see it now.
+function shownBelow(node) {
+  const next = node?.nextElementSibling;
+  if (!next || typeof next.getBoundingClientRect !== 'function') return null;
+  const box = next.getBoundingClientRect();
+  const frame = pageScrolls() ? { top: 0, bottom: window.innerHeight ?? 0 } : els.thread?.getBoundingClientRect?.();
+  return frame && box.top >= frame.top && box.top < frame.bottom ? next : null;
+}
 function renderEventNode(event) {
   trackStats(event);
   let node = null;
+  let slot = null;
   switch (event.type) {
     case 'connection.login.started':
     case 'connection.login.finished':
@@ -10335,11 +10500,15 @@ function renderEventNode(event) {
       if (!replaying) void refreshModules();
       return;
     case 'message.created':
+      if (event.payload.role !== 'user') slot = turnSlot(event.payload.parentMessageId);
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
       if (!replaying) missionSeen(event);
       if (event.payload.role === 'user' && event.payload.sender === 'you') markChoiceAnswered(event.payload.text);
       if (event.payload.role !== 'user') attachCrossReads(event.payload.messageId, node);
-      if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
+      // The plan's card follows its steps (bindPlanCard): one handed over, one answered.
+      if (event.payload.status === 'delegated' && event.payload.planId) planStepStarted(event.payload);
+      else if (event.payload.role !== 'user' && event.payload.parentMessageId) planStepEnded(event.payload.parentMessageId, 'done');
+      if (event.payload.role !== 'user' && !slot) removeThinking(event.payload.parentMessageId);
       if (event.payload.role !== 'user' && !replaying && carrying && event.payload.sender === carrying.agent) void finishCarry(event.payload);
       // The first thing said names a conversation; the tab and the list learn the name from the room.
       if (event.payload.role === 'user' && !replaying) setTimeout(() => void loadChats(), 600);
@@ -10381,7 +10550,7 @@ function renderEventNode(event) {
     }
     case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { treeFollowWrites(); void notesAfterTurn(); offerAhpInConversation(); } return;
     case 'files.touched': markTouched(event.payload.agent, event.payload.files, event.timestamp); if (!replaying) { treeFollowWrites(); missionFiles(event.payload.files); } return;
-    case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
+    case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); slot = turnSlot(event.payload.messageId); planStepEnded(event.payload.messageId, 'failed', event.payload.target); node = renderFailure(event, { inPlace: Boolean(slot) }); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'memory.distilled': node = renderDistilled(event); break;
     case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
@@ -10532,13 +10701,43 @@ function renderEventNode(event) {
   // A renderer may decline: a choice with no options, a reading with nothing to report. Declining
   // is not an error, but appending the nothing it returned puts a hole in the column that every
   // later pass over the children trips on.
-  if (!node) return;
+  if (!node) { slot?.remove(); return; }
   // The blank page with its first messages goes when the conversation starts, not when the room
   // says something about itself: in a new project @madre's arrival used to take it away before
   // anyone had written a word.
   if (event.type.startsWith('message.') || event.type === 'command.output' || event.type === 'run.requested') removeEmpty();
   const stickToBottom = !drawingRecord && pinnedToEnd;
-  els.column.append(tidySystemLine(node));
+  // An answer takes the place of its AI's working line (2026-11-15): the line said «someone is
+  // answering here», and the answer arrives there, instead of the line vanishing from one place and
+  // the answer appearing at the foot, under whatever came in the meantime (with several AIs at
+  // once, the lines still working below jumped up each time one finished).
+  // Live, a row comes in laid out whole and rises into place (styles.css, 2026-11-15 «turn-in»):
+  // left to `content-visibility: auto`, its first frame was the 140 px guess and its second its
+  // real height, and the conversation moved twice for every row.
+  const live = !replaying && !drawingRecord;
+  if (live && node.classList) {
+    node.classList.add('fresh');
+    setTimeout(() => node.classList?.remove('fresh'), 700);
+  }
+  // Swapping the line for the answer, WebKit moved the thread back by the line's height (measured:
+  // 70 px, every answer, with or without scroll anchoring): the place it had is put back before the
+  // frame is drawn, and the glide (followTurn) goes on from there.
+  const keep = slot?.isConnected && live ? scroller.top : null;
+  // With something already on screen under that line (another AI's answer, with several at once),
+  // the answer opens from the line's height to its own and what is under it slides down, instead of
+  // being pushed down in one frame (measured: 180 px). With reduced motion what is under it stays
+  // where it is and the answer opens upward.
+  const under = keep !== null ? shownBelow(slot) : null;
+  const underTop = under?.getBoundingClientRect().top ?? 0;
+  const lineHeight = under ? slot.getBoundingClientRect().height : 0;
+  if (slot?.isConnected) slot.replaceWith(tidySystemLine(node)); else { slot?.remove(); els.column.append(tidySystemLine(node)); }
+  if (keep !== null && Math.abs(scroller.top - keep) >= 1) { ourScroll(); scroller.top = keep; }
+  if (under?.isConnected) {
+    if (reducedMotion() || typeof node.animate !== 'function') {
+      const moved = under.getBoundingClientRect().top - underTop;
+      if (Math.abs(moved) >= 1) { ourScroll(); scroller.top += moved; }
+    } else openInPlace(node, lineHeight);
+  }
   scheduleFold(node);
   if (!drawingRecord) followTurn(event, node, stickToBottom);
 }
@@ -10577,7 +10776,7 @@ function foldableNotice(node) {
 }
 function scheduleFold(node, tries = 0) {
   if (!foldableNotice(node)) return;
-  if (replaying) { if (!noticeWaits(node)) foldNotice(node, { quiet: true }); return; }
+  if (replaying || node.classList.contains('step-handoff')) { if (!noticeWaits(node)) foldNotice(node, { quiet: true }); return; }
   setTimeout(() => {
     if (!node.isConnected || node.classList.contains('folded')) return;
     // Being read, or still waiting for a press: look again in a moment, for at most ten minutes.
@@ -10602,7 +10801,12 @@ function foldNotice(node, { quiet = false } = {}) {
     const before = node.previousElementSibling?.classList.contains('sys-dots') ? node.previousElementSibling : null;
     const after = node.nextElementSibling?.classList.contains('sys-dots') ? node.nextElementSibling : null;
     let strip = before ?? after;
-    if (!strip) { strip = el('div', 'sys-dots'); node.before(strip); }
+    if (!strip) {
+      strip = el('div', 'sys-dots');
+      node.before(strip);
+      // Laid out whole from its first frame, as any row that arrives live (renderEventNode).
+      if (!replaying && !drawingRecord) { strip.classList.add('fresh'); setTimeout(() => strip.classList.remove('fresh'), 700); }
+    }
     // Notices go before the row's «+N», which stays last.
     const into = (row, ...nodes) => { const more = row.querySelector(':scope > .sys-more'); if (more) more.before(...nodes); else row.append(...nodes); };
     if (strip === after) strip.prepend(node); else into(strip, node);
@@ -10753,9 +10957,11 @@ function followTurn(event, node, stickToBottom) {
   // below the fold of whoever was reading, and nothing seemed to happen (QA 1.1.0, NUE-27).
   const mine = (event.type === 'message.created' && event.payload.role === 'user')
     || (event.type === 'command.output' && !event.payload.run && !event.payload.bishop);
-  const isAnswer = event.type === 'message.created' && event.payload.role !== 'user';
+  // A step of a plan handed to the next AI is not an answer to read: the answer before it keeps its
+  // place while the step and the AI's working line come in under it (2026-11-15).
+  const isAnswer = event.type === 'message.created' && event.payload.role !== 'user' && event.payload.status !== 'delegated';
   // What the human just sent takes them to the end, wherever they were reading.
-  if (mine) { setPinned(true); scroller.to({ top: scroller.height, behavior: 'smooth' }); return; }
+  if (mine) { readingHold = null; setPinned(true); glideToEnd(); return; }
   // Gone up to read: nothing below moves them. An answer or a finished plan says so on a button.
   if (!pinnedToEnd) {
     if (isAnswer) markFinishedBelow(event.payload.sender);
@@ -10764,10 +10970,14 @@ function followTurn(event, node, stickToBottom) {
   }
   if (isAnswer) {
     // A long answer is read from its top: the thread stops following and opens at its start.
+    // Measured as it really is: a row just placed is laid out whole (`fresh`), not at the 140 px
+    // guess an unseen row is given, which let every long answer pass for a short one.
     const tall = node.getBoundingClientRect?.().height > scroller.view * 0.7;
-    if (tall) { setPinned(false); ourScroll(900); node.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); return; }
+    if (tall) { readingHold = null; stopGlide(); setPinned(false); ourScroll(900); node.scrollIntoView?.({ behavior: reducedMotion() ? 'instant' : 'smooth', block: 'start' }); return; }
+    // A short one stays where it can be read whole while the rest arrives below it.
+    readingHold = node;
   }
-  scrollToEnd();
+  glideToEnd();
 }
 
 /* ---------- theme: auto (system) → light → dark ---------- */
@@ -15271,7 +15481,7 @@ function measureDock() {
   // The room at the foot grows with an easing (styles.css, .thread-inner, 280 ms): a reader at the
   // end is kept there through all of it, not only at its first frame (as roomForToast does).
   const until = performance.now() + 340;
-  const follow = () => { keepPinned(); if (performance.now() < until) requestAnimationFrame(follow); };
+  const follow = () => { keepPinned({ instant: true }); if (performance.now() < until) requestAnimationFrame(follow); };
   follow();
 }
 if (document.querySelector('.shell') && els.composer?.getBoundingClientRect) {
@@ -15651,6 +15861,9 @@ function forgetConversation() {
   state.ratingNodes.clear(); state.deliveries.clear();
   state.running.clear();
   state.plansRunning.clear();
+  planCards.clear();
+  planStepOf.clear();
+  readingHold = null;
   state.agentStats.clear();
   touched.clear();
   state.failures.length = 0;
