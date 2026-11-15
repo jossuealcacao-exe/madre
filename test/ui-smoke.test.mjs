@@ -981,10 +981,10 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     registry.get('message').value = '¿dónde está definido el puerto por defecto?';
     await syncIntentOffer();
     assert.equal(offer.hidden, false);
-    assert.match(offer.textContent, /Parece una búsqueda · «A fondo» suele bastar para esto, pero aún no lo medí en este proyecto/);
+    assert.match(offer.textContent, /Parece una búsqueda · Quizá baste con «A fondo»\. Puedes comprobarlo comparando dos respuestas/);
     assert.match(offer.textContent, /Ahora no/);
     const measure = offer.children.find((child) => child.className === 'free-go');
-    assert.equal(measure.textContent, 'Medir · 6 preguntas');
+    assert.equal(measure.textContent, 'Comparar · 6 preguntas');
     assert.deepEqual(state.intentHint, { agent: 'codex', direction: 'lower' });
     offer.children.find((child) => child.className === 'free-later').listeners.click[0]();
     assert.equal(offer.hidden, true);
@@ -1167,9 +1167,10 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     globalThis.__pulse.openIntentsWindow(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const page = registry.get('intents-body');
-    assert.match(page.textContent, /@codex contesta cada pregunta dos veces: en «Muy a fondo», el nivel que usas, y en «A fondo»/);
-    assert.match(page.textContent, /Pregunta 3 de 6 · BÚSQUEDA/);
-    const same = page.querySelectorAll('.primary').find((button) => button.textContent === 'Igual');
+    assert.match(page.textContent, /@codex está contestando cada pregunta dos veces: en «Muy a fondo», el nivel que usas, y en «A fondo»/);
+    assert.match(page.textContent, /Pregunta 3 de 6/);
+    assert.match(page.textContent, /Búsqueda/);
+    const same = page.querySelectorAll('.primary').find((button) => button.textContent === 'Las dos me sirven');
     assert.ok(same, 'there is no way to say the two answers are the same');
     await same.listeners.click[0]();
     assert.ok(posted.some(([url, body]) => url === '/api/intents/answer' && body.choice === 'same'));

@@ -54,8 +54,6 @@ export const ES = {
   'Back to the CLI default': 'Volver al nivel de siempre',
   'Use {level}': 'Usar {level}',
   'Raise to {level}': 'Subir a {level}',
-  '{level} is usually enough for it, but it has not been measured in this project yet': '{level} suele bastar para esto, pero aún no lo medí en este proyecto',
-  'MEASURE · {n} QUESTIONS': 'MEDIR · {n} PREGUNTAS',
   'ASK @madre': 'PREGÚNTALE A @madre',
   'what was decided': 'qué se decidió',
   'whether this came up before': 'si esto ya había salido',
@@ -793,7 +791,6 @@ export const ES = {
   '{kind} TEST RUNNING · @{agent} · {turns} OF ~{estimate} TURNS': 'Prueba {kind} en curso · @{agent} · {turns} de ~{estimate} respuestas',
   'QUICK': 'rápida',
   'FULL': 'completa',
-  'ASKING BOTH LEVELS · THE NEXT PAIR IS ON ITS WAY': 'Preguntando en los dos niveles · el siguiente par de respuestas está en camino',
   'A PAIR IS WAITING FOR YOU · OPEN THE TEST': 'Un par de respuestas te espera · abrir la prueba',
   'OPEN THE TEST': 'Abrir la prueba',
   // La ventana de la prueba rápida, sobre la sala.
@@ -804,10 +801,6 @@ export const ES = {
   'diagnoses': 'diagnósticos',
   'design questions': 'preguntas de diseño',
   'questions like these': 'preguntas como estas',
-  '@{agent} answers each question twice: at {from}, the level you use, and at {to}. You do not see which is which. Say whether one of them leaves out something that matters.':
-    '@{agent} contesta cada pregunta dos veces: en {from}, el nivel que usas, y en {to}. No ves cuál es cuál. Di si a alguna le falta algo que importe.',
-  'An agent that is not @{agent} is comparing the answers, and is checked before it is believed. It runs on its own: you can close this window.':
-    'Otro agente, distinto de @{agent}, compara las respuestas, y antes se comprueba que sea confiable. Funciona solo: puedes cerrar esta ventana.',
   'The test was stopped. What it had not finished does not count.': 'La prueba se detuvo. Lo que no alcanzó a terminar no cuenta.',
   'The full test finished: {n} comparisons. MODULES → INTENCIONES shows what each kind of request needs.':
     'La prueba completa terminó: {n} comparaciones. «Módulos › Esfuerzo sugerido» muestra qué necesita cada tipo de petición.',
@@ -817,9 +810,28 @@ export const ES = {
     'Viste diferencia en {worse} de {n} preguntas. MADRE no sugiere bajar el nivel para {kinds}.',
   'You saw no difference in {same} of {n} questions. It is a first reading: there were not enough questions of one kind to settle it, and MADRE does not change anything because of it.':
     'No viste diferencia en {same} de {n} preguntas. Es una primera lectura: no hubo suficientes preguntas de un mismo tipo para decidirlo, y MADRE no cambia nada por ella.',
-  'No test is running. One starts from the line under the box, or from MODULES → INTENCIONES.':
-    'No hay ninguna prueba en curso. Empieza una desde la línea bajo la caja de mensaje o desde «Módulos › Esfuerzo sugerido».',
   'STOP THE TEST': 'Detener la prueba',
+  // Esfuerzo sugerido en palabras de todos (2026-11-15): para qué sirve, qué se juzga y qué hace cada botón.
+  'Quick test · you compare two answers': 'Prueba rápida · tú comparas dos respuestas',
+  'What this test is for': 'Para qué sirve esta prueba',
+  'Some questions do not need the AI to think hard. This test finds out with you: the AI answers the same question twice, once thinking more and once thinking less, and you compare them without knowing which is which. If it makes no difference to you, MADRE will suggest thinking less on questions like it: the answer comes sooner and spends less.':
+    'Algunas preguntas no necesitan que la IA piense a fondo. Esta prueba lo averigua contigo: la IA contesta la misma pregunta dos veces, una pensando más y otra pensando menos, y tú las comparas sin saber cuál es cuál. Si te da igual, MADRE te sugerirá pensar menos en preguntas parecidas: la respuesta llega antes y gasta menos.',
+  '@{agent} is answering each question twice: at {from}, the level you use, and at {to}. Read both and say whether one leaves out something that matters.':
+    '@{agent} está contestando cada pregunta dos veces: en {from}, el nivel que usas, y en {to}. Lee las dos y di si a alguna le falta algo importante.',
+  'Another AI, not @{agent}, compares the answers for you, and MADRE checks its judgement before trusting it. It goes on by itself: you can close this window.':
+    'Otra IA, que no es @{agent}, compara las respuestas por ti, y MADRE revisa su juicio antes de creerle. Sigue sola: puedes cerrar esta ventana.',
+  'The test is running': 'La prueba está en curso',
+  'Getting the two answers to the next question…': 'Preparando las dos respuestas de la siguiente pregunta…',
+  'What the test found': 'Lo que encontró la prueba',
+  'No test is running': 'No hay ninguna prueba en curso',
+  'Start one from the line under the message box when MADRE offers it, or from Modules › Suggested effort.':
+    'Empieza una desde la línea bajo la caja de mensaje cuando MADRE la ofrezca, o desde «Módulos › Esfuerzo sugerido».',
+  'Read both: does either leave out something that matters?': 'Lee las dos: ¿a alguna le falta algo importante?',
+  'The first is better': 'La primera es mejor',
+  'Both work for me': 'Las dos me sirven',
+  'The second is better': 'La segunda es mejor',
+  '{level} may be enough for it. You can check it by comparing two answers': 'Quizá baste con {level}. Puedes comprobarlo comparando dos respuestas',
+  'COMPARE · {n} QUESTIONS': 'COMPARAR · {n} PREGUNTAS',
   'Quick test {ending} · you saw no difference in {same} of {n}': 'Prueba rápida {ending} · no viste diferencia en {same} de {n}',
   '{kind} test {ending} · {n} comparisons': 'Prueba {kind} {ending} · {n} comparaciones',
   'Quick': 'rápida',
@@ -832,12 +844,8 @@ export const ES = {
   'A quick test is a first reading, not a measurement: no kind of question is settled by one or two cases.':
     'Una prueba rápida es una primera lectura, no una medición: ningún tipo de pregunta queda resuelto con uno o dos casos.',
   'SUGGESTIONS TAKEN · {accepted} OF {shown}': 'Sugerencias aceptadas · {accepted} de {shown}',
-  'QUESTION {step} OF {total} · {kind} · IS EITHER MISSING SOMETHING THAT MATTERS?': 'Pregunta {step} de {total} · {kind} · ¿a alguna le falta algo que importe?',
   'FIRST': 'Primera',
   'SECOND': 'Segunda',
-  'THE FIRST': 'La primera',
-  'THE SAME': 'Igual',
-  'THE SECOND': 'La segunda',
   'The order changes from one question to the next. Length does not count.': 'El orden cambia en cada pregunta. Que una sea más larga no la hace mejor.',
   'Suggested effort is not available in this project.': 'El esfuerzo sugerido no está disponible en este proyecto.',
   'Turn Suggested effort on first.': 'Primero enciende Esfuerzo sugerido.',
@@ -1715,9 +1723,10 @@ export const ES = {
   // Terminal y editor en Apariencia (2026-11-14): Coldbrew, Oldcode y Simple son nombres del autor.
   'Terminal and editor': 'Terminal y editor',
   'How code reads in the editor, the file viewer and the app\'s terminal. Each style has a light and a dark version and changes with the Theme.': 'Cómo se lee el código en el editor, en el visor de archivos y en la terminal de la app. Cada estilo tiene versión clara y oscura, y cambia con el Tema.',
-  'MADRE green, in the spirit of a classic terminal.': 'El verde de MADRE, al estilo de una terminal clásica.',
-  'Calm, warm colours for reading code for hours.': 'Colores cálidos y tranquilos para leer código por horas.',
-  'MADRE as it has always looked.': 'MADRE como se ha visto siempre.',
+  'Green on an almost black ground, like a classic terminal; in light, deep green on pale mint.': 'Verde sobre fondo casi negro, como una terminal clásica; en claro, verde profundo sobre menta pálida.',
+  'Warm ink on paper and comments in a soft italic, for reading code for hours.': 'Tinta cálida sobre papel y comentarios en cursiva suave, para leer código por horas.',
+  'A clean ground and sober colours: the editor and the terminal untinted.': 'Fondo limpio y colores sobrios: el editor y la terminal sin teñir.',
+  '// your code': '// tu código',
   'Conversations': 'Chats',
   'Close conversations': 'Cerrar los chats',
   'Project files': 'Archivos del proyecto',
@@ -6766,7 +6775,6 @@ export const ES = {
   // Ten adjustments of 2026-10-28.
   '{h} h {m} min': '{h} h {m} min',
   '{h} h': '{h} h',
-  'Intenciones finds out how much thinking each kind of question needs. The same question is answered at the level you use and at a lower one; if you cannot tell the answers apart, MADRE suggests the lower level for questions like it next time: faster, and fewer tokens.': 'Intenciones averigua cuánto necesita pensar cada tipo de pregunta. La misma pregunta se responde en el nivel que usas y en uno más bajo; si no notas la diferencia entre las respuestas, la próxima vez MADRE te sugiere el nivel más bajo para preguntas parecidas: más rápido y con menos tokens.',
   'Question {n} of {total}': 'Pregunta {n} de {total}',
   'What to do now': 'Qué hacer ahora',
   'Windows with WSL': 'Windows con WSL',
@@ -6781,8 +6789,6 @@ export const ES = {
   'See the questions': 'Ver las preguntas',
   'Go to the checkups': 'Ir a las revisiones',
   'Back to the conversation': 'Volver a la conversación',
-  'Intenciones': 'Intenciones',
-  'Quick test · you judge without knowing which is which': 'Prueba rápida · juzgas sin saber cuál es cuál',
   // Anonymous diagnostics (2026-10-28).
   'Anonymous diagnostics': 'Diagnóstico anónimo',
   'So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE\'s modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.': 'Para que el autor sepa qué falla y qué se usa, sin preguntarte nada: los errores sin datos privados; cuántos turnos, modos y funciones se usaron; cómo funciona esta copia (sistema, memoria, agentes, cuántos proyectos, módulos de MADRE) y si se instaló, se actualizó o se desinstaló; y, mientras MADRE está abierta, cada cinco minutos, que está encendida. Nunca lo que escribes, tus proyectos ni tus archivos.',

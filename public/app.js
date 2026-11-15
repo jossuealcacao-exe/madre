@@ -10870,9 +10870,9 @@ const LOOK_WORDS = {
 };
 // What each style is, under its tile.
 const CODE_THEME_ABOUT = {
-  coldbrew: () => t('MADRE green, in the spirit of a classic terminal.'),
-  oldcode: () => t('Calm, warm colours for reading code for hours.'),
-  simple: () => t('MADRE as it has always looked.'),
+  coldbrew: () => t('Green on an almost black ground, like a classic terminal; in light, deep green on pale mint.'),
+  oldcode: () => t('Warm ink on paper and comments in a soft italic, for reading code for hours.'),
+  simple: () => t('A clean ground and sober colours: the editor and the terminal untinted.'),
 };
 // Jarrito took MADRE's place among the wallpapers and Canela took Autumn's: a choice saved under
 // the old name lands on the one that replaced it.
@@ -11269,7 +11269,7 @@ function drawCustom() {
       sample.setAttribute('aria-hidden', 'true');
       const line = (...parts) => { const one = el('span'); for (const [kind, words] of parts) one.append(kind ? el('span', `t-${kind}`, words) : words); return one; };
       sample.append(
-        line(['comment', '// MADRE']),
+        line(['comment', t('// your code')]),
         line(['keyword', 'const'], [null, ' n = '], ['number', '42'], [null, ';']),
         line(['keyword', 'let'], [null, ' ok = '], ['literal', 'true'], [null, ';']),
         line([null, 'say('], ['string', '"hola"'], [null, ');']),
@@ -11639,6 +11639,13 @@ function sxSeg(options, current, pick, { label = null } = {}) {
     });
     seg.append(option);
   }
+  return seg;
+}
+// The starting mode says its number and its name, like Permisos › «What each AI can do» (2026-11-15):
+// «#1» over «Solo lee», «#2» over «Puede crear».
+function startModes(seg) {
+  seg.classList.add('start-modes');
+  [...seg.querySelectorAll('button')].forEach((option, at) => option.replaceChildren(el('b', null, `#${at + 1}`), el('span', null, sentence(MODES[at + 1].label))));
   return seg;
 }
 // Every selector can be slid across, not only tapped: past a few pixels a raised thumb follows the
@@ -15946,11 +15953,11 @@ function paintIntentInvite(box, said) {
   const level = effortSaid(said.effort);
   box.replaceChildren();
   box.classList.remove('up');
-  box.append(el('span', 'free-what', `${t('Looks like {what}', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation') })} · ${t('{level} is usually enough for it, but it has not been measured in this project yet', { level })}`));
+  box.append(el('span', 'free-what', `${t('Looks like {what}', { what: t(INTENT_NAMES[said.intent] ?? 'an explanation') })} · ${t('{level} may be enough for it. You can check it by comparing two answers', { level })}`));
   const later = el('button', 'free-later', askWords(t('NOT NOW')));
   later.type = 'button';
   later.addEventListener('click', () => { declineInvite(said); state.intentOffer.key = ''; hideIntentOffer(); els.input.focus(); });
-  const go = el('button', 'free-go', askWords(t('MEASURE · {n} QUESTIONS', { n: said.questions })));
+  const go = el('button', 'free-go', askWords(t('COMPARE · {n} QUESTIONS', { n: said.questions })));
   go.type = 'button';
   go.addEventListener('click', async () => {
     go.disabled = true;
@@ -19093,24 +19100,24 @@ async function paintIntents(box) {
 // words. Nothing on screen says which rung wrote which, and the longer one is not the better one.
 function intentsPair(pending, repaint) {
   const pair = el('div', 'intents-pair');
-  pair.append(el('p', 'note', t('QUESTION {step} OF {total} · {kind} · IS EITHER MISSING SOMETHING THAT MATTERS?', { step: pending.step, total: pending.total, kind: t(INTENT_ROWS[pending.intent] ?? 'EXPLANATION') })));
+  // Said the way a person reads it (2026-11-15): what kind of question, and the one thing to judge;
+  // which question it is, the card above already says.
+  pair.append(el('p', 'intents-kind', sentence(t(INTENT_ROWS[pending.intent] ?? 'EXPLANATION'))));
   pair.append(el('p', 'intents-question', pending.question));
   const answers = el('div', 'intents-answers');
   for (const [label, text] of [[t('FIRST'), pending.first], [t('SECOND'), pending.second]]) {
     const one = el('div', 'intents-answer');
-    one.append(el('b', null, label), el('div', 'text', text));
+    one.append(el('b', null, sentence(label)), el('div', 'text', text));
     answers.append(one);
   }
-  pair.append(answers);
+  pair.append(answers, el('p', 'intents-ask', t('Read both: does either leave out something that matters?')));
   const row = el('div', 'actions');
-  for (const [choice, label, tone] of [['first', t('THE FIRST'), null], ['same', t('THE SAME'), 'primary'], ['second', t('THE SECOND'), null]]) {
-    const button = el('button', tone, label);
-    button.type = 'button';
-    button.addEventListener('click', async () => {
+  for (const [choice, label, tone] of [['first', t('The first is better'), null], ['same', t('Both work for me'), 'primary'], ['second', t('The second is better'), null]]) {
+    const button = sxButton(label, async () => {
       for (const one of row.querySelectorAll('button')) one.disabled = true;
       await intentsPost('/api/intents/answer', { choice }).catch((error) => toast(error.message));
       repaint();
-    });
+    }, { tone });
     row.append(button);
   }
   pair.append(row, el('p', 'note', t('The order changes from one question to the next. Length does not count.')));
@@ -19202,44 +19209,43 @@ async function paintIntentsWindow() {
   const page = el('div', 'intents-page');
   body.replaceChildren(page);
   const run = read.running;
-  // What Intenciones is for, said once at the top (2026-10-28).
-  page.append(el('p', 'intents-about', t('Intenciones finds out how much thinking each kind of question needs. The same question is answered at the level you use and at a lower one; if you cannot tell the answers apart, MADRE suggests the lower level for questions like it next time: faster, and fewer tokens.')));
+  // What the test is for, in a person's words, at the top (2026-11-15): the same cards and keys as
+  // Ajustes, so it reads as part of MADRE and not as a form of its own.
+  sxBlock(page, t('What this test is for'), t('Some questions do not need the AI to think hard. This test finds out with you: the AI answers the same question twice, once thinking more and once thinking less, and you compare them without knowing which is which. If it makes no difference to you, MADRE will suggest thinking less on questions like it: the answer comes sooner and spends less.'), { className: 'intents-about' });
   if (run) {
+    // Which question: the run's own count, or the pair's when the run does not carry it.
+    const total = run.total || read.pending?.total || 0;
+    const step = Math.min(total || 1, Math.max(1, read.pending?.step || run.step || 1));
+    const lead = run.kind === 'quick'
+      ? t('@{agent} is answering each question twice: at {from}, the level you use, and at {to}. Read both and say whether one leaves out something that matters.', { agent: run.agent, from: effortSaid(run.reference), to: effortSaid(run.effort ?? run.reference) })
+      : t('Another AI, not @{agent}, compares the answers for you, and MADRE checks its judgement before trusting it. It goes on by itself: you can close this window.', { agent: run.agent });
+    const block = sxBlock(page, total ? t('Question {n} of {total}', { n: step, total }) : t('The test is running'), lead, { className: 'intents-run' });
     // How far the test got: the pairs already judged out of the ones it will ask.
-    if (run.total) {
-      const done = Math.max(0, Math.min(run.total, (run.step || 1) - 1));
-      const share = Math.round((done / run.total) * 100);
-      const progress = el('div', 'intents-progress');
-      const words = el('div', 'intents-progress-words');
-      words.append(el('span', null, t('Question {n} of {total}', { n: Math.min(run.total, Math.max(1, run.step)), total: run.total })), el('strong', null, `${share}%`));
+    if (total) {
+      const done = Math.max(0, Math.min(total, step - 1));
       const bar = el('div', 'intents-progress-bar');
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', String(total));
+      bar.setAttribute('aria-valuenow', String(done));
       const fill = el('i');
-      fill.style.width = `${share}%`;
+      fill.style.width = `${Math.round((done / total) * 100)}%`;
       bar.append(fill);
-      progress.append(words, bar);
-      page.append(progress);
+      block.rows.append(bar);
     }
-    page.append(el('p', 'intents-lead', run.kind === 'quick'
-      ? t('@{agent} answers each question twice: at {from}, the level you use, and at {to}. You do not see which is which. Say whether one of them leaves out something that matters.', { agent: run.agent, from: effortSaid(run.reference), to: effortSaid(run.effort ?? run.reference) })
-      : t('An agent that is not @{agent} is comparing the answers, and is checked before it is believed. It runs on its own: you can close this window.', { agent: run.agent })));
-    if (read.pending) page.append(intentsPair(read.pending, repaint));
-    else page.append(el('p', 'intents-note', t('ASKING BOTH LEVELS · THE NEXT PAIR IS ON ITS WAY')));
-    const stop = el('button', 'intents-quiet', t('STOP THE TEST'));
-    stop.type = 'button';
-    stop.addEventListener('click', async () => { stop.disabled = true; await intentsPost('/api/intents/stop').catch(() => null); repaint(); });
-    const row = el('div', 'actions');
+    if (read.pending) block.rows.append(intentsPair(read.pending, repaint));
+    else block.rows.append(el('p', 'intents-wait', t('Getting the two answers to the next question…')));
+    const row = el('div', 'sx-actions');
+    const stop = sxButton(t('STOP THE TEST'), async () => { stop.disabled = true; await intentsPost('/api/intents/stop').catch(() => null); repaint(); });
     row.append(stop);
     page.append(row);
     // Not redrawn while a pair waits: that would throw away where the human was reading.
     if (!read.pending) intentsWindow.timer = setTimeout(repaint, 1500);
     return;
   }
-  page.append(el('p', 'intents-verdict', read.last ? intentsOutcome(read.last) : t('No test is running. One starts from the line under the box, or from MODULES → INTENCIONES.')));
-  const back = el('button', 'custom-accept', t('BACK TO THE PROJECT'));
-  back.type = 'button';
-  back.addEventListener('click', () => openIntentsWindow(false));
-  const row = el('div', 'actions');
-  row.append(back);
+  sxBlock(page, read.last ? t('What the test found') : t('No test is running'), read.last ? intentsOutcome(read.last) : t('Start one from the line under the message box when MADRE offers it, or from Modules › Suggested effort.'), { className: 'intents-done' });
+  const row = el('div', 'sx-actions');
+  row.append(sxButton(t('BACK TO THE PROJECT'), () => openIntentsWindow(false), { tone: 'primary' }));
   page.append(row);
 }
 
@@ -23063,15 +23069,15 @@ function connectionCard(agent) {
   // The start: where a message to this agent begins. #2 means every turn may create files without arming CREATE.
   const currentStart = agentScopes.defaultMode ?? 1;
   if (readsOnly) sxRow(modes, t('Starting mode'), t('Always #1: every message to it is answered by reading.'));
-  else sxRow(modes, t('Starting mode'), currentStart === 2 ? t('Every answer may create files and plan steps.') : t('It only reads and answers until you let it create.'), sxSeg([1, 2].map((n) => ({
-    value: n, text: `#${n}`, className: `o${n}`, disabled: n > currentCap,
+  else sxRow(modes, t('Starting mode'), currentStart === 2 ? t('Every answer may create files and plan steps.') : t('It only reads and answers until you let it create.'), startModes(sxSeg([1, 2].map((n) => ({
+    value: n, text: `#${n} ${sentence(MODES[n].label)}`, className: `o${n}`, disabled: n > currentCap,
     title: n === 2 ? t('Every message to this agent starts in #2 CREATE: it may add new files, but existing files stay untouched. Plan steps sent to it too.') : t('Messages start in #1 CHAT ONLY; turn on #2 CREATE when you want files.'),
   })), currentStart, async (n, seg) => {
     try {
       await saveSettingNow({ scopes: { [agent.id]: { defaultMode: n } } }, n === 2 ? t('@{agent} starts in #2 CREATE: every turn may add files to the project.', { agent: agent.id }) : t('@{agent} starts in #1 CHAT ONLY; turn on #2 CREATE when you want files.', { agent: agent.id }));
       await loadSettings();
     } catch (error) { toast(t('The starting mode was not saved: {error}', { error: error.message })); await loadSettings(); }
-  }, { label: t('Starting mode') }));
+  }, { label: t('Starting mode') })));
   const seconds = Math.round((settingsUI.data.settings.timeouts[agent.id] ?? 180000) / 1000);
   sxRow(card, t('Time limit'), t('How long the project waits for its answer.'), sxNumber(seconds, 's', {
     min: 10, step: 10, label: t('Time limit'),

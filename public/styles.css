@@ -2169,9 +2169,9 @@ dialog.intents-window { width: 760px; height: 640px; }
 .intents-page .intents-answer b { font-family: var(--sans); font-weight: 400; font-size: 12px; letter-spacing: 0; color: var(--text-2); }
 .intents-page .intents-answer .text { max-height: 300px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--bubble); color: var(--bubble-ink); font-family: var(--read); font-weight: var(--read-weight); font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .intents-page .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.intents-page .actions button:not(.custom-accept) { height: 32px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 10px; background: transparent; color: var(--text); font-family: var(--sans); font-size: 12px; letter-spacing: 0; cursor: pointer; }
-.intents-page .actions button.primary { border-color: var(--phosphor); color: var(--phosphor); }
-.intents-page .actions button:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.intents-page .actions button:not(.custom-accept):not(.sx-btn) { height: 32px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 10px; background: transparent; color: var(--text); font-family: var(--sans); font-size: 12px; letter-spacing: 0; cursor: pointer; }
+.intents-page .actions button.primary:not(.sx-btn) { border-color: var(--phosphor); color: var(--phosphor); }
+.intents-page .actions button:not(.sx-btn):hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .intents-page .actions button:disabled { opacity: .45; cursor: default; }
 .slash-menu { position: absolute; left: -12px; bottom: calc(100% + 14px); z-index: 30; min-width: 320px; max-width: min(580px, 92vw); border: 1px solid var(--line-2); background: var(--panel); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .35); padding: 6px; display: grid; gap: 2px; }
 .slash-menu .item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; padding: 8px 10px; border-radius: 9px; cursor: pointer; border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; }
@@ -14752,3 +14752,36 @@ dialog.viewer .code-crumbs.empty { display: none !important; }
   .img-sources .img-controls { justify-content: flex-start; }
   .img-sources select.img-model { flex-basis: 100%; max-width: 100%; }
 }
+
+/* ---- The fourth round of the 14 November test (2026-11-15) ---- */
+/* STARTING MODE WITH ITS NAME: «#1» over «Solo lee», «#2» over «Puede crear», as the modes read in
+   Permisos › «What each AI can do». */
+.sx-seg.start-modes button { display: inline-grid; justify-items: center; align-content: center; gap: 1px; height: auto; min-height: 44px; padding: 5px 14px; line-height: 1.2; white-space: nowrap; }
+.sx-seg.start-modes button b { font-size: 12.5px; font-weight: 700; }
+.sx-seg.start-modes button span { font-size: 11.5px; font-weight: 500; }
+/* A FILE'S × LIKE ITS PANEL'S: the × of an open file in Archivos closes the way the × of the
+   «Archivos» tab above it does — half lit at rest, a soft ground under the pointer, never the red of
+   a warning, and no turn. */
+html.chat-shell .code-tab-close.x-close.x-only { width: 20px; height: 20px; padding: 0; border-radius: 6px; color: inherit; }
+html.chat-shell .code-tab:is(:hover, .on) .code-tab-close, html.chat-shell .code-tab-close:focus-visible { opacity: .5; }
+html.chat-shell .code-tab-close.x-close.x-only:is(:hover, :focus-visible) { opacity: 1; color: inherit; background: var(--cs-hover); }
+html.chat-shell .code-tab-close .x-icon { width: 12px; height: 12px; }
+html.chat-shell .code-tab-close:hover .x-icon { transform: none; }
+/* SUGGESTED EFFORT IN MADRE'S OWN CARDS: the quick test's window is built from Ajustes' pieces — a card
+   that says what the test is for, a card for the question in play with its progress under the title,
+   and keys without a border — instead of a form of its own. */
+dialog.intents-window .intents-page { gap: 12px; padding: 14px 16px 18px; }
+.intents-page .sx-block .sx-rows { padding: 2px 16px 16px; }
+.intents-page .intents-run .intents-progress-bar { height: 4px; margin: 0 0 14px; }
+.intents-page .intents-pair { gap: 12px; }
+.intents-page .intents-kind { margin: 0; font: 500 12px/1.4 var(--read); color: var(--text-2); }
+.intents-page .intents-question { font-size: 15px; font-weight: 500; }
+.intents-page .intents-answer b { font: 500 12px var(--read); }
+.intents-page .intents-ask { margin: 2px 0 0; font: 500 13.5px/1.5 var(--read); color: var(--text); }
+.intents-page .intents-wait { margin: 0; display: flex; align-items: center; gap: 8px; font: 450 13px/1.5 var(--read); color: var(--text-2); }
+.intents-page .intents-wait::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: beat-idle 2.4s ease-in-out infinite; }
+.intents-page .actions { gap: 8px; }
+.intents-page > .sx-actions { padding: 0; border: 0; }
+@media (prefers-reduced-motion: reduce) { .intents-page .intents-wait::before { animation: none; } }
+:root dialog.intents-window .intents-page .sx-btn:not(.primary):not(.danger) { background: color-mix(in srgb, var(--text) 7%, transparent); box-shadow: none !important; }
+:root dialog.intents-window .intents-page .sx-btn:not(.primary):not(.danger):hover:not(:disabled) { background: color-mix(in srgb, var(--text) 11%, transparent); }
