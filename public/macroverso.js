@@ -24,7 +24,7 @@
 // for less motion gets one still frame redrawn when something changes. No line joins two universes
 // until a link exists (phase 3c).
 
-import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, drawSun, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, sunOrb, texturesReady } from './nostromo-engine.js';
+import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, buildPlanets, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, drawSun, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, planetChip, sunOrb, texturesReady } from './nostromo-engine.js';
 import { createStrain, inviteNeural, neuralKey, paintNeuralKey, tellViews } from './neural.js';
 import { trazo } from './icons.js';
 
@@ -194,8 +194,8 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#34d
   canvas.className = 'mv-canvas';
   canvas.tabIndex = 0;
   // Its head is the Memory map's (styles.css, .nostromo-head; 2026-10-10): the name in small mono,
-  // what it holds in a line beside it, its keys at the end; the kinds of memory, as the same stars
-  // (nostromo-engine.js, dwarfChip), along the bottom. The two maps read as one family.
+  // what it holds in a line beside it, its keys at the end; the kinds of memory, as the same planets
+  // (nostromo-engine.js, planetChip), along the bottom. The two maps read as one family.
   const head = document.createElement('header');
   head.className = 'mv-head nostromo-head';
   const title = document.createElement('h2');
@@ -215,14 +215,14 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#34d
       chip.className = `k ${kind}`;
       const said = document.createElement('i');
       said.textContent = words.kinds?.[kind] ?? kind;
-      chip.append(asNeurons ? neuronChip(NEURAL_COLORS[kind] ?? hex, 16, kind === COLLAPSED ? 'dead' : 'alive') : kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), said);
+      chip.append(asNeurons ? neuronChip(NEURAL_COLORS[kind] ?? hex, 16, kind === COLLAPSED ? 'dead' : 'alive') : kind === COLLAPSED ? collapsedChip(hex, 14) : planetChip(kind, 14), said);
       chips.push(chip);
     }
     const chip = document.createElement('span');
     chip.className = 'k dim';
     const said = document.createElement('i');
     said.textContent = words.kinds?.dim ?? 'Out of circulation';
-    chip.append(asNeurons ? neuronChip(NEURAL_COLORS.fact, 16, 'spent') : dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), said);
+    chip.append(asNeurons ? neuronChip(NEURAL_COLORS.fact, 16, 'spent') : planetChip('fact', 14, { faded: true }), said);
     chips.push(chip);
     legend.replaceChildren(...chips);
   };
@@ -449,6 +449,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#34d
   function tick() {
     if (!textures.ready) {
       magmaMap(12);
+      buildPlanets();
       if (texturesReady()) {
         textures.ready = true;
         for (const one of [core, ...universes]) if (one.sprite && !one.sprite.ready) one.dirty = true;

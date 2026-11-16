@@ -119,124 +119,148 @@ test('nostromo 3d: dragging turns the archive, Shift+drag moves the camera, and 
   assert.match(page, /DRAG TO TURN · SHIFT\+DRAG TO MOVE/, 'the help line still says dragging moves');
 });
 
-// The dwarf shader, lifted out and run on its own: a table, a surface map and a star in, pixels out.
+
+// The planet shader, lifted out and run on its own: a table, a surface map and the light in, pixels
+// out (2026-11-15: the memories are planets, lit by the sun at the centre).
 function shader() {
   return new Function(`
-    ${block('ALBEDO_W')} ${block('ALBEDO_H')} ${block('LIMB_DARKENING')} ${block('STAR_TRAITS')} ${block('SUN_TRAITS')}
-    ${block('SURFACE_BY_ZONE')} ${block('COLD_GRANULES')} ${block('COLD_GLOW')} ${block('COLD_WHITE')} ${fn('surfaceOf')}
-    ${block('dwarfAlbedos')} ${block('sphereTables')} ${block('smooth')}
-    ${block('NOISE_PERM')} ${fn('gradientNoise')} ${fn('fractalNoise')} ${fn('cellNoise')} ${fn('dwarfAlbedo')} ${fn('sphereTable')} ${fn('shadeDwarf')}
-    return { dwarfAlbedo, sphereTable, shadeDwarf, surfaceOf, STAR_TRAITS };
+    ${block('PLANETS')} ${block('planetOf')} ${block('PLANET_HALO')} ${block('SUN_LIGHT')} ${block('PLANET_AMBIENT')}
+    ${block('ALBEDO_W')} ${block('ALBEDO_H')} ${block('PLANET_STRIDE')} ${block('planetMaps')} ${block('globeTables')} ${block('CRATER')} ${block('smooth')}
+    ${block('NOISE_PERM')} ${fn('gradientNoise')} ${fn('fractalNoise')} ${fn('craterField')} ${fn('planetSurface')} ${fn('planetMap')}
+    ${fn('globeTable')} ${fn('lightTexel')} ${fn('haloInto')} ${fn('shadePlanet')} ${block('PLANET_ROWS_PER_FRAME')} ${fn('buildPlanets')}
+    return { planetMap, globeTable, shadePlanet, buildPlanets, planetMaps, PLANETS, PLANET_STRIDE, ALBEDO_W, ALBEDO_H };
   `)();
 }
 const brightness = (out, size, x, y) => { const p = (y * size + x) * 4; return out[p] + out[p + 1] + out[p + 2]; };
-const YELLOW = [1, 220 / 255, 60 / 255];
-// A surface with nothing on it, so what is read is the star and not its weather.
-const plainMap = (length) => { const map = new Float32Array(length); for (let i = 0; i < length; i += 2) map[i] = 0.5; return map; };
+const unit = (v) => { const n = Math.hypot(...v); return v.map((value) => value / n); };
+// A surface with nothing on it — one colour, flat, dry, clear — so what is read is the light and
+// not the weather.
+const plainMap = (length, stride, colour = [0.5, 0.5, 0.5]) => { const map = new Float32Array(length); for (let i = 0; i < length; i += stride) map.set(colour, i); return map; };
 
-test('nostromo 3d: a dwarf lights itself: brightest in the middle, darker and warmer at the limb, the same all round', () => {
-  const { dwarfAlbedo, sphereTable, shadeDwarf, STAR_TRAITS } = shader();
+test('nostromo 3d: a planet is lit by the sun: day toward it, night away, and the terminator follows the light', () => {
+  const { planetMap, globeTable, shadePlanet, PLANETS, PLANET_STRIDE } = shader();
   const size = 64;
-  const table = sphereTable(size);
-  const map = plainMap(dwarfAlbedo('decision').length);
-  const out = shadeDwarf(new Uint8ClampedArray(size * size * 4), table, map, { colour: YELLOW, traits: STAR_TRAITS.decision, turn: 0, burn: 0.5 });
-  const centre = brightness(out, size, 32, 32);
-  const limb = brightness(out, size, 3, 32);
-  assert.ok(centre > limb * 1.3, `the limb is not darker than the middle (centre ${centre}, limb ${limb})`);
-  // Blue dims most at the limb, so the edge is warmer: more red for its blue than the middle has.
-  const warmth = (x, y) => { const p = (y * size + x) * 4; return out[p] / Math.max(1, out[p + 2]); };
-  assert.ok(warmth(3, 32) > warmth(32, 32), 'the limb is not warmer than the middle');
-  // No side is lit: opposite edges, and opposite halves, read the same.
-  for (const [a, b] of [[[3, 32], [60, 32]], [[32, 3], [32, 60]]]) {
-    const one = brightness(out, size, ...a);
-    const other = brightness(out, size, ...b);
-    assert.ok(Math.abs(one - other) <= 6, `one edge is lit and the other is not (${one} against ${other})`);
+  for (const kind of Object.keys(PLANETS)) {
+    const halo = PLANETS[kind].air ? 1.16 : 1;
+    const table = globeTable(size, halo);
+    const map = plainMap(planetMap(kind).length, PLANET_STRIDE);
+    const paint = (light) => shadePlanet(new Uint8ClampedArray(size * size * 4), table, map, { kind, light: unit(light) });
+    // The sun to the left: the left half is day, the right half night.
+    const left = paint([-1, 0, 0.05]);
+    const R = size / 2 / halo;
+    const day = brightness(left, size, Math.round(size / 2 - R * 0.6), size / 2);
+    const night = brightness(left, size, Math.round(size / 2 + R * 0.6), size / 2);
+    assert.ok(day > night * 3, `${kind}: the side toward the sun (${day}) is not day against the night (${night})`);
+    // Night is nearly black, but not nothing: a little light from everything else, enough to tell
+    // which planet it is.
+    assert.ok(night > 0 && night < 120, `${kind}: the night side reads ${night}`);
+    // Move the sun and the terminator follows it.
+    const right = paint([1, 0, 0.05]);
+    assert.ok(brightness(right, size, Math.round(size / 2 + R * 0.6), size / 2) > brightness(right, size, Math.round(size / 2 - R * 0.6), size / 2) * 3, `${kind}: the day did not follow the sun`);
+    // The sun behind us: the whole face is day. The sun behind the planet: the face is night.
+    const full = paint([0, 0, 1]);
+    const dark = paint([0, 0, -1]);
+    assert.ok(brightness(full, size, size / 2, size / 2) > brightness(dark, size, size / 2, size / 2) * 4, `${kind}: a full planet is no brighter than a new one`);
+    // Outside the planet and its air, nothing is painted.
+    assert.equal(full[3], 0, `${kind}: a corner outside the body was painted`);
   }
-  // Outside the disc is clear, and the edge is softened rather than cut.
-  assert.equal(out[3], 0, 'a corner outside the body was painted');
-  const alphas = new Set();
-  for (let i = 3; i < out.length; i += 4) alphas.add(out[i]);
-  assert.ok([...alphas].some((value) => value > 0 && value < 255), 'the rim is not antialiased');
 });
 
-test('nostromo 3d: a dwarf boils, turns, carries spots, and burns brighter the more the room has made of it', () => {
-  const { dwarfAlbedo, sphereTable, shadeDwarf, STAR_TRAITS } = shader();
+test('nostromo 3d: the air is a halo on the side the sun is on, and all the way round with the sun behind', () => {
+  const { planetMap, globeTable, shadePlanet, PLANET_STRIDE } = shader();
   const size = 96;
-  const table = sphereTable(size);
-  const map = dwarfAlbedo('decision');
-  const at = (turn, burn) => shadeDwarf(new Uint8ClampedArray(size * size * 4), table, map, { colour: YELLOW, traits: STAR_TRAITS.decision, turn, burn });
+  const table = globeTable(size, 1.16);
+  const map = plainMap(planetMap('preference').length, PLANET_STRIDE, [0.05, 0.1, 0.3]);
+  const R = size / 2 / 1.16;
+  // A pixel of the halo, just past the limb, on the left and on the right.
+  const haloAt = (out, side) => out[((size / 2) * size + Math.round(size / 2 + side * (R + 1.5))) * 4 + 3];
+  const lit = shadePlanet(new Uint8ClampedArray(size * size * 4), table, map, { kind: 'preference', light: unit([-1, 0, 0.1]) });
+  assert.ok(haloAt(lit, -1) > 40, `there is no air on the side of the sun (${haloAt(lit, -1)})`);
+  assert.ok(haloAt(lit, 1) < haloAt(lit, -1) / 3, 'the air glows as much on the night side');
+  const behind = shadePlanet(new Uint8ClampedArray(size * size * 4), table, map, { kind: 'preference', light: unit([0, 0.05, -1]) });
+  assert.ok(haloAt(behind, -1) > 40 && haloAt(behind, 1) > 40, 'with the sun behind it, the air does not ring the planet');
+  // Mercury has no air: nothing past its limb, whatever the light.
+  const bare = globeTable(size, 1);
+  assert.equal(bare.ring.length, 0, 'Mercury was given room for an atmosphere');
+});
 
-  // Granulation: the middle of the face is not one flat value.
-  const still = at(0, 0.5);
-  const middle = [];
-  for (let y = 40; y < 56; y += 1) for (let x = 40; x < 56; x += 1) middle.push(brightness(still, size, x, y));
-  const mean = middle.reduce((sum, value) => sum + value, 0) / middle.length;
-  const spread = Math.sqrt(middle.reduce((sum, value) => sum + (value - mean) ** 2, 0) / middle.length);
-  assert.ok(spread > 4, `the surface is flat: a spread of ${spread.toFixed(1)} across the middle`);
+test('nostromo 3d: each planet has its own surface: craters on Mercury, a cap of ice on Mars, oceans and clouds on the Earth, a smooth Uranus', () => {
+  const { planetMap, globeTable, shadePlanet, buildPlanets, planetMaps, PLANET_STRIDE, ALBEDO_W, ALBEDO_H } = shader();
+  // Built a band at a time, handed out only whole, and once per planet.
+  assert.equal(planetMap('fact', 8), null, 'a half-built map was handed out');
+  // Whoever paints only now and then (the Macroverso) builds them all, a band a call, even the ones
+  // no universe on screen has.
+  let calls = 0;
+  while (!buildPlanets() && calls < 200) calls += 1;
+  assert.ok(calls < 200 && ['fact', 'decision', 'preference', 'question'].every((kind) => planetMaps.get(kind)?.done), 'the planets were never all built');
+  const mercury = planetMap('fact');
+  assert.ok(mercury, 'the map never finished');
+  assert.equal(planetMap('fact'), mercury, 'a planet\'s surface was built twice');
+  const maps = Object.fromEntries(['fact', 'decision', 'preference', 'question'].map((kind) => [kind, planetMap(kind)]));
+  assert.notDeepEqual(maps.fact.slice(0, 64), maps.decision.slice(0, 64), 'two planets share one surface');
+  const channel = (map, k, rows = [0, ALBEDO_H]) => { const out = []; for (let row = rows[0]; row < rows[1]; row += 1) for (let col = 0; col < ALBEDO_W; col += 1) out.push(map[(row * ALBEDO_W + col) * PLANET_STRIDE + k]); return out; };
+  const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const spread = (values) => { const m = mean(values); return Math.sqrt(mean(values.map((value) => (value - m) ** 2))); };
+  const middle = [Math.round(ALBEDO_H * 0.3), Math.round(ALBEDO_H * 0.7)];
 
+  // Mercury: grey, and its relief is craters.
+  const [mr, mg, mb] = [0, 1, 2].map((k) => mean(channel(mercury, k)));
+  assert.ok(Math.max(mr, mg, mb) - Math.min(mr, mg, mb) < 0.08, 'Mercury is not grey');
+  assert.ok(spread(channel(mercury, 5)) > 0.1, 'Mercury has no craters');
+  // Uranus: smooth, pale cyan.
+  assert.ok(spread(channel(maps.question, 0)) < 0.03, 'Uranus is mottled');
+  assert.equal(spread(channel(maps.question, 5)), 0, 'Uranus has relief');
+  assert.ok(mean(channel(maps.question, 2)) > mean(channel(maps.question, 0)) + 0.15, 'Uranus is not cyan');
+  // Mars: rust at the equator, ice at a pole.
+  const marsRed = mean(channel(maps.decision, 0, middle));
+  const marsGreen = mean(channel(maps.decision, 1, middle));
+  assert.ok(marsRed > marsGreen * 1.4, 'Mars is not red');
+  const pole = mean(channel(maps.decision, 2, [0, 3]));
+  assert.ok(pole > 0.8, `Mars has no cap of ice (${pole.toFixed(2)})`);
+  // The Earth: water over most of it, land on the rest, and clouds over about half.
+  const wet = mean(channel(maps.preference, 3).map((value) => (value > 0.5 ? 1 : 0)));
+  assert.ok(wet > 0.45 && wet < 0.8, `the Earth is ${(wet * 100).toFixed(0)}% water`);
+  const cloud = mean(channel(maps.preference, 4));
+  assert.ok(cloud > 0.15 && cloud < 0.7, `the Earth's sky is ${(cloud * 100).toFixed(0)}% cloud`);
+
+  // The relief catches the light: with the sun low, a cratered face is far rougher than a flat one.
+  const size = 96;
+  const table = globeTable(size, 1);
+  const grazing = unit([-1, 0, 0.35]);
+  const flat = new Float32Array(mercury);
+  for (let i = 0; i < flat.length; i += PLANET_STRIDE) { flat[i + 5] = 0; flat[i + 6] = 0; flat[i + 7] = 0; }
+  const rough = (map) => { const out = shadePlanet(new Uint8ClampedArray(size * size * 4), table, map, { kind: 'fact', light: grazing }); const row = []; for (let x = 20; x < 48; x += 1) for (let y = 36; y < 60; y += 1) row.push(brightness(out, size, x, y)); return spread(row); };
+  assert.ok(rough(mercury) > rough(flat) * 1.5, 'the craters do not catch the light');
+
+  // The sun glints on the Earth's water and not on its land.
+  const glossy = plainMap(maps.preference.length, PLANET_STRIDE, [0.05, 0.1, 0.25, 1]);
+  const dry = plainMap(maps.preference.length, PLANET_STRIDE, [0.05, 0.1, 0.25, 0]);
+  const sea = (map) => brightness(shadePlanet(new Uint8ClampedArray(size * size * 4), globeTable(size, 1.16), map, { kind: 'preference', light: [0, 0, 1] }), size, size / 2, size / 2);
+  assert.ok(sea(glossy) > sea(dry) + 60, 'the sun does not glint on the water');
+});
+
+test('nostromo 3d: a planet turns, shows more light the more it is used, fades out of circulation, and the one being read is lit from the front', () => {
+  const { planetMap, globeTable, shadePlanet } = shader();
+  const size = 80;
+  const table = globeTable(size, 1);
+  const map = planetMap('decision');
+  const at = (options) => shadePlanet(new Uint8ClampedArray(size * size * 4), table, map, { kind: 'decision', light: unit([-0.5, -0.3, 0.8]), ...options });
   // Turning moves the face.
-  const turned = at(0.6, 0.5);
+  const still = at({ turn: 0 });
+  const turned = at({ turn: 0.6 });
   let differ = 0;
   for (let i = 0; i < still.length; i += 4) if (Math.abs(still[i] - turned[i]) > 8) differ += 1;
   assert.ok(differ > 300, `turning barely changed the face (${differ} pixels)`);
-
-  // Burning harder is brighter, everywhere on the face.
-  const dim = at(0, 0.05);
-  const hot = at(0, 1);
-  assert.ok(brightness(hot, size, 48, 48) > brightness(dim, size, 48, 48), 'a dwarf the room leans on does not outshine one it ignores');
-
-  // Every map is built once per class, and each class has a surface of its own.
-  assert.equal(dwarfAlbedo('decision'), map);
-  assert.notDeepEqual(dwarfAlbedo('fact').slice(0, 64), map.slice(0, 64), 'two classes share one surface');
-});
-
-test('nostromo 3d: the surface follows the memory: clean when confirmed, blotched when held as false, quiet when cold', () => {
-  const { dwarfAlbedo, sphereTable, shadeDwarf, surfaceOf, STAR_TRAITS } = shader();
-  // What each standing asks of the surface.
-  const sun = STAR_TRAITS.decision;
-  assert.equal(surfaceOf({ zone: 'bridge' }, sun).spots, 0, 'a confirmed memory still carries spots');
-  assert.equal(surfaceOf({ zone: 'hold' }, sun).spots, sun.spots, 'an unjudged memory lost its class\'s spots');
-  assert.equal(surfaceOf({ zone: 'hold' }, STAR_TRAITS.fact).spots, 0, 'an unjudged white dwarf was spotted');
-  assert.ok(surfaceOf({ zone: 'medbay' }, STAR_TRAITS.fact).spots > 0, 'a white dwarf held as false is clean');
-  assert.ok(surfaceOf({ zone: 'jettisoned' }, sun).reach < surfaceOf({ zone: 'medbay' }, sun).reach, 'out of circulation is not the worst');
-  assert.ok(surfaceOf({ zone: 'hold' }, sun, true).granules < surfaceOf({ zone: 'hold' }, sun).granules, 'a cold memory still boils');
-
-  // A cold dwarf is a cooling one: dimmer, and no longer white-hot in the middle.
-  {
-    const size = 48;
-    const table = sphereTable(size);
-    const map = plainMap(dwarfAlbedo('decision').length);
-    const paint = (cold) => shadeDwarf(new Uint8ClampedArray(size * size * 4), table, map, { colour: YELLOW, traits: sun, surface: surfaceOf({ zone: 'hold' }, sun, cold), turn: 0, burn: 0.6 });
-    const warm = paint(false);
-    const cooling = paint(true);
-    assert.ok(brightness(cooling, size, 24, 24) < brightness(warm, size, 24, 24) * 0.85, 'a cold dwarf burns as bright as a used one');
-    // White-hot is blue catching up with red; cooling, the middle keeps less of its blue.
-    const blueShare = (out) => out[(24 * size + 24) * 4 + 2] / Math.max(1, out[(24 * size + 24) * 4]);
-    assert.ok(blueShare(cooling) < blueShare(warm), 'a cold dwarf is still white-hot in the middle');
-  }
-  assert.deepEqual(surfaceOf({}, sun), surfaceOf({ zone: 'hold' }, sun), 'a memory with no zone is not read as unjudged');
-
-  // And what it looks like: the darkened part of the face, over a whole turn of the body.
-  const size = 80;
-  const table = sphereTable(size);
-  const map = dwarfAlbedo('decision');
-  const plain = plainMap(map.length);
-  const spotted = (zone) => {
-    let dark = 0;
-    for (let step = 0; step < 8; step += 1) {
-      const turn = (step / 8) * Math.PI * 2;
-      const surface = surfaceOf({ zone }, sun);
-      const face = shadeDwarf(new Uint8ClampedArray(size * size * 4), table, map, { colour: YELLOW, traits: sun, surface: { ...surface, granules: 0 }, turn, burn: 0.5 });
-      const bare = shadeDwarf(new Uint8ClampedArray(size * size * 4), table, plain, { colour: YELLOW, traits: sun, surface: { ...surface, granules: 0, faculae: 0 }, turn, burn: 0.5 });
-      for (let i = 0; i < face.length; i += 4) if (bare[i + 3] === 255 && face[i] + face[i + 1] < 0.75 * (bare[i] + bare[i + 1])) dark += 1;
-    }
-    return dark;
-  };
-  const [bridge, hold, medbay, jettisoned] = ['bridge', 'hold', 'medbay', 'jettisoned'].map(spotted);
-  assert.equal(bridge, 0, `a confirmed memory showed ${bridge} spotted pixels`);
-  assert.ok(hold > 0, 'an unjudged sun shows no spots over a whole turn');
-  assert.ok(medbay > hold * 2, `held as false (${medbay}) is not far more blotched than unjudged (${hold})`);
-  assert.ok(jettisoned > medbay, `out of circulation (${jettisoned}) is not the most blotched (${medbay})`);
+  // What the room has made of it shows as more of its light.
+  assert.ok(brightness(at({ exposure: 1.4 }), size, 34, 34) > brightness(at({ exposure: 0.8 }), size, 34, 34), 'a used planet shows no more light than a neglected one');
+  // Out of circulation: the colour goes out of it and it dims.
+  const warmth = (out) => { const p = (34 * size + 34) * 4; return out[p] / Math.max(1, out[p + 2]); };
+  const faded = at({ fade: 1 });
+  assert.ok(warmth(faded) < warmth(still) * 0.8, 'a faded planet keeps its colour');
+  assert.ok(brightness(faded, size, 34, 34) < brightness(still, size, 34, 34), 'a faded planet is as bright as one in use');
+  // Held, with the sun behind it, it still shows its face.
+  const backlit = (fill) => brightness(at({ light: [0, 0, -1], fill }), size, size / 2, size / 2);
+  assert.ok(backlit(1) > backlit(0) * 2 && backlit(1) > 120, `the planet being read turns to night (${backlit(0)} → ${backlit(1)})`);
 });
 
 test('nostromo 3d: a pointer over the map before it has started finds nothing, and does not throw', () => {
