@@ -1035,7 +1035,7 @@ test('neural mode: a real neuron — body, branching dendrites, a sheathed axon 
   assert.match(engine, /const baked = neuronLife\(life\);/);
   // The cells are not turned: their light comes from one side.
   assert.doesNotMatch(engine, /ctx\.rotate\(node\.seed \+/);
-  assert.match(app, /const mark = nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\) : kind === COLLAPSED \? collapsedChip\(hex, 14\) : dwarfChip\(hex, 14\);/);
+  assert.match(app, /const mark = nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\) : kind === COLLAPSED \? collapsedChip\(hex, 14\) : planetChip\(kind, 14\);/);
   assert.match(app, /neuronChip\(NEURAL_COLORS\.fact, 16, 'spent'\)/);
   assert.match(es, /'A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers\.': 'Una neurona que se apaga es/);
 });

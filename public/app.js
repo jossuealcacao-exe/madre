@@ -30,7 +30,7 @@ let roomTourKept = null;
 import { LOADER_MARK, bootDone, creep, finishLoader, makeLoader, playProjectOpening, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
-import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
+import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, hexMix, neuronChip, planetChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
 import { trazo, trazoDrawing } from './icons.js';
 import { startersFor } from './starters.js';
 import { providerPick } from './provider-pick.js';
@@ -24272,12 +24272,12 @@ nostromo.gate.form?.addEventListener('submit', (event) => {
   setTimeout(() => { nostromo.gate.dialog.close(); void openNostromo(); }, 700);
 });
 
-// What each class of memory is called as a star, for the legend above the constellation.
-// The star each kind burns as; its title adds the kind, so the label does not repeat it.
-const DWARF_CLASS = { decision: t('YELLOW STAR'), fact: t('WHITE STAR'), preference: t('GREEN STAR'), question: t('BLUE STAR'), aberration: t('COLLAPSED') };
+// The planet each kind of memory is on the map (2026-11-15), and the black hole a doubtful one is;
+// the chip's title adds the kind, so the label does not repeat it.
+const PLANET_CLASS = { decision: t('MARS'), fact: t('MERCURY'), preference: t('EARTH'), question: t('URANUS'), aberration: t('BLACK HOLE') };
 
-// The legend's stars (nostromo-engine.js: dwarfChip, collapsedChip) are the Project map's too.
-// The legend: one real star per class, with the kind of memory that burns as that class.
+// The legend's planets (nostromo-engine.js: planetChip, collapsedChip) are the Project map's too.
+// The legend: each kind's planet, small, the same one the map paints, with the kind's name.
 function paintLegend() {
   const host = document.querySelector('.nostromo-legend');
   // In the neural drawing each kind is a neuron of its colour (2026-10-27), and the legend says so.
@@ -24286,19 +24286,19 @@ function paintLegend() {
   const chips = [];
   for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
     const chip = el('span', `k ${kind}`);
-    // The star is the name of its class. Writing it out as well says the same thing twice.
+    // The planet says which kind it is; its name is on hover, so the chip does not say it twice.
     // A doubtful memory is a dead neuron: its shape in loose points (2026-10-27).
-    const mark = nostromo.neural ? neuronChip(NEURAL_COLORS[kind] ?? hex, 16, kind === COLLAPSED ? 'dead' : 'alive') : kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14);
+    const mark = nostromo.neural ? neuronChip(NEURAL_COLORS[kind] ?? hex, 16, kind === COLLAPSED ? 'dead' : 'alive') : kind === COLLAPSED ? collapsedChip(hex, 14) : planetChip(kind, 14);
     chip.append(mark, el('i', null, kindWord(kind)));
-    chip.title = nostromo.neural ? kindWord(kind) : `${DWARF_CLASS[kind]} · ${kindWord(kind)}`;
+    chip.title = nostromo.neural ? kindWord(kind) : `${PLANET_CLASS[kind]} · ${kindWord(kind)}`;
     chips.push(chip);
   }
-  // The zones do not get a palette of their own: the hue on a star is its kind and the chips above
-  // say so. What a zone changes is whether the star is lit, which is one more thing to name here
-  // rather than a second legend to read.
+  // The zones do not get a palette of their own: the planet is the kind, and the chips above say
+  // so. What a zone changes is whether the planet is in circulation, which is one more thing to
+  // name here rather than a second legend to read.
   const dim = el('span', 'k dim');
-  dim.append(nostromo.neural ? neuronChip(NEURAL_COLORS.fact, 16, 'spent') : dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), el('i', null, t('NOT USED')));
-  dim.title = nostromo.neural ? t('A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers.') : t('A faded star is a quarantined or discarded memory: it is kept, but never used in answers.');
+  dim.append(nostromo.neural ? neuronChip(NEURAL_COLORS.fact, 16, 'spent') : planetChip('fact', 14, { faded: true }), el('i', null, t('NOT USED')));
+  dim.title = nostromo.neural ? t('A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers.') : t('A faded planet is a quarantined or discarded memory: it is kept, but never used in answers.');
   chips.push(dim);
   host.replaceChildren(...chips);
   host.dataset.lit = drawing;
@@ -25556,7 +25556,7 @@ const FIRST_TOUCH = {
   memory: {
     button: '#nostromo-bar',
     title: t('Memory map'),
-    text: t('What MADRE remembers about this project, drawn as stars. Drag to turn it, scroll to come closer and click a star to read it.'),
+    text: t('What MADRE remembers about this project, drawn as planets. Drag to turn it, scroll to come closer and click a planet to read it.'),
   },
   crew: {
     button: '#agents-compact',

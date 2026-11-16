@@ -15,11 +15,10 @@
 // the room's language, how much of the canvas the open card covers, what to shake when CODE000
 // lands — are hooks on the scene (`words`, `covered`, `onClang`), and each has a default.
 
-// Memories burn as stars burn, and a star's colour is its class. A decision is a yellow dwarf,
-// the steady kind a system is built around. A fact is a white dwarf: cold, dense, settled. A
-// preference is a green dwarf, personal and very long lived. A question is a blue dwarf, the
-// hottest thing in the sky and the least settled. One palette for the room, the Macroverso and
-// the stylesheet (`--mem-*`): a test keeps them the same.
+// Each kind of memory has its colour: a decision yellow, a fact white, a preference green, a
+// question blue, a doubtful memory violet. The wires, the pulses and every chip outside the map wear
+// it; on the map itself each kind is a planet that looks like it (PLANETS, below). One palette for the
+// room, the Macroverso and the stylesheet (`--mem-*`): a test keeps them the same.
 export const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#5cf07a', question: '#3dc6ff', aberration: '#b14cff' };
 // What a zone changes on the map is whether the star is lit: only what still travels into turns
 // burns. The rule is the archive's (`travels()` in src/memory.mjs); this is the client's copy.
@@ -280,202 +279,58 @@ const CIRCLE_STEPS = 44;
 const CIRCLE_COS = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.cos((k / CIRCLE_STEPS) * Math.PI * 2));
 const CIRCLE_SIN = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.sin((k / CIRCLE_STEPS) * Math.PI * 2));
 
-// ---- The skin of a dwarf.
-// A star of any class has the same boiling surface; what changes is the colour it boils in. One
-// strip is built per class, the first time that class is asked for, and every memory of that
-// class wears it. The strip repeats left to right, so a body can turn inside it without a seam.
-const dwarfSkins = new Map();
-// A dwarf's face is laid on in columns across its width, each as wide as a sphere is at that
-// longitude: the sine of evenly spaced longitudes from one limb to the other.
-const SKIN_COLUMNS = 8;
-const SKIN_EDGES = Array.from({ length: SKIN_COLUMNS + 1 }, (_, k) => Math.sin(-Math.PI / 2 + (k / SKIN_COLUMNS) * Math.PI));
-export function dwarfTexture(hex) {
-  if (dwarfSkins.has(hex)) return dwarfSkins.get(hex);
-  let skin = null;
-  try {
-    const base = [1, 3, 5].map((at) => Number.parseInt(String(hex).slice(at, at + 2), 16));
-    if (base.some((value) => !Number.isFinite(value))) throw new Error('not a colour');
-    const shade = (amount, alpha) => `rgba(${base.map((value) => Math.round(Math.min(255, value * amount))).join(', ')}, ${alpha})`;
-    const white = (amount, alpha) => `rgba(${base.map((value) => Math.round(value + (255 - value) * amount)).join(', ')}, ${alpha})`;
-    const width = 320;
-    const height = 160;
-    const canvas = document.createElement('canvas');
-    canvas.width = width * 2;
-    canvas.height = height;
-    const paint = canvas.getContext('2d');
-    if (!paint) throw new Error('no context');
-    // The ground of the face, in the star's own colour. A dwarf is bright from edge to edge, so
-    // this is the colour at rest rather than a dark floor: the mottling reads against it both
-    // ways, darker where the gas is cooler and white where it is alight.
-    paint.fillStyle = shade(0.46, 1);
-    paint.fillRect(0, 0, width * 2, height);
-    const cell = (x, y, size, heat) => {
-      for (const at of [x - width, x, x + width]) {
-        const glow = paint.createRadialGradient(at, y, 0, at, y, size);
-        if (heat > 0.88) {
-          // The few points that are truly alight, which is what the eye finds first.
-          glow.addColorStop(0, white(0.85, 0.95));
-          glow.addColorStop(0.4, white(0.35, 0.5));
-        } else if (heat > 0.52) {
-          glow.addColorStop(0, white(0.2 + heat * 0.3, 0.45 + heat * 0.35));
-          glow.addColorStop(0.5, shade(1.05, 0.24));
-        } else {
-          glow.addColorStop(0, shade(0.2 + heat * 0.5, 0.5));
-          glow.addColorStop(0.5, shade(0.22, 0.24));
-        }
-        glow.addColorStop(1, shade(0.5, 0));
-        paint.fillStyle = glow;
-        paint.beginPath(); paint.arc(at, y, size, 0, Math.PI * 2); paint.fill();
-      }
-    };
-    for (let i = 0; i < 420; i += 1) cell(Math.random() * width, Math.random() * height, 7 + Math.random() * 15, Math.random() * 0.82);
-    for (let i = 0; i < 1100; i += 1) cell(Math.random() * width, Math.random() * height, 1.8 + Math.random() * 4.5, Math.random());
-    skin = canvas;
-  } catch {
-    skin = null;   // no canvas to build in: the star keeps its gradient and loses its grain
-  }
-  dwarfSkins.set(hex, skin);
-  return skin;
-}
+// ---- The memories are planets (2026-11-15, asked by the author: «planetas en memorias deben verse
+// hiperrealistas, iluminados y sombreados por el sol, … 4 tipos de planetas en colores tipo Mercurio,
+// Urano, Tierra y Marte»).
+//
+// A memory used to be a dwarf star that made its own light. It is a planet now, and a planet gives
+// none: the sun at the centre of the map lights it from where it stands. The side turned to the sun
+// is day; the far side is night, almost black, with only a little light from everything else; the
+// line between them, the terminator, moves as the planet goes round its orbit or as the map is
+// turned, because the direction of the sun is worked out again from where the planet is each time
+// its face is painted.
+//
+// Each kind of memory is one planet, chosen for looking like the colour that kind has always had:
+//   a fact is Mercury: grey rock, cratered all over, no air; a few young craters throw bright rays;
+//   a decision is Mars: rust and butterscotch, darker basalt plains, a canyon, a white polar cap;
+//   a preference is the Earth: oceans, continents, deserts, ice, clouds that drift a little faster
+//     than the ground, a blue atmosphere, and the sun's glint on the water;
+//   a question is Uranus: pale cyan and smooth, with bands too faint to name and a haze at its edge.
+// All of it is grown here from noise: no picture of a planet is used and nothing is downloaded.
+//
+// What makes them read as real is how the light falls. The rocky two are lit as the Moon is (a
+// blend of Lommel–Seeliger and Lambert): even across the day side, then falling off hard at the
+// terminator, their relief raised by the light that grazes it. The two with air are lit softly,
+// darker toward the limb, and wear a halo of atmosphere on the side the sun is on, all the way
+// round when the sun is behind them. The colours are lit in linear light and brought back for the
+// screen, so the terminator fades the way it does in a photograph instead of as a grey band.
+//
+// `base` is the planet's colour at a glance, for wherever there is no face to paint yet; `bump` how
+// far its relief tilts the light; `wrap` how far its air carries light past the terminator; `limb`
+// how much it darkens toward the edge; `air` the colour of its atmosphere and `airGlow` how bright
+// its halo is, `thickness` how far it reaches past the limb; `face` the turn the legend shows it at.
+export const PLANETS = {
+  fact: { name: 'mercury', base: '#8f8a84', rocky: true, bump: 0.075, wrap: 0, limb: 0, air: null, airGlow: 0, thickness: 0, face: 0.6 },
+  decision: { name: 'mars', base: '#b8683c', rocky: true, bump: 0.035, wrap: 0, limb: 0, air: [1, 0.72, 0.52], airGlow: 0.3, thickness: 0.022, face: 2.1 },
+  preference: { name: 'earth', base: '#2f5f8f', rocky: false, bump: 0.03, wrap: 0.05, limb: 0.12, air: [0.36, 0.6, 1], airGlow: 0.95, thickness: 0.035, ocean: true, clouds: true, face: 4.4 },
+  question: { name: 'uranus', base: '#a2d6de', rocky: false, bump: 0, wrap: 0.07, limb: 0.42, air: [0.66, 0.9, 1], airGlow: 0.55, thickness: 0.032, face: 0 },
+};
+// A kind the map does not know is drawn as a fact, as its colour always was.
+export const planetOf = (kind) => (PLANETS[kind] ? kind : 'fact');
+// How far past its disc a planet's painted face reaches, for the halo of its air.
+const PLANET_HALO = 1.16;
+// The sun at the centre is a little warm of white, and so is the light it gives.
+const SUN_LIGHT = [1, 0.95, 0.88];
+// What reaches the night side from everything that is not the sun: almost nothing.
+const PLANET_AMBIENT = 0.04;
 
-// ---- The legend's stars (moved here from app.js on 2026-10-10, so the Project map draws the same
-// ones as the Memory map).
-// A real dwarf, small enough to sit in a chip: the same ground, the same boiling face and the
-// same limb the ones in the constellation wear, so the legend shows the thing and not a swatch.
-export function dwarfChip(hex, px) {
-  const canvas = document.createElement('canvas');
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  canvas.width = Math.round(px * dpr);
-  canvas.height = Math.round(px * dpr);
-  canvas.style.width = `${px}px`;
-  canvas.style.height = `${px}px`;
-  const paint = canvas.getContext('2d');
-  if (!paint) return canvas;
-  paint.scale(dpr, dpr);
-  const r = px / 2;
-  paint.save();
-  paint.beginPath(); paint.arc(r, r, r, 0, Math.PI * 2); paint.closePath();
-  const ground = paint.createRadialGradient(r * 0.72, r * 0.72, r * 0.04, r, r, r * 1.1);
-  ground.addColorStop(0, hexMix(hex, '#ffffff', 0.75));
-  ground.addColorStop(0.42, hex);
-  ground.addColorStop(1, hexMix(hex, '#000000', 0.62));
-  paint.fillStyle = ground;
-  paint.fill();
-  paint.clip();
-  const skin = dwarfTexture(hex);
-  if (skin) {
-    paint.globalAlpha = 0.72;
-    paint.drawImage(skin, 0, 0, skin.width * 0.28, skin.height, -r * 0.08, -r * 0.08, px * 1.08, px * 1.08);
-    paint.globalAlpha = 1;
-  }
-  const limb = paint.createRadialGradient(r, r, r * 0.3, r, r, r);
-  limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  limb.addColorStop(0.78, 'rgba(0, 0, 0, .18)');
-  limb.addColorStop(1, 'rgba(0, 0, 0, .6)');
-  paint.fillStyle = limb;
-  paint.fillRect(0, 0, px, px);
-  paint.restore();
-  return canvas;
-}
-
-// The collapsed body, small enough for a chip: a hole with the ring of what fell into it.
-export function collapsedChip(hex, px) {
-  const canvas = document.createElement('canvas');
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  canvas.width = Math.round(px * dpr);
-  canvas.height = Math.round(px * dpr);
-  canvas.style.width = `${px}px`;
-  canvas.style.height = `${px}px`;
-  const paint = canvas.getContext('2d');
-  if (!paint) return canvas;
-  paint.scale(dpr, dpr);
-  const r = px / 2;
-  // The same thing the constellation draws, small: dust, a round black nothing, a cold rim.
-  paint.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 14; i += 1) {
-    const speck = VOID_DUST[i * 4];
-    const at = r * (0.78 + 0.22 * speck.out);
-    const x = r + Math.cos(speck.angle) * at;
-    const y = r + Math.sin(speck.angle) * at;
-    paint.fillStyle = `rgba(${speck.colour}, ${0.8 - 0.4 * speck.out})`;
-    paint.beginPath(); paint.arc(x, y, 0.55, 0, Math.PI * 2); paint.fill();
-  }
-  paint.globalCompositeOperation = 'source-over';
-  paint.fillStyle = '#000000';
-  paint.beginPath(); paint.arc(r, r, r * 0.66, 0, Math.PI * 2); paint.fill();
-  paint.globalCompositeOperation = 'lighter';
-  paint.strokeStyle = 'rgba(168, 204, 255, .75)';
-  paint.lineWidth = 0.9;
-  paint.beginPath(); paint.arc(r, r, r * 0.69, 0.6, 3.5); paint.stroke();
-  paint.strokeStyle = 'rgba(140, 180, 245, .45)';
-  paint.beginPath(); paint.arc(r, r, r * 0.74, 3.9, 5.9); paint.stroke();
-  paint.globalCompositeOperation = 'source-over';
-  return canvas;
-}
-
-// ---- A dwarf, drawn the way a star looks.
-//
-// A dwarf makes its own light, so nothing out here lights it and nothing shades it: there is
-// no side turned away. What makes it round is what makes the Sun round in a white-light photo.
-//
-//   Limb darkening. The disc is brightest in the middle and dims toward the edge, the same all
-//   the way round: at the limb the eye sees into higher, cooler gas. It dims more in blue than
-//   in red, so the edge is also warmer than the centre.
-//   Granulation. The surface is cells: hot plasma rising in bright cores, cooling gas sinking in
-//   the dark lanes between them. Seen toward the limb the cells foreshorten and the pattern fades.
-//   Spots. A dark umbra inside a paler penumbra, where the field holds the heat down.
-//   Faculae. Bright patches around the spots, plain near the limb and nearly lost in the middle.
-//
-// Each class wears these in its own proportion: a white dwarf is smooth and white-hot, a yellow
-// one is a sun with granules and spots. The surface is a map of the whole body in latitude and
-// longitude, built once per class from noise sampled on the sphere itself, so it has no seam and
-// nothing stretches at the poles; turning the body is sliding along it. How hard a dwarf burns
-// is how much the room has made of it, as before.
-//
-// The geometry of a disc of a given size is worked out once and kept. A body is painted again
-// only when it has turned or changed enough to show.
+// The surface of each planet is a map of the whole body in latitude and longitude, built once per
+// kind from noise sampled on the sphere itself, so it has no seam and nothing stretches at the
+// poles; turning the body is sliding along it.
 const ALBEDO_W = 256;
 const ALBEDO_H = 128;
-// How much each channel dims at the limb, red to blue: the blue dims most.
-const LIMB_DARKENING = [0.68, 0.8, 0.9];
-// What each class of dwarf is made of. `granules` is how strongly the cells show, `spots` how
-// many of them are marked, `faculae` how bright the patches around them are, `white` how far the
-// centre runs toward white, `power` how much light it gives for its size: a white dwarf is the
-// smallest and the most intense. A class not named here is drawn as a sun.
-const STAR_TRAITS = {
-  decision: { granules: 1, spots: 1, faculae: 1, white: 0.5, power: 1 },
-  fact: { granules: 0.3, spots: 0, faculae: 0.35, white: 0.9, power: 1.35 },
-  preference: { granules: 0.9, spots: 0.7, faculae: 0.9, white: 0.45, power: 1 },
-  question: { granules: 0.7, spots: 0.4, faculae: 0.7, white: 0.65, power: 1.15 },
-};
-const SUN_TRAITS = { granules: 0.8, spots: 0.6, faculae: 0.8, white: 0.5, power: 1 };
-// And what a memory's standing does to that surface. A dwarf you confirmed is clean; one nobody
-// has judged carries its class's spots; one held as false is blotched, the spots spreading as
-// `reach` drops; one put out of circulation is the worst of all. `faculae` scales the bright
-// patches. A dwarf the archive has never once carried is cooling: its granules barely move, it
-// gives less light (`glow`) and its middle is no longer white-hot (`white`).
-const SURFACE_BY_ZONE = {
-  bridge: { spots: 0, reach: 0.77, faculae: 1.3 },
-  hold: { spots: 1, reach: 0.77, faculae: 1 },
-  medbay: { spots: 1, reach: 0.67, faculae: 0.55, sick: true },
-  jettisoned: { spots: 1, reach: 0.62, faculae: 0.3, sick: true },
-};
-const COLD_GRANULES = 0.3;
-const COLD_GLOW = 0.55;
-const COLD_WHITE = 0.2;
-function surfaceOf(memory, traits = SUN_TRAITS, cold = false) {
-  const zone = SURFACE_BY_ZONE[memory?.zone ?? 'hold'] ?? SURFACE_BY_ZONE.hold;
-  return {
-    spots: zone.sick ? 1 : traits.spots * zone.spots,
-    reach: zone.reach,
-    faculae: traits.faculae * zone.faculae,
-    granules: traits.granules * (cold ? COLD_GRANULES : 1),
-    glow: cold ? COLD_GLOW : 1,
-    white: cold ? COLD_WHITE : 1,
-  };
-}
-const dwarfAlbedos = new Map();
 const sphereTables = new Map();
+
 
 // Gradient noise, the improved kind: continuous in every direction, with no grid showing
 // through it the way value noise shows its cells. The permutation is fixed, so every room grows
@@ -537,7 +392,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 const sunClamp = (value, low, high) => Math.min(high, Math.max(low, value));
 // ---- The sun at the centre of the projects (2026-11-10, asked by the author: «the sun does not feel
 // like a real sun»). The Coordinator in the planets view is a star now, and so is the centre of every project's map (2026-11-10: «the sun in the projects does not look like the Coordinator's»), drawn as the Sun is seen in a
-// white-light photograph, from the same noise the memories' dwarfs are made of (this file):
+// white-light photograph, from the same noise the memories' planets are made of (this file):
 //   granulation — bright cells of rising gas and dark lanes between them, over a slow unevenness;
 //   spots — a dark umbra in a paler penumbra, a few, drifting with the turn;
 //   limb darkening — brightest in the middle, dimmer and warmer toward the edge, more in blue than
@@ -644,45 +499,200 @@ export function drawSun(ctx, x, y, r, sun, { life = 1, beat = 0, lit = 0 } = {})
   ctx.globalCompositeOperation = 'source-over';
 }
 
-// The whole surface of one class: how bright the granulation is at each texel, and how strong
-// the magnetic field is there. Spots and faculae are read from the field when a dwarf is
-// painted, so how many a dwarf shows can follow the memory's standing instead of being baked in.
-// Each class has a surface of its own. Built a band of rows at a time when asked to be (`rows`),
-// so the work can be spread over frames; the map is handed out only once it is whole.
-function dwarfAlbedo(kind, rows = ALBEDO_H) {
-  let build = dwarfAlbedos.get(kind);
+// ---- What each planet is made of, at one point of its sphere.
+//
+// Craters: one candidate in each cell of a lattice laid through the body, kept only where the cell's
+// hash says so, each with a size of its own (many small ones, few large). Each is a bowl, a raised
+// rim and a blanket of thrown-out rock round it; a young one, now and then, has a bright floor and
+// rays streaking out from it. Returns the height and the brightness of the rays.
+const CRATER = new Float32Array(2);
+function craterField(x, y, z, density) {
+  const P = NOISE_PERM;
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const keep = density * 255;
+  let height = 0;
+  let rays = 0;
+  for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) for (let dz = -1; dz <= 1; dz += 1) {
+    const h = P[(P[(P[(xi + dx) & 255] + ((yi + dy) & 255)) & 255] + ((zi + dz) & 255)) & 255];
+    if (P[(h + 31) & 255] > keep) continue;
+    const ox = x - (xi + dx + P[h] / 255);
+    const oy = y - (yi + dy + P[(h + 85) & 255] / 255);
+    const oz = z - (zi + dz + P[(h + 170) & 255] / 255);
+    const size = 0.14 + 0.36 * (P[(h + 113) & 255] / 255) ** 2;
+    const far = ox * ox + oy * oy + oz * oz;
+    if (far > size * size * 6.25) continue;
+    const reach = Math.sqrt(far);
+    const d = reach / size;
+    height += (d < 1 ? -(1 - d * d) * 0.9 : 0) + 0.3 * Math.exp(-(((d - 1) / 0.17) ** 2)) + 0.1 * Math.exp(-Math.abs(d - 1) / 0.45);
+    if (P[(h + 57) & 255] < 34) {
+      const inv = 1 / (reach || 1);
+      const streak = gradientNoise(ox * inv * 7 + h * 0.37, oy * inv * 7, oz * inv * 7);
+      rays += (d < 1 ? 0.4 : 0) + Math.max(0, streak) * 1.6 * smooth(0.85, 1.1, d) * Math.exp(-Math.max(0, d - 1) / 0.6);
+    }
+  }
+  CRATER[0] = height;
+  CRATER[1] = rays;
+  return CRATER;
+}
+
+// One point of a planet: its colour (0..1, as seen), how glossy it is (open water), how much cloud
+// is over it, and its height. `s` is written in place: r, g, b, gloss, cloud, height.
+function planetSurface(kind, x, y, z, s) {
+  let r;
+  let g;
+  let b;
+  let gloss = 0;
+  let cloud = 0;
+  let height = 0;
+  if (kind === 'decision') {
+    // Mars. Bright dust and dark basalt, the dark lying more in one hemisphere; low old craters; a
+    // long canyon near the equator; and the cap of ice at each pole, larger at one.
+    const warp = fractalNoise(x * 1.4 + 31, y * 1.4, z * 1.4, 3) - 0.5;
+    const basalt = smooth(0.5, 0.68, fractalNoise(x * 1.9 + warp * 1.6, y * 1.9 + 7 + warp, z * 1.9 - warp * 1.6, 5) + 0.09 * smooth(-0.3, 0.5, y));
+    const dust = fractalNoise(x * 6 + 3, y * 6, z * 6, 4);
+    craterField(x * 4 + 70, y * 4, z * 4, 0.4);
+    const big = CRATER[0];
+    craterField(x * 10 + 9, y * 10, z * 10, 0.45);
+    const small = CRATER[0];
+    const canyon = smooth(0.9, 0.975, 1 - Math.abs(gradientNoise(x * 2.4 + 2, y * 13, z * 2.4))) * Math.exp(-((y / 0.16) ** 2)) * smooth(0.1, 0.5, z);
+    height = 0.4 * (fractalNoise(x * 2.4 + 50, y * 2.4, z * 2.4, 4) - 0.5) + 0.45 * big + 0.22 * small - 0.7 * canyon;
+    const lift = 0.92 + 0.16 * dust;
+    const dark = basalt * 0.85 + 0.35 * canyon;
+    r = (0.79 + (0.4 - 0.79) * dark) * lift;
+    g = (0.46 + (0.25 - 0.46) * dark) * lift;
+    b = (0.25 + (0.17 - 0.25) * dark) * lift;
+    const edge = 0.035 * gradientNoise(x * 9, y * 9, z * 9);
+    const cap = Math.max(smooth(0.885, 0.91, -y + edge), smooth(0.93, 0.95, y + edge));
+    r += (0.95 - r) * cap; g += (0.93 - g) * cap; b += (0.9 - b) * cap;
+    height += 0.06 * cap;
+  } else if (kind === 'preference') {
+    // The Earth. Continents out of warped noise, a shallow shelf round them, green where it is wet,
+    // sand in the dry belts either side of the tropics, tundra and ice toward the poles; mountains
+    // from a ridged noise; clouds in streets along the latitudes, thicker at the equator and in the
+    // storm belts, clearer over the deserts.
+    const w = fractalNoise(x * 1.3 + 11, y * 1.3, z * 1.3, 3) - 0.5;
+    const c = fractalNoise(x * 1.3 + w * 1.3, y * 1.3 + w, z * 1.3 - w * 1.3 + 2, 6);
+    const SEA = 0.58;   // about a third of the globe is land
+    const land = smooth(SEA, SEA + 0.012, c);
+    const shelf = smooth(SEA - 0.07, SEA, c) ** 2;
+    const ay = Math.abs(y);
+    const detail = fractalNoise(x * 12, y * 12, z * 12, 3);
+    const moist = fractalNoise(x * 3.1 + 21, y * 3.1, z * 3.1, 4);
+    const desert = smooth(0.35, 0.62, Math.exp(-(((ay - 0.4) / 0.17) ** 2)) * 0.9 + (0.5 - moist) * 1.1);
+    const relief = smooth(SEA + 0.02, SEA + 0.22, c);
+    const ridges = 1 - Math.abs(gradientNoise(x * 9 + 5, y * 9, z * 9));
+    const tropic = Math.exp(-((ay / 0.24) ** 2));
+    let lr = 0.11 + 0.06 * detail - 0.04 * tropic;
+    let lg = 0.22 + 0.07 * detail - 0.05 * tropic;
+    let lb = 0.07 + 0.02 * detail - 0.02 * tropic;
+    lr += (0.66 * (0.9 + 0.2 * detail) - lr) * desert;
+    lg += (0.53 * (0.9 + 0.2 * detail) - lg) * desert;
+    lb += (0.34 * (0.9 + 0.2 * detail) - lb) * desert;
+    const tundra = smooth(0.6, 0.75, ay);
+    lr += (0.36 - lr) * tundra; lg += (0.34 - lg) * tundra; lb += (0.28 - lb) * tundra;
+    const peaks = 0.45 * relief * ridges;
+    lr += (0.44 - lr) * peaks; lg += (0.38 - lg) * peaks; lb += (0.32 - lb) * peaks;
+    const wr = 0.012 + (0.035 - 0.012) * shelf;
+    const wg = 0.045 + (0.15 - 0.045) * shelf;
+    const wb = 0.13 + (0.24 - 0.13) * shelf;
+    r = wr + (lr - wr) * land;
+    g = wg + (lg - wg) * land;
+    b = wb + (lb - wb) * land;
+    const ice = Math.max(smooth(0.84, 0.875, ay + 0.04 * (detail - 0.5)) * land, smooth(0.9, 0.93, ay + 0.03 * (detail - 0.5)));
+    r += (0.92 - r) * ice; g += (0.94 - g) * ice; b += (0.96 - b) * ice;
+    gloss = (1 - land) * (1 - ice);
+    height = land * (0.12 + 0.7 * relief * ridges + 0.08 * detail);
+    // Clouds: swirled twice, a broad turn and a tighter one, drawn out along the latitudes, and torn
+    // at the edges by a finer noise so they are wisps and streets rather than lumps.
+    const cw = fractalNoise(x * 2.2 + 41, y * 2.2, z * 2.2, 3) - 0.5;
+    const cv = fractalNoise(x * 5 + 13, y * 5 + cw, z * 5, 2) - 0.5;
+    const cn = fractalNoise(x * 3.2 + cw * 2 + cv * 0.6, y * 6 + cw * 1.2, z * 3.2 - cw * 2 + 9 - cv * 0.6, 5);
+    const torn = fractalNoise(x * 16 + cv, y * 26, z * 16, 3);
+    const belts = 0.12 * Math.exp(-((y / 0.1) ** 2)) + 0.1 * Math.exp(-(((ay - 0.75) / 0.1) ** 2)) - 0.08 * Math.exp(-(((ay - 0.4) / 0.12) ** 2));
+    cloud = smooth(0.5, 0.8, cn + belts + 0.22 * (torn - 0.5)) * (0.7 + 0.3 * torn);
+  } else if (kind === 'question') {
+    // Uranus. Nearly featureless: bands a few hundredths apart in brightness, wavering a little, and
+    // a brighter haze over the pole that faces us.
+    const swirl = gradientNoise(x * 2.2 + 7, y * 2.2, z * 2.2);
+    const band = Math.sin(y * 16 + swirl * 0.8);
+    const hood = smooth(0.35, 0.85, -y);
+    const fine = fractalNoise(x * 5, y * 18, z * 5, 3) - 0.5;
+    const v = 1 + 0.022 * band + 0.07 * hood + 0.025 * fine;
+    r = 0.6 * v;
+    g = 0.84 * v;
+    b = 0.88 * v + 0.02 * hood;
+  } else {
+    // Mercury. Craters on three scales, fewer on the smooth plains; a fine grit; broad provinces a
+    // little lighter or darker; and the rays of the young craters.
+    const tone = fractalNoise(x * 2.1 + 5, y * 2.1, z * 2.1, 4);
+    const plains = smooth(0.56, 0.72, fractalNoise(x * 1.4 + 17, y * 1.4 + 3, z * 1.4, 3));
+    craterField(x * 3 + 40, y * 3, z * 3, 0.55);
+    const h1 = CRATER[0], r1 = CRATER[1];
+    craterField(x * 7 + 11, y * 7, z * 7, 0.6);
+    const h2 = CRATER[0], r2 = CRATER[1];
+    craterField(x * 16 + 3, y * 16, z * 16, 0.75);
+    const h3 = CRATER[0], r3 = CRATER[1];
+    const grit = gradientNoise(x * 45, y * 45, z * 45);
+    height = h1 + h2 * 0.5 * (1 - 0.5 * plains) + h3 * 0.22 * (1 - 0.7 * plains) + grit * 0.04;
+    const a = 0.4 + 0.16 * (tone - 0.5) + 0.05 * plains + 0.2 * Math.min(1, r1 + r2 * 0.7 + r3 * 0.4) + 0.02 * grit;
+    r = a * 1.05;
+    g = a;
+    b = a * 0.92;
+  }
+  s[0] = Math.min(1, Math.max(0, r));
+  s[1] = Math.min(1, Math.max(0, g));
+  s[2] = Math.min(1, Math.max(0, b));
+  s[3] = gloss;
+  s[4] = cloud;
+  s[5] = height;
+  return s;
+}
+
+// The whole surface of one planet: at each texel the colour, gloss, cloud and height, and the slope
+// of the height east and south (per radian of arc), which is what the light reads the relief from.
+// Built a band of rows at a time when asked to be (`rows`), so the work can be spread over frames;
+// the map is handed out only once it is whole, slopes and all.
+const PLANET_STRIDE = 8;
+const planetMaps = new Map();
+function planetMap(kind, rows = ALBEDO_H) {
+  const key = planetOf(kind);
+  let build = planetMaps.get(key);
   if (build?.done) return build.map;
   if (!build) {
-    const offset = [...String(kind)].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) * 0.37;
-    build = { offset, map: new Float32Array(ALBEDO_W * ALBEDO_H * 2), next: 0, done: false };
-    dwarfAlbedos.set(kind, build);
+    build = { map: new Float32Array(ALBEDO_W * ALBEDO_H * PLANET_STRIDE), next: 0, done: false };
+    planetMaps.set(key, build);
   }
-  const { offset, map } = build;
+  const { map } = build;
+  const texel = new Float32Array(6);
   const until = Math.min(ALBEDO_H, build.next + rows);
   for (let row = build.next; row < until; row += 1) {
     const lat = ((row + 0.5) / ALBEDO_H - 0.5) * Math.PI;
     const cl = Math.cos(lat), sl = Math.sin(lat);
     for (let col = 0; col < ALBEDO_W; col += 1) {
-      const lon = ((col + 0.5) / ALBEDO_W) * Math.PI * 2;
-      const px = cl * Math.cos(lon) + offset, py = sl, pz = cl * Math.sin(lon);
-      // Granules: bright where a cell's middle is, dark along the lanes between cells, and a
-      // slow unevenness over the lot so no two stretches of the surface match.
-      const drift = fractalNoise(px * 3 + 4, py * 3, pz * 3, 3) - 0.5;
-      const [near, next] = cellNoise(px * 21 + drift, py * 21, pz * 21 - drift);
-      const lane = smooth(0, 0.32, next - near);
-      const middle = 1 - Math.min(1, near * 0.9);
-      const granule = 0.5 + 0.5 * (lane * (0.6 + 0.4 * middle) - 0.55) + 0.18 * (fractalNoise(px * 6, py * 6 + 2, pz * 6, 3) - 0.5);
-      // The field: where it is strongest, spots; in a ring around them, faculae.
-      const field = fractalNoise(px * 2.3 + 11, py * 2.3, pz * 2.3, 4) + 0.06 * (fractalNoise(px * 9, py * 9, pz * 9, 2) - 0.5);
-      const at = (row * ALBEDO_W + col) * 2;
-      map[at] = Math.min(1, Math.max(0, granule));
-      map[at + 1] = field;
+      const lon = (col / ALBEDO_W) * Math.PI * 2;
+      planetSurface(key, cl * Math.sin(lon), sl, cl * Math.cos(lon), texel);
+      map.set(texel, (row * ALBEDO_W + col) * PLANET_STRIDE);
     }
   }
   build.next = until;
-  build.done = until >= ALBEDO_H;
-  return build.done ? map : null;
+  if (until < ALBEDO_H) return null;
+  const east = (2 * Math.PI) / ALBEDO_W;
+  const south = Math.PI / ALBEDO_H;
+  for (let row = 0; row < ALBEDO_H; row += 1) {
+    const cl = Math.max(0.2, Math.cos(((row + 0.5) / ALBEDO_H - 0.5) * Math.PI));
+    const up = Math.max(0, row - 1), down = Math.min(ALBEDO_H - 1, row + 1);
+    for (let col = 0; col < ALBEDO_W; col += 1) {
+      const at = (row * ALBEDO_W + col) * PLANET_STRIDE;
+      const left = (row * ALBEDO_W + ((col + ALBEDO_W - 1) % ALBEDO_W)) * PLANET_STRIDE;
+      const right = (row * ALBEDO_W + ((col + 1) % ALBEDO_W)) * PLANET_STRIDE;
+      map[at + 6] = (map[right + 5] - map[left + 5]) / (2 * east * cl);
+      map[at + 7] = (map[(down * ALBEDO_W + col) * PLANET_STRIDE + 5] - map[(up * ALBEDO_W + col) * PLANET_STRIDE + 5]) / ((down - up) * south);
+    }
+  }
+  build.done = true;
+  return map;
 }
+
 
 // Every pixel of a disc `size` pixels across: which way it faces, where on the map it reads,
 // and how much of it the disc covers, so the edge is smooth without a second pass.
@@ -709,75 +719,454 @@ function sphereTable(size) {
   return table;
 }
 
-// The shading itself. Pure: a table, a map and the star in, RGBA out. `colour` is the class's
-// colour as three numbers 0..1, `surface` what its standing does to it (surfaceOf), `turn` how
-// far the body has spun, `burn` how hard it burns.
-function shadeDwarf(out, table, map, { colour, traits = SUN_TRAITS, surface = surfaceOf(null, traits), turn, burn }) {
-  out.fill(0);
-  const shift = (((turn / (Math.PI * 2)) % 1) + 1) % 1 * ALBEDO_W;
-  const energy = (0.62 + 0.62 * burn) * (traits.power ?? 1);
-  const whiten = traits.white * (0.5 + 0.5 * burn);
-  // Toward the edge the class's colour deepens: cooler gas, the same hue, more of it.
-  const deep = colour.map((value) => value ** 1.6);
-  const cells = table.cells;
-  const sample = new Float32Array(2);
-  const { spots, reach, faculae, granules } = surface;
-  const energyNow = energy * (surface.glow ?? 1);
-  const whitenNow = whiten * (surface.white ?? 1);
-  for (let i = 0; i < cells.length; i += 7) {
-    const mu = cells[i + 3];
-    // Read between texels, never from one: the map is smaller than a close-up body, and a body
-    // read texel by texel shows them as squares.
-    const u = cells[i + 4] + shift;
-    const u0 = Math.floor(u);
-    const fu = u - u0;
-    const c0 = ((u0 % ALBEDO_W) + ALBEDO_W) % ALBEDO_W;
-    const c1 = (c0 + 1) % ALBEDO_W;
-    const v = cells[i + 5];
-    const r0 = Math.floor(v);
-    const fv = v - r0;
-    const r1 = Math.min(ALBEDO_H - 1, r0 + 1);
-    for (let k = 0; k < 2; k += 1) {
-      const top = map[(r0 * ALBEDO_W + c0) * 2 + k] * (1 - fu) + map[(r0 * ALBEDO_W + c1) * 2 + k] * fu;
-      const bottom = map[(r1 * ALBEDO_W + c0) * 2 + k] * (1 - fu) + map[(r1 * ALBEDO_W + c1) * 2 + k] * fu;
-      sample[k] = top * (1 - fv) + bottom * fv;
+// Every pixel of a planet's painted face, `size` pixels across with its disc `halo` times smaller,
+// so the air has room past the limb. For the disc: where it is, which way it faces, where on the
+// map it reads, how much of the pixel the disc covers, and which ways east and south run there (the
+// relief tilts the light along those). For the ring past the limb: which way it points and how far
+// out it is. Worked out once per size and kept.
+const globeTables = new Map();
+function globeTable(size, halo = 1) {
+  const key = `${size}:${halo}`;
+  if (globeTables.has(key)) return globeTables.get(key);
+  const half = size / 2;
+  const R = half / halo;
+  const disc = [];
+  const ring = [];
+  for (let py = 0; py < size; py += 1) {
+    for (let px = 0; px < size; px += 1) {
+      const x = (px + 0.5 - half) / R;
+      const y = (py + 0.5 - half) / R;
+      const rr = x * x + y * y;
+      const rho = Math.sqrt(rr);
+      const cover = Math.min(1, Math.max(0, (1 - rho) * R + 0.5));
+      if (cover > 0) {
+        const z = Math.sqrt(Math.max(0, 1 - rr));
+        const lon = Math.atan2(x, z);
+        const lat = Math.asin(Math.max(-1, Math.min(1, y)));
+        const v = Math.max(0, Math.min(ALBEDO_H - 1.001, (lat / Math.PI + 0.5) * ALBEDO_H - 0.5));
+        const cl = Math.hypot(x, z) || 1e-6;
+        disc.push(py * size + px, x, y, z, (lon / (Math.PI * 2)) * ALBEDO_W, v, cover, z / cl, -x / cl, (-y * x) / cl, cl, (-y * z) / cl);
+      }
+      if (halo > 1 && cover < 1 && rho < halo) ring.push(py * size + px, x / (rho || 1), y / (rho || 1), rho, cover);
     }
-    const [granule, field] = sample;
-    // Spots where the field passes `reach`, umbra deeper in; faculae in the ring just short of it.
-    const ring = smooth(reach, reach + 0.07, field);
-    const umbra = smooth(reach + 0.07, reach + 0.12, field) * spots;
-    const penumbra = ring * spots;
-    const facula = Math.max(0, smooth(reach - 0.11, reach - 0.01, field) - ring) * faculae;
-    // The cells foreshorten toward the limb and their contrast goes with them.
-    const cells_ = 1 + granules * 0.62 * (granule - 0.5) * Math.sqrt(mu);
-    const bright = 1 + 0.6 * facula * (1 - mu) ** 0.7;
-    const dark = 1 - 0.8 * umbra - 0.4 * Math.max(0, penumbra - umbra);
-    // White-hot in the middle, its own colour toward the edge, deepening at the limb.
-    const heat = whitenNow * mu * mu;
-    const edge = (1 - mu) ** 1.5;
-    const p = cells[i] * 4;
-    for (let k = 0; k < 3; k += 1) {
-      const hue = colour[k] + (deep[k] - colour[k]) * edge;
-      const tint = hue + (1 - hue) * heat;
-      const limb = 1 - LIMB_DARKENING[k] * (1 - mu);
-      const value = tint * limb * cells_ * bright * dark * energyNow;
-      out[p + k] = 255 * (1 - Math.exp(-value * 2.6));
+  }
+  const table = { size, halo, disc: Float32Array.from(disc), ring: Float32Array.from(ring) };
+  globeTables.set(key, table);
+  return table;
+}
+
+// One point of a planet in the light. `s` is what is there (planetSurface, or the map read between
+// texels), (x, y, z) where it is on the sphere in view space, (ex, ez) and (sx, sy, sz) the ways east
+// and south run there, `L` the direction of the sun and `H` the half-way direction between the sun
+// and the eye (for the glint). Writes the colour as seen, 0..1, into `rgb`.
+function lightTexel(planet, s, x, y, z, ex, ez, sx, sy, sz, L, H, exposure, fade, fill, rgb) {
+  const k = planet.bump;
+  let nx = x - k * (s[6] * ex + s[7] * sx);
+  let ny = y - k * s[7] * sy;
+  let nz = z - k * (s[6] * ez + s[7] * sz);
+  const nn = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
+  nx *= nn; ny *= nn; nz *= nn;
+  // Where day ends is the sphere's business; the relief only tilts the light within it.
+  const geo = x * L[0] + y * L[1] + z * L[2];
+  const lit = nx * L[0] + ny * L[1] + nz * L[2];
+  const mu = Math.max(0.0001, z);
+  let day;
+  if (planet.rocky) {
+    const d = Math.max(0, lit);
+    day = (0.62 * d + (0.76 * d) / (d + Math.max(mu, 0.25))) * smooth(-0.1, 0.06, geo);
+  } else {
+    const w = planet.wrap;
+    day = Math.max(0, (lit + w) / (1 + w)) * smooth(-1.5 * w, w, geo) * (1 - planet.limb * (1 - Math.sqrt(mu)));
+  }
+  let ar = s[0], ag = s[1], ab = s[2];
+  const cloud = planet.clouds ? s[4] : 0;
+  if (cloud) { ar += (0.93 - ar) * cloud; ag += (0.94 - ag) * cloud; ab += (0.96 - ab) * cloud; }
+  let lr = day * SUN_LIGHT[0] * exposure;
+  let lg = day * SUN_LIGHT[1] * exposure;
+  let lb = day * SUN_LIGHT[2] * exposure;
+  if (planet.air && !planet.rocky) {
+    // Sunset along the terminator: the light that reaches it has crossed the most air.
+    const dusk = smooth(-0.02, 0.3, geo);
+    lg *= 0.8 + 0.2 * dusk;
+    lb *= 0.6 + 0.4 * dusk;
+  }
+  const ambient = PLANET_AMBIENT + fill * (0.16 + 0.2 * mu);
+  let r = ar * ar * (lr + ambient);
+  let g = ag * ag * (lg + ambient);
+  let b = ab * ab * (lb + ambient);
+  if (planet.ocean && geo > 0) {
+    const wet = s[3] * (1 - cloud);
+    if (wet > 0.01) {
+      const nh = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]);
+      const glint = wet * (0.55 * nh ** 70 + 0.05 * nh ** 8) * smooth(0, 0.18, geo) * exposure;
+      r += glint; g += glint * 0.96; b += glint * 0.9;
     }
-    out[p + 3] = 255 * cells[i + 6];
+  }
+  if (planet.air) {
+    // The air over the disc: thicker toward the limb, lit where the sun is.
+    const haze = (1 - mu) ** 2.2 * smooth(-0.25, 0.35, geo) * planet.airGlow * 0.42 * exposure;
+    r += planet.air[0] * planet.air[0] * haze;
+    g += planet.air[1] * planet.air[1] * haze;
+    b += planet.air[2] * planet.air[2] * haze;
+  }
+  if (fade > 0) {
+    // Out of circulation: the colour goes out of it and it dims, as the faded stars used to.
+    const grey = 0.3 * r + 0.59 * g + 0.11 * b;
+    const keep = 1 - 0.55 * fade;
+    r = (r + (grey - r) * 0.8 * fade) * keep;
+    g = (g + (grey - g) * 0.8 * fade) * keep;
+    b = (b + (grey - b) * 0.8 * fade) * keep;
+  }
+  rgb[0] = Math.sqrt(Math.min(1, r));
+  rgb[1] = Math.sqrt(Math.min(1, g));
+  rgb[2] = Math.sqrt(Math.min(1, b));
+  return rgb;
+}
+
+// The halo of the air past the limb, laid over what the disc already painted: lit on the side the
+// sun is on, and all the way round when the sun is behind the planet and the air is seen against it.
+// Never thinner than about a pixel, so a small planet crossing the sun still shows its ring of air.
+function haloInto(out, table, planet, L, exposure, fade) {
+  if (!planet.air || !table.ring.length) return out;
+  const ring = table.ring;
+  const behind = Math.max(0, -L[2]) ** 1.5;
+  const glow = planet.airGlow * exposure * (1 - 0.6 * fade);
+  const thickness = Math.max(planet.thickness, (1.2 * table.halo * 2) / table.size);
+  for (let i = 0; i < ring.length; i += 5) {
+    const p = ring[i] * 4;
+    const rho = ring[i + 3];
+    const facing = ring[i + 1] * L[0] + ring[i + 2] * L[1];
+    const lit = Math.max(smooth(-0.2, 0.5, facing) * (0.8 + 0.4 * behind), 0.8 * behind);
+    const a = Math.min(1, glow * lit * Math.exp(-Math.max(0, rho - 1) / thickness));
+    if (a <= 0.002) continue;
+    const under = out[p + 3] / 255;
+    const alpha = under + a * (1 - under);
+    for (let c = 0; c < 3; c += 1) out[p + c] = Math.min(255, (out[p + c] * under + 255 * planet.air[c] * a) / alpha);
+    out[p + 3] = 255 * alpha;
   }
   return out;
 }
 
-// One dwarf's painted face, kept on its node and painted again only when it has changed enough
-// to be seen. Null where there is no pixel buffer to paint into, and the body is drawn the
-// older way instead.
+// The shading itself. Pure: a table (globeTable), the map (planetMap) and the moment in, RGBA out.
+// `light` is the direction of the sun in view space (x right, y down, z toward the eye), `turn` how
+// far the body has spun, `exposure` how much of the light it shows (what the room has made of it),
+// `fade` whether it is out of circulation, `fill` how much a held planet is lit from the front.
+function shadePlanet(out, table, map, { kind, light, turn = 0, exposure = 1, fade = 0, fill = 0 }) {
+  out.fill(0);
+  const planet = PLANETS[planetOf(kind)];
+  const L = light;
+  const hz = L[2] + 1;
+  const hn = Math.hypot(L[0], L[1], hz) || 1;
+  const H = [L[0] / hn, L[1] / hn, hz / hn];
+  const shift = ((((turn / (Math.PI * 2)) % 1) + 1) % 1) * ALBEDO_W;
+  // The clouds keep their own pace over the ground.
+  const drift = planet.clouds ? ((((turn * 0.08) / (Math.PI * 2)) % 1) + 1) % 1 * ALBEDO_W : 0;
+  const cells = table.disc;
+  const s = new Float32Array(PLANET_STRIDE);
+  const rgb = [0, 0, 0];
+  const read = (u, v, channel) => {
+    const u0 = Math.floor(u);
+    const fu = u - u0;
+    const c0 = ((u0 % ALBEDO_W) + ALBEDO_W) % ALBEDO_W;
+    const c1 = (c0 + 1) % ALBEDO_W;
+    const r0 = Math.floor(v);
+    const fv = v - r0;
+    const r1 = Math.min(ALBEDO_H - 1, r0 + 1);
+    const a = (r0 * ALBEDO_W + c0) * PLANET_STRIDE + channel, b = (r0 * ALBEDO_W + c1) * PLANET_STRIDE + channel;
+    const c = (r1 * ALBEDO_W + c0) * PLANET_STRIDE + channel, d = (r1 * ALBEDO_W + c1) * PLANET_STRIDE + channel;
+    return (map[a] * (1 - fu) + map[b] * fu) * (1 - fv) + (map[c] * (1 - fu) + map[d] * fu) * fv;
+  };
+  for (let i = 0; i < cells.length; i += 12) {
+    // Read between texels, never from one: a close planet is larger than its map.
+    const u = cells[i + 4] + shift;
+    const v = cells[i + 5];
+    const u0 = Math.floor(u);
+    const fu = u - u0;
+    const c0 = ((u0 % ALBEDO_W) + ALBEDO_W) % ALBEDO_W;
+    const c1 = (c0 + 1) % ALBEDO_W;
+    const r0 = Math.floor(v);
+    const fv = v - r0;
+    const r1 = Math.min(ALBEDO_H - 1, r0 + 1);
+    const a = (r0 * ALBEDO_W + c0) * PLANET_STRIDE, b = (r0 * ALBEDO_W + c1) * PLANET_STRIDE;
+    const c = (r1 * ALBEDO_W + c0) * PLANET_STRIDE, d = (r1 * ALBEDO_W + c1) * PLANET_STRIDE;
+    const wa = (1 - fu) * (1 - fv), wb = fu * (1 - fv), wc = (1 - fu) * fv, wd = fu * fv;
+    for (let k = 0; k < PLANET_STRIDE; k += 1) s[k] = map[a + k] * wa + map[b + k] * wb + map[c + k] * wc + map[d + k] * wd;
+    if (planet.clouds) s[4] = read(cells[i + 4] + shift + drift, v, 4);
+    lightTexel(planet, s, cells[i + 1], cells[i + 2], cells[i + 3], cells[i + 7], cells[i + 8], cells[i + 9], cells[i + 10], cells[i + 11], L, H, exposure, fade, fill, rgb);
+    const p = cells[i] * 4;
+    out[p] = 255 * rgb[0];
+    out[p + 1] = 255 * rgb[1];
+    out[p + 2] = 255 * rgb[2];
+    out[p + 3] = 255 * cells[i + 6];
+  }
+  return haloInto(out, table, planet, L, exposure, fade);
+}
+
+// ---- The legend's planets (2026-11-15; the stars before them moved here from app.js on 2026-10-10,
+// so the Project map draws the same ones as the Memory map). The same planet the map paints, small:
+// the same surface and the same light, the sun high on the left and a little in front, so each shows
+// its day, its terminator and a sliver of night. Read straight from the surface at each pixel, so it
+// needs no map built first and is ready the moment the legend is. Painted at twice its size and
+// brought down, so the craters and the clouds settle into the few pixels they have instead of
+// speckling them; made once per planet and size, and copied for every legend that asks.
+const CHIP_LIGHT = (() => { const l = [-0.62, -0.46, 0.64]; const n = Math.hypot(...l); return l.map((value) => value / n); })();
+// As much of the light as a memory the room has used a little shows on the map.
+const CHIP_EXPOSURE = 1.2;
+const chipFaces = new Map();
+export function planetChip(kind, px, { faded = false } = {}) {
+  const canvas = document.createElement('canvas');
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const size = Math.max(4, Math.round(px * dpr));
+  canvas.width = size;
+  canvas.height = size;
+  canvas.style.width = `${px}px`;
+  canvas.style.height = `${px}px`;
+  const paint = canvas.getContext('2d');
+  if (!paint?.createImageData) return canvas;
+  const key = `${planetOf(kind)}:${size}:${faded ? 1 : 0}`;
+  let face = chipFaces.get(key);
+  if (!face) {
+    face = chipFace(planetOf(kind), size * 2, faded);
+    chipFaces.set(key, face);
+  }
+  if (face) {
+    paint.imageSmoothingQuality = 'high';
+    paint.drawImage(face, 0, 0, size, size);
+  }
+  return canvas;
+}
+function chipFace(key, size, faded) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const paint = canvas.getContext('2d');
+  if (!paint?.createImageData) return null;
+  const planet = PLANETS[key];
+  const table = globeTable(size, planet.air ? 1.1 : 1);
+  const image = paint.createImageData(size, size);
+  const out = image.data;
+  const L = CHIP_LIGHT;
+  const hn = Math.hypot(L[0], L[1], L[2] + 1);
+  const H = [L[0] / hn, L[1] / hn, (L[2] + 1) / hn];
+  const s = new Float32Array(PLANET_STRIDE);
+  const t = new Float32Array(6);
+  const rgb = [0, 0, 0];
+  // The relief is read a pixel apart: finer than that, it is noise the chip cannot show.
+  const step = 2.2 / size;
+  const cells = table.disc;
+  const at = (lon, lat, into) => { const cl = Math.cos(lat); return planetSurface(key, cl * Math.sin(lon), Math.sin(lat), cl * Math.cos(lon), into); };
+  for (let i = 0; i < cells.length; i += 12) {
+    const x = cells[i + 1], y = cells[i + 2], z = cells[i + 3];
+    const lon = Math.atan2(x, z) + planet.face;
+    const lat = Math.asin(Math.max(-1, Math.min(1, y)));
+    at(lon, lat, s);
+    const height = s[5];
+    s[6] = (at(lon + step, lat, t)[5] - height) / (step * Math.max(0.2, Math.cos(lat)));
+    s[7] = (at(lon, lat + step, t)[5] - height) / step;
+    lightTexel(planet, s, x, y, z, cells[i + 7], cells[i + 8], cells[i + 9], cells[i + 10], cells[i + 11], L, H, CHIP_EXPOSURE, faded ? 1 : 0, 0, rgb);
+    const p = cells[i] * 4;
+    out[p] = 255 * rgb[0];
+    out[p + 1] = 255 * rgb[1];
+    out[p + 2] = 255 * rgb[2];
+    out[p + 3] = 255 * cells[i + 6];
+  }
+  haloInto(out, table, planet, L, CHIP_EXPOSURE, faded ? 1 : 0);
+  paint.putImageData(image, 0, 0);
+  return canvas;
+}
+
+// ---- The aberration: a black hole (2026-11-15, asked by the author: «el agujero negro de la
+// aberración también hacerlo más profundo»).
 //
-// What it costs is bounded per frame. A surface map is built one class a frame, so opening the
-// map never stalls; until its class is ready a dwarf is drawn the older way. And only so many
-// faces are painted again each frame, in the order they are drawn; the rest keep last frame's
-// face for one more, which at the pace these bodies turn nobody can tell from a fresh one.
+// A claim the room established is false, drawn as the one thing out here that gives nothing back.
+// From the back to the front:
+//   the pull: the dark reaches past the hole and dims whatever is behind it, wires and dust alike;
+//   the field behind it, bent: every speck of dust is seen where the hole's gravity throws its light,
+//     pushed out to a ring and stretched along it, and a second, fainter image on the far side;
+//   the far half of its disc, and the light of that far half lifted over the top of the hole and
+//     under the bottom, which is what a disc round a black hole looks like seen nearly edge on;
+//   the horizon: black, all of it, with nothing painted inside;
+//   the ring of light that has gone round the hole before reaching us, tight against the black;
+//   the near half of the disc, crossing in front of the hole.
+// The disc is cold, the aberration's violet running to white at its inner edge, and brighter on the
+// side that turns toward us. Its streaks go round, the inner ones faster; not for whoever asked for
+// stillness. Nothing about it is warm, so it does not read as a sun, and nothing about it is a
+// planet, so it does not read as knowledge.
+const HOLE_DISC_IN = 1.16;     // the disc's inner edge, in radii of the black
+const HOLE_DISC_OUT = 2.8;     // and its outer edge
+const HOLE_TILT = 0.2;         // how open the disc is to us: nearly edge on
+const HOLE_EINSTEIN = 1.3;     // where the light of what is behind it gathers into a ring
+const HOLE_STREAKS = 7;
+const rgbOf = (hex) => [1, 3, 5].map((at) => Number.parseInt(String(hex).slice(at, at + 2), 16));
+export function drawBlackHole(ctx, x, y, S, { t = 0, turn = 0, roll = 0, lit = 1, px = 1, still = false, colour = MEMORY_COLORS.aberration, dust = VOID_DUST.length, streaks = HOLE_STREAKS } = {}) {
+  const tone = rgbOf(colour);
+  if (tone.some((value) => !Number.isFinite(value))) tone.splice(0, 3, 177, 76, 255);
+  const violet = tone.join(', ');
+  const pale = tone.map((value) => Math.round(value + (255 - value) * 0.6)).join(', ');
+  const deep = tone.map((value, i) => Math.round(value * [0.35, 0.3, 0.62][i])).join(', ');
+  const k = 0.75 + 0.25 * Math.max(0, Math.min(1, lit));
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(roll);
+  // The pull.
+  ctx.globalCompositeOperation = 'source-over';
+  const pull = ctx.createRadialGradient(0, 0, S * 0.9, 0, 0, S * 2.3);
+  pull.addColorStop(0, 'rgba(0, 0, 0, .9)');
+  pull.addColorStop(0.45, 'rgba(0, 0, 0, .42)');
+  pull.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = pull;
+  ctx.beginPath(); ctx.arc(0, 0, S * 2.3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.globalCompositeOperation = 'lighter';
+  // The field behind it, bent (the lens equation: a speck truly at `beta` is seen at the two roots).
+  const ring = S * HOLE_EINSTEIN;
+  for (let i = 0; i < Math.min(dust, VOID_DUST.length); i += 1) {
+    const speck = VOID_DUST[i];
+    const beta = S * (0.15 + 2.9 * speck.out);
+    const root = Math.sqrt(beta * beta + 4 * ring * ring);
+    const fade = 0.7 * (1 - speck.out * 0.6) * k * (still ? 0.75 : 0.45 + 0.55 * Math.abs(Math.sin(t * speck.rate + speck.phase)));
+    const size = speck.size * px;
+    for (const [seen, side, weight] of [[(beta + root) / 2, 0, 1], [(root - beta) / 2, Math.PI, 0.45]]) {
+      if (seen < S * 1.03) continue;
+      const angle = speck.angle + turn + side;
+      const stretch = Math.min(3.5, seen / Math.max(beta, S * 0.2));
+      ctx.save();
+      ctx.translate(Math.cos(angle) * seen, Math.sin(angle) * seen);
+      ctx.rotate(angle);
+      ctx.scale(1, stretch);
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2.6);
+      glow.addColorStop(0, `rgba(${speck.colour}, ${fade * weight})`);
+      glow.addColorStop(0.35, `rgba(${speck.colour}, ${fade * weight * 0.3})`);
+      glow.addColorStop(1, `rgba(${speck.colour}, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, 0, size * 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Half of the disc, the far half (behind the black) or the near one (in front of it).
+  const inner = S * HOLE_DISC_IN;
+  const outer = S * HOLE_DISC_OUT;
+  const disc = (near) => {
+    const from = near ? 0 : Math.PI;
+    const to = from + Math.PI;
+    ctx.save();
+    ctx.scale(1, HOLE_TILT);
+    ctx.beginPath(); ctx.arc(0, 0, outer, from, to); ctx.arc(0, 0, inner, to, from, true); ctx.closePath();
+    const body = ctx.createRadialGradient(0, 0, inner, 0, 0, outer);
+    body.addColorStop(0, `rgba(250, 244, 255, ${0.92 * k})`);
+    body.addColorStop(0.3, `rgba(${pale}, ${0.78 * k})`);
+    body.addColorStop(0.62, `rgba(${violet}, ${0.48 * k})`);
+    body.addColorStop(0.88, `rgba(${deep}, ${0.16 * k})`);
+    body.addColorStop(1, `rgba(${deep}, 0)`);
+    ctx.fillStyle = body;
+    ctx.fill();
+    // The side turning toward us is the brighter one: a light over the left of the ring that is
+    // gone before the ring's edges, so it adds no edge of its own.
+    const lobe = (outer - inner) * 0.62;
+    const beam = ctx.createRadialGradient(-(inner + outer) / 2, 0, 0, -(inner + outer) / 2, 0, lobe);
+    beam.addColorStop(0, `rgba(236, 226, 255, ${0.45 * k})`);
+    beam.addColorStop(1, 'rgba(236, 226, 255, 0)');
+    ctx.fillStyle = beam;
+    ctx.fill();
+    // The streaks: the inner ones go round faster.
+    ctx.lineCap = 'round';
+    for (let n = 0; n < streaks; n += 1) {
+      const along = 0.08 + 0.8 * frac(n * 0.618);
+      const radius = inner + (outer - inner) * along;
+      const start = n * 2.39996 + turn + (still ? 0 : t * 0.9 * (inner / radius) ** 1.5);
+      const span = 0.35 + 0.5 * frac(n * 0.37);
+      ctx.strokeStyle = `rgba(242, 234, 255, ${0.2 * k * (1 - along)})`;
+      ctx.lineWidth = Math.max(px * 0.7, S * 0.035);
+      for (const lap of [-Math.PI * 2, 0, Math.PI * 2]) {
+        const a = Math.max(from, (((start % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) + lap);
+        const b = Math.min(to, (((start % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) + lap + span);
+        if (b > a) { ctx.beginPath(); ctx.arc(0, 0, radius, a, b); ctx.stroke(); }
+      }
+    }
+    ctx.restore();
+  };
+  disc(false);
+  // The far half's light, lifted over the top of the hole: a band hugging the black, brightest
+  // against it, thickest at the top and thinning to where it meets the disc at the sides; and,
+  // much thinner, the same under the bottom.
+  ctx.save();
+  ctx.scale(1, 1.16);
+  ctx.beginPath(); ctx.arc(0, 0, S * 1.38, Math.PI, Math.PI * 2); ctx.closePath();
+  const over = ctx.createRadialGradient(0, 0, S * 0.8, 0, 0, S * 1.38);
+  over.addColorStop(0, `rgba(${pale}, 0)`);
+  over.addColorStop(0.24, `rgba(250, 244, 255, ${0.82 * k})`);
+  over.addColorStop(0.42, `rgba(${pale}, ${0.5 * k})`);
+  over.addColorStop(0.72, `rgba(${violet}, ${0.18 * k})`);
+  over.addColorStop(1, `rgba(${violet}, 0)`);
+  ctx.fillStyle = over;
+  ctx.fill();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(0, 0, S * 1.12, 0, Math.PI); ctx.closePath();
+  const under = ctx.createRadialGradient(0, 0, S * 0.95, 0, 0, S * 1.12);
+  under.addColorStop(0, `rgba(${pale}, 0)`);
+  under.addColorStop(0.4, `rgba(${pale}, ${0.22 * k})`);
+  under.addColorStop(1, `rgba(${violet}, 0)`);
+  ctx.fillStyle = under;
+  ctx.fill();
+
+  // The horizon.
+  ctx.globalCompositeOperation = 'source-over';
+  const black = ctx.createRadialGradient(0, 0, 0, 0, 0, S * 1.02);
+  black.addColorStop(0, 'rgba(0, 0, 0, 1)');
+  black.addColorStop(0.95, 'rgba(0, 0, 0, 1)');
+  black.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = black;
+  ctx.beginPath(); ctx.arc(0, 0, S * 1.02, 0, Math.PI * 2); ctx.fill();
+
+  // The ring of light that went round the hole first, brighter on the side the disc comes from.
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.beginPath(); ctx.arc(0, 0, S * 1.07, 0, Math.PI * 2); ctx.arc(0, 0, S * 0.98, Math.PI * 2, 0, true); ctx.closePath();
+  const photons = ctx.createRadialGradient(0, 0, S * 0.98, 0, 0, S * 1.07);
+  photons.addColorStop(0, 'rgba(255, 252, 255, 0)');
+  photons.addColorStop(0.35, `rgba(255, 252, 255, ${0.6 * k})`);
+  photons.addColorStop(0.6, `rgba(${pale}, ${0.2 * k})`);
+  photons.addColorStop(1, `rgba(${violet}, 0)`);
+  ctx.fillStyle = photons;
+  ctx.fill();
+  const side = ctx.createRadialGradient(-S * 0.7, 0, 0, -S * 0.7, 0, S * 1.3);
+  side.addColorStop(0, `rgba(240, 232, 255, ${0.24 * k})`);
+  side.addColorStop(1, 'rgba(240, 232, 255, 0)');
+  ctx.fillStyle = side;
+  ctx.fill();
+
+  disc(true);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
+// The black hole, small enough for a chip: the same drawing, still.
+export function collapsedChip(hex, px) {
+  const canvas = document.createElement('canvas');
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(px * dpr);
+  canvas.height = Math.round(px * dpr);
+  canvas.style.width = `${px}px`;
+  canvas.style.height = `${px}px`;
+  const paint = canvas.getContext('2d');
+  if (!paint) return canvas;
+  paint.scale(dpr, dpr);
+  const r = px / 2;
+  // The black at a third of the chip, so the disc runs nearly to its edges.
+  drawBlackHole(paint, r, r, r * 0.34, { px: 0.3, lit: 0.9, still: true, colour: hex, dust: 14, streaks: 2, turn: 0.4 });
+  return canvas;
+}
+
+// One planet's painted face, kept on its node and painted again only when it has changed enough to
+// be seen. Null where there is no pixel buffer to paint into, and the planet is drawn the plainer
+// way instead.
+//
+// What it costs is bounded per frame. A surface map is built one planet a frame, a band of rows at a
+// time, so opening the map never stalls; until its planet is ready a memory is drawn the plainer
+// way. And only so many faces are painted again each frame, in the order they are drawn; the rest
+// keep last frame's face for one more, which at the pace these bodies turn nobody can tell.
 const SHADE_BUDGET = 28;
-const ALBEDO_ROWS_PER_FRAME = 12;
+const PLANET_ROWS_PER_FRAME = 8;
 
 // ---- MOTHER's body, as molten rock.
 //
@@ -787,7 +1176,7 @@ const ALBEDO_ROWS_PER_FRAME = 12;
 // disagree the surface looks like it is moving rather than painted. Every so often something
 // bursts inside: a flash, a white core, a ring of fire running out from it and fading.
 //
-// The map is built once, the way the dwarfs' are, a band at a time; what changes frame to frame
+// The map is built once, the way the planets' are, a band at a time; what changes frame to frame
 // is only where it is read and what is bursting.
 const MAGMA_W = 512;
 const MAGMA_H = 256;
@@ -842,11 +1231,19 @@ export function magmaMap(rows = MAGMA_H) {
   return magmaBuild.done ? map : null;
 }
 
-// Whether the slow textures are whole: MOTHER's crust and the surface of each class of dwarf. They
-// are built a band at a time, shared by every scene; a scene painted before they are whole draws
-// its bodies the older way, and the Macroverso paints its sprites once more when this turns true.
+// Whether the slow textures are whole: MOTHER's crust and the surface of each planet. They are built
+// a band at a time, shared by every scene; a scene painted before they are whole draws its planets
+// the plainer way, and the Macroverso paints its sprites once more when this turns true.
 export function texturesReady() {
-  return Boolean(magmaBuild.done) && Object.keys(MEMORY_COLORS).every((kind) => kind === COLLAPSED || dwarfAlbedos.get(kind)?.done);
+  return Boolean(magmaBuild.done) && Object.keys(PLANETS).every((kind) => planetMaps.get(kind)?.done);
+}
+// One band more of the next planet's surface not yet whole, for whoever paints sprites that do not
+// draw every frame (the Macroverso): without it a planet no universe on screen has would never be
+// built, and the sprites painted before would keep the plainer drawing.
+export function buildPlanets(rows = PLANET_ROWS_PER_FRAME) {
+  const next = Object.keys(PLANETS).find((kind) => !planetMaps.get(kind)?.done);
+  if (next) planetMap(next, rows);
+  return !next;
 }
 
 // The shading. Pure: a table (sphereTable), the map, and the moment in; RGBA out. `turn` is how
@@ -1963,50 +2360,56 @@ export function createNostromo(nostromo) {
     return { phase, beat: pulse(0) + 0.55 * pulse(0.22) };
   }
 
-  function dwarfSprite(node, radius, burn, pixels, frame) {
+  // A planet's face, painted into a buffer of its own. `look` is how it is lit now: `light`, the
+  // direction of the sun from it in view space; `exposure`, `fade` and `fill` as shadePlanet reads
+  // them. Painted again once the middle of its face has turned half a pixel, or the light on it
+  // has moved its terminator about a pixel, so a small planet is painted rarely and a large one,
+  // close up, as often as it needs.
+  function planetSprite(node, radius, pixels, frame, look) {
     if (typeof ImageData !== 'function') return null;
     if (shading.frame !== frame) { shading.frame = frame; shading.painted = 0; shading.built = false; }
-    const size = Math.max(8, Math.min(200, 2 * Math.round(radius * pixels)));
-    const kind = node.memory.kind;
-    if (!dwarfAlbedos.get(kind)?.done) {
+    const kind = planetOf(node.memory.kind);
+    const halo = PLANETS[kind].air ? PLANET_HALO : 1;
+    // The disc is never painted wider than 200 pixels, as the stars were; beyond that it is scaled.
+    const size = Math.max(8, Math.min(2 * Math.round(100 * halo), 2 * Math.round(radius * halo * pixels)));
+    if (!planetMaps.get(kind)?.done) {
       if (shading.built) return null;
       shading.built = true;
-      if (!dwarfAlbedo(kind, ALBEDO_ROWS_PER_FRAME)) return null;
+      if (!planetMap(kind, PLANET_ROWS_PER_FRAME)) return null;
     }
-    const map = dwarfAlbedo(kind);
-    const colour = [1, 3, 5].map((at) => Number.parseInt(String(node.color).slice(at, at + 2), 16) / 255);
-    if (colour.some((value) => !Number.isFinite(value))) return null;
+    const map = planetMap(kind);
     let sprite = node.sprite;
     // A body that has never been painted at this size waits its turn like any other: when a whole
-    // class becomes ready at once it is introduced a few dozen a frame, not all in one.
-    if ((!sprite || sprite.size !== size) && shading.painted >= SHADE_BUDGET) return sprite?.canvas ?? null;
-    if (!sprite || sprite.size !== size) {
+    // planet becomes ready at once it is introduced a few dozen a frame, not all in one.
+    const anew = !sprite || sprite.size !== size || sprite.kind !== kind;
+    if (anew && shading.painted >= SHADE_BUDGET) return sprite?.kind === kind ? sprite.canvas : null;
+    if (anew) {
       const canvas = document.createElement('canvas');
       canvas.width = size;
       canvas.height = size;
       const paint = canvas.getContext('2d');
       if (!paint?.createImageData) return null;
-      sprite = node.sprite = { canvas, paint, image: paint.createImageData(size, size), size, turn: NaN, burn: -1, colour: '', standing: '' };
+      sprite = node.sprite = { canvas, paint, image: paint.createImageData(size, size), size, kind, turn: NaN, light: [0, 0, 0], exposure: -1, fade: -1, fill: -1 };
     }
-    const turn = node.spin * 0.3 + node.seed;
-    // Painted again once the middle of its face has moved half a pixel, so a small body is painted
-    // rarely and a large one, close up, as often as it needs.
-    const fresh = !(sprite.turn === sprite.turn);
-    const traits = STAR_TRAITS[kind] ?? SUN_TRAITS;
-    const standing = `${node.memory.zone ?? 'hold'}${node.cold ? ':cold' : ''}`;
-    const moved = fresh
+    // For whoever asked for stillness a planet does not spin, and its clouds stay where they are;
+    // the light on it still follows the map when they turn it by hand.
+    const turn = (nostromo.reduced ? 0 : node.spin * 0.3) + node.seed;
+    const [lx, ly, lz] = look.light;
+    const moved = !(sprite.turn === sprite.turn)
       || Math.abs(turn - sprite.turn) * size > 1
-      || Math.abs(burn - sprite.burn) > 0.04
-      || sprite.colour !== node.color
-      || sprite.standing !== standing;
+      || Math.hypot(lx - sprite.light[0], ly - sprite.light[1], lz - sprite.light[2]) * size > 2
+      || Math.abs(look.exposure - sprite.exposure) > 0.03
+      || look.fade !== sprite.fade
+      || Math.abs(look.fill - sprite.fill) > 0.04;
     if (moved && shading.painted < SHADE_BUDGET) {
       shading.painted += 1;
-      shadeDwarf(sprite.image.data, sphereTable(size), map, { colour, traits, surface: surfaceOf(node.memory, traits, Boolean(node.cold)), turn, burn });
+      shadePlanet(sprite.image.data, globeTable(size, halo), map, { kind, light: look.light, turn, exposure: look.exposure, fade: look.fade, fill: look.fill });
       sprite.paint.putImageData(sprite.image, 0, 0);
       sprite.turn = turn;
-      sprite.burn = burn;
-      sprite.colour = node.color;
-      sprite.standing = standing;
+      sprite.light = [lx, ly, lz];
+      sprite.exposure = look.exposure;
+      sprite.fade = look.fade;
+      sprite.fill = look.fill;
     }
     return sprite.canvas;
   }
@@ -2057,7 +2460,7 @@ export function createNostromo(nostromo) {
       magmaSprite = { canvas, paint, image: paint.createImageData(size, size), size };
     }
     // Painted every other frame: rock this slow, and bursts this short, read the same at half the
-    // rate, and the frames between are free for the dwarfs.
+    // rate, and the frames between are free for the planets.
     magmaSprite.frame = (magmaSprite.frame ?? 0) + 1;
     if (magmaSprite.painted && magmaSprite.frame % 2) return magmaSprite.canvas;
     magmaSprite.painted = true;
@@ -2497,201 +2900,115 @@ export function createNostromo(nostromo) {
     // One memory, drawn where the projection put it. Called twice over the list: the ones behind
     // MOTHER before her, so she hides them, and the ones in front after her.
     const drawMemory = (node) => {
-      const micro = 1 + 0.05 * Math.sin(t * node.rate + node.seed);
-      // Never smaller than a point and a half on screen, while it is there at all.
-      const r = node.scale > 0.01 ? Math.max(node.r * node.scale * micro, 1.5 / cam.scale) : 0;
+      // Never smaller than a point and a half on screen, while it is there at all. A planet holds
+      // its size: the breathing the stars had is gone with them (2026-11-15).
+      const r = node.scale > 0.01 ? Math.max(node.r * node.scale, 1.5 / cam.scale) : 0;
       if (r <= 0) return;
       const arrive = Math.min(1.2, node.lit ?? 0);
-      // Two things decide how brightly a dwarf burns. Maturity is what the room has made of it
-      // over time: how often it has been reached for, how lately, how woven into the rest. Feeding
-      // is what it is being given right now, by MOTHER and by its neighbours at once. A young
-      // memory nobody feeds is nearly out; an old one the room leans on runs white.
+      // Two things decide how much of its light a memory shows. Maturity is what the room has made
+      // of it over time: how often it has been reached for, how lately, how woven into the rest.
+      // Feeding is what it is being given right now, by MOTHER and by its neighbours at once.
       const grown = node.activity ?? 0;
       const fed = Math.min(1, (node.charge ?? 0) + 0.25 * arrive);
       const burn = Math.min(1, 0.4 * grown + 0.75 * fed);
 
-      // A collapsed body. This one is not a star and it is not a furnace either: it is a claim the
-      // room established is false, and what it looks like is absence. A round black nothing, the
-      // dust and stars of the field standing around it, and the faint cold light of what passes
-      // close enough to be bent round the rim instead of going straight.
-      //
-      // There is no disc and nothing burns. The whole of it is the dark, and the dark is the point.
+      // The aberration is a black hole (drawBlackHole). Seen from far, the disc, the ring and the
+      // field would be smaller than a pixel and only smear into a stain: a small one reads by what
+      // it is, a black point with a thin line of its disc across it and the ring of light round it.
       if (node.memory.kind === COLLAPSED) {
-        const hole = r * 1.35;
-        const field = hole * 2.4;
-        const turn = node.seed + node.spin * 0.12;
-        const lit = 0.45 + 0.55 * burn;
-
-        // Seen from far, the field of dust and the arcs are smaller than a pixel and only smear
-        // into a grey stain round a black blot. A small void reads by what it is: a dark point with
-        // one thin cold rim of bent light, its colour the kind's.
-        if (hole * cam.scale < 9) {
-          ctx.fillStyle = 'rgba(0, 0, 3, .92)';
-          ctx.beginPath(); ctx.arc(node.x, node.y, hole, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = hexAlpha(hexMix(node.color, '#a8ccff', 0.55), (0.45 + 0.35 * lit) * glowAt);
-          ctx.lineWidth = 1 / cam.scale;
-          ctx.beginPath(); ctx.arc(node.x, node.y, hole + 0.6 / cam.scale, 0, Math.PI * 2); ctx.stroke();
-          if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, hole * 1.6, t, cam.scale);
+        const S = r * 1.15;
+        const lit = (0.6 + 0.4 * burn) * glowAt;
+        const turn = node.seed + (nostromo.reduced ? 0 : node.spin * 0.12);
+        const roll = (frac(node.seed * 0.37) - 0.5) * 0.5;
+        const tone = MEMORY_COLORS.aberration;
+        if (S * cam.scale < 7) {
+          const px = 1 / cam.scale;
+          ctx.save();
+          ctx.translate(node.x, node.y);
+          ctx.rotate(roll);
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = hexAlpha(hexMix(tone, '#ffffff', 0.45), 0.55 * lit);
+          ctx.lineWidth = px;
+          ctx.beginPath(); ctx.ellipse(0, 0, S * 2.2, S * 2.2 * HOLE_TILT, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+          ctx.beginPath(); ctx.arc(0, 0, S, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = hexAlpha(hexMix(tone, '#ffffff', 0.7), 0.7 * lit);
+          ctx.beginPath(); ctx.arc(0, 0, S + 0.6 * px, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = hexAlpha(hexMix(tone, '#ffffff', 0.45), 0.55 * lit);
+          ctx.beginPath(); ctx.ellipse(0, 0, S * 2.2, S * 2.2 * HOLE_TILT, 0, 0, Math.PI); ctx.stroke();
+          ctx.restore();
+          if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, S * 1.6, t, cam.scale);
           return;
         }
-
-        // The field it sits in: specks of dust and far stars, each on its own slow flicker.
-        ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < VOID_DUST.length; i += 1) {
-          const speck = VOID_DUST[i];
-          const at = hole * 1.06 + (field - hole * 1.06) * speck.out;
-          const angle = speck.angle + turn;
-          const x = node.x + Math.cos(angle) * at;
-          const y = node.y + Math.sin(angle) * at;
-          // Fading outward, so the field thins into the dark rather than stopping.
-          const fade = (1 - speck.out * 0.72) * lit * (0.45 + 0.55 * Math.abs(Math.sin(t * speck.rate + speck.phase)));
-          const size = speck.size * (1 + 0.25 * burn) / cam.scale;
-          const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 3.2);
-          glow.addColorStop(0, `rgba(${speck.colour}, ${fade})`);
-          glow.addColorStop(0.35, `rgba(${speck.colour}, ${fade * 0.3})`);
-          glow.addColorStop(1, `rgba(${speck.colour}, 0)`);
-          ctx.fillStyle = glow;
-          ctx.beginPath(); ctx.arc(x, y, size * 3.2, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-
-        // The void. Black all the way through, with just enough softness at the rim that it reads
-        // as depth rather than as a sticker.
-        const pit = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, hole * 1.1);
-        pit.addColorStop(0, 'rgba(0, 0, 0, 1)');
-        pit.addColorStop(0.86, 'rgba(0, 0, 0, 1)');
-        pit.addColorStop(0.95, 'rgba(0, 0, 2, .82)');
-        pit.addColorStop(1, 'rgba(0, 0, 4, 0)');
-        ctx.fillStyle = pit;
-        ctx.beginPath(); ctx.arc(node.x, node.y, hole * 1.1, 0, Math.PI * 2); ctx.fill();
-
-        // What passes close enough is bent round instead of going straight: a cold ring of
-        // smeared light gripping the rim, in a few arcs that do not quite close.
-        ctx.globalCompositeOperation = 'lighter';
-        const halo = ctx.createRadialGradient(node.x, node.y, hole * 0.94, node.x, node.y, hole * 1.3);
-        halo.addColorStop(0, 'rgba(150, 190, 255, 0)');
-        halo.addColorStop(0.3, `rgba(168, 204, 255, ${0.26 * lit})`);
-        halo.addColorStop(0.55, `rgba(120, 160, 230, ${0.12 * lit})`);
-        halo.addColorStop(1, 'rgba(90, 130, 210, 0)');
-        ctx.fillStyle = halo;
-        ctx.beginPath(); ctx.arc(node.x, node.y, hole * 1.3, 0, Math.PI * 2); ctx.fill();
-        ctx.lineCap = 'round';
-        for (let arc = 0; arc < 4; arc += 1) {
-          const at = hole * (1.005 + arc * 0.028);
-          const from = turn * (1 + arc * 0.35) + arc * 1.9;
-          const span = 0.9 + 0.5 * Math.sin(t * 0.21 + arc);
-          ctx.strokeStyle = `rgba(${arc % 2 ? '198, 222, 255' : '146, 186, 250'}, ${(0.3 - 0.05 * arc) * lit})`;
-          ctx.lineWidth = (1.4 - 0.25 * arc) / cam.scale;
-          ctx.beginPath(); ctx.arc(node.x, node.y, at, from, from + span); ctx.stroke();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-
-        if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, field, t, cam.scale);
+        drawBlackHole(ctx, node.x, node.y, S, { t, turn, roll, lit, px: 1 / cam.scale, still: nostromo.reduced, colour: tone, dust: S * cam.scale < 30 ? 28 : VOID_DUST.length });
+        if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, S * 2.8, t, cam.scale);
         return;
       }
 
+      // Where the sun is from here, in view space: the light comes from it. The projection keeps
+      // the planet's place on the screen and its depth; undoing the perspective on the first two
+      // gives back the direction in the same space the face is painted in.
+      const depth = node.depth ?? 0;
+      const near = VIEW_DISTANCE / Math.max(200, VIEW_DISTANCE - depth);
+      const vx = node.x / near;
+      const vy = node.y / near;
+      const away = Math.hypot(vx, vy, depth) || 1;
+      const light = [-vx / away, -vy / away, -depth / away];
+      // A memory out of circulation is a faded planet; one the archive has never once carried shows
+      // less of its light; the one being read is lit a little from the front as well, so it never
+      // turns to night when it turns to face you with the sun behind it.
+      const fade = travels(node.memory) ? 0 : 1;
+      const exposure = (1.1 + 0.35 * burn) * (node.cold ? 0.72 : 1);
+      const fill = nostromo.lock?.node === node ? Math.min(1, nostromo.lock.fade ?? 0) : 0;
+      const planet = PLANETS[planetOf(node.memory.kind)];
+      const halo = planet.air ? PLANET_HALO : 1;
+
       // Drawn pixel by pixel wherever there is a buffer to paint into.
-      const sprite = dwarfSprite(node, node.r * node.scale, burn, cam.scale * dpr, t);
-      if (sprite) ctx.drawImage(sprite, node.x - r, node.y - r, r * 2, r * 2);
+      const sprite = planetSprite(node, node.r * node.scale, cam.scale * dpr, t, { light, exposure, fade, fill });
+      if (sprite) ctx.drawImage(sprite, node.x - r * halo, node.y - r * halo, r * halo * 2, r * halo * 2);
       else {
+        // The plainer way, until its map is built or where there is no buffer: the planet's colour,
+        // brighter toward the sun, and night laid over the far side along the line to it, as deep
+        // as the sphere's own light says at each point of that line.
+        const base = fade ? hexMix(planet.base, '#5c6068', 0.65) : planet.base;
+        const flat = Math.hypot(light[0], light[1]);
+        const ux = flat > 0.04 ? light[0] / flat : 1;
+        const uy = flat > 0.04 ? light[1] / flat : 0;
         ctx.save();
         ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
-        // The ground, struck from the body's own middle: a star is not lit from a corner. It runs
-        // white at the centre the harder it burns and keeps its class's colour outward.
-        const ground = ctx.createRadialGradient(node.x, node.y, r * 0.03, node.x, node.y, r);
-        ground.addColorStop(0, hexMix(node.color, '#ffffff', 0.5 + 0.5 * burn));
-        ground.addColorStop(0.45, hexMix(node.color, '#ffffff', 0.12 + 0.4 * burn));
-        ground.addColorStop(0.85, hexMix(node.color, '#000000', 0.2 - 0.2 * burn));
-        ground.addColorStop(1, hexMix(node.color, '#000000', 0.34 - 0.24 * burn));
-        ctx.fillStyle = ground;
+        const bright = ctx.createRadialGradient(node.x + ux * r * 0.45 * flat, node.y + uy * r * 0.45 * flat, r * 0.05, node.x, node.y, r * 1.05);
+        bright.addColorStop(0, hexMix(base, '#ffffff', 0.12 + 0.1 * burn));
+        bright.addColorStop(0.55, base);
+        bright.addColorStop(1, hexMix(base, '#000000', 0.35));
+        ctx.fillStyle = bright;
         ctx.fill();
         ctx.clip();
-        // The face: the boiling surface a star of this class has, turning slowly, laid over the
-        // whole body. This is most of what is seen, so it is laid down at close to full strength.
-        const face = dwarfTexture(node.color);
-        if (face) {
-          // Wrapped on a sphere, half the strip across the visible face, in columns that narrow
-          // toward the limb: the cells slide in from one edge, cross wide and leave thin, which is
-          // what reads as a body turning rather than a picture sliding behind a hole.
-          const strip = face.width / 2;
-          const turn = ((node.spin * 0.3 + node.seed) / (Math.PI * 2) % 1 + 1) % 1;
-          ctx.globalAlpha = 0.72 + 0.26 * burn;
-          for (let column = 0; column < SKIN_COLUMNS; column += 1) {
-            const x0 = SKIN_EDGES[column];
-            const x1 = SKIN_EDGES[column + 1];
-            ctx.drawImage(face, (turn + column / (SKIN_COLUMNS * 2)) * strip, 0, strip / (SKIN_COLUMNS * 2), face.height,
-              node.x + x0 * r * 1.06, node.y - r * 1.06, Math.max(0.5, (x1 - x0) * r * 1.06), r * 2.12);
-          }
-          ctx.globalAlpha = 1;
+        const night = ctx.createLinearGradient(node.x + ux * r, node.y + uy * r, node.x - ux * r, node.y - uy * r);
+        for (let step = 0; step <= 8; step += 1) {
+          const along = 1 - step / 4;
+          const lit = along * flat + Math.sqrt(Math.max(0, 1 - along * along)) * light[2];
+          const dark = (1 - smooth(-0.08, 0.3, lit)) * (node.cold ? 0.96 : 0.93);
+          night.addColorStop(step / 8, `rgba(0, 0, 0, ${dark.toFixed(3)})`);
         }
-        // The hottest of it burns through the face, the way an active region does.
-        ctx.globalCompositeOperation = 'lighter';
-        const core = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 0.92);
-        core.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.9), 0.2 + 0.45 * burn));
-        core.addColorStop(0.5, hexAlpha(hexMix(node.color, '#ffffff', 0.5), 0.08 + 0.2 * burn));
-        core.addColorStop(1, hexAlpha(node.color, 0));
-        ctx.fillStyle = core;
-        ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.restore();
-      }
-
-      // A body in space (2026-10-28): the core lights it. The side facing the core takes its light,
-      // the far side falls into a soft night, a thin crescent rides the lit limb and a small sheen
-      // sits where the light strikes — so even a dwarf a few pixels wide reads as a sphere, not a
-      // disc. Its own fire still shows through the night side: it is a star, only a turned one.
-      if (r > 1.5) {
-        const away = Math.hypot(node.x, node.y) || 1;
-        const lx = -node.x / away;
-        const ly = -node.y / away;
-        ctx.save();
-        ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.clip();
-        const night = ctx.createLinearGradient(node.x + lx * r, node.y + ly * r, node.x - lx * r, node.y - ly * r);
-        const dark = node.cold ? 0.72 : 0.56;
-        night.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        night.addColorStop(0.42, 'rgba(0, 0, 0, 0.04)');
-        night.addColorStop(0.7, `rgba(0, 0, 0, ${dark * 0.62})`);
-        night.addColorStop(1, `rgba(0, 0, 0, ${dark})`);
         ctx.fillStyle = night;
         ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
-        ctx.globalCompositeOperation = 'lighter';
-        const sheen = ctx.createRadialGradient(node.x + lx * r * 0.42, node.y + ly * r * 0.42, 0, node.x + lx * r * 0.42, node.y + ly * r * 0.42, r * 0.62);
-        sheen.addColorStop(0, `rgba(255, 255, 255, ${0.26 + 0.12 * burn})`);
-        sheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = sheen;
-        ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
-        ctx.restore();
-        // The crescent on the lit limb: filled between the limb and an ellipse narrowed toward the core,
-        // never stroked — a line round a ball flattens it however thin it is.
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const facing = Math.atan2(ly, lx);
-        ctx.fillStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.65), 0.42 * glowAt);
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, r, facing - 1.15, facing + 1.15);
-        ctx.ellipse(node.x, node.y, r * 0.86, r, facing, 1.15, -1.15, true);
-        ctx.fill();
         ctx.restore();
       }
 
-      // The glow: the light a star gives off, clinging to it in a tight bloom the width of a finger,
-      // the same all the way round because nothing else is lighting it. It carries past the body
-      // and stops there, so it belongs to the star rather than hanging off it.
-      ctx.globalCompositeOperation = 'lighter';
-      const air = ctx.createRadialGradient(node.x, node.y, r * 0.99, node.x, node.y, r * 1.42);
-      // It starts at the limb, never over it, and no brighter than the limb itself: scattered
-      // light falling away from the body, with no seam and no ring. A cooling dwarf gives less of
-      // it, in the same proportion its face has dimmed.
-      const cooling = node.cold ? COLD_GLOW : 1;
-      air.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.2 + 0.3 * burn), ((0.16 + 0.34 * burn) * cooling + 0.2 * arrive) * glowAt));
-      air.addColorStop(0.25, hexAlpha(hexMix(node.color, '#ffffff', 0.1 + 0.2 * burn), ((0.07 + 0.16 * burn) * cooling + 0.1 * arrive) * glowAt));
-      air.addColorStop(1, hexAlpha(node.color, 0));
-      ctx.fillStyle = air;
-      ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.34, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+      // A pulse landing: the planet catches it, a brief light round it in the colour it arrived in.
+      if (arrive > 0.01) {
+        ctx.globalCompositeOperation = 'lighter';
+        const air = ctx.createRadialGradient(node.x, node.y, r * 0.99, node.x, node.y, r * 1.38);
+        air.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.3), 0.32 * arrive * glowAt));
+        air.addColorStop(0.3, hexAlpha(node.color, 0.12 * arrive * glowAt));
+        air.addColorStop(1, hexAlpha(node.color, 0));
+        ctx.fillStyle = air;
+        ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.34, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+      }
 
       if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, r * 1.1, t, cam.scale);
-      };
+    };
     const ordered = [...nostromo.nodes].sort((a, b) => (a.depth ?? 0) - (b.depth ?? 0));
     for (const node of ordered) if ((node.depth ?? 0) < 0) drawMemory(node);
 
@@ -2728,12 +3045,7 @@ export function createNostromo(nostromo) {
       }
     }
 
-    // ---- Memories: dwarf stars.
-    //
-    // A dwarf makes its own light, so none of it is in shadow. Its face boils with granules, it
-    // dims toward the limb the way every star does, and what light escapes clings to it in a tight
-    // bloom the width of a finger. On top of that each breathes at a rate of its own: a
-    // micro-pulsation, small enough that it is never a flash and never in time with its neighbours.
+    // ---- Memories: planets, lit by the sun they go round (drawMemory above, PLANETS).
     for (const node of ordered) if ((node.depth ?? 0) >= 0) drawMemory(node);
     // The cold zone, when it is asked for: a thin dusty ring around every memory the archive has
     // had its chances with and never once carried. The mark is added rather than taken from the
@@ -3222,6 +3534,6 @@ export function createNostromo(nostromo) {
 
   return {
     buildNodes, sizeNostromo, placeNostromo, stepNostromo, focusNostromo, projectNostromo, fitNostromo, drawNostromo, drawNebula, heartbeat, setNeural,
-    toScreen, toWorld, nostromoLive, nostromoAt, beginImplosion, drawImplosion, drawDust, drawSight, dwarfSprite, magmaFace,
+    toScreen, toWorld, nostromoLive, nostromoAt, beginImplosion, drawImplosion, drawDust, drawSight, planetSprite, magmaFace,
   };
 }

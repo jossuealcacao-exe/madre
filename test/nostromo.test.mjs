@@ -153,7 +153,11 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('CORE_FLOWS')} ${block('COLLAPSED')} ${block('VOID_DUST')}
     ${block('NEBULA_CAP')} ${block('NEBULA_CLOUDS')} ${fn('drawNebula')} ${block('PULSE_SCALE')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
-    ${block('dwarfSkins')} ${block('SKIN_COLUMNS')} ${block('SKIN_EDGES')} ${fn('dwarfTexture')} ${fn('dwarfSprite')} ${fn('magmaFace')} ${block('COLD_GLOW')}
+    ${block('VIEW_DISTANCE')} ${block('frac')} ${block('PLANETS')} ${block('planetOf')} ${block('PLANET_HALO')} ${block('SUN_LIGHT')} ${block('PLANET_AMBIENT')}
+    ${block('ALBEDO_W')} ${block('ALBEDO_H')} ${block('PLANET_STRIDE')} ${block('planetMaps')} ${block('globeTables')} ${block('CRATER')}
+    ${fn('craterField')} ${fn('planetSurface')} ${fn('planetMap')} ${fn('globeTable')} ${fn('lightTexel')} ${fn('haloInto')} ${fn('shadePlanet')}
+    ${block('SHADE_BUDGET')} ${block('PLANET_ROWS_PER_FRAME')} ${fn('planetSprite')} ${fn('magmaFace')}
+    ${block('HOLE_DISC_IN')} ${block('HOLE_DISC_OUT')} ${block('HOLE_TILT')} ${block('HOLE_EINSTEIN')} ${block('HOLE_STREAKS')} ${block('rgbOf')} ${fn('drawBlackHole')}
     ${block('smooth')} ${block('NOISE_PERM')} ${fn('gradientNoise')} ${fn('fractalNoise')} ${fn('cellNoise')} ${block('sunClamp')} ${block('SUN_SIDE')} ${block('SUN_W')} ${block('SUN_H')} ${block('SUN_LIMB')} ${block('SUN_TONE')} ${fn('sunOrb')} ${fn('drawSun')} let coreSun = null;
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
@@ -304,37 +308,47 @@ test('nostromo: the core lights itself, so it has no dark side and no highlight'
   assert.equal(calls.filter((c) => c.name === 'createConicGradient').length, 0, 'the limb is still being lit from one side');
 });
 
-test('nostromo: a star with no canvas to build its grain in still draws', async () => {
-  // Some engines refuse a second canvas. The room has to lose the texture and keep the star.
+test('nostromo: a map with no canvas to paint faces in still draws its sun and its planets', async () => {
+  // Some engines refuse a second canvas. The room has to lose the faces and keep the bodies.
   const { run, calls } = await nostromoRenderer(fakeRoom(), { noCanvas: true });
   run(0.3);
   assert.equal(calls.filter((c) => c.name === 'drawImage').length, 0, 'it drew a face it never built');
-  assert.ok(calls.length > 600, 'the star vanished along with its grain');
+  assert.ok(calls.length > 600, 'the bodies vanished along with their faces');
   for (const call of calls) {
     for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
   }
 });
 
-test('nostromo: every memory is a star struck from its own middle, and each breathes on its own', async () => {
+test('nostromo: every memory is a planet lit from the side the sun is on, and it holds its size', async () => {
   const room = fakeRoom();
   const { run, calls } = await nostromoRenderer(room);
 
-  // A dwarf makes its own light, so nothing about it may be banked toward anything else. The
-  // ground of the body is struck from the body's own centre, not from a point pushed to one
-  // side: an offset middle is a highlight, and a highlight means something else is doing the
-  // lighting.
+  // A planet gives no light of its own (2026-11-15, asked by the author): the sun at the centre
+  // lights it. Where its face is not painted pixel by pixel, the bright part of its body is struck
+  // toward the sun, and night is laid over the far side along the line from the sun, from clear on
+  // the day side to nearly black, stepping down as the sphere's own light does.
   run(0);
-  let checked = 0;
+  const alphaOf = (colour) => Number(String(colour).match(/,\s*([\d.]+)\)$/)?.[1] ?? NaN);
   for (const node of room.nodes) {
-    const ground = calls.find((c) => c.name === 'createRadialGradient'
-      && c.args[0] === node.x && c.args[1] === node.y && c.args[3] === node.x && c.args[4] === node.y
-      && c.args[2] < 1);
-    assert.ok(ground, 'a memory was drawn without a face');
-    checked += 1;
+    const body = calls.find((c) => c.name === 'createRadialGradient' && c.args[3] === node.x && c.args[4] === node.y && c.args[5] > node.r * 0.9 && c.args[5] < node.r * 1.2);
+    assert.ok(body, 'a memory was drawn without a body');
+    const dx = body.args[0] - node.x;
+    const dy = body.args[1] - node.y;
+    assert.ok(dx * -node.x + dy * -node.y > 0, 'a planet is brightest on the side away from the sun');
+    const night = calls.slice(calls.indexOf(body)).find((c) => c.name === 'createLinearGradient');
+    assert.ok(night, 'a planet has no night side');
+    const [x0, y0] = night.args;
+    assert.ok((x0 - node.x) * -node.x + (y0 - node.y) * -node.y > 0, 'the night is laid from the side that faces the sun');
+    const stops = [];
+    for (const call of calls.slice(calls.indexOf(night) + 1)) {
+      if (call.name !== 'addColorStop') break;
+      stops.push(alphaOf(call.args[1]));
+    }
+    assert.ok(stops.length >= 5, 'the terminator is a step, not a fall of light');
+    assert.ok(stops[0] < 0.1 && stops.at(-1) > 0.85, `day is not clear or night is not dark: ${stops[0]} … ${stops.at(-1)}`);
+    for (let i = 1; i < stops.length; i += 1) assert.ok(stops[i] >= stops[i - 1] - 1e-9, 'the night thins again on the far side');
   }
-  assert.equal(checked, room.nodes.length);
-  // Since 2026-10-28 a dwarf is a body in space: the core lights it. Anything struck off-centre on
-  // a body is its sheen, and it sits on the side that faces the core (at the origin) — never away.
+  // Anything struck off-centre on a body sits on the side that faces the sun (at the origin), never away.
   for (const node of room.nodes) {
     for (const call of calls) {
       if (call.name !== 'createRadialGradient') continue;
@@ -346,8 +360,8 @@ test('nostromo: every memory is a star struck from its own middle, and each brea
     }
   }
 
-  // Micro-pulsation: the body's own radius, frame by frame. The body is the one arc round a
-  // memory that is closed into a path to clip with.
+  // And a planet holds its size, frame after frame: the breathing the stars had went with them.
+  // The body is the one arc round a memory that is closed into a path to clip with.
   const radiusOf = (node) => {
     for (let i = 0; i < calls.length - 1; i += 1) {
       const call = calls[i];
@@ -356,20 +370,13 @@ test('nostromo: every memory is a star struck from its own middle, and each brea
     }
     return NaN;
   };
-  const tracks = room.nodes.map(() => []);
-  for (let frame = 0; frame < 240; frame += 1) {
+  const first = room.nodes.map(radiusOf);
+  assert.ok(first.every(Number.isFinite), 'a memory was not drawn');
+  for (let frame = 1; frame < 60; frame += 1) {
     calls.length = 0;
     run(frame * 0.25);
-    room.nodes.forEach((node, i) => tracks[i].push(radiusOf(node)));
+    room.nodes.forEach((node, i) => assert.equal(radiusOf(node), first[i], `memory ${i} changed size at frame ${frame}`));
   }
-  const swing = (series) => (Math.max(...series) - Math.min(...series)) / Math.max(...series);
-  for (let i = 0; i < tracks.length; i += 1) {
-    assert.ok(tracks[i].every(Number.isFinite), `memory ${i} was not drawn in every frame`);
-    assert.ok(swing(tracks[i]) > 0.04, `memory ${i} does not breathe (${(swing(tracks[i]) * 100).toFixed(1)}%)`);
-    assert.ok(swing(tracks[i]) < 0.2, `memory ${i} pulses hard enough to read as a flash`);
-  }
-  const peaks = new Set(tracks.map((series) => series.indexOf(Math.max(...series))));
-  assert.ok(peaks.size > tracks.length / 2, 'memories are breathing in step');
 });
 
 test('nostromo: a crowded archive does not cost a blur for every memory in it', async () => {
@@ -414,13 +421,15 @@ test('nostromo: a memory reads as a moon beside the core, never as a rival to it
   assert.ok(smallest * 2 + 30 > largest, 'memories would overlap at rest');
 });
 
-test('nostromo: memories burn as star classes, and the four are told apart at a glance', async () => {
+test('nostromo: every kind keeps the colour it always had, and the four are told apart at a glance', async () => {
   const source = await readFile(join(import.meta.dirname, '..', 'public', 'nostromo-engine.js'), 'utf8');
   const line = source.match(/const MEMORY_COLORS = (\{[^}]*\});/);
   assert.ok(line, 'MEMORY_COLORS is gone from public/app.js');
   const palette = new Function(`return ${line[1]}`)();
-  // Four classes of star, and one thing that is not a star at all: an aberration is a claim the
-  // room established is false, so it burns nothing and is held to none of the rules below.
+  // On the map each kind is a planet now (2026-11-15), chosen to look like this colour; the wires,
+  // the pulses and every chip outside the map still wear the colour itself, the one the stars had.
+  // Four kinds, and one thing that is not knowledge at all: an aberration is a claim the room
+  // established is false, so it is held to none of the rules below.
   assert.deepEqual(Object.keys(palette).sort(), ['aberration', 'decision', 'fact', 'preference', 'question']);
 
   const rgb = (hex) => [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
@@ -490,44 +499,37 @@ test('nostromo: current runs along a wire without ever handing the canvas a bad 
   assert.equal(stops.length, 3, 'a starved wire is still sparking');
 });
 
-test('nostromo: a dwarf burns by what it has become and by what it is being given', async () => {
+test('nostromo: a planet shows more of its light the more the room has made of it, and catches the pulses that land', async () => {
   const room = fakeRoom();
-  const { run, calls } = await nostromoRenderer(room);
-
-  // Four memories: nothing, grown but starved, young but fed, and both at once. Brightness has
-  // to answer to each, and one that is mature and fed has to outshine one that is neither.
-  const [out, grown, fed, full] = room.nodes;
-  for (const node of [out, grown, fed, full]) { node.charge = 0; node.lit = 0; node.activity = 0.05; }
+  // Four memories: nothing, grown but starved, young but fed, and both at once. How much of its
+  // light a planet shows answers to each, and one that is mature and fed shows the most.
+  const [out, grown, fed, full, landed, quiet] = room.nodes;
+  for (const node of [out, grown, fed, full, landed, quiet]) { node.charge = 0; node.lit = 0; node.activity = 0.05; }
   grown.activity = 1;
   fed.charge = 1;
   full.activity = 1; full.charge = 1;
-
-  // How strongly the face is laid on, and how much light the limb gives off.
-  const readingOf = (node) => {
-    const at = calls.findIndex((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (node.x - node.r * 1.06)) < 4);
-    const alpha = calls.slice(Math.max(0, at - 3), at).findLast((c) => c.name === 'set:globalAlpha');
-    // The limb and the bloom are one gradient, struck from inside the body and reaching a
-    // finger past it; the light it gives is its brightest stop.
-    const air = calls.find((c) => c.name === 'createRadialGradient'
-      && c.args[0] === node.x && c.args[1] === node.y && c.args[2] > node.r * 0.5 && c.args[5] > node.r);
-    const from = calls.indexOf(air);
-    let limb = 0;
-    for (const call of calls.slice(from + 1, from + 5)) {
-      if (call.name !== 'addColorStop') continue;
-      limb = Math.max(limb, Number(String(call.args[1]).match(/,\s*([\d.]+)\)$/)?.[1] ?? 0));
-    }
-    return { face: alpha?.args[0], limb };
-  };
-
-  calls.length = 0;
+  landed.lit = 1;
+  const { run, calls } = await nostromoRenderer(room);
   run(0);
-  const [dark, old, young, bright] = [out, grown, fed, full].map(readingOf);
 
-  assert.ok(Number.isFinite(dark.face) && Number.isFinite(bright.face), 'the faces were not drawn');
-  assert.ok(old.face > dark.face, 'maturity alone does not brighten a memory');
-  assert.ok(young.face > dark.face, 'feeding alone does not brighten a memory');
-  assert.ok(bright.face > old.face && bright.face > young.face, 'the two together are worth no more than either');
-  assert.ok(bright.limb > dark.limb * 2, `a burning dwarf should light its own limb (${bright.limb} against ${dark.limb})`);
+  // The plain face's brightest colour, struck toward the sun, runs toward white as it is used.
+  const lightOf = (node) => {
+    const body = calls.find((c) => c.name === 'createRadialGradient' && c.args[3] === node.x && c.args[4] === node.y && c.args[5] > node.r * 0.9 && c.args[5] < node.r * 1.2);
+    const stop = calls[calls.indexOf(body) + 1];
+    assert.equal(stop?.name, 'addColorStop', 'the body has no colour');
+    const hex = String(stop.args[1]).match(/#([0-9a-f]{6})/i)[1];
+    return [0, 2, 4].reduce((sum, at) => sum + Number.parseInt(hex.slice(at, at + 2), 16), 0);
+  };
+  const [dark, old, young, bright] = [out, grown, fed, full].map(lightOf);
+  assert.ok(old > dark, 'maturity alone does not brighten a memory');
+  assert.ok(young > dark, 'feeding alone does not brighten a memory');
+  assert.ok(bright > old && bright > young, 'the two together are worth no more than either');
+
+  // A pulse landing lights the air round the planet, in the colour it arrived in; a planet nothing
+  // has reached gives off nothing: it has no light of its own.
+  const glowOf = (node) => calls.find((c) => c.name === 'createRadialGradient' && c.args[0] === node.x && c.args[1] === node.y && c.args[2] > node.r * 0.9 && c.args[5] > node.r * 1.2);
+  assert.ok(glowOf(landed), 'a pulse landed and the planet did not catch it');
+  for (const node of [out, grown, fed, full, quiet]) assert.equal(glowOf(node), undefined, 'a planet glows with nothing landing on it');
 });
 
 test('nostromo: charge is fed by the core and by neighbours, and drains when nobody feeds it', async () => {
@@ -590,48 +592,48 @@ test('nostromo: a wire leaves MOTHER red and arrives wearing the star it feeds',
   assert.equal(matched, 4, 'not every class of star got its own wire');
 });
 
-test('nostromo: the legend shows a real star for each class, not a swatch', async () => {
-  const [app, page, css, engine] = await Promise.all([
+test('nostromo: the legend shows each kind as its planet, small, and the doubtful one as its black hole', async () => {
+  const [app, page, css, engine, macro] = await Promise.all([
     readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8'),
     readFile(join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8'),
     readFile(join(import.meta.dirname, '..', 'public', 'styles.css'), 'utf8'),
     readFile(join(import.meta.dirname, '..', 'public', 'nostromo-engine.js'), 'utf8'),
+    readFile(join(import.meta.dirname, '..', 'public', 'macroverso.js'), 'utf8'),
   ]);
 
-  // Every class is named, and each name is the star it burns as next to the kind of memory.
-  const named = app.match(/const DWARF_CLASS = (\{[^}]*\});/);
-  assert.ok(named, 'DWARF_CLASS is gone from public/app.js');
-  // Read in the source language: the names go through the catalogue on screen, and what this
-  // test is about is which star each kind of memory burns as, not how it is said.
+  // Every kind is named by the planet it is on the map (2026-11-15), read in the source language:
+  // the names go through the catalogue on screen, and what this test is about is which planet each
+  // kind is, not how it is said. The doubtful one is a black hole, never a planet: naming it as one
+  // would say it is knowledge, and the whole point of it is that it is not.
+  const named = app.match(/const PLANET_CLASS = (\{[^}]*\});/);
+  assert.ok(named, 'PLANET_CLASS is gone from public/app.js');
   const classes = new Function('t', `return ${named[1]}`)((text) => text);
-  assert.deepEqual(Object.keys(classes).sort(), ['aberration', 'decision', 'fact', 'preference', 'question']);
+  assert.deepEqual(classes, { decision: 'MARS', fact: 'MERCURY', preference: 'EARTH', question: 'URANUS', aberration: 'BLACK HOLE' });
+  const planets = new Function(`return ${engine.match(/export const PLANETS = (\{[\s\S]*?\n\});/)[1]}`)();
+  assert.deepEqual(Object.keys(planets).sort(), ['decision', 'fact', 'preference', 'question']);
   for (const [kind, label] of Object.entries(classes)) {
-    // Every class is a star but one, said with the kind of memory it is (since 2026-10-14, as
-    // the Spanish says it). The aberration is a collapsed body: naming it as a star would say it
-    // burns, and the whole point of it is that it does not.
-    if (kind === 'aberration') assert.equal(label, 'COLLAPSED', 'an aberration is being named as a star');
-    else assert.match(label, /STAR$/, `${kind} is not named as a star`);
-    // The class belongs on hover, not on the chip: the drawn star already says which it is, and
-    // writing it out beside the star says the same thing twice.
-    if (kind === 'aberration') continue;   // the legend markup is a placeholder; paintLegend fills it
-    assert.match(page, new RegExp(`title="${label} · ${kind.toUpperCase()}"`, 'i'), `${kind} never names its class anywhere`);
-    assert.ok(!new RegExp(`<i>${label}`, 'i').test(page), `${kind} still spells out its class beside the star`);
+    if (kind === 'aberration') continue;
+    assert.equal(planets[kind].name.toUpperCase(), label, `the legend names ${kind} as one planet and the map paints another`);
+    // The planet belongs on hover, not on the chip: the drawing already says which it is.
+    assert.match(page, new RegExp(`title="${label} · ${kind.toUpperCase()}"`, 'i'), `${kind} never names its planet anywhere`);
+    assert.ok(!new RegExp(`<i>${label}`, 'i').test(page), `${kind} spells out its planet beside the drawing`);
     assert.match(page, new RegExp(`<i>${kind.toUpperCase()}</i>`, 'i'), `${kind} is not labelled`);
   }
-  // The collapsed body gets a chip of its own, drawn as a hole with a ring rather than as a star.
-  // The chips live in the engine (2026-10-10), so the Project map draws the same ones.
-  const collapsed = engine.slice(engine.indexOf('export function collapsedChip('), engine.indexOf('// ---- A dwarf, drawn the way a star looks.'));
-  for (const piece of ['VOID_DUST', "'#000000'", 'createElement']) {
-    assert.ok(collapsed.includes(piece), `the collapsed chip is missing its ${piece}`);
-  }
-  assert.ok(!collapsed.includes('dwarfTexture'), 'the collapsed body was given a burning surface');
-  assert.ok(app.includes('kind === COLLAPSED ? collapsedChip('), 'the legend draws an aberration as a star');
 
-  // The chip carries a drawn star, and it is drawn the way the ones in the constellation are:
-  // a ground, the class's own boiling face, and a limb.
-  const chip = engine.slice(engine.indexOf('export function dwarfChip('), engine.indexOf('export function collapsedChip('));
-  for (const piece of ['createElement', 'clip()', 'dwarfTexture', 'drawImage', 'limb']) {
-    assert.ok(chip.includes(piece), `the legend's star is missing its ${piece}`);
+  // The chip is the planet the map paints, small: the same surface and the same light, not a swatch.
+  const chip = engine.slice(engine.indexOf('export function planetChip('), engine.indexOf('// ---- The aberration: a black hole'));
+  for (const piece of ['createElement', 'planetSurface(', 'lightTexel(', 'haloInto(']) {
+    assert.ok(chip.includes(piece), `the legend's planet is missing its ${piece}`);
+  }
+  // The doubtful one is the black hole the map draws, small, and it wears no planet's face.
+  const collapsed = engine.slice(engine.indexOf('export function collapsedChip('), engine.indexOf("// One planet's painted face"));
+  assert.ok(collapsed.includes('drawBlackHole('), 'the legend draws its own black hole instead of the map\'s');
+  assert.ok(!/planetChip|lightTexel|planetSurface/.test(collapsed), 'the black hole was given a planet\'s face');
+  // Both maps draw the same chips, and «not used» is the faded planet the map paints for it.
+  for (const [name, source] of [['app.js', app], ['macroverso.js', macro]]) {
+    assert.match(source, /kind === COLLAPSED \? collapsedChip\(hex, 14\) : planetChip\(kind, 14\)/, `${name} draws another legend`);
+    assert.match(source, /planetChip\('fact', 14, \{ faded: true \}\)/, `${name} draws «not used» as something the map does not`);
+    assert.doesNotMatch(source, /dwarfChip/, `${name} still draws a star`);
   }
   assert.ok(app.includes('paintLegend();'), 'the legend is never painted');
 
@@ -640,28 +642,28 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   const rule = css.slice(css.indexOf('.nostromo-legend'), css.indexOf('.nostromo-frame .mother-close'));
   assert.ok(/font-size: 9px/.test(rule) && /letter-spacing: \.16em/.test(rule), 'the legend lost its lettering');
   assert.ok(!/font-family/.test(rule), 'the legend set a font of its own');
-  // And the chips are not boxed in. A star needs no pill drawn round it.
+  // And the chips are not boxed in. A planet needs no pill drawn round it.
   assert.ok(!/border(?!-radius)/.test(rule), 'the legend chips are still fenced in');
   assert.ok(!/border-radius: 999px/.test(rule), 'the legend chips are still pills');
 
-  // And the stylesheet's colours are the same stars the canvas paints: the palette is the engine's.
+  // And the stylesheet's colours are the engine's: the palette the wires and chips wear is one.
   const palette = new Function(`return ${engine.match(/const MEMORY_COLORS = (\{[^}]*\});/)[1]}`)();
   for (const [kind, hex] of Object.entries(palette)) {
     assert.ok(css.includes(`--mem-${kind}: ${hex}`), `the page and the canvas disagree about a ${kind}`);
   }
 });
 
-test('nostromo: a class of star is built once, however many memories wear it', async () => {
+test('nostromo: a planet is drawn the plain way until its surface is built, with no canvas of its own per memory', async () => {
   const room = fakeRoom();
-  // Forty memories across the four classes: the skins must be shared, not built per memory.
-  const palette = ['#ffdc3c', '#dfeeff', '#fa4632', '#3dc6ff'];
-  room.nodes = Array.from({ length: 40 }, (_, i) => ({ ...room.nodes[i % room.nodes.length], x: Math.cos(i) * 320, y: Math.sin(i) * 320, color: palette[i % 4] }));
-  const { run, offscreen } = await nostromoRenderer(room);
+  // Forty memories across the kinds: nothing is built per memory while there is no face to paint.
+  room.nodes = Array.from({ length: 40 }, (_, i) => ({ ...room.nodes[i % room.nodes.length], x: Math.cos(i) * 320, y: Math.sin(i) * 320 }));
+  const { run, offscreen, calls } = await nostromoRenderer(room);
   run(0);
   run(1);
   run(2);
-  // One strip for MOTHER, one for each class of star that is actually on screen.
-  assert.equal(offscreen.length, 5, `skins should be built once per class, saw ${offscreen.length}`);
+  // One canvas for MOTHER's sun, and none for the planets.
+  assert.equal(offscreen.length, 1, `a canvas was made per memory: ${offscreen.length}`);
+  assert.ok(calls.filter((c) => c.name === 'createLinearGradient').length >= 40 * 3, 'a planet was drawn without its night side');
 });
 
 test('nostromo: a memory is a ball, with nothing ringed round it and nothing coming off it', async () => {
@@ -707,74 +709,149 @@ test('nostromo: a memory is a ball, with nothing ringed round it and nothing com
   assert.ok(!/smoke|puff/.test(constellation), 'the memories still carry specks to shed');
 });
 
-test('nostromo: an aberration is a void in a field of dust, and nothing about it burns', async () => {
+// The black hole, lifted out and drawn on its own at the origin, into a context that records.
+async function blackHole() {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'nostromo-engine.js'), 'utf8');
+  const fn = (name) => {
+    const start = source.indexOf(`function ${name}(`);
+    assert.notEqual(start, -1, `${name} is gone from public/nostromo-engine.js`);
+    let depth = 0;
+    for (let i = source.indexOf(') {', start) + 2; i < source.length; i += 1) {
+      if (source[i] === '{') depth += 1;
+      else if (source[i] === '}' && (depth -= 1) === 0) return source.slice(start, i + 1);
+    }
+    throw new Error(`${name} does not close`);
+  };
+  const block = (name) => {
+    const start = source.indexOf(`const ${name} = `);
+    assert.notEqual(start, -1, `${name} is gone from public/nostromo-engine.js`);
+    let depth = 0;
+    for (let i = start; i < source.length; i += 1) {
+      if ('[{'.includes(source[i])) depth += 1;
+      else if (']}'.includes(source[i])) depth -= 1;
+      else if (source[i] === ';' && depth === 0) return source.slice(start, i + 1);
+    }
+    throw new Error(`${name} does not close`);
+  };
+  const calls = [];
+  const state = {};
+  const record = (name) => (...args) => { calls.push({ name, args }); };
+  const ctx = new Proxy({
+    createRadialGradient: (...args) => { calls.push({ name: 'createRadialGradient', args }); return { addColorStop: (stop, colour) => calls.push({ name: 'addColorStop', args: [stop, colour] }) }; },
+    createLinearGradient: (...args) => { calls.push({ name: 'createLinearGradient', args }); return { addColorStop: (stop, colour) => calls.push({ name: 'addColorStop', args: [stop, colour] }) }; },
+    save: record('save'), restore: record('restore'), beginPath: record('beginPath'), closePath: record('closePath'),
+    arc: record('arc'), ellipse: record('ellipse'), fill: record('fill'), stroke: record('stroke'),
+    translate: record('translate'), rotate: record('rotate'), scale: record('scale'),
+  }, {
+    get: (target, key) => (key in target ? target[key] : state[key]),
+    set: (target, key, value) => { calls.push({ name: `set:${String(key)}`, args: [value] }); state[key] = value; return true; },
+  });
+  const S = 20;
+  const draw = new Function('ctx', `
+    ${block('MEMORY_COLORS')} ${block('VOID_DUST')} ${block('frac')}
+    ${block('HOLE_DISC_IN')} ${block('HOLE_DISC_OUT')} ${block('HOLE_TILT')} ${block('HOLE_EINSTEIN')} ${block('HOLE_STREAKS')} ${block('rgbOf')}
+    ${fn('drawBlackHole')}
+    return (options) => drawBlackHole(ctx, 0, 0, ${S}, options);
+  `)(ctx);
+  const constant = (name) => Number(block(name).match(/= ([\d.]+);/)[1]);
+  return { draw, calls, S, outer: constant('HOLE_DISC_OUT') * S };
+}
+
+test('nostromo: an aberration is a black hole: a horizon black all through, its disc in front and behind, a ring of bent light, and nothing warm', async () => {
+  const { draw, calls, S, outer } = await blackHole();
+  draw({ t: 1.2, turn: 0.4, lit: 1, px: 1 });
+  const stopsAfter = (at) => calls.slice(at + 1, at + 8).filter((c) => c.name === 'addColorStop').map((c) => c.args);
+  const atOrigin = (c) => c.args[0] === 0 && c.args[1] === 0 && c.args[3] === 0 && c.args[4] === 0;
+
+  // The horizon: one thing, struck from the middle, black to its very edge, the size of the hole.
+  const horizons = calls.map((c, i) => [c, i]).filter(([c, i]) => c.name === 'createRadialGradient' && atOrigin(c) && c.args[2] === 0
+    && stopsAfter(i)[0]?.[1] === 'rgba(0, 0, 0, 1)' && stopsAfter(i).some(([at, colour]) => at >= 0.9 && colour === 'rgba(0, 0, 0, 1)'));
+  assert.equal(horizons.length, 1, 'there is no horizon, or there is more than one');
+  const [horizon, black] = horizons[0];
+  assert.ok(horizon.args[5] >= S && horizon.args[5] <= S * 1.1, `the horizon is ${horizon.args[5] / S} of the hole`);
+  const horizonFill = calls.findIndex((c, i) => i > black && c.name === 'fill');
+
+  // The pull: before the horizon, a dark wider than the hole falls over whatever is behind it.
+  const pull = calls.findIndex((c, i) => i < black && c.name === 'createRadialGradient' && atOrigin(c) && c.args[5] >= S * 2 && String(stopsAfter(i)[0]?.[1]).startsWith('rgba(0, 0, 0,'));
+  assert.ok(pull >= 0, 'nothing behind the hole is swallowed');
+  const modeAt = (index) => calls.slice(0, index).findLast((c) => c.name === 'set:globalCompositeOperation')?.args[0] ?? 'source-over';
+  assert.equal(modeAt(pull), 'source-over', 'the pull adds light instead of taking it');
+
+  // The disc, in two halves: the far one behind the horizon, the near one in front of it.
+  const far = calls.findIndex((c) => c.name === 'arc' && Math.abs(c.args[2] - outer) < 1e-6 && c.args[3] === Math.PI);
+  const near = calls.findIndex((c) => c.name === 'arc' && Math.abs(c.args[2] - outer) < 1e-6 && c.args[3] === 0);
+  assert.ok(far >= 0 && far < horizonFill, 'the far half of the disc is not behind the hole');
+  assert.ok(near > horizonFill, 'the near half of the disc does not cross in front of the hole');
+  // It is seen nearly edge on: drawn squashed, far flatter than it is wide.
+  const squash = calls.slice(0, near).findLast((c) => c.name === 'scale');
+  assert.ok(squash && squash.args[0] === 1 && squash.args[1] < 0.35, 'the disc is not seen edge on');
+
+  // The far half's light, lifted over the top of the hole, before the horizon cuts it.
+  const over = calls.findIndex((c, i) => i < black && c.name === 'arc' && c.args[3] === Math.PI && c.args[4] === Math.PI * 2 && c.args[2] > S * 1.1 && c.args[2] < S * 1.7);
+  assert.ok(over >= 0, 'the far side of the disc is not bent over the top of the hole');
+
+  // The ring of light that went round the hole first: tight against the black, after it, as light.
+  const ring = calls.findIndex((c, i) => i > black && c.name === 'createRadialGradient' && atOrigin(c) && c.args[2] >= S * 0.95 && c.args[2] <= S && c.args[5] <= S * 1.12);
+  assert.ok(ring >= 0, 'there is no ring of bent light at the horizon');
+  assert.equal(modeAt(ring), 'lighter', 'the ring of light darkens instead of shining');
+
+  // The field behind it, bent: every speck is seen outside the black, and some gather at the ring
+  // where the bent light collects.
+  const specks = calls.filter((c) => c.name === 'translate' && Math.hypot(c.args[0], c.args[1]) > 0.001).map((c) => Math.hypot(c.args[0], c.args[1]));
+  assert.ok(specks.length >= 40, `the hole should sit in a field, saw ${specks.length} specks`);
+  for (const out of specks) assert.ok(out >= S * 1.02, `a speck was seen inside the black, ${(out / S).toFixed(2)} of it from the middle`);
+  assert.ok(specks.filter((out) => out < S * 1.7).length >= 4, 'nothing gathers at the ring of bent light');
+
+  // Cold, never warm: nothing about it reads as a sun. (The specks of the field behind are far
+  // stars, each in its own colour, and are not the hole's.)
+  for (let i = 0; i < calls.length; i += 1) {
+    const call = calls[i];
+    if (call.name !== 'createRadialGradient' && call.name !== 'createLinearGradient') continue;
+    if (call.name === 'createRadialGradient' && call.args[5] < S * 0.5) continue;
+    for (const [, colour] of stopsAfter(i)) {
+      const parts = String(colour).match(/rgba?\((\d+), (\d+), (\d+)/);
+      if (!parts) continue;
+      const [red, , blue] = parts.slice(1).map(Number);
+      assert.ok(!(red > 180 && red > blue + 80), `the black hole is burning: ${colour}`);
+    }
+  }
+  // It leaves the canvas as it found it, with every number sound.
+  assert.equal(calls.filter((c) => c.name === 'save').length, calls.filter((c) => c.name === 'restore').length);
+  assert.equal(calls.filter((c) => c.name === 'set:globalCompositeOperation').at(-1).args[0], 'source-over');
+  for (const call of calls) for (const arg of call.args) {
+    if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
+    if (typeof arg === 'string') assert.ok(!/NaN|undefined|Infinity/.test(arg), `${call.name} was handed "${arg}"`);
+  }
+});
+
+test('nostromo: a black hole turns its disc, and holds still for whoever asked for stillness', async () => {
+  const { draw, calls } = await blackHole();
+  const frame = (options) => { calls.length = 0; draw(options); return JSON.stringify(calls); };
+  assert.equal(frame({ t: 0, turn: 0.4, still: true }), frame({ t: 7, turn: 0.4, still: true }), 'a still black hole moved');
+  assert.notEqual(frame({ t: 0, turn: 0.4 }), frame({ t: 7, turn: 0.4 }), 'the disc never goes round');
+});
+
+test('nostromo: on the map an aberration is its black hole, close up and far away', async () => {
   const room = fakeRoom();
   const hole = room.nodes[0];
   hole.memory.kind = 'aberration';
   hole.color = '#b14cff';
-  hole.charge = 1;
   room.selected = null;
   room.hover = null;
   const { run, calls } = await nostromoRenderer(room);
   run(0.4);
-
-  const onBody = (call) => Math.abs(call.args[0] - hole.x) < 0.001 && Math.abs(call.args[1] - hole.y) < 0.001;
-  const stopsAfter = (at) => calls.slice(at + 1, at + 6).filter((c) => c.name === 'addColorStop').map((c) => String(c.args[1]));
-
-  // The void: one thing, struck from the body's own middle, black all the way through, and big.
-  let voids = [];
-  for (let i = 0; i < calls.length; i += 1) {
-    if (calls[i].name !== 'createRadialGradient' || !onBody(calls[i])) continue;
-    if (stopsAfter(i)[0] === 'rgba(0, 0, 0, 1)') voids.push(calls[i].args[5]);
-  }
-  assert.equal(voids.length, 1, 'an aberration has no void, or has more than one');
-  const dark = voids[0];
-  assert.ok(dark > hole.r, `the void should be the size of the thing, got ${dark.toFixed(1)} against a body of ${hole.r}`);
-
-  // Nothing is drawn wide around it. There is no disc and no cloud: what is around a void is the
-  // field it happens to sit in, and past the rim there is only dark.
-  for (let i = 0; i < calls.length; i += 1) {
-    if (calls[i].name !== 'createRadialGradient' || !onBody(calls[i])) continue;
-    assert.ok(calls[i].args[5] < dark * 1.3, `something is wrapped round the void out to ${(calls[i].args[5] / dark).toFixed(2)} of it`);
-  }
-
-  // The field: specks of dust and far stars, every one of them clear of the void.
-  const specks = calls.filter((c) => c.name === 'createRadialGradient' && !onBody(c)
-    && Math.hypot(c.args[0] - hole.x, c.args[1] - hole.y) < hole.r * 6);
-  assert.ok(specks.length > 40, `the void should sit in a field, saw ${specks.length} specks`);
-  for (const speck of specks) {
-    const out = Math.hypot(speck.args[0] - hole.x, speck.args[1] - hole.y);
-    assert.ok(out > dark * 0.6, `a speck was drawn inside the void, ${out.toFixed(1)} from its middle`);
-  }
-
-  // And light that passes close is bent round the rim rather than going straight: cold arcs,
-  // gripping the edge, none of them crossing it.
-  const arcs = calls.filter((c) => c.name === 'arc' && onBody(c) && c.args[2] > hole.r && c.args[2] < dark * 1.3);
-  assert.ok(arcs.length >= 4, `the rim should carry bent light, saw ${arcs.length} arcs`);
-  assert.ok(arcs.some((arc) => Math.abs((arc.args[4] ?? 0) - (arc.args[3] ?? 0)) < Math.PI * 1.9), 'the bent light closes into a plain ring');
-
-  // Cold, never hot: nothing orange is laid on the body itself. A void is not a furnace.
-  for (let i = 0; i < calls.length; i += 1) {
-    if (calls[i].name !== 'createRadialGradient' || !onBody(calls[i])) continue;
-    for (const colour of stopsAfter(i)) {
-      const parts = colour.match(/rgba?\((\d+), (\d+), (\d+)/);
-      if (!parts) continue;
-      const [red, green, blue] = parts.slice(1).map(Number);
-      assert.ok(!(red > 180 && red > blue + 80), `the void is burning: ${colour}`);
-    }
-  }
-
-  // It never wears the boiling surface a star does, and it leaves blending as it found it.
-  // A face is laid on in columns across a star now, so a neighbour's column can share the
-  // hole's left edge; what would be wrong is one laid on the hole itself, at its height too.
-  assert.equal(calls.some((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (hole.x - hole.r * 1.06)) < 4 && Math.abs(c.args[6] - (hole.y - hole.r * 1.06)) < 4), false, 'an aberration was given a burning surface');
-  const composites = calls.filter((c) => c.name === 'set:globalCompositeOperation').map((c) => c.args[0]);
-  assert.ok(composites.includes('lighter'));
-  assert.equal(composites.at(-1), 'source-over');
-
-  for (const call of calls) {
-    for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
-  }
+  // Close: the whole drawing, where the memory is.
+  assert.ok(calls.some((c) => c.name === 'translate' && c.args[0] === hole.x && c.args[1] === hole.y), 'the aberration was not drawn as its black hole');
+  // It wears no planet's body: nothing is struck toward the sun on it, and no night is laid on it.
+  assert.ok(!calls.some((c) => c.name === 'createRadialGradient' && c.args[3] === hole.x && c.args[4] === hole.y && c.args[5] > hole.r * 0.9 && c.args[5] < hole.r * 1.2), 'the aberration was given a planet\'s body');
+  // Far: a black point, a line of its disc and its ring, still in the colour of the kind.
+  calls.length = 0;
+  room.cam.scale = 0.15;
+  run(0.5);
+  const black = calls.findIndex((c) => c.name === 'set:fillStyle' && c.args[0] === 'rgba(0, 0, 0, 1)');
+  assert.ok(black >= 0, 'a far black hole has no black');
+  assert.ok(calls.some((c) => c.name === 'ellipse'), 'a far black hole has no disc');
+  for (const call of calls) for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
 });
 
 test('nostromo: the sky is weather behind the room, and never the subject of it', async () => {

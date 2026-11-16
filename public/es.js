@@ -184,8 +184,8 @@ export const ES = {
     'Así lo quiero · el proyecto lo conserva como preferencia',
   'Never do this again · the project stops using what it remembers from this':
     'Nunca más · el proyecto deja de usar lo que recuerde de esto',
-  'A faded star is a quarantined or discarded memory: it is kept, but never used in answers.':
-    'Una estrella apagada es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
+  'A faded planet is a quarantined or discarded memory: it is kept, but never used in answers.':
+    'Un planeta apagado es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
   'A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers.': 'Una neurona que se apaga es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
   'A summarized note nobody has reviewed yet. It is used in answers.':
     'Nota resumida que nadie ha revisado todavía. Se usa en las respuestas.',
@@ -1052,11 +1052,11 @@ export const ES = {
   'The test could not run: {error}': 'La prueba no se pudo ejecutar: {error}',
 
   // ── NOSTROMO ──────────────────────────────────────────────────────────────
-  'YELLOW STAR': 'ESTRELLA AMARILLA',
-  'WHITE STAR': 'ESTRELLA BLANCA',
-  'GREEN STAR': 'ESTRELLA VERDE',
-  'BLUE STAR': 'ESTRELLA AZUL',
-  'COLLAPSED': 'COLAPSADA',
+  'MARS': 'MARTE',
+  'MERCURY': 'MERCURIO',
+  'EARTH': 'TIERRA',
+  'URANUS': 'URANO',
+  'BLACK HOLE': 'AGUJERO NEGRO',
   'MEMORY RESEARCH · LOADING…': 'INVESTIGACIÓN DE MEMORIA · CARGANDO…',
   'MEMORY RESEARCH': 'INVESTIGACIÓN DE MEMORIA',
   ' · TAMPERING ALERT': ' · alerta de manipulación',
@@ -1749,10 +1749,10 @@ export const ES = {
   'Agent usage': 'Uso del agente',
   'Memory map · memory research': 'Mapa de memoria · explora la memoria del proyecto',
   'Memory kinds': 'Tipos de memoria',
-  'YELLOW STAR · DECISION': 'ESTRELLA AMARILLA · DECISIÓN',
-  'WHITE STAR · FACT': 'ESTRELLA BLANCA · HECHO',
-  'GREEN STAR · PREFERENCE': 'ESTRELLA VERDE · PREFERENCIA',
-  'BLUE STAR · QUESTION': 'ESTRELLA AZUL · PREGUNTA',
+  'MARS · DECISION': 'MARTE · DECISIÓN',
+  'MERCURY · FACT': 'MERCURIO · HECHO',
+  'EARTH · PREFERENCE': 'TIERRA · PREFERENCIA',
+  'URANUS · QUESTION': 'URANO · PREGUNTA',
   'The memories nothing has ever reached for, that share a subject with nothing, and that have had their chances':
     'Muestra las memorias que nunca se han usado, que no comparten tema con ninguna otra y que ya tuvieron su oportunidad',
   'The questions this archive cannot answer yet, written from what it already holds':
@@ -5299,7 +5299,7 @@ export const ES = {
   'How this project looks and works. Type in the search to find a setting by its name, such as «accent» or «permissions».': 'Cómo se ve y cómo trabaja este proyecto. Escribe en el buscador para encontrar un ajuste por su nombre, como «acento» o «permisos».',
   'Features you turn on when you need them. Press a tile to read what it does before you switch it on.': 'Funciones que enciendes cuando las necesitas. Toca un mosaico para leer qué hace antes de encenderlo.',
   'When something goes wrong, write it as you see it, for example «Claude asks me to sign in». Diagnostics finds the case and tells you what to do.': 'Cuando algo falla, escríbelo aquí como lo ves, por ejemplo «Claude me pide iniciar sesión». Diagnóstico encuentra el caso y te dice qué hacer.',
-  'What MADRE remembers about this project, drawn as stars. Drag to turn it, scroll to come closer and click a star to read it.': 'Lo que MADRE recuerda de este proyecto, dibujado como estrellas. Arrastra para girarlo, usa la rueda para acercarte y haz clic en una estrella para leerla.',
+  'What MADRE remembers about this project, drawn as planets. Drag to turn it, scroll to come closer and click a planet to read it.': 'Lo que MADRE recuerda de este proyecto, dibujado como planetas. Arrastra para girarlo, usa la rueda para acercarte y haz clic en un planeta para leerlo.',
   'The agents this project can call, and which of them are ready. You sign in to them in Settings › Agents.': 'Las IAs que este proyecto puede llamar y cuáles están listas. Inicias sesión con ellas en Ajustes › Tus IAs.',
   'The tiles you took off and the widgets you can add. A widget shows up only when this Mac has something to put in it. Right-click any tile to move it, change its size or take it off.': 'Las tarjetas que quitaste y los widgets que puedes agregar. Un widget aparece solo cuando esta Mac tiene algo que poner en él. Con clic derecho en cualquier tarjeta la mueves, le cambias el tamaño o la quitas.',
   'Which projects can look up what another learned, and the contract each one signed. Nothing is shared without your signature, and you can cancel any connection here.':
