@@ -10270,7 +10270,8 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 :root:not([data-lab10]) #messages#messages .choice:not(.run-request) .choice-tag.chosen-tag { background: var(--agent, var(--phosphor)); color: var(--agent-on, var(--bg)); font-weight: 600; }
 /* Answered (2026-10-19): the option the human sent stays marked in the history, and the rest step
    back; still pressable, to change one's mind. */
-:root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request) .choice-option.chosen { background: color-mix(in srgb, var(--agent, var(--phosphor)) 12%, transparent); box-shadow: inset 3px 0 0 var(--agent, var(--phosphor)); }
+/* Chosen: its ground and its filled number say it; no bar at its left edge (2026-11-15, the author). */
+:root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request) .choice-option.chosen { background: color-mix(in srgb, var(--agent, var(--phosphor)) 12%, transparent); }
 :root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request) .choice-option.chosen .choice-key { background: var(--agent, var(--phosphor)); color: var(--agent-on, var(--bg)); }
 :root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request):has(.chosen) .choice-option:not(.chosen) { opacity: .55; }
 :root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request):has(.chosen) .choice-option:not(.chosen):is(:hover, :focus-visible) { opacity: 1; }
@@ -14370,7 +14371,9 @@ button.image-away { border: 0; color: var(--agent, var(--phosphor)); font: inher
 .bubble .task-track { flex: 0 1 160px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; }
 .bubble .task-fill { display: block; height: 100%; border-radius: inherit; background: var(--phosphor); transition: width .25s ease; }
 /* Notices: note, tip, important, warning, caution, each with its colour. */
-.bubble .callout { --c: #2563eb; margin: 10px 0; padding: 10px 14px; border-radius: 0 10px 10px 0; border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); }
+/* Its tint and its titled icon say what kind it is; no bar at its left edge, round on every corner
+   as the cards of the thread (2026-11-15, the author). */
+.bubble .callout { --c: #2563eb; margin: 10px 0; padding: 12px 16px; border-radius: 12px; border: 0; background: color-mix(in srgb, var(--c) 8%, transparent); }
 .bubble .callout.tip { --c: #059669; }
 .bubble .callout.important { --c: #7c3aed; }
 .bubble .callout.warning { --c: #d97706; }
@@ -14959,3 +14962,12 @@ dialog.intents-window .intents-page { gap: 12px; padding: 14px 16px 18px; }
 #messages#messages .row.plan-step.open .plan-step-full > :first-child { margin-top: 0; }
 #messages#messages .row.plan-step.open .plan-step-full > :last-child { margin-bottom: 0; }
 #messages#messages .row.plan-step.open .plan-step-time { margin-left: auto; }
+
+/* AN OPEN ROW OF «EN MARCHA» IS ONE CARD (2026-11-15, the author: «el botón Ir al chat va dentro del
+   dropdown»). Open, only the row's line wore the ground, and what it opened — the steps, «Ir al chat»,
+   «Detener» — hung under it as if it were the next thing in the list. Now the ground is the row's:
+   the line and what it opens are one card, its keys inside it. */
+.ap-row.open { background: var(--cs-hover, color-mix(in srgb, var(--text) 5%, transparent)); }
+.ap-row.open .ap-line, .ap-row.open .ap-line:hover { background: none; }
+.ap-row.open > .ap-more { padding-bottom: 12px; }
+.ap-row + .ap-row.open, .ap-row.open + .ap-row { margin-top: 6px; }
