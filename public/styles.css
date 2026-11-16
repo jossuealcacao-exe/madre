@@ -14690,6 +14690,167 @@ html.chat-shell dialog.viewer .code-files > .tree-search { padding-top: 8px; }
    for the token saver (.ash-toggle): about 4.8 : 1 on the tint. */
 :root[data-scheme="light"] :is(.sx-chip.on, .sx-always, .exam.passed .verdict) { color: color-mix(in srgb, var(--phosphor) 78%, #000000); }
 
+/* ==========================================================================================
+   SETTINGS AT ANY WIDTH (2026-11-15, the author: «todos los elementos dentro de Ajustes hazlos
+   responsive»). The desktop app lets the window be small, and a category is read in a sheet narrower
+   than the window: 576 px at 900, 640 at 680, about 430, 330 and 270 in the rail at 520, 420 and 360.
+   The rules below asked the window (`settings`) or the screen (@media), so at 900 Memory put its four
+   figures in a row of 576 px and «Respuestas que usaron memorias» broke word by word. What is inside a
+   category now asks the sheet itself (`sheet`), and every piece that did not fit — figures, rails of
+   options, a table, a head with keys — finds room under or beside itself instead of cutting a word,
+   one word per line or a scroll sideways. Where it already fit, nothing moves.
+   ========================================================================================== */
+.settings-body :is(.settings-scroll, .settings-page), .sm-settings-body .settings-scroll { container: sheet / inline-size; }
+
+/* The board (Home's at any width; a project's from 560 px): two cards to a row while a card has room
+   for its name, its line and its quick key; one under the other in a narrow window — at 360–420
+   «Barra lateral» stood a word per line, the agents' tiles said «conecta-da» and the Theme rail ran
+   past its card. */
+@container settings (max-width: 499px) {
+  .settings-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The status line under a category's title says it whole: one line on the cards, as many as it needs
+   over the category (it was cut at «las encuentra…» at 360–520). */
+html.chat-shell #settings .settings-detail-head .settings-line, #settings .settings-detail-head .settings-line { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* Every block's head: the title keeps at least 200 px, and what stands beside it (a time and a key,
+   «Importar desde tus apps · Agregar conector») goes under it, at the right, when both do not fit. */
+.sx-head { flex-wrap: wrap; row-gap: 8px; }
+.sx-head > .sx-words { flex: 1 1 200px; }
+.sx-head > :not(.sx-words) { margin-left: auto; max-width: 100%; }
+.mcp-block > .sx-head > .sx-field { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.mcp-block > .sx-head > .sx-field > .sx-btn { flex: 1 0 auto; }
+
+/* RAILS OF OPTIONS. An option never splits its name («8 h» over two lines, «Pedir siempre» in two);
+   when the rail is wider than its row its options wrap onto a second row, and on a narrow sheet each
+   row fills the width, so it reads as a grid and not as a rail that ran out. */
+.sx-seg { flex-wrap: wrap; max-width: 100%; }
+.sx-seg > button { flex-shrink: 0; white-space: nowrap; }
+@container sheet (max-width: 480px) { .sx-seg > button { flex-grow: 1; } }
+/* The wrapped rail's tab (app.js, segThumbAt) also travels between rows. */
+.seg-thumb { transition-property: left, width, top, height; }
+/* Permissions › How you give permission: two keys of equal width while their names fit; when one does
+   not («Tu frase secreta, dos veces» at 360), it keeps its name and the other key goes under it. */
+.perm-keys .sx-seg { flex-wrap: wrap; }
+.perm-keys .sx-seg button { min-width: max-content; overflow: visible; text-overflow: clip; }
+/* Appearance › Bubbles and Text: four options, two by two when four do not fit («Có…», «Más…»). */
+@container sheet (max-width: 470px) {
+  .sx-look .sx-row.stack .custom-seg:not(.two):not(.three) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Home › Appearance: its rails share the row by their names; one that does not fit («Te neces…»,
+   «Nomb…», «Recient…» at 360–420) puts its last options on a second row, whole. */
+.sm-look .sx-row.stack .custom-seg { flex-wrap: wrap; }
+.sm-look .sx-row.stack .custom-seg .seg-option { flex: 1 0 auto; }
+
+/* PERMISSIONS › WHAT EACH AI MAY DO. Five modes, each its number over its name, in one row while every
+   name fits whole (about 94 px each); three to a row, then two, when they do not — «Sin gu…»,
+   «Solo c…» at 360–520. The last one, alone on its row, takes the row. */
+@container sheet (max-width: 529px) {
+  /* Three over two, the two centred under the three (six half columns, each option two of them).
+     Counted by type: the travelling tab (a span) comes and goes among the options. */
+  .perm-who .sx-seg.perm-modes { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .perm-who .sx-seg.perm-modes button { grid-column: span 2; }
+  .perm-who .sx-seg.perm-modes button:nth-of-type(4) { grid-column: 2 / span 2; }
+}
+@container sheet (max-width: 329px) {
+  .perm-who .sx-seg.perm-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .perm-who .sx-seg.perm-modes button, .perm-who .sx-seg.perm-modes button:nth-of-type(4) { grid-column: auto; }
+  .perm-who .sx-seg.perm-modes button:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+}
+/* The key over them: what each mode lets goes under its name when the sheet is narrow (it asked the
+   screen, so a narrow window kept three columns and the words ran one or two per line). */
+@container sheet (max-width: 440px) {
+  .perm-legend li { grid-template-columns: 26px minmax(0, 1fr); row-gap: 1px; }
+  .perm-legend small { grid-column: 2; }
+  .perm-legend li + li { margin-top: 5px; }
+}
+
+/* MEMORY › AT A GLANCE. Four figures in a row only when the sheet has room for them (720 px); two by
+   two below that, and one under the other on the narrowest sheet. Each figure's lines share their rows
+   with the figure beside it, so the numbers stand on one line whatever their labels wrap to. */
+.sx-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@container sheet (max-width: 719px) { .sx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container sheet (max-width: 299px) { .sx-stats { grid-template-columns: minmax(0, 1fr); } }
+@supports (grid-template-rows: subgrid) {
+  .sx-stat { grid-row: span 4; grid-template-rows: subgrid; row-gap: 2px; }
+}
+/* Its progress: on a narrow sheet the stage («Tomando forma») goes under the title and the figure
+   stays beside it. */
+@container sheet (max-width: 399px) {
+  .sx-ripe .top { flex-wrap: wrap; row-gap: 2px; }
+  .sx-ripe .top .stage { order: 3; flex-basis: 100%; }
+}
+/* «What to do now» puts its key under its words when they would stand one per line beside it. */
+@container sheet (max-width: 440px) {
+  .sx-ripe .next { flex-direction: column; align-items: stretch; }
+}
+/* A chart's top: the highest figure («Máximo 14») is one piece, its title wraps instead. */
+.settings-detail .sx-analysis .mem-strip-head span { flex: none; white-space: nowrap; }
+/* Train your own AI › step by step: a command keeps the width of its box, and «Copiar» goes under it
+   when both do not fit (at 360 the command ran down a column of 120 px beside the key). */
+.sx-steps .sx-command { flex-wrap: wrap; row-gap: 2px; }
+.sx-steps .sx-command code { flex: 1 1 220px; }
+.sx-steps .sx-command > :not(code) { margin-left: auto; }
+
+/* AGENTS. An agent's settings come in pairs while a pair has room (the starting mode, «#1 Solo
+   conversar · #2 Puede crear», ran past its card at 520); one under the other below 500 px. */
+@container (max-width: 499px) {
+  .sx-duo { grid-template-columns: 1fr; }
+  .sx-duo > .sx-row + .sx-row { border-left: 0; }
+}
+/* The card's body is never wider than the card: OpenCode's opened 14 px past its right edge at 360,
+   and its rows were cut there. */
+.sx-agent-body { grid-template-columns: minmax(0, 1fr); }
+/* OpenCode › add a provider: in a narrow card the provider's key takes the row («Anthropic» was cut to
+   «Anthr…» in a column the width of «Agregar»). */
+@container (max-width: 560px) { .oc-add .pp { grid-column: 1 / -1; } }
+/* Where it lives, whole: on a narrow sheet the version and the path wrap instead of being cut. */
+@container sheet (max-width: 559px) {
+  .sx-meta code { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+}
+
+/* LOCAL AI › every size. The table wraps its words on a narrow sheet instead of scrolling sideways;
+   the sizes in GB stay whole. */
+@container sheet (max-width: 520px) {
+  .sx-models :is(th, td) { white-space: normal; }
+  .sx-models td:nth-child(2), .sx-models td:nth-child(3) { white-space: nowrap; }
+  .sx-models :is(th, td):not(:last-child) { padding-right: 8px; }
+}
+/* Narrower still, each size is two lines: the model and its two figures, and under them what it does
+   on this computer («corre · entrena», «no cabe»), which says itself without its heading. */
+@container sheet (max-width: 420px) {
+  /* The rows share their columns (subgrid), each as wide as its widest figure or heading. */
+  .sx-models { display: grid; grid-template-columns: auto auto auto; column-gap: 6px; }
+  .sx-models tr { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-columns: subgrid; padding: 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 5%, transparent); }
+  .sx-models tr:first-child { padding-top: 0; border-bottom-color: color-mix(in srgb, var(--text) 9%, transparent); }
+  .sx-models tr:last-child { border-bottom: 0; }
+  .sx-models :is(th, td) { padding: 0; border: 0; white-space: nowrap; }
+  /* The headings a size smaller, and free to take two lines if even so they do not fit. */
+  .sx-models th { font-size: 11.5px; white-space: normal; }
+  .sx-models td:nth-child(4) { grid-column: 1 / -1; padding-top: 2px; white-space: normal; }
+  .sx-models th:nth-child(4) { display: none; }
+}
+
+/* WORK AND LIMITS › the modules' tables («Tipo de pedido · Nivel · Respuestas · Estado»): on a narrow
+   sheet the state, the longest, goes under its kind across the row, and the three short columns keep
+   their room. The module window hides the level and the count there; Settings keeps them. */
+@container sheet (max-width: 480px) {
+  #settings .mods-detail .mods-reading .intents-table { grid-template-columns: minmax(0, 1fr) auto auto !important; column-gap: 14px !important; }
+  #settings .mods-detail .mods-reading .intents-table :is(.intent-rung, .intent-n) { display: block; }
+  #settings .mods-detail .mods-reading .intents-table > .intent-state { grid-column: 1 / -1; padding-top: 0; border-top: 0 !important; }
+  #settings .mods-detail .mods-reading .intents-table > .intent-head:nth-child(4) { display: none; }
+}
+
+/* CONNECTORS. A connector's name and its tag share the line while both fit; when they do not, the tag
+   goes under the name and the name is never cut («Microso…», «Cloudfla…» at 360). */
+.mcp-card-top { flex-wrap: wrap; row-gap: 4px; justify-content: flex-start; }
+.mcp-card-top b { flex: 1 1 auto; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }
+
+/* UPDATES › what the diagnostics would send: its lines wrap inside the box instead of scrolling
+   sideways. */
+.sx-code { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: hidden; }
+
 /* ---- Terminal and editor: Coldbrew, Oldcode and Simple (2026-11-14, the author) ----
    Ajustes › Apariencia › Terminal y editor puts data-code-theme on the root (app.js, LOOKS.codeTheme).
    Simple is the room as it always was and writes no attribute: nothing here touches it. Each style
