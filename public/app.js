@@ -11919,6 +11919,11 @@ function segThumbAt(seg, at) {
   const track = seg.getBoundingClientRect();
   thumb.style.left = `${at.left - track.left}px`;
   thumb.style.width = `${at.width}px`;
+  // A rail on a narrow sheet wraps onto more rows (2026-11-15): the tab takes the row of its option.
+  // On one row it keeps the place its stylesheet gives it.
+  const tops = new Set([...seg.children].filter((node) => node !== thumb).map((node) => Math.round(node.getBoundingClientRect().top)));
+  if (tops.size > 1) Object.assign(thumb.style, { top: `${at.top - track.top - seg.clientTop}px`, height: `${at.height}px`, bottom: 'auto' });
+  else for (const side of ['top', 'height', 'bottom']) thumb.style.removeProperty(side);
   return thumb;
 }
 // After a choice: hold the tab where it was until the rail says what was chosen, then send it there.
@@ -11938,7 +11943,7 @@ function segTravel(seg, from, was) {
     const track = trackAt();
     if (track && track !== current) { current.querySelector(':scope > .seg-thumb')?.remove(); current.classList.remove('seg-sliding'); current = track; current.classList.add('seg-sliding'); segThumbAt(current, from).style.transition = 'none'; }
     const chosen = segChosen(track);
-    const moved = chosen && (chosen !== was || !was.isConnected) && Math.abs(segRect(chosen).left - from.left) > 1;
+    const moved = chosen && (chosen !== was || !was.isConnected) && (Math.abs(segRect(chosen).left - from.left) > 1 || Math.abs(segRect(chosen).top - from.top) > 1);
     if (track && chosen && (moved || frames > 45)) {
       const thumb = segThumbAt(track, from);
       thumb.getBoundingClientRect();
@@ -11972,7 +11977,8 @@ document.addEventListener?.('pointerdown', (event) => {
   const x0 = event.clientX;
   let gliding = false;
   let over = start;
-  const nearest = (x) => options.reduce((best, node) => { const box = node.getBoundingClientRect(); const d = Math.abs(x - (box.left + box.width / 2)); return d < best.d ? { node, d } : best; }, { node: start, d: Infinity }).node;
+  // The nearest by its centre, across and down: a rail wrapped onto two rows is slid along both.
+  const nearest = (x, y) => options.reduce((best, node) => { const box = node.getBoundingClientRect(); const d = Math.hypot(x - (box.left + box.width / 2), y - (box.top + box.height / 2)); return d < best.d ? { node, d } : best; }, { node: start, d: Infinity }).node;
   const place = (node) => {
     segThumbAt(seg, segRect(node));
     for (const option of options) option.classList.toggle('glide-on', option === node);
@@ -11987,7 +11993,7 @@ document.addEventListener?.('pointerdown', (event) => {
       thumb.getBoundingClientRect();
       thumb.style.transition = '';
     }
-    over = nearest(moving.clientX);
+    over = nearest(moving.clientX, moving.clientY);
     place(over);
   };
   const up = () => {
