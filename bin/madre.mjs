@@ -15,7 +15,7 @@ import { isOnline, runSetup } from '../src/setup.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { choosePort, ensureSalasProject, isSalasRoom, keptPorts, projectRootFor } from '../src/salas.mjs';
 import { forgetNpxLaunch } from '../src/npm-launch.mjs';
-import { fichaHeaders, readFicha, withFicha } from '../src/ficha.mjs';
+import { fichaHeaders, fichaShown, readFicha, withFicha, withoutFicha } from '../src/ficha.mjs';
 import { createServer } from 'node:net';
 
 // Before anything is run: what npx left about the call that started MADRE is not passed on to the
@@ -67,7 +67,9 @@ const option = (name, fallback) => cli.option(name.replace(/^--/, ''), fallback)
 // opened unless --no-open.
 async function showOpen(url, { openBrowser = true, openPath = '' } = {}) {
   const address = withFicha(`${url}${openPath}`, await readFicha(salasHome));
-  console.log(`\n${t('MADRE is already open for this project')}\n\n  ${address}\n  ${t('Project:')} ${projectRoot}\n  ${t('Close that room first if you want a fresh one.')}\n`);
+  // The key only where a person or the app reads it (L-15, src/ficha.mjs).
+  const shown = fichaShown() ? address : withoutFicha(address);
+  console.log(`\n${t('MADRE is already open for this project')}\n\n  ${shown}\n  ${t('Project:')} ${projectRoot}\n  ${t('Close that room first if you want a fresh one.')}\n`);
   if (openBrowser) await openUrl(address);
 }
 

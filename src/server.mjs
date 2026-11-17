@@ -164,7 +164,7 @@ import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
 import { readAt } from './checkpoint.mjs';
-import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, defaultStateRoot, ensureFicha, fichaCookie, fichaHeaders, fichaReader, openPrivateLog, previewKey, readFicha, sameFicha, withFicha } from './ficha.mjs';
+import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, defaultStateRoot, ensureFicha, fichaCookie, fichaHeaders, fichaReader, fichaShown, openPrivateLog, previewKey, withoutFicha, readFicha, sameFicha, withFicha } from './ficha.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -5957,7 +5957,10 @@ export async function startPulse({ port, projectRoot, openBrowser: asked, openPa
   // In the language MADRE speaks (QA 1.1.0, NUE-01): the terminal said «MADRE is ready» above
   // «Abre esta dirección…», and Home was called «Project: …/.pulse/salas», a folder of MADRE's own.
   const where = salasRoom ? t('Home: every project on this computer') : `${t('Project:')} ${projectRoot}`;
-  console.log(`\n${t('MADRE is ready')}\n\n  ${opening}\n  ${where}\n  ${t('Agents installed: {list} (who is signed in: Settings › Agents)', { list: ready })}\n${broken ? `  ${t('Found but not answering: {list}', { list: broken })}\n` : ''}`);
+  // The key only where a person or the app reads it (L-15): a log gets the address without it.
+  const shown = fichaShown() ? opening : withoutFicha(opening);
+  const keyNote = shown === opening ? '' : `  ${t('The access key is not written here. To open MADRE, run npx @jossuealcala/madre in a terminal on this computer.')}\n`;
+  console.log(`\n${t('MADRE is ready')}\n\n  ${shown}\n  ${where}\n  ${t('Agents installed: {list} (who is signed in: Settings › Agents)', { list: ready })}\n${broken ? `  ${t('Found but not answering: {list}', { list: broken })}\n` : ''}${keyNote}`);
   // Not waited for: the signals below are set up while the browser opens.
   if (openBrowser) void openUrl(opening);
   // SIGHUP too: closing the Terminal the room was started in is a way of closing it.

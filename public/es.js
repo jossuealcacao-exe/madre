@@ -534,6 +534,7 @@ export const ES = {
   'Settings › Updates and errors': 'Ajustes › Actualizaciones y errores',
   // Un mensaje demasiado largo (D-40, 2026-11-17): qué hacer, sin «Request too large».
   'That is too much to send at once.': 'Es demasiado para enviarlo de una vez.',
+  'The access key is not written here. To open MADRE, run npx @jossuealcala/madre in a terminal on this computer.': 'La llave de acceso no se escribe aquí. Para abrir MADRE, ejecuta npx @jossuealcala/madre en una terminal de esta computadora.',
   'Your message is too long to send as text. Attach it as a file instead.': 'Tu mensaje es demasiado largo para enviarlo como texto. Adjúntalo como archivo.',
   // La licencia según dónde corre MADRE (2026-11-17): en la app, su licencia personal; desde npm o el código, la BSL.
   'Free for you. What you make with MADRE is yours.': 'Gratis para ti. Lo que creas con MADRE es tuyo.',

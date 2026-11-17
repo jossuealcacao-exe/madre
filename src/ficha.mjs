@@ -114,6 +114,22 @@ export function withFicha(url, ficha) {
   return address.toString();
 }
 
+// Where the address may carry the ficha when MADRE writes it out (L-15, 2026-11-14): a terminal a
+// person reads at once, or the desktop app, which reads it to open MADRE (MADRE_APP=1). Anywhere
+// else — a log a start script or a service writes, which others on the computer may read — the
+// address goes without it. PULSE_PRINT_FICHA=1 asks for it anyway (QA scripts that read their log).
+export function fichaShown({ stream = process.stdout, env = process.env } = {}) {
+  return Boolean(stream?.isTTY) || env.MADRE_APP === '1' || env.PULSE_PRINT_FICHA === '1';
+}
+export function withoutFicha(url) {
+  try {
+    const address = new URL(url);
+    if (!address.searchParams.has(FICHA_PARAM)) return url;
+    address.searchParams.delete(FICHA_PARAM);
+    return address.toString();
+  } catch { return url; }
+}
+
 // Constant time, and never a throw on something that is not a string.
 export function sameFicha(given, ficha) {
   if (typeof given !== 'string' || typeof ficha !== 'string' || !given || given.length !== ficha.length) return false;
