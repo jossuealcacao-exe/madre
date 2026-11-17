@@ -183,7 +183,10 @@ export function playwrightHealth({ browser = 'chromium', env = process.env, cwd 
   if (env.PULSE_PLAYWRIGHT_CHECK === '0') return started.result;
   if (started.browser !== browser) started = { at: 0, result: null, asking: null, browser };
   if (!started.asking && now - started.at > 10 * 60 * 1000) {
-    started.asking = check({ browser, env, cwd }).then((result) => { if (started.browser === browser) started = { at: Date.now(), result, asking: null, browser }; return result; }, () => { started.asking = null; return null; });
+    // Only this check writes its answer (Q-24): one forgotten, or asked before the person chose
+    // another browser and came back, arrives late and must not land over the newer one.
+    const asking = check({ browser, env, cwd }).then((result) => { if (started.asking === asking) started = { at: Date.now(), result, asking: null, browser }; return result; }, () => { if (started.asking === asking) started.asking = null; return null; });
+    started.asking = asking;
   }
   return started.result;
 }

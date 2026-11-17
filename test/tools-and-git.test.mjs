@@ -174,8 +174,13 @@ test('PLAYWRIGHT already on: a browser that does not start is said on its card a
   assert.deepEqual(playwrightHealth({ env: {}, check }), { ok: false, problem: 'Browser "chrome-for-testing" is not installed' });
   assert.equal(asked, 1, 'asked again before ten minutes passed');
   const module = moduleById('playwright');
-  const turn = await module.toolsForTurn({ env: process.env, projectRoot: '/p', settings: { enabled: true, browser: 'chromium' } }, { mode: 1, text: 'abre la página en el navegador', port: 4319 }).catch(() => null);
-  if (turn) assert.deepEqual(turn, [], 'a browser known not to start was handed to a turn');
+  // Only where the browser server is installed (Q-24): without it, the turn starts the real download
+  // in the background, and its answer, arriving later, landed over the next test's.
+  const { playwrightVersion } = await import('../src/modules/playwright.mjs');
+  if (await playwrightVersion({ env: process.env, projectRoot: '/p' })) {
+    const turn = await module.toolsForTurn({ env: process.env, projectRoot: '/p', settings: { enabled: true, browser: 'chromium' } }, { mode: 1, text: 'abre la página en el navegador', port: 4319 }).catch(() => null);
+    if (turn) assert.deepEqual(turn, [], 'a browser known not to start was handed to a turn');
+  }
   forgetPlaywrightHealth();
 });
 
@@ -195,6 +200,23 @@ test('PLAYWRIGHT: the answer belongs to the browser it was asked about, and the 
   assert.equal(installBrowserLine('webkit'), 'npx @playwright/mcp install-browser webkit');
   assert.equal(installBrowserLine('chromium'), 'npx @playwright/mcp install-browser chromium');
   assert.equal(installBrowserLine('nope'), 'npx @playwright/mcp install-browser chromium');
+  forgetPlaywrightHealth();
+});
+
+// Q-24 (2026-11-17): a check still on its way when the answer was forgotten, or when the person chose
+// another browser and came back, landed later over the newer answer for the same browser.
+test('PLAYWRIGHT: a check that was forgotten never lands over a newer answer', async () => {
+  const { playwrightHealth, forgetPlaywrightHealth } = await import('../src/modules/playwright.mjs');
+  forgetPlaywrightHealth();
+  let late;
+  const slow = () => new Promise((resolve) => { late = resolve; });
+  playwrightHealth({ env: {}, check: slow, browser: 'chromium' });
+  forgetPlaywrightHealth();
+  playwrightHealth({ env: {}, check: async () => ({ ok: true, checked: true }), browser: 'chromium' });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  late({ ok: false, problem: 'spawn npm ENOENT' });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.deepEqual(playwrightHealth({ env: {}, check: slow, browser: 'chromium' }), { ok: true, checked: true }, 'the forgotten check wrote over the newer answer');
   forgetPlaywrightHealth();
 });
 
