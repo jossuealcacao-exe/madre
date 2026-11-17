@@ -88,23 +88,27 @@ export const TRADEMARKS = () => t('Codex is a trademark of OpenAI, Claude of Ant
 // needs: what the license says and where to read it whole. Who made MADRE stays in every corner
 // (drawAttribution); the marks of the AIs are said at the foot, as the law asks.
 export const APP_LICENSE_LINKS = { es: 'https://madre.run/app/licencia/', en: 'https://madre.run/en/app/license/' };
+export const SOURCE_LICENSE_LINKS = { es: 'https://madre.run/licencia/', en: 'https://madre.run/en/license/' };
 export function drawLegal(host, { app = false } = {}) {
   if (!host) return null;
   const make = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
   const block = make('section', 'sx-block sx-legal');
   const head = make('header', 'sx-head');
   const words = make('div', 'sx-words');
+  // Short and calm (2026-11-17, the author: «no se entiende y da miedo»): what the person gets, in two
+  // lines; the whole text lives on madre.run for whoever wants to read it.
   words.append(make('h3', null, t('License')), make('p', null, app
-    ? t('MADRE for desktop is used under its personal license: free for you as a person, also if you work on your own for your clients. What you make with it is yours. Organizations need a license of their own. The app\'s code is private, and it comes as it is, with no warranty.')
-    : t('© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.', { year: YEAR, author: AUTHOR, license: LICENSE_NAME })));
+    ? t('Free for you. What you make with MADRE is yours.')
+    : t('Free for individuals and teams of up to 10. What you make with MADRE is yours.')));
   head.append(words);
   const rows = make('div', 'sx-rows');
   const line = make('div', 'sx-row');
   const text = make('div', 'sx-words');
-  text.append(make('b', null, t('The license')), make('span', 'sx-hint', app ? t('Personal license of MADRE for desktop') : t('{license} · free for individuals and teams of up to 10', { license: LICENSE_NAME })));
+  text.append(make('b', null, t('The license')), make('span', 'sx-hint', t('The details, on madre.run')));
   const box = make('div', 'sx-control');
   const link = make('a', 'sx-btn', t('Read'));
-  link.href = app ? (APP_LICENSE_LINKS[language()] ?? APP_LICENSE_LINKS.es) : LEGAL_LINKS.license;
+  const links = app ? APP_LICENSE_LINKS : SOURCE_LICENSE_LINKS;
+  link.href = links[language()] ?? links.es;
   link.target = '_blank';
   link.rel = 'noopener';
   box.append(link);

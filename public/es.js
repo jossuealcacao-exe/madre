@@ -533,9 +533,20 @@ export const ES = {
     'como mucho una vez al día por paquete, para avisarte cuando sale una versión nueva',
   'Settings › Updates and errors': 'Ajustes › Actualizaciones y errores',
   // La licencia según dónde corre MADRE (2026-11-17): en la app, su licencia personal; desde npm o el código, la BSL.
-  'MADRE for desktop is used under its personal license: free for you as a person, also if you work on your own for your clients. What you make with it is yours. Organizations need a license of their own. The app\'s code is private, and it comes as it is, with no warranty.':
-    'MADRE para escritorio se usa con su licencia personal: es gratis para ti como persona, también si trabajas por tu cuenta para tus clientes. Lo que creas con ella es tuyo. Las organizaciones necesitan una licencia propia. El código de la app es privado y se entrega tal cual, sin garantías.',
-  'Personal license of MADRE for desktop': 'Licencia personal de MADRE para escritorio',
+  'Free for you. What you make with MADRE is yours.': 'Gratis para ti. Lo que creas con MADRE es tuyo.',
+  'Free for individuals and teams of up to 10. What you make with MADRE is yours.': 'Gratis para personas y equipos de hasta 10. Lo que creas con MADRE es tuyo.',
+  'The details, on madre.run': 'Los detalles, en madre.run',
+  // Lo que se enviaría, en palabras de persona (2026-11-17).
+  'A random number for this copy,': 'Un número al azar para esta copia,',
+  'not for you: it tells one copy from another, never who uses it.': 'no para ti: distingue una copia de otra, nunca quién la usa.',
+  'Your version and your system:': 'Tu versión y tu sistema:',
+  'How much each part was used:': 'Cuánto se usó cada parte:',
+  '{n} uses over {days} day(s), such as opening a project or starting MADRE.': '{n} usos en {days} día(s), como abrir un proyecto o encender MADRE.',
+  'Errors:': 'Errores:',
+  '{n} waiting, with private details removed.': '{n} esperando, sin datos privados.',
+  'none waiting.': 'ninguno esperando.',
+  'What you write, your projects and your files are never sent.': 'Lo que escribes, tus proyectos y tus archivos nunca se envían.',
+  'See the technical detail': 'Ver el detalle técnico',
   'The name of a repository, to read the tag of its latest release. Nothing about you or your project.':
     'El nombre de un repositorio, para leer la etiqueta de su última publicación. Nada sobre ti ni sobre tu proyecto.',
   'at most once a day per repository, to tell you a new version is out':
@@ -4661,8 +4672,6 @@ export const ES = {
   '«{name}» is asleep': '«{name}» está dormido',
   'This project is asleep': 'Este proyecto está dormido',
   'Open MADRE the way you always do to come back to Home.': 'Abre MADRE como siempre para volver a Inicio.',
-  '© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.': '© {year} {author}. El código de MADRE es público. Con la {license} es gratis para personas y para organizaciones de hasta 10 personas, también para dar servicios a otros; las organizaciones más grandes, o quien la ofrezca a otros como servicio, necesitan una licencia comercial. Cada versión pasa a la GNU AGPL v3 a los cuatro años de publicarse. No trae garantía de ningún tipo.',
-  '{license} · free for individuals and teams of up to 10': '{license} · gratis para personas y equipos de hasta 10',
   'Restart or turn off MADRE': 'Reiniciar o apagar MADRE',
   'Home and every open project start again': 'Inicio y los proyectos abiertos arrancan de nuevo',
   'Restart MADRE?': '¿Reiniciar MADRE?',
@@ -6788,14 +6797,13 @@ export const ES = {
   'Back to the conversation': 'Volver al chat',
   // Anonymous diagnostics (2026-10-28).
   'Anonymous diagnostics': 'Diagnóstico anónimo',
-  'So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE\'s modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.': 'Para que el autor sepa qué falla y qué se usa, sin preguntarte nada: los errores sin datos privados; cuántos mensajes, permisos y funciones se usaron; cómo funciona esta copia (sistema, memoria de la computadora, IAs, cuántos proyectos, módulos de MADRE) y si se instaló, se actualizó o se desinstaló; y, mientras MADRE está abierta, cada cinco minutos, que está encendida. Nunca lo que escribes, tus proyectos ni tus archivos.',
+  'So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE\'s modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.': 'Le ayuda al autor a saber qué falla y qué se usa, sin saber quién eres. Lo que escribes, tus proyectos y tus archivos nunca se envían.',
   'Send anonymous diagnostics': 'Enviar diagnóstico anónimo',
   'Off: MADRE was started with PULSE_TELEMETRY=0.': 'Apagado: MADRE se inició con PULSE_TELEMETRY=0.',
   'Once a day, and soon after an error never seen before, to madre.run. Turning it off deletes what was waiting.': 'Una vez al día, y poco después de un error nunca visto, a madre.run. Si lo apagas, se borra lo que estaba esperando.',
   'Anonymous diagnostics on.': 'Diagnóstico anónimo encendido.',
   'Anonymous diagnostics off. What was waiting was deleted.': 'Diagnóstico anónimo apagado. Se borró lo que estaba esperando.',
   'See what would be sent': 'Ver lo que se enviaría',
-  '{days} day(s) of counts and {errors} error(s) waiting, with this copy\'s random id, its version and its system.': '{days} día(s) de conteos y {errors} error(es) esperando, con el identificador al azar de esta copia, su versión y su sistema.',
   'Could not read the diagnostics of this copy.': 'No se pudo leer el diagnóstico de esta copia.',
   'MADRE errors': 'Errores de MADRE',
   'What fails in every copy of MADRE, by how many copies it reaches: the ones Diagnostics knows and the ones nobody catalogued. Only you see this.': 'Los errores de todas las copias de MADRE, según a cuántas copias afectan: los que Diagnóstico conoce y los que nadie ha catalogado. Solo tú lo ves.',

@@ -25687,12 +25687,22 @@ function firstTouch(id) {
   const seen = hintsSeen();
   if (!hint || seen[id]) return;
   // Kept as seen only once there is something to point at: a page not drawn yet is not a card shown.
-  const button = document.querySelector(hint.button);
-  if (!button) return;
-  hintSeen(id);
+  if (!document.querySelector(hint.button)) return;
   // Said once what was pressed has opened: some open after a moment, and a modal window (the
   // Memory map) makes everything outside it unreachable, so the card goes inside that window.
-  setTimeout(() => showFirstTouch(hint, button), 320);
+  setTimeout(() => {
+    // What it points at has to be on screen by then (2026-11-17, the author: the card of «Outside
+    // tools» showed in the top corner, its page still sliding in or already gone). If it is not, the
+    // card waits for the next time instead of speaking of nothing, and is not counted as seen.
+    const button = document.querySelector(hint.button);
+    const box = button?.getBoundingClientRect?.();
+    const panel = hint.panel ? document.querySelector(hint.panel) : null;
+    const room = panel && !panel.hidden ? panel.getBoundingClientRect() : null;
+    const onScreen = (rect) => Boolean(rect?.width && rect?.height && rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth);
+    if (!button || (!onScreen(box) && !onScreen(room))) return;
+    hintSeen(id);
+    showFirstTouch(hint, button);
+  }, 320);
 }
 // `step` of `of`: one of a short walk (showNewHints), said as «2 of 5» with «Next», and `skip`
 // puts the rest of it away.
@@ -26269,13 +26279,27 @@ function drawDiagnostics(section) {
       } catch (error) { box.checked = !on; toast(t('It could not be saved: {error}', { error: error.message })); }
       finally { box.disabled = false; }
     }, { disabled: fixed, label: t('Send anonymous diagnostics') }), { off: fixed });
+    // What would leave, said as a person reads it (2026-11-17, the author: the raw JSON scared whoever
+    // opened it): who it is from (a number, not a person), what MADRE and system, how many things were
+    // used, how many errors, and what never leaves. The exact text stays one more fold away.
     const look = el('details', 'sx-more');
     look.append(el('summary', null, t('See what would be sent')));
     const next = reading.next ?? {};
-    const sums = el('p', 'sx-hint', t('{days} day(s) of counts and {errors} error(s) waiting, with this copy\'s random id, its version and its system.', { days: next.days?.length ?? 0, errors: next.errors?.length ?? 0 }));
+    const SYSTEMS = { darwin: 'macOS', linux: next.wsl ? 'Windows (WSL)' : 'Linux', win32: 'Windows' };
+    const uses = (next.days ?? []).reduce((sum, day) => sum + Object.values(day.counts ?? {}).reduce((a, n) => a + (Number(n) || 0), 0), 0);
+    const list = el('ul', 'sx-sent');
+    const item = (strong, words) => { const li = el('li'); li.append(el('b', null, strong), ` ${words}`); list.append(li); };
+    item(t('A random number for this copy,'), t('not for you: it tells one copy from another, never who uses it.'));
+    item(t('Your version and your system:'), `MADRE ${next.version ?? '—'} · ${SYSTEMS[next.os] ?? next.os ?? '—'}${next.arch ? ` (${next.arch})` : ''}.`);
+    item(t('How much each part was used:'), t('{n} uses over {days} day(s), such as opening a project or starting MADRE.', { n: uses, days: next.days?.length ?? 0 }));
+    item(t('Errors:'), next.errors?.length ? t('{n} waiting, with private details removed.', { n: next.errors.length }) : t('none waiting.'));
+    const never = el('p', 'sx-never', t('What you write, your projects and your files are never sent.'));
+    const raw = el('details', 'sx-more sx-raw');
+    raw.append(el('summary', null, t('See the technical detail')));
     const code = el('pre', 'sx-code');
     code.textContent = JSON.stringify(next, null, 2);
-    look.append(sums, code);
+    raw.append(code);
+    look.append(list, never, raw);
     holder.append(look);
   }).catch(() => { if (holder.isConnected) holder.append(el('p', 'sx-hint', t('Could not read the diagnostics of this copy.'))); });
 }

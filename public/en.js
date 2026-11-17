@@ -5,6 +5,7 @@
 // Spanish, so a word can be changed without touching the code that uses it. «Chats», not
 // «Conversations»; «Connectors», not «Outside tools»; «messages», not «exchanges».
 export const EN = {
+  "So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE's modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.": "It helps the author learn what fails and what gets used, without knowing who you are. What you write, your projects and your files are never sent.",
   "ON": "On",
   "OFF": "Off",
   "What MADRE remembers": "MADRE's memory",

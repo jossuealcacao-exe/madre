@@ -15250,3 +15250,10 @@ dialog.intents-window .intents-page { gap: 12px; padding: 14px 16px 18px; }
    panel docked beside the chat starts under the 48 px bar of tool tabs, so its handle sat 24 px lower
    than the sidebar's. Raised by half that bar, both handles meet the window's middle. */
 html.chat-shell .split:not(.chats) > :is(.side-grip, .panel-grip, .dock-grip)::after { top: calc(50% - 24px); }
+
+/* WHAT WOULD BE SENT, AS A PERSON READS IT (2026-11-17): four plain lines, the one thing that never
+   leaves said apart, and the exact text one more fold away. */
+.sx-sent { margin: 4px 0 8px; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.sx-sent b { font-weight: 600; color: var(--text); }
+.sx-never { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+.sx-more.sx-raw { margin-top: 4px; }
