@@ -5,6 +5,8 @@
 // Spanish, so a word can be changed without touching the code that uses it. «Chats», not
 // «Conversations»; «Connectors», not «Outside tools»; «messages», not «exchanges».
 export const EN = {
+  "ON": "On",
+  "OFF": "Off",
   "What MADRE remembers": "MADRE's memory",
   // AI, not agent, in what a person meets in the first days (2026-11-14, docs/private/NARRATIVA-TEXTOS.md).
   "Ask the agent for a note: it writes it and it opens as a colored note.": "Ask the AI for a note: it writes it and it opens as a coloured note.",
@@ -911,7 +913,6 @@ export const EN = {
   "{model} did not pass on {date}: {known} about the projects, {unknown} said it never discussed, {orders} orders.{why}": "{model} did not pass on {date}: {known} about the projects, {unknown} about things never discussed, {orders} orders.{why}",
   "A page, picture or document an AI makes or changes opens beside the conversation.": "A page, picture or document an AI makes or changes opens beside the chat.",
   "So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE's modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.": "So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many messages, permissions and features were used; how this copy runs (system, memory, AIs, how many projects, MADRE's modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.",
-  "Agent logos": "AI logos",
   "{who} takes the notes · they are found {how}": "{who} sums up · memories are found {how}",
   "It writes notes again after this many messages.": "It sums up again after this many messages.",
   "When you ask something, MADRE hands the AI the notes that have to do with it. Here you choose how many, and how it finds them.": "When you ask something, MADRE hands the AI the memories that have to do with it. Here you choose how many, and how it finds them.",
@@ -931,19 +932,16 @@ export const EN = {
   "Settings › Agents › Gemini · without a key it is never asked": "Settings › Your AIs › Gemini · without a key it is never asked",
   "The prompt an agent wrote for an image.": "The prompt an AI wrote for an image.",
   "an agent uses the image tool during a permission to create": "an AI uses the image tool with «Can create»",
-  "Settings › Version and reports › Look for new versions · or PULSE_UPDATE_CHECK=0": "Settings › Updates and errors › Look for new versions · or PULSE_UPDATE_CHECK=0",
   "you press SEND — or on its own, only while auto-report is on": "you press «Send», or on its own while «Send reports automatically» is on",
   "Settings › Version and reports › Report automatically · or PULSE_REPORT_URL": "Settings › Updates and errors › Send reports automatically · or PULSE_REPORT_URL",
   "Settings › Agents › Claude": "Settings › Your AIs › Claude",
   "Memories to embed, exchanges to distil, and whatever you ask @madre. It goes to a port on this machine and stops there.": "Memories to search by meaning, messages to sum up, and whatever you ask @madre. It goes to a port on this computer and stops there.",
-  "Settings › Version and reports › Look for new versions · or PULSE_MARKET=0": "Settings › Updates and errors › Look for new versions · or PULSE_MARKET=0",
   "Off with the anonymous diagnostics: Settings › Version and reports › Send anonymous diagnostics · or PULSE_TELEMETRY=0": "Off with the anonymous diagnostics: Settings › Updates and errors › Send anonymous diagnostics · or PULSE_TELEMETRY=0",
   "an AI uses the image tool during a permission to create, while Images draws with OpenAI": "an AI uses the image tool with «Can create», while Images draws with OpenAI",
   "an AI uses the image tool during a permission to create, while Images draws with Grok": "an AI uses the image tool with «Can create», while Images draws with Grok",
   "The briefing — the document above, your question, the memories it summoned and the transcript it carries — with your Gemini API key, to be answered by the model you chose.": "What MADRE sends the AI (the document above, your question, the memories it found and the chat so far), with your Gemini API key, to be answered by the model you chose.",
   "every turn you send to @gemini while Gemini answers through its API (a Gemini key and no Gemini CLI)": "every message you send to @gemini while Gemini answers through its API (a Gemini key and no Gemini CLI)",
   "you choose it every time you send a turn to @gemini; installing the Gemini CLI hands its turns back to the CLI": "you choose it every time you write to @gemini; installing Gemini CLI hands its messages back to Gemini CLI",
-  "Settings › Version › Notices from MADRE turns off the information and important ones; security notices always show · PULSE_NOTICES=0 for development": "Settings › Updates and errors › Notices from MADRE turns off the informative and important ones; security notices always show · PULSE_NOTICES=0 for development",
   "Settings › Agents › Gemini · or PULSE_GEMINI_QUOTA=0": "Settings › Your AIs › Gemini · or PULSE_GEMINI_QUOTA=0",
   "Settings › Agents › OpenCode · or PULSE_OPENCODE_QUOTA=0": "Settings › Your AIs › OpenCode · or PULSE_OPENCODE_QUOTA=0",
   "Diagnostics › the local model is answering real questions from this project. It takes a few minutes, it spends nothing, and the answer lands here.": "Diagnostics › your local AI is answering real questions from this project. It takes a few minutes, it spends nothing, and the answer lands here.",

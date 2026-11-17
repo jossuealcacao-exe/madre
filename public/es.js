@@ -529,14 +529,17 @@ export const ES = {
     'el registro de npm',
   'The name of a package, to read the version of its latest release. Nothing about you or your project.':
     'El nombre de un paquete, para leer la versión de su última publicación. Nada sobre ti ni sobre tu proyecto.',
-  'at most once a day per package, while Look for new versions is on':
-    'como mucho una vez al día por paquete, mientras «Buscar versiones nuevas» esté encendido',
-  'Settings › Version and reports › Look for new versions · or PULSE_UPDATE_CHECK=0':
-    'Ajustes › Actualizaciones y errores › Buscar versiones nuevas · o PULSE_UPDATE_CHECK=0',
+  'at most once a day per package, to tell you a new version is out':
+    'como mucho una vez al día por paquete, para avisarte cuando sale una versión nueva',
+  'Settings › Updates and errors': 'Ajustes › Actualizaciones y errores',
+  // La licencia según dónde corre MADRE (2026-11-17): en la app, su licencia personal; desde npm o el código, la BSL.
+  'MADRE for desktop is used under its personal license: free for you as a person, also if you work on your own for your clients. What you make with it is yours. Organizations need a license of their own. The app\'s code is private, and it comes as it is, with no warranty.':
+    'MADRE para escritorio se usa con su licencia personal: es gratis para ti como persona, también si trabajas por tu cuenta para tus clientes. Lo que creas con ella es tuyo. Las organizaciones necesitan una licencia propia. El código de la app es privado y se entrega tal cual, sin garantías.',
+  'Personal license of MADRE for desktop': 'Licencia personal de MADRE para escritorio',
   'The name of a repository, to read the tag of its latest release. Nothing about you or your project.':
     'El nombre de un repositorio, para leer la etiqueta de su última publicación. Nada sobre ti ni sobre tu proyecto.',
-  'at most once a day per repository, while Look for new versions is on':
-    'como mucho una vez al día por repositorio, mientras «Buscar versiones nuevas» esté encendido',
+  'at most once a day per repository, to tell you a new version is out':
+    'como mucho una vez al día por repositorio, para avisarte cuando sale una versión nueva',
   'the author\'s error collector':
     'el servicio de reportes de errores del autor de MADRE',
   'An unknown condition: what broke, where in MADRE, and the version. Paths are cut back and your words are not in it.':
@@ -574,8 +577,8 @@ export const ES = {
   // el estado de una dirección de salida, y traducirla la partiría en dos según dónde aparezca.
   // Además, en una interfaz en español ON/OFF se lee sin fricción. LOCAL, por lo mismo.
   'LOCAL': 'Local',
-  'ON': 'ON',
-  'OFF': 'OFF',
+  'ON': 'Encendido',
+  'OFF': 'Apagado',
   '{n} REQUESTS': '{n} peticiones',
   ' · {n} FAILED': ' · {n} fallaron',
   'NOTHING YET': 'Nada todavía',
@@ -2238,8 +2241,6 @@ export const ES = {
   // El canal de releases.
   'MADRE {latest} is on npm · you run {current}': 'Ya salió MADRE {latest} · tú tienes la {current}',
   'The update did not start: {error}': 'La actualización no arrancó: {error}',
-  'Diagnostics › Look for new versions on: one check a day.': 'Diagnóstico › Buscar versiones nuevas encendido: MADRE revisa una vez al día.',
-  'Diagnostics › Look for new versions off: no request leaves for npm.': 'Diagnóstico › Buscar versiones nuevas apagado: MADRE no consulta npm para nada.',
   'The setting was not saved: {error}': 'El ajuste no se guardó: {error}',
 
   // El centinela.
@@ -3546,9 +3547,6 @@ export const ES = {
   'It runs from source.': 'Funciona desde el código fuente.',
   'Up to date': 'Al día',
   'Open': 'Abrir',
-  'Look for new versions': 'Buscar versiones nuevas',
-  'Once a day MADRE checks whether there\'s a new version. Only the app\'s name is sent.': 'Una vez al día MADRE revisa si hay una versión nueva. Solo se envía el nombre de la app.',
-  'Set by PULSE_UPDATE_CHECK.': 'Lo fija PULSE_UPDATE_CHECK.',
   'Last check': 'Última revisión',
   'Not yet.': 'Aún no.',
   'Check now': 'Revisar ahora',
@@ -4413,7 +4411,7 @@ export const ES = {
   'madre.run · the Market': 'madre.run · el Mercado',
   "Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author's signature before it is used.": 'Nada sobre ti: pide el catálogo de módulos, y el archivo de un módulo que obtuviste o que tiene una versión más nueva. Cada archivo se revisa contra la firma del autor antes de usarse.',
   'when MADRE opens, at most every ten minutes, and when you get a module': 'cuando MADRE se abre, como mucho cada diez minutos, y cuando obtienes un módulo',
-  'Settings › Version and reports › Look for new versions · or PULSE_MARKET=0': 'Ajustes › Actualizaciones y errores › Buscar versiones nuevas · o PULSE_MARKET=0',
+  'Settings › Updates and errors · or PULSE_MARKET=0': 'Ajustes › Actualizaciones y errores · o PULSE_MARKET=0',
   'On on this computer': 'Encendida en esta computadora',
   'Off on this computer': 'Apagada en esta computadora',
   'What is on': 'Lo que está encendido',
@@ -4664,9 +4662,7 @@ export const ES = {
   'This project is asleep': 'Este proyecto está dormido',
   'Open MADRE the way you always do to come back to Home.': 'Abre MADRE como siempre para volver a Inicio.',
   '© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.': '© {year} {author}. El código de MADRE es público. Con la {license} es gratis para personas y para organizaciones de hasta 10 personas, también para dar servicios a otros; las organizaciones más grandes, o quien la ofrezca a otros como servicio, necesitan una licencia comercial. Cada versión pasa a la GNU AGPL v3 a los cuatro años de publicarse. No trae garantía de ningún tipo.',
-  'MADRE shows its author in the corner. Please keep it in every copy.': 'MADRE muestra a su autor en la esquina. Pedimos conservarlo en toda copia.',
   '{license} · free for individuals and teams of up to 10': '{license} · gratis para personas y equipos de hasta 10',
-  'On GitHub, to read and to change.': 'En GitHub, para leerlo y cambiarlo.',
   'Restart or turn off MADRE': 'Reiniciar o apagar MADRE',
   'Home and every open project start again': 'Inicio y los proyectos abiertos arrancan de nuevo',
   'Restart MADRE?': '¿Reiniciar MADRE?',
@@ -4992,10 +4988,6 @@ export const ES = {
   '{day}: {installs} installed · {updates} updated · {uninstalls} uninstalled': '{day}: {installs} instaladas · {updates} actualizadas · {uninstalls} desinstaladas',
   '{n} copies this month, each by what it said last. Copies from before 1.1.0 say less: «?» is what they did not say.': '{n} copias este mes, cada una por lo último que dijo. Las copias de antes de 1.1.0 dicen menos: «?» es lo que no dijeron.',
   '{n} copies were heard for the first time in these 30 days, those from before 1.1.0 included.': '{n} copias se oyeron por primera vez en estos 30 días, incluidas las de antes de 1.1.0.',
-  'Support MADRE': 'Apoya a MADRE',
-  'MADRE is free and made by one person. A donation helps keep it going and growing.': 'MADRE es gratis y la hace una sola persona. Una donación ayuda a que siga y crezca.',
-  'Donate': 'Donar',
-  'Once or every month, the amount you choose. GitHub keeps no commission.': 'Una vez o cada mes, la cantidad que elijas. GitHub no cobra comisión.',
   'Give it a star on GitHub': 'Darle una estrella en GitHub',
   'Write a review': 'Escribir una reseña',
   'Don\'t ask again': 'No volver a preguntar',
@@ -5469,11 +5461,8 @@ export const ES = {
   '@madre is in the project · {version}': '@madre está en el proyecto · {version}',
   '@madre left the project: Ollama has no chat model running': '@madre salió del proyecto: Ollama no tiene un modelo de chat abierto',
   // Licencia y autoría (public/attribution.js, 2026-10-15).
-  'License and authorship': 'Licencia y autoría',
-  'Made by {author}': 'Hecho por {author}',
   'The license': 'La licencia',
   'Read': 'Leer',
-  'The source code': 'El código fuente',
   'New: Copilot': 'Nuevo: Copiloto',
   'Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.': 'Deja que una IA trabaje sola un rato. Presiona el robot, elige cuánto tiempo, y la IA a la que le escribes podrá cambiar archivos, armar planes y ejecutar comandos seguros sin preguntarte cada vez. Te pide permiso una sola vez.',
   'New: Outside tools (MCP)': 'Nuevo: Conectores (MCP)',
@@ -6225,6 +6214,7 @@ export const ES = {
   'A skill is off, matched or always on; nothing else.': 'Una habilidad solo puede estar apagada, encendida cuando hace falta o siempre encendida.',
   // Habilidades en el tablero (H-3).
   'Skills': 'Habilidades',
+  'How answers look': 'Cómo se ven las respuestas',
   'Ways of working you keep, handed to whichever agent answers. They tell your agents how you work; they never give them permission.': 'Formas de trabajar que guardas y que recibe la IA que conteste, sea cual sea. Les dicen a tus IAs cómo trabajas; nunca les dan permisos.',
   'When this skill comes in': 'Cuándo se usa esta habilidad',
   'What it says': 'Qué dice',
@@ -7077,8 +7067,6 @@ export const ES = {
   'madre.run said: {error}': 'madre.run respondió: {error}',
   'madre.run did not answer.': 'madre.run no respondió.',
   'That is not a notice MADRE would show: check the words, the dates and the link.': 'Ese no es un aviso que MADRE mostraría: revisa el texto, las fechas y el enlace.',
-  'Notices from MADRE': 'Avisos de MADRE',
-  'What MADRE\'s author tells every copy: a new version, a fix, a service stop. Nothing about you is sent to receive them. Security notices always show.': 'Lo que el autor de MADRE avisa a todas las copias: una versión nueva, un arreglo, un servicio que se detiene. Para recibirlos no se envía nada de ti. Los avisos de seguridad se muestran siempre.',
   'Notices to every copy': 'Avisos a todas las copias',
   'Write a notice that every copy of MADRE shows, with or without diagnostics: signed on this computer, read from madre.run. Only you see this.': 'Escribe un aviso que muestran todas las copias de MADRE, con o sin diagnóstico: se firma en esta computadora y se lee de madre.run. Solo tú lo ves.',
   'Information': 'Información',
@@ -7108,7 +7096,8 @@ export const ES = {
   'madre.run · notices from MADRE\'s author': 'madre.run · avisos del autor de MADRE',
   'Nothing about you: it asks for the notices MADRE\'s author wrote for every copy, not even with this copy\'s version. Each one is checked against the author\'s signature before it shows.': 'Nada de ti: pide los avisos que el autor de MADRE escribió para todas las copias, ni siquiera con la versión de esta copia. Cada uno se comprueba contra la firma del autor antes de mostrarse.',
   'when MADRE opens, and at most every 15 minutes while it is open': 'al abrir MADRE, y a lo más cada 15 minutos mientras está abierta',
-  'Settings › Version › Notices from MADRE turns off the information and important ones; security notices always show · PULSE_NOTICES=0 for development': 'Ajustes › Actualizaciones y errores › Avisos de MADRE apaga los informativos y los importantes; los de seguridad se muestran siempre · PULSE_NOTICES=0 para desarrollo',
+  'Always, so every copy hears of a new version or a fix · PULSE_NOTICES=0 for development':
+    'Siempre, para que toda copia se entere de una versión nueva o de un arreglo · PULSE_NOTICES=0 para desarrollo',
   // Grok (2026-11-06): solo lee y contesta.
   'xAI refused this Grok account (403). Sign in again (grok logout, then grok login); if it keeps happening, check at grok.com that your plan is active.': 'xAI rechazó esta cuenta de Grok (403). Vuelve a iniciar sesión (grok logout y luego grok login); si sigue pasando, revisa en grok.com que tu plan esté activo.',
   'Grok is not signed in. Sign in from Settings › Agents › Grok, or run grok login in a terminal.': 'Grok no tiene sesión. Inicia sesión en Ajustes › Tus IAs › Grok, o ejecuta grok login en una terminal.',
@@ -7170,7 +7159,6 @@ export const ES = {
   'Sign in to Grok again: grok logout, then grok login. If it keeps happening, check at grok.com that your plan is active.': 'Vuelve a iniciar sesión en Grok: grok logout y luego grok login. Si sigue pasando, revisa en grok.com que tu plan esté activo.',
   '#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.': '«Solo conversar» · en MADRE esta IA lee y contesta; ningún permiso le deja escribir.',
   'Always #1: every message to it is answered by reading.': 'Siempre «Solo conversar»: lee y contesta cada mensaje que le mandas.',
-  'Agent logos': 'Logos de las IAs',
   'Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos, and those of the providers OpenCode connects to, belong to their owners and appear unaltered only to identify each service; MADRE is not affiliated with them or endorsed by them.': 'Codex es marca de OpenAI; Claude, de Anthropic; Gemini, de Google; Grok, de xAI, y OpenCode, de sus autores. Sus logos, y los de los proveedores a los que se conecta OpenCode, son de sus dueños y aparecen sin alterar solo para identificar cada servicio; MADRE no está afiliada a ellas ni cuenta con su respaldo.',
   'Search connectors': 'Buscar conectores',
   'No connector matches. Any other MCP server goes in with «Add a tool», above.': 'Ningún conector coincide. Cualquier otro servidor MCP se agrega con «Agregar conector», arriba.',

@@ -117,16 +117,16 @@ export const DESTINATIONS = [
   {
     id: 'npm', host: 'registry.npmjs.org', to: 'the npm registry',
     what: 'The name of a package, to read the version of its latest release. Nothing about you or your project.',
-    when: 'at most once a day per package, while Look for new versions is on',
-    where: 'Settings › Version and reports › Look for new versions · or PULSE_UPDATE_CHECK=0',
+    when: 'at most once a day per package, to tell you a new version is out',
+    where: 'Settings › Updates and errors',
     inside: true,
   },
   {
     // Only the release read: the rest of api.github.com is the GitHub module's, and says so itself.
     id: 'github', host: 'api.github.com', match: (url) => /\/releases\/latest$/.test(url.pathname), to: 'GitHub',
     what: 'The name of a repository, to read the tag of its latest release. Nothing about you or your project.',
-    when: 'at most once a day per repository, while Look for new versions is on',
-    where: 'Settings › Version and reports › Look for new versions · or PULSE_UPDATE_CHECK=0',
+    when: 'at most once a day per repository, to tell you a new version is out',
+    where: 'Settings › Updates and errors',
     inside: true,
   },
   {
@@ -144,7 +144,7 @@ export const DESTINATIONS = [
     id: 'notices', host: 'madre.run', match: (url) => url.pathname === '/api/avisos', to: 'madre.run · notices from MADRE\'s author',
     what: 'Nothing about you: it asks for the notices MADRE\'s author wrote for every copy, not even with this copy\'s version. Each one is checked against the author\'s signature before it shows.',
     when: 'when MADRE opens, and at most every 15 minutes while it is open',
-    where: 'Settings › Version › Notices from MADRE turns off the information and important ones; security notices always show · PULSE_NOTICES=0 for development',
+    where: 'Always, so every copy hears of a new version or a fix · PULSE_NOTICES=0 for development',
     inside: true,
   },
   {
@@ -169,7 +169,7 @@ export const DESTINATIONS = [
     id: 'market', host: 'madre.run', match: (url) => url.pathname.startsWith('/mercado/'), to: "madre.run · the Market",
     what: 'Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author\'s signature before it is used.',
     when: 'when MADRE opens, at most every ten minutes, and when you get a module',
-    where: 'Settings › Version and reports › Look for new versions · or PULSE_MARKET=0',
+    where: 'Settings › Updates and errors · or PULSE_MARKET=0',
     inside: true,
   },
   {

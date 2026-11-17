@@ -566,7 +566,9 @@ export async function createPulseServer({
   // and never a reason for the room not to open.
   // Release channel: one registry read a day, cached for every room on this machine. On by
   // default; PULSE_UPDATE_CHECK=0 or the switch in MU/TH/UR turns it off. Never self-updates.
-  const updatesEnabled = () => (process.env.PULSE_UPDATE_CHECK !== undefined ? process.env.PULSE_UPDATE_CHECK !== '0' : updatesConfig.check !== false);
+  // Always (2026-11-17, the author: every person hears of a new version and decides whether to install
+  // it). Only PULSE_UPDATE_CHECK=0 turns it off, for tests and QA houses; a switch saved before is not read.
+  const updatesEnabled = () => process.env.PULSE_UPDATE_CHECK !== '0';
   let updatesConfig = { ...((await readConfig(root)).updates ?? {}) };
   // THE MARKET from madre.run (src/market-remote.mjs): read when MADRE opens, while Look for new
   // versions is on (PULSE_MARKET=0 says no to it alone). A module got from it updates itself and
@@ -751,7 +753,8 @@ export async function createPulseServer({
   // THE AUTHOR'S NOTICES (Q-11, src/notices.mjs). Every copy asks madre.run for them on its own,
   // with or without the diagnostics, and shows the ones signed with the author's key that are for it.
   const NOTICES_KEY_FILE = process.env.MADRE_NOTICES_KEY_DIR ? join(process.env.MADRE_NOTICES_KEY_DIR, 'ed25519.pem') : join(homedir(), '.madre', 'avisos', 'ed25519.pem');
-  const noticesEnabled = async () => ((await readConfig(root).catch(() => ({})))?.notices?.enabled !== false);
+  // The author's notices always arrive (2026-11-17): a new version, a fix or a service stop is for everyone.
+  const noticesEnabled = async () => true;
   async function noticesForPage() {
     void refreshNotices({ stateRoot: root }).catch(() => null);
     const place = await environmentOnce().catch(() => null);

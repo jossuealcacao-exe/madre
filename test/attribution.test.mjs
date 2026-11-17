@@ -82,6 +82,7 @@ test('attribution · five agents show their official mark whole, and Licence and
   const { TRADEMARKS } = await import('../public/attribution.js');
   const said = TRADEMARKS();
   for (const owner of ['OpenAI', 'Anthropic', 'Google', 'xAI']) assert.match(said, new RegExp(owner));
-  const { ES } = await import('../public/es.js');
-  assert.ok(ES['Agent logos']);
+  // Said at the foot of «License» (2026-11-17), the one block left of what was «License and authorship».
+  const legal = await readFile(new URL('../public/attribution.js', import.meta.url), 'utf8');
+  assert.match(legal, /make\('p', 'sx-foot sx-marks', TRADEMARKS\(\)\)/);
 });

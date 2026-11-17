@@ -83,39 +83,36 @@ export async function drawColophonKeys(host) {
 // attribution, which NOTICE asks every copy to keep. Built with the Settings blocks both pages share.
 export const TRADEMARKS = () => t('Codex is a trademark of OpenAI, Claude of Anthropic, Gemini of Google, Grok of xAI and OpenCode of its authors. Their logos, and those of the providers OpenCode connects to, belong to their owners and appear unaltered only to identify each service; MADRE is not affiliated with them or endorsed by them.');
 
-export function drawLegal(host) {
+// The license this copy is used under (2026-11-17, the author): inside the desktop app, the app's own
+// personal license; from npm or the source code, the Business Source License. Only what the person
+// needs: what the license says and where to read it whole. Who made MADRE stays in every corner
+// (drawAttribution); the marks of the AIs are said at the foot, as the law asks.
+export const APP_LICENSE_LINKS = { es: 'https://madre.run/app/licencia/', en: 'https://madre.run/en/app/license/' };
+export function drawLegal(host, { app = false } = {}) {
   if (!host) return null;
   const make = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
   const block = make('section', 'sx-block sx-legal');
   const head = make('header', 'sx-head');
   const words = make('div', 'sx-words');
-  words.append(make('h3', null, t('License and authorship')), make('p', null, t('© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.', { year: YEAR, author: AUTHOR, license: LICENSE_NAME })));
+  words.append(make('h3', null, t('License')), make('p', null, app
+    ? t('MADRE for desktop is used under its personal license: free for you as a person, also if you work on your own for your clients. What you make with it is yours. Organizations need a license of their own. The app\'s code is private, and it comes as it is, with no warranty.')
+    : t('© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.', { year: YEAR, author: AUTHOR, license: LICENSE_NAME })));
   head.append(words);
   const rows = make('div', 'sx-rows');
-  const row = (label, hint, url, words) => {
-    const line = make('div', 'sx-row');
-    const text = make('div', 'sx-words');
-    text.append(make('b', null, label));
-    if (hint) text.append(make('span', 'sx-hint', hint));
-    const box = make('div', 'sx-control');
-    const link = make('a', 'sx-btn', words);
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    box.append(link);
-    line.append(text, box);
-    rows.append(line);
-  };
-  row(t('Made by {author}', { author: AUTHOR }), t('MADRE shows its author in the corner. Please keep it in every copy.'), AUTHOR_URL, 'jossuealcala.com');
-  row(t('The license'), t('{license} · free for individuals and teams of up to 10', { license: LICENSE_NAME }), LEGAL_LINKS.license, t('Read'));
-  row(t('The source code'), t('On GitHub, to read and to change.'), LEGAL_LINKS.source, 'GitHub');
-  // Whose the agents' logos are (2026-11-06): five are their owners' official marks, shown unaltered
-  // only to say which service each agent is (public/brands.js).
-  const marks = make('div', 'sx-row');
-  const said = make('div', 'sx-words');
-  said.append(make('b', null, t('Agent logos')), make('span', 'sx-hint', TRADEMARKS()));
-  marks.append(said);
-  rows.append(marks);
+  const line = make('div', 'sx-row');
+  const text = make('div', 'sx-words');
+  text.append(make('b', null, t('The license')), make('span', 'sx-hint', app ? t('Personal license of MADRE for desktop') : t('{license} · free for individuals and teams of up to 10', { license: LICENSE_NAME })));
+  const box = make('div', 'sx-control');
+  const link = make('a', 'sx-btn', t('Read'));
+  link.href = app ? (APP_LICENSE_LINKS[language()] ?? APP_LICENSE_LINKS.es) : LEGAL_LINKS.license;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  box.append(link);
+  line.append(text, box);
+  rows.append(line);
+  // Whose the AIs' logos are (2026-11-06): their owners' official marks, shown unaltered only to say
+  // which service each one is (public/brands.js).
+  rows.append(make('p', 'sx-foot sx-marks', TRADEMARKS()));
   block.append(head, rows);
   host.append(block);
   return block;

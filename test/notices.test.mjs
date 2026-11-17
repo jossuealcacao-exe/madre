@@ -141,10 +141,9 @@ test('the routes: a copy reads and settles its notices; only the author\'s copy 
     const read = await (await fetch(`${base}/api/notices`)).json();
     assert.equal(read.enabled, true);
     assert.deepEqual(read.notices, []);
-    // Turned off and on again, kept in config.json.
-    assert.equal((await (await post('/api/notices/settings', { enabled: false })).json()).enabled, false);
-    assert.equal(JSON.parse(await readFile(join(state, 'config.json'), 'utf8')).notices.enabled, false);
-    assert.equal((await (await post('/api/notices/settings', { enabled: true })).json()).enabled, true);
+    // The author's notices always arrive (2026-11-17): a switch saved before, or sent now, is not read.
+    assert.equal((await (await post('/api/notices/settings', { enabled: false })).json()).enabled, true);
+    assert.equal((await (await fetch(`${base}/api/notices`)).json()).enabled, true);
     assert.equal((await post('/api/notices/seen', { id: 'Nope!' })).status, 422);
     // Without the author's token and key, there is no writing at all.
     assert.equal((await post('/api/owner/notices', { notice: draft('doce') })).status, 404);

@@ -6856,13 +6856,15 @@ dialog.skill-text .skill-text-foot { margin: 0; }
 .mods-detail .module-card > * + * { border-top: 1px solid color-mix(in srgb, var(--text) 7%, transparent); }
 .mods-detail .module-card h4 { font-family: var(--read); font-size: 14.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .mods-detail .module-card :is(p, ul, li, .summary) { font-family: var(--read); font-size: 13px; font-weight: var(--read-weight, 300); line-height: 1.55; letter-spacing: 0; text-transform: none; color: var(--text); }
-.mods-detail .module-card :is(.state, .vendor, .detail, .note, .update, .card-block h5, .ollama-status, .actions .toggle, .confirm .warn, i) { font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: lowercase; color: var(--text-2); font-style: normal; }
+/* As written (2026-11-17): lowered and raised again only at the first letter, «MADRE» read «madre» and
+   «IA» read «ia»; the catalogue already writes these lines in sentence case. */
+.mods-detail .module-card :is(.state, .vendor, .detail, .note, .update, .card-block h5, .ollama-status, .actions .toggle, .confirm .warn, i) { font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-2); font-style: normal; }
 .mods-detail .module-card :is(.state, .vendor, .detail, .note, .update, .card-block h5, .confirm .warn)::first-letter { text-transform: uppercase; }
 .mods-detail .module-card .confirm :is(.warn, .note).as-written { text-transform: none; }
 .mods-detail .module-card .state.on { color: var(--phosphor); }
 .mods-detail .module-card .card-block h5 { display: inline-block; font-size: 12.5px; font-weight: 600; color: var(--text); }
 .mods-detail .module-card .version b { font-family: var(--mono); font-size: 12px; color: var(--text); }
-.mods-detail .module-card :is(.actions, .version) button, .mods-detail .module-card .card-panel button { height: 30px; padding: 0 13px; border: 0; border-radius: 9px; background: color-mix(in srgb, #ffffff 7%, var(--surface, var(--panel))); color: var(--text); font-family: var(--read); font-size: 12.5px; font-weight: 550; letter-spacing: 0; text-transform: lowercase; text-shadow: none; box-shadow: var(--key-rest); cursor: pointer; }
+.mods-detail .module-card :is(.actions, .version) button, .mods-detail .module-card .card-panel button { height: 30px; padding: 0 13px; border: 0; border-radius: 9px; background: color-mix(in srgb, #ffffff 7%, var(--surface, var(--panel))); color: var(--text); font-family: var(--read); font-size: 12.5px; font-weight: 550; letter-spacing: 0; text-transform: none; text-shadow: none; box-shadow: var(--key-rest); cursor: pointer; }
 .mods-detail .module-card :is(.actions, .version, .card-panel) button::first-letter { text-transform: uppercase; }
 :root[data-scheme="light"] .mods-detail .module-card :is(.actions, .version, .card-panel) button { background: #ffffff; }
 .mods-detail .module-card :is(.actions, .version, .card-panel) button.primary { background: var(--phosphor); color: var(--phosphor-ink); }
@@ -6874,7 +6876,7 @@ dialog.skill-text .skill-text-foot { margin: 0; }
 .mods-detail .module-card .confirm { border: 0; border-radius: 10px; background: color-mix(in srgb, #f2c94c 10%, transparent); }
 .mods-detail .module-card .card-fold { border: 0; }
 .mods-detail .module-card .card-fold > summary { font-family: var(--read); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text); }
-.mods-detail .module-card .card-fold > summary :is(b, span, .caret) { font-family: var(--read); letter-spacing: 0; text-transform: lowercase; }
+.mods-detail .module-card .card-fold > summary :is(b, span, .caret) { font-family: var(--read); letter-spacing: 0; text-transform: none; }
 .mods-detail .module-card .card-fold > summary b::first-letter { text-transform: uppercase; }
 .mods-detail .module-card .metric b { font-family: var(--read); font-weight: 650; color: var(--text); }
 .mods-detail .module-card .metric span { font-family: var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2); }
@@ -6909,7 +6911,7 @@ dialog.module-guide::backdrop { background: rgba(0, 0, 0, .4); backdrop-filter: 
 .mods-detail .module-card .state::before { display: none; }
 .mods-detail .module-card .state.on { background: color-mix(in srgb, var(--phosphor) 16%, transparent); }
 .mods-detail .module-card :is(.intents-table, .intents-head, .intents-live, .intents-pair) { font-family: var(--read); font-size: 12px; letter-spacing: 0; text-shadow: none; color: var(--text); }
-.mods-detail .module-card .intents-table > span { text-transform: lowercase; }
+.mods-detail .module-card .intents-table > span { text-transform: none; }
 .mods-detail .module-card .intents-table > span:first-child, .mods-detail .module-card .intents-table > span:nth-child(4n + 1) { display: inline-block; }
 .mods-detail .module-card .intents-table > span:nth-child(4n + 1)::first-letter { text-transform: uppercase; }
 .mods-detail .module-card .intents-table > span:not(:nth-child(4n + 1)) { color: var(--text-2); }
@@ -6918,10 +6920,10 @@ dialog.module-guide::backdrop { background: rgba(0, 0, 0, .4); backdrop-filter: 
 .mods-detail .module-card .ollama-status { font-size: 12.5px; text-transform: none; }
 .mods-detail .module-card .ollama-status dd { color: var(--text); }
 .mods-detail .module-card .card-toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.mods-detail .module-card .card-toggles label { display: inline-flex; align-items: center; gap: 7px; font-family: var(--read); font-size: 12.5px; letter-spacing: 0; text-transform: lowercase; color: var(--text); }
+.mods-detail .module-card .card-toggles label { display: inline-flex; align-items: center; gap: 7px; font-family: var(--read); font-size: 12.5px; letter-spacing: 0; text-transform: none; color: var(--text); }
 .mods-detail .module-card .card-toggles label > span:last-child, .mods-detail .module-card .card-toggles label { text-transform: none; }
 .guide-where code { padding: 0; border: 0; background: none; box-shadow: none; }
-.mods-detail .module-card .metric span { display: block; font-size: 11.5px; text-transform: lowercase; }
+.mods-detail .module-card .metric span { display: block; font-size: 11.5px; text-transform: none; }
 .mods-detail .module-card .metric span::first-letter { text-transform: uppercase; }
 
 /* ==========================================================================================
@@ -7000,7 +7002,7 @@ dialog.surface.window:is(.settings-window, .module-window).lifted { background-c
 .module-app .economy-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
 .module-app .economy-stat { display: grid; gap: 2px; }
 .module-app .economy-stat b { font-size: 20px; font-weight: 650; color: var(--text); }
-.module-app :is(.economy-stat span, .card-head span, th, .ash-block b, .ash-agent > b, .ash-side) { display: inline-block; font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: lowercase; color: color-mix(in srgb, var(--text) 66%, transparent); }
+.module-app :is(.economy-stat span, .card-head span, th, .ash-block b, .ash-agent > b, .ash-side) { display: inline-block; font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: none; color: color-mix(in srgb, var(--text) 66%, transparent); }
 .module-app :is(.economy-stat span, .card-head span, th, .ash-block b, .ash-agent > b, .ash-side)::first-letter { text-transform: uppercase; }
 .module-app .card-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
 .module-app .card-head span { font-size: 13.5px; font-weight: 600; color: var(--text); }
@@ -7024,7 +7026,7 @@ dialog.surface.window:is(.settings-window, .module-window).lifted { background-c
 .module-app .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
 .module-app .metric { display: grid; gap: 2px; padding: 9px 11px; border-radius: 10px; background: color-mix(in srgb, var(--text) 4.5%, transparent); }
 .module-app .metric b { font-family: var(--read); font-size: 17px; font-weight: 650; color: var(--text); }
-.module-app .metric span { display: block; font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: lowercase; color: color-mix(in srgb, var(--text) 66%, transparent); }
+.module-app .metric span { display: block; font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: none; color: color-mix(in srgb, var(--text) 66%, transparent); }
 .module-app .metric span::first-letter { text-transform: uppercase; }
 /* A card's title comes in sentence case from app.js (cardHead): lowercased here, «Ahorro de tokens»
    read «ahorro de tokens» in its own window (2026-11-17). */
@@ -7252,7 +7254,7 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 
 @container sheet (max-width: 700px) { .mods-detail .economy-app { grid-template-columns: minmax(0, 1fr); } }
 .mods-detail .economy-app > .card-block { background: var(--surface, var(--panel)); }
-.mods-detail .mods-intents .intents-table .intent-kind { text-transform: lowercase; }
+.mods-detail .mods-intents .intents-table .intent-kind { text-transform: none; }
 .mods-detail .mods-intents .intents-table .intent-kind::first-letter { text-transform: uppercase; }
 
 /* ==========================================================================================
@@ -7315,9 +7317,9 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 .mods-intents .intents-live { display: grid; gap: 12px; justify-items: start; margin-top: 12px; padding: 16px 18px; border-radius: 16px; background: var(--surface, var(--panel)); }
 .mods-intents .intents-live > .note:first-child { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--text); }
 .mods-intents .intents-live > .note:first-child::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: live-glow 2.4s ease-in-out infinite; }
-.mods-intents :is(.intents-live > .note, .card-block > .note, .intents-agent > .note) { display: block; text-transform: lowercase; }
+.mods-intents :is(.intents-live > .note, .card-block > .note, .intents-agent > .note) { display: block; text-transform: none; }
 .mods-intents :is(.intents-live > .note, .card-block > .note, .intents-agent > .note)::first-letter { text-transform: uppercase; }
-.mods-intents button { width: auto; text-transform: lowercase !important; }
+.mods-intents button { width: auto; text-transform: none !important; }
 .mods-intents button::first-letter { text-transform: uppercase; }
 .mods-intents .intents-live > button { justify-self: start; }
 
@@ -15238,3 +15240,13 @@ dialog.intents-window .intents-page { gap: 12px; padding: 14px 16px 18px; }
 .ap-row.open .ap-line, .ap-row.open .ap-line:hover { background: none; }
 .ap-row.open > .ap-more { padding-bottom: 12px; }
 .ap-row + .ap-row.open, .ap-row.open + .ap-row { margin-top: 6px; }
+
+/* A KEY FOCUSED FOR YOU, NOT PRESSED (2026-11-17, the author: «quita la selección en este botón»): «Buscar un
+   archivo» in an empty Files wore the focus ring as if chosen. It wears none until Tab is used (app.js). */
+.no-ring:focus-visible { outline: none !important; }
+
+/* THE GRIPS ON ONE LINE (2026-11-17, the author: «las barras para hacer slide no están alineadas»). A grip
+   centres its drawn handle on its own panel. The chats' sidebar runs the window's full height, but a
+   panel docked beside the chat starts under the 48 px bar of tool tabs, so its handle sat 24 px lower
+   than the sidebar's. Raised by half that bar, both handles meet the window's middle. */
+html.chat-shell .split:not(.chats) > :is(.side-grip, .panel-grip, .dock-grip)::after { top: calc(50% - 24px); }

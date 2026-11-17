@@ -14,7 +14,7 @@ import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCust
 import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural, tellViews } from './neural.js';
 import { resay } from './resay.js';
 import { mountNotices } from './notices.js';
-import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
+import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { markMission } from './missions.js';
 import { dropStickyHover } from './touch.js';
@@ -1982,6 +1982,9 @@ function showCodeHome() {
   const mod = /Mac|iPhone|iPad/.test(navigator.platform ?? '') ? '⌘P' : 'Ctrl+P';
   home.append(el('p', null, t('Choose one in the files, or press {keys} to find it by its name. What an agent changes is marked in its colour.', { keys: mod })));
   const find = sxButton(t('Find a file'), () => openQuickOpen(), { tone: 'primary' });
+  // No ring when it is focused for you (opening an empty Files): it read as already pressed
+  // (2026-11-17, the author). Tabbing to it shows the ring as on any key (noRingUntilTab).
+  find.classList.add('no-ring');
   home.append(find);
   const recent = [...touched.entries()].sort((a, b) => b[1].at - a[1].at).slice(0, 6);
   if (recent.length) {
@@ -11726,7 +11729,7 @@ const SETTINGS_INDEX = [
   ['mcp', 'Outside tools (MCP)'], ['mcp', 'Add a tool'], ['mcp', 'Import from your apps'], ['mcp', 'Can act from'],
   ['permissions', 'How you give permission'], ['permissions', 'Your secret phrase'], ['permissions', 'Remember permission'], ['permissions', 'Memory access'], ['permissions', 'What each AI may do'],
   ['privacy', 'Words to hide'], ['privacy', 'Replaced with'], ['privacy', 'Access keys and emails'], ['privacy', 'Your home folder'], ['privacy', 'Erase private data'],
-  ['release', 'Look for new versions'], ['release', 'Check now'], ['release', "What's new in this version"], ['release', 'The tour of MADRE 1.0'], ['release', 'Send reports automatically'], ['release', 'Tell the author'],
+  ['release', 'Check now'], ['release', "What's new in this version"], ['release', 'The tour of MADRE 1.0'], ['release', 'Send reports automatically'], ['release', 'Tell the author'],
 ];
 const settingsWindow = { node: document.querySelector('#settings'), body: document.querySelector('#settings-body'), search: document.querySelector('#settings-search'), box: null, ready: false, open: null, query: '', mode: 'board', observer: null };
 try { settingsWindow.box = JSON.parse(localStorage.getItem('pulse.settingsWindow') ?? 'null'); } catch { /* no storage */ }
@@ -12062,6 +12065,8 @@ function sxSelect(options, current, change, label) {
   node.addEventListener('change', () => change(node.value, node));
   return node;
 }
+// A key that wears no focus ring until the person moves with Tab: then every key shows where it is.
+document.addEventListener?.('keydown', (event) => { if (event.key === 'Tab') for (const one of document.querySelectorAll('.no-ring')) one.classList.remove('no-ring'); }, true);
 function sxButton(text, click, { tone = null, title = '' } = {}) {
   const button = el('button', `sx-btn${tone ? ` ${tone}` : ''}`, text);
   button.type = 'button';
@@ -19120,7 +19125,7 @@ async function renderEconomy(box) {
   const body = el('tbody');
   for (const agent of read.agents) {
     const row = el('tr');
-    row.append(el('th', null, String(agent.agent).toUpperCase()));
+    row.append(el('th', null, label(agent.agent)));
     for (const cell of [count(agent.turns), count(agent.input), agent.created ? count(agent.created) : '—', count(agent.output), count(agent.cached), pct(agent.cacheShare), agent.charsPerInputToken ? agent.charsPerInputToken.toFixed(2) : '—']) {
       row.append(el('td', null, String(cell)));
     }
@@ -19144,7 +19149,9 @@ function economyBlocks(box, read) {
     const row = el('div', 'ash-block');
     const bar = el('i');
     bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
-    row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${count(block.perTurn)}${block.always ? t(' · ALWAYS') : ''}`));
+    // Each block by its name for a person, as «What is sent» says it (2026-11-17): its id in capitals
+    // («CONTEXT», «MEMORY-SERVER») read as a word nobody had been told.
+    row.append(el('b', null, CORE_BLOCK_NAMES[block.id] ? t(CORE_BLOCK_NAMES[block.id]) : block.id), bar, el('span', null, `${count(block.perTurn)}${block.always ? t(' · ALWAYS') : ''}`));
     bars.append(row);
   }
   box.append(bars);
@@ -19165,7 +19172,7 @@ function ashComparison(box, ash) {
   const list = el('div', 'ash-compare');
   for (const agent of ash.agents) {
     const group = el('div', 'ash-agent');
-    group.append(el('b', null, String(agent.agent).toUpperCase()));
+    group.append(el('b', null, label(agent.agent)));
     if (agent.comparable) {
       for (const [side, label, turns] of [['on', t('with TOKEN SAVER'), agent.on.turns], ['off', t('without TOKEN SAVER'), agent.off.turns]]) {
         const row = el('div', `ash-bar ${side}`);
@@ -22568,6 +22575,9 @@ const CORE_BLOCK_NAMES = {
   'room': 'The project',
   'runs': 'Commands',
   'sdk': 'Building a module',
+  'skills': 'Your skills',
+  'modules': 'Modules',
+  'shapes': 'How answers look',
   'shared-lease': 'Shared permission',
   'style': 'How to answer',
   'web': 'Web access',
@@ -26125,40 +26135,12 @@ function drawRelease(section, info) {
   // Whoever came from 0.7.2 took the tour of what changed; whoever is new, the one of the essentials.
   const back = roomTour().path() === 'back';
   if (!state.device) sxRow(block, back ? t('The tour of MADRE 1.0') : t('Getting to know MADRE'), back ? t('Everything new, chapter by chapter. ? opens the gestures anywhere.') : t('The essentials, chapter by chapter. ? opens the gestures anywhere.'), sxButton(t('See the tour'), () => { openSettings(false); roomTour().openChapters(); }));
+  // New versions are always looked for and always told (2026-11-17, the author): whether to install
+  // one is the person's choice, below. No switch to stop hearing of them, and no donations or links
+  // to GitHub here: this page keeps what matters to the person using MADRE.
   const when = info.checkedAt ? dateWords(info.checkedAt) : null;
-  const check = sxSwitch(info.enabled, async (on, box) => {
-    box.disabled = true;
-    try { await fetch('/api/updates/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ check: on }) }); toast(on ? t('Diagnostics › Look for new versions on: one check a day.') : t('Diagnostics › Look for new versions off: no request leaves for npm.')); await loadVersion(); }
-    catch (error) { box.checked = !on; box.disabled = false; toast(t('The setting was not saved: {error}', { error: error.message })); }
-  }, { disabled: Boolean(info.envWins), label: t('Look for new versions') });
-  sxRow(block, t('Look for new versions'), t('Once a day MADRE checks whether there\'s a new version. Only the app\'s name is sent.') + (info.envWins ? ` ${t('Set by PULSE_UPDATE_CHECK.')}` : ''), check);
   if (info.enabled) sxRow(block, t('Last check'), when ?? t('Not yet.'), sxButton(t('Check now'), () => void loadVersion({ force: true })));
-  // The author's notices (Q-11): info and important ones can be turned off; security ones always show.
-  if (!state.device) {
-    const notices = sxSwitch(true, async (on, box) => {
-      box.disabled = true;
-      const answer = await fetch('/api/notices/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: on }) }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
-      if (!answer) box.checked = !on;
-      box.disabled = false;
-      askNoticesAgain();
-    }, { disabled: true, label: t('Notices from MADRE') });
-    sxRow(block, t('Notices from MADRE'), t('What MADRE\'s author tells every copy: a new version, a fix, a service stop. Nothing about you is sent to receive them. Security notices always show.'), notices);
-    void fetch('/api/notices', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).then((answer) => {
-      const box = notices.querySelector('input');
-      if (answer && box) { box.checked = answer.enabled !== false; box.disabled = false; }
-    }).catch(() => null);
-  }
-  // Supporting MADRE (2026-10-30): a donation on GitHub Sponsors, in the person's browser, as Home's
-  // Settings › Version has it under this copy's identifier (salas-mac.js, drawDonate). Not from a phone.
-  if (!state.device) {
-    const give = sxBlock(section, t('Support MADRE'), t('MADRE is free and made by one person. A donation helps keep it going and growing.'));
-    const go = el('a', 'sx-btn primary', t('Donate'));
-    go.href = SPONSORS_URL;
-    go.target = '_blank';
-    go.rel = 'noopener';
-    sxRow(give, t('Donate on GitHub'), t('Once or every month, the amount you choose. GitHub keeps no commission.'), go);
-  }
-  drawLegal(section);
+  drawLegal(section, { app: info.install === 'app' });
 
   if (!info.available) return;
   // MADRE.app updates itself (its menu bar): no command to offer here.

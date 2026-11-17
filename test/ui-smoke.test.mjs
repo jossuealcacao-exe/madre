@@ -631,7 +631,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.equal(ash.querySelector('.vendor').textContent, 'MADRE');
   assert.match(ash.querySelector('.version').textContent, /v1\.0\.0/, 'a module that ships with MADRE does not show its own version');
   assert.ok(ash.querySelector('.check'), 'the card has no button to look for a newer version');
-  assert.equal(ash.querySelector('.state').textContent, 'ON', 'the state is not a plain word');
+  assert.equal(ash.querySelector('.state').textContent, 'Encendido', 'the state is not a plain word');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
   assert.match(ash.querySelector('.card-fold').textContent, /Qué toca/);
   assert.match(ash.querySelector('.card-fold').textContent, /Ver más|Ver menos/, 'the fold has no button');
@@ -667,7 +667,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
   // It wraps a package that is not in this project: not a version, an absence, and what
   // installing would write.
   assert.match(ahp.querySelector('.version').textContent, /Instala 1\.4\.1/);
-  assert.equal(ahp.querySelector('.state').textContent, 'OFF');
+  assert.equal(ahp.querySelector('.state').textContent, 'Apagado');
   assert.ok(ahp.classList.contains('off'), 'a module that is off does not step back');
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
   assert.match(ahp.querySelector('.actions').textContent, /Instalar/);
