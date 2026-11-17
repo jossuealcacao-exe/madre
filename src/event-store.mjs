@@ -32,6 +32,11 @@ function parseLines(text) {
 // write that fsyncs took longer, and the page's reader gave up with «Timed out waiting for event
 // store lock». Thirty seconds of clock, however slow each try is.
 export const LOCK_WAIT_MS = 30_000;
+// A lock older than any write ever takes was left behind (D-48, 1.1.3, WSL, 2026-11-16): a MADRE
+// that ended abruptly left its lock naming a process number the system later gave to another
+// program, which looked alive forever. A write holds the lock for milliseconds, seconds on a server
+// with every core taken; two minutes is none of them.
+export const STALE_LOCK_MS = 120_000;
 
 export class EventStore {
   #file;
@@ -161,6 +166,13 @@ export class EventStore {
               await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
               continue;
             }
+          }
+          // Its number answers, but it has held the ledger longer than any write does: the number
+          // belongs to someone else now (STALE_LOCK_MS).
+          const lock = await stat(this.#lockDirectory).catch(() => null);
+          if (lock && Date.now() - lock.mtimeMs > STALE_LOCK_MS) {
+            await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+            continue;
           }
         } catch (ownerError) {
           if (ownerError.code !== 'ENOENT' && !(ownerError instanceof SyntaxError)) throw ownerError;
