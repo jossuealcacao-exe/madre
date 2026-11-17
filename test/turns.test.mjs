@@ -34,7 +34,8 @@ test('turns: a conversation at work is parked, not stopped, and the limits are s
     await post('/api/turns', { turnsPerChat: 1 });
     const capped = await post('/api/messages', { text: 'and this', target: 'codex' });
     assert.equal(capped.status, 429);
-    assert.match((await capped.json()).error, /TURNS allows 1/);
+    // Said with the setting's place, Settings › Work and limits (voz, 2026-11-17).
+    assert.match((await capped.json()).error, /your setting allows 1 at a time/);
     await post('/api/turns', { turnsPerChat: 3 });
 
     // A new conversation opens while the first works; the first is listed as working.
