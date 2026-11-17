@@ -176,6 +176,7 @@ export class Room {
   #attachments = new Attachments();
   #scopeConfig = {};
   #delegation;
+  #plansAllowed;
   #privacy = null;
   #toolsForTurn = null;
   #skillsForTurn = null;
@@ -221,6 +222,7 @@ export class Room {
     agentTimeouts = {},
     maxMessageChars = 20000,
     delegation = true,
+    plansAllowed = null,
     maxPlanSteps = 4,
     maxConcurrentTurns = 3,
     planMaxAgeMs = 300000,
@@ -253,6 +255,7 @@ export class Room {
     this.#agentTimeouts = agentTimeouts;
     this.#maxMessageChars = maxMessageChars;
     this.#delegation = delegation;
+    this.#plansAllowed = typeof plansAllowed === 'function' ? plansAllowed : () => true;
     this.#maxPlanSteps = maxPlanSteps;
     this.#maxConcurrentTurns = maxConcurrentTurns;
     this.#planMaxAgeMs = planMaxAgeMs;
@@ -1974,7 +1977,7 @@ export class Room {
       this.#liveTurns.set(responseMessageId, { agent: agent.id, mode: turnMode });
       const notesBefore = this.#memory ? this.#memory.maxMemoryId() : 0;
       const others = this.delegatesFor(agent.id);
-      const mayDelegate = allowDelegation && this.#delegation && depth === 0;
+      const mayDelegate = allowDelegation && this.#delegation && depth === 0 && this.#plansAllowed();
       // Tools the modules hand to this turn (a browser, say), attached to the CLI for this run only.
       const mcpServers = this.#toolsForTurn && agent.adapter !== 'madre-local'
         ? await this.#toolsForTurn({ agent: agent.id, mode: turnMode, text, turn: responseMessageId, lease, scratchDir: lease?.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : null, servers: this.#runDesk.serving().filter((one) => !one.network).map((one) => one.port) }).catch(() => [])

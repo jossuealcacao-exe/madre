@@ -14962,6 +14962,40 @@ html.chat-shell #settings .settings-detail-head .settings-line, #settings .setti
 .files-where .sx-seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); min-width: 176px; }
 .files-where .sx-seg > button { min-width: 0; }
 
+/* MADRE App's subscription (2026-11-17, public/subscription.js): only drawn inside the app with the
+   author's switch on. Cards without border or brow, like the rest of the chat's cards; the main button
+   filled with the accent, the other one plain. */
+.madre-sub-sheet { width: min(560px, calc(100vw - 32px)); padding: 26px 26px 20px; border: 0; border-radius: 18px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.madre-sub-sheet::backdrop { background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(6px); }
+.madre-sub-sheet h2 { margin: 4px 0 8px; font-size: 21px; line-height: 1.25; letter-spacing: -.01em; }
+.madre-sub-kicker { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; color: var(--phosphor); }
+.madre-sub-body { margin: 0 0 16px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.madre-sub-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 4px 0 18px; }
+.madre-sub-list { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.madre-sub-list.is-gives { background: color-mix(in srgb, var(--phosphor) 10%, transparent); }
+.madre-sub-list b { display: block; margin-bottom: 6px; font-size: 13px; }
+.madre-sub-list ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--text-2); }
+.madre-sub-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.madre-sub-btn { font: inherit; font-size: 13.5px; padding: 8px 16px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); cursor: pointer; }
+.madre-sub-btn:hover { background: color-mix(in srgb, var(--text) 13%, transparent); }
+.madre-sub-btn.primary { background: var(--phosphor); color: #04120c; font-weight: 600; }
+.madre-sub-btn.primary:hover { background: color-mix(in srgb, var(--phosphor) 86%, #ffffff); }
+:root[data-scheme="light"] .madre-sub-btn.primary { color: #ffffff; }
+:root[data-scheme="light"] .madre-sub-btn.primary:hover { background: color-mix(in srgb, var(--phosphor) 86%, #000000); }
+.madre-sub-said { margin: 10px 0 0; font-size: 12.5px; color: var(--text-2); }
+.madre-sub-said:empty { display: none; }
+.madre-sub-toast { position: fixed; right: 20px; bottom: max(20px, calc(100vh - var(--composer-top, 100vh) + 14px)); z-index: 60; width: min(360px, calc(100vw - 32px)); padding: 14px 16px; border: 0; border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); animation: madre-sub-in calc(220ms * var(--motion-scale, 1)) ease; }
+@keyframes madre-sub-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.madre-sub-toast p { margin: 4px 0 12px; font-size: 13.5px; line-height: 1.5; }
+.madre-sub-settings .sx-btn.primary { border: 0; background: var(--phosphor); color: #04120c; font-weight: 600; }
+:root[data-scheme="light"] .madre-sub-settings .sx-btn.primary { color: #ffffff; }
+.madre-sub-paste summary { cursor: pointer; font-size: 13px; color: var(--text-2); padding: 8px 0; }
+.madre-sub-key { display: flex; gap: 8px; padding-bottom: 8px; }
+.madre-sub-key input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 10px; border: 0; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
+.madre-sub-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--phosphor) 30%, transparent); border-top-color: var(--phosphor); animation: madre-sub-spin 900ms linear infinite; }
+@keyframes madre-sub-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .madre-sub-spin { animation: none; } }
+
 /* ---- Terminal and editor: Coldbrew, Oldcode and Simple (2026-11-14, the author) ----
    Ajustes › Apariencia › Terminal y editor puts data-code-theme on the root (app.js, LOOKS.codeTheme).
    Simple is the room as it always was and writes no attribute: nothing here touches it. Each style

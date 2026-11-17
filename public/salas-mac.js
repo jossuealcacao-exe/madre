@@ -12,6 +12,7 @@ import { brandOf, monogram } from './brands.js';
 import { installTips } from './tips.js';
 import { startReviewAsk } from './review-ask.js';
 import { mountNotices } from './notices.js';
+import { drawSubscription, mountSubscription, subscriptionLine, subscriptionShown } from './subscription.js';
 import { startTour } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
@@ -1588,6 +1589,9 @@ const WIDGETS = {
   // The author's notices (Q-11, src/notices.mjs): written here, signed on this computer, read by every
   // copy. Only in the author's copy run from source, with the token and the notices' key.
   'w-notices': { kind: 'notices', owner: true, every: 60000, name: () => t('Notices to every copy'), about: () => t('Write a notice that every copy of MADRE shows, with or without diagnostics: signed on this computer, read from madre.run. Only you see this.'), size: 8, rows: 0 },
+  // The author's switch for MADRE App's subscription (src/billing.mjs, docs/private/SUSCRIPCION.md):
+  // signed on this computer with the notices' key, read by every app the next time it opens.
+  'w-billing': { kind: 'billing', owner: true, every: 60000, name: () => t('MADRE App subscription'), about: () => t('Turn the subscription of MADRE App on or off for every copy of the app: free days first, then the monthly price or the limited mode. Signed on this computer; only you see this.'), size: 4, rows: 0 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -1622,6 +1626,7 @@ const TILE_ICONS = {
   'w-rumbo': trazo('trending'),
   'w-madrelogs': trazo('list'),
   'w-notices': trazo('broadcast'),
+  'w-billing': trazo('star'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -2326,6 +2331,32 @@ const WIDGET_PAINT = {
     }
     if (reading.unverified) out.append(el('p', 'sm-hint', t('{n} served by madre.run do not carry your signature: no copy shows them.', { n: reading.unverified })));
     body.append(out, form);
+  },
+  // The author's switch (src/billing.mjs): what madre.run serves now, checked as every app checks it,
+  // and one button that turns it the other way, pressed twice to be sure.
+  billing(body, reading, { again } = {}) {
+    const now = reading.switch;
+    const on = Boolean(now?.on);
+    const lead = el('div', 'sm-usage-lead');
+    lead.append(el('b', 'sm-w-big', on ? t('On') : t('Off')), el('span', null, on
+      ? t('since {date} · {days} days free, then {price} a month', { date: dateWords(now.from), days: now.trialDays, price: `$${now.price.mxn}` })
+      : t('No copy of the app shows a price')));
+    body.append(lead);
+    if (!reading.read) body.append(el('p', 'sm-hint', t('madre.run could not be read just now.')));
+    if (reading.unverified) body.append(el('p', 'sm-hint', t('madre.run serves a switch without your signature: no app reads it.')));
+    if (!reading.keyReady) body.append(el('p', 'sm-hint', t('First make the key of the subscription keys: node scripts/billing-key.mjs. Without it nobody could pay.')));
+    const said = el('small', 'sm-notice-said');
+    let sure = false;
+    const label = on ? t('Turn the subscription off') : t('Turn the subscription on');
+    const turn = button(`sm-btn small${on ? '' : ' primary'}`, label, async () => {
+      if (!sure) { sure = true; turn.textContent = on ? t('Sure? Every app goes back to free · Turn off') : t('Sure? Every app starts its free days · Turn on'); setTimeout(() => { sure = false; turn.textContent = label; }, 5000); return; }
+      turn.disabled = true;
+      const answer = await fetch('/api/owner/billing', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: !on }) }).then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+      if (answer.ok) again?.();
+      else { said.textContent = answer.body.error ?? t('It was not sent.'); turn.disabled = false; turn.textContent = label; sure = false; }
+    });
+    turn.disabled = !on && !reading.keyReady;
+    body.append(turn, said);
   },
   rumbo(body, reading) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
@@ -5663,7 +5694,7 @@ function openHomeWelcome({ at = null, then = null } = {}) {
 const SET_SECTIONS = [
   ['You', 'How Home looks and what its bar holds', ['look', 'bar']],
   ['The agents', 'The AIs that work for you', ['agents', 'bishop', 'memory', 'local']],
-  ['System', 'The projects of this Mac, the version and the manual', ['projects', 'release', 'manual']],
+  ['System', 'The projects of this Mac, the version and the manual', ['subscription', 'projects', 'release', 'manual']],
 ];
 // The room's own icons where the room has the category (app.js, SETTINGS_CATS); the bar, BISHOP
 // and the projects drawn here in the same hand: 20×20, one round stroke.
@@ -5675,10 +5706,13 @@ const SET_CATS = {
   memory: { name: 'Memory', icon: trazoDrawing('chip') },
   local: { name: 'Local AI', icon: trazoDrawing('spark') },
   projects: { name: 'Projects', icon: trazoDrawing('folder') },
+  subscription: { name: 'Subscription', icon: trazoDrawing('star') },
   release: { name: 'Version', icon: trazoDrawing('refresh') },
   manual: { name: 'User manual', icon: trazoDrawing('book') },
 };
-const SET_ORDER = ['look', 'bar', 'agents', 'bishop', 'memory', 'local', 'projects', 'release'];
+const SET_ORDER = ['look', 'bar', 'agents', 'bishop', 'memory', 'local', 'subscription', 'projects', 'release'];
+// Subscription stands only where there is one (inside the app, with the author's switch on).
+const setHas = (id) => id !== 'subscription' || subscriptionShown();
 // The words the search knows, each pointing to the category that holds it (app.js, SETTINGS_INDEX).
 const SET_INDEX = [
   ['look', 'Preview'], ['look', 'Theme'], ['look', 'Accent'], ['look', 'Wallpaper'], ['look', 'Intensity'], ['look', 'Blur'], ['look', 'Project cards'], ['look', 'Text'], ['look', 'Project order'], ['look', 'Language'],
@@ -5743,6 +5777,7 @@ function customSeg(options, current, pick, size = '') {
 function openManual() { window.open(`/manual?lang=${language}`, '_blank', 'noopener'); }
 function setStatus(id) {
   if (id === 'manual') return { line: t('With pictures, step by step. Also as a PDF.') };
+  if (id === 'subscription') return { line: subscriptionLine() };
   const looks = readLooks();
   // The new design shows no wallpaper (salas-mac.css, .sm-sky), so the summary no longer names one
   // that is nowhere to be seen (QA 1.1.0, ACT-06).
@@ -6454,7 +6489,7 @@ async function updateHome(info, key, said) {
   }
   drop(t('Home did not come back on its own. Start MADRE again from your terminal.'));
 }
-const SET_FILL = { look: fillLook, bar: fillBar, agents: fillAgents, bishop: fillBishop, memory: (host) => void fillMemory(host), local: fillLocal, projects: fillProjects, release: fillRelease };
+const SET_FILL = { subscription: (host) => drawSubscription(host), look: fillLook, bar: fillBar, agents: fillAgents, bishop: fillBishop, memory: (host) => void fillMemory(host), local: fillLocal, projects: fillProjects, release: fillRelease };
 
 let settingsSheet = null;
 function openSettings(section = null) {
@@ -6526,7 +6561,7 @@ function openSettings(section = null) {
       const top = el('header');
       top.append(el('b', null, t(name)), el('span', null, t(homeShellOn() && sub === 'How Home looks and what its bar holds' ? 'How Home looks and what its sidebar holds' : sub)));
       const cards = el('div', 'settings-cards');
-      for (const id of ids) cards.append(card(id));
+      for (const id of ids) if (setHas(id)) cards.append(card(id));
       section.append(top, cards);
       node.append(section);
     }
@@ -6553,7 +6588,7 @@ function openSettings(section = null) {
     const wanted = fold(state.query.trim());
     const list = el('div', 'settings-results');
     const hits = [];
-    for (const id of SET_ORDER) if (fold(catName(id)).includes(wanted)) hits.push([id, null]);
+    for (const id of SET_ORDER.filter(setHas)) if (fold(catName(id)).includes(wanted)) hits.push([id, null]);
     for (const [id, key] of SET_INDEX) if (fold(t(key)).includes(wanted)) hits.push([id, t(key)]);
     for (const agent of agentsSeen?.agents ?? []) if (agent.id !== 'madre' && fold(agent.label ?? agent.id).includes(wanted)) hits.push(['agents', agent.label ?? agent.id]);
     if (!hits.length) { list.append(el('p', 'settings-reading', t('Nothing called «{query}».', { query: state.query.trim() }))); return list; }
@@ -7146,6 +7181,7 @@ document.querySelector('.sm-hero')?.append(noticesHost);
 // In the Mac app, Home also hands each notice to macOS once (notices.js, `system`); asked again as soon as
 // the app knows macOS lets it.
 const askNoticesAgain = mountNotices(noticesHost, { system: true });
+mountSubscription({ openSettings: () => openSettings('subscription') });
 globalThis.addEventListener?.('madre-notifications', () => askNoticesAgain());
 // THE CHOICE OF THE APP (2026-11-10, src/app-invite.mjs, asked by the author): whoever updated MADRE and
 // uses it in the browser is asked once per version, in a window of its own, whether to stay in the

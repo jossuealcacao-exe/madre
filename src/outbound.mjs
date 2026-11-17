@@ -148,6 +148,15 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // MADRE App's subscription (src/billing.mjs, 2026-11-17): only inside the app, and only once the
+    // author turns it on. In the author's own copy, the same address takes the switch, signed here.
+    id: 'subscription', host: 'madre.run', match: (url) => url.pathname === '/api/cobro' || url.pathname.startsWith('/api/suscripcion/'), to: 'madre.run · MADRE App subscription',
+    what: 'Whether the author turned the subscription on, with nothing about you; once you subscribe, your subscription key, to keep it current. Never what you write or your projects.',
+    when: 'inside the app: when MADRE opens, every half hour, and every 12 hours once you subscribe',
+    where: 'Only in MADRE App; MADRE from npm or from source never asks',
+    inside: true,
+  },
+  {
     // Anonymous diagnostics (src/telemetry.mjs, 2026-10-28): on unless turned off.
     id: 'diagnostics', host: 'madre.run', match: (url) => url.pathname === '/api/telemetry', to: 'madre.run · anonymous diagnostics',
     what: 'Errors with private details removed (no paths, names, keys or emails) and counts of turns, modes and features, with this copy\'s random identifier, version and system. Never what you write, your projects or your files.',

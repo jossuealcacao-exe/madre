@@ -14,6 +14,7 @@ import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCust
 import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural, tellViews } from './neural.js';
 import { resay } from './resay.js';
 import { mountNotices } from './notices.js';
+import { drawSubscription, mountSubscription, showLimit, subscriptionLine, subscriptionShown } from './subscription.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { markMission } from './missions.js';
@@ -11696,7 +11697,7 @@ customWindow.node?.addEventListener('close', () => { customButton?.setAttribute(
 const SETTINGS_SECTIONS = [
   ['You', 'How it looks, how it works and your files', ['look', 'room', 'files']],
   ['The agents', 'Who works, what they remember and which outside tools they use', ['agents', 'memory', 'local', 'mcp']],
-  ['System', 'Permissions, privacy, updates and the manual', ['permissions', 'privacy', 'release', 'manual']],
+  ['System', 'Permissions, privacy, updates and the manual', ['subscription', 'permissions', 'privacy', 'release', 'manual']],
 ];
 const SETTINGS_CATS = {
   look: { name: 'Appearance', color: '#8e75e8', icon: trazoDrawing('appearance') },
@@ -11710,11 +11711,15 @@ const SETTINGS_CATS = {
   files: { name: 'Files and local sites', color: '#c8955a', icon: trazoDrawing('folder') },
   permissions: { name: 'Permissions', color: '#e5484d', icon: trazoDrawing('shield') },
   privacy: { name: 'Privacy', color: '#d4a72c', icon: trazoDrawing('lock') },
+  // MADRE App's subscription (public/subscription.js): only when the server says this copy has one.
+  subscription: { name: 'Subscription', color: '#34d399', icon: trazoDrawing('star') },
   release: { name: 'Updates and errors', color: '#4caf3a', icon: trazoDrawing('refresh') },
   // The user manual (1.0.5): it opens on its own page, read here or in PDF (public/manual.js).
   manual: { name: 'User manual', color: '#2f9e6a', icon: trazoDrawing('book') },
 };
-const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release', 'manual'];
+const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'subscription', 'permissions', 'privacy', 'release', 'manual'];
+// Subscription stands only where there is one (inside the app, with the author's switch on).
+const settingsHas = (id) => id !== 'subscription' || subscriptionShown();
 // The words the search knows, each pointing to the category that holds it and to the words on the
 // screen that carry it there, so a result opens the category and lands on the setting.
 const SETTINGS_INDEX = [
@@ -11745,6 +11750,7 @@ const manualPdf = () => `/assets/manual/madre-manual-${language()}.pdf`;
 // Each card's line is one short line (2026-10-27): what matters at a glance; the rest is one click in.
 function settingsStatus(id) {
   if (id === 'manual') return { line: t('With pictures, step by step. Also as a PDF.') };
+  if (id === 'subscription') return { line: subscriptionLine() };
   const data = settingsUI.data;
   if (id === 'look') {
     const theme = { auto: t('Automatic'), light: t('Light'), dark: t('Dark') }[themeMode] ?? themeMode;
@@ -12180,6 +12186,7 @@ function settingsDetail(id) {
   if (id === 'permissions') part('permissions');
   if (id === 'release') { part('release'); part('sentinel'); }
   if (id === 'files') part('files');
+  if (id === 'subscription') { const host = el('div', 'settings-host'); detail.append(host); drawSubscription(host, { projectPage: true }); }
   if (id === 'mcp') part('mcp');
   if (id === 'local') part('local');
   return detail;
@@ -12205,7 +12212,7 @@ function settingsBoard() {
     // The cards stand in their own track, so the three columns start on one line whatever their
     // headings wrap to.
     const cards = el('div', 'settings-cards');
-    for (const id of ids) cards.append(settingsCard(id));
+    for (const id of ids) if (settingsHas(id)) cards.append(settingsCard(id));
     section.append(head, cards);
     board.append(section);
   }
@@ -12215,7 +12222,7 @@ function settingsBoard() {
 function settingsRail() {
   const rail = el('nav', 'settings-rail');
   rail.setAttribute('aria-label', t('Settings'));
-  for (const id of SETTINGS_ORDER) {
+  for (const id of SETTINGS_ORDER.filter(settingsHas)) {
     const item = el('button', `settings-rail-item${settingsWindow.open === id ? ' on' : ''}`);
     item.type = 'button';
     item.title = t(SETTINGS_CATS[id].name);
@@ -12234,7 +12241,7 @@ function settingsResults() {
   const query = settingsFold(settingsWindow.query.trim());
   const list = el('div', 'settings-results');
   const hits = [];
-  for (const id of SETTINGS_ORDER) if (settingsFold(t(SETTINGS_CATS[id].name)).includes(query)) hits.push([id, null]);
+  for (const id of SETTINGS_ORDER.filter(settingsHas)) if (settingsFold(t(SETTINGS_CATS[id].name)).includes(query)) hits.push([id, null]);
   for (const [id, key] of SETTINGS_INDEX) if (settingsFold(t(key)).includes(query)) hits.push([id, t(key)]);
   for (const agent of settingsUI.data?.agents ?? []) if (settingsFold(agent.label).includes(query)) hits.push(['agents', agent.label]);
   if (!hits.length) { list.append(el('p', 'settings-reading', t('Nothing called «{query}».', { query: settingsWindow.query.trim() }))); return list; }
@@ -17232,6 +17239,8 @@ els.composer.addEventListener('submit', async (event) => {
         openOverride(addressed, { mode: sentMode, then: () => els.composer.requestSubmit() });
         return;
       }
+      // A limit of MADRE App's subscription: a card with the way out, never a red line.
+      if (result.subscription) { showLimit(result); return; }
       toast(`${t('Diagnostics › ')}${result.error ? resay(result.error) : t('The project rejected the message.')}`);
       if (state.mode >= 3 && [403, 409, 412].includes(response.status)) setMode(1);
     } else {
@@ -28119,6 +28128,7 @@ if (!SPLIT_CHAT && !state.device && typeof els.thread?.before === 'function') {
   strip.hidden = true;
   els.thread?.before(strip);
   askNoticesAgain = mountNotices(strip, { levels: ['important', 'security'] });
+  mountSubscription({ openSettings: () => openSettings(true, { category: 'subscription' }) });
 }
 // The tour of 1.0 reads where the person is as the room opens, so First steps knows whether to
 // wait; on a phone, the phone's card is said the first time.

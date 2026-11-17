@@ -36,6 +36,8 @@ import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
 import { webPreview } from './web-preview.mjs';
 import { Telemetry, telemetryOn } from './telemetry.mjs';
 import { hostFacts, inRoomLanguage, language as roomLanguage, say, setLanguage as setRoomLanguage, t } from './i18n.mjs';
+import { BILLING_PUBLIC_KEY } from './billing-key.mjs';
+import { ORDER_EVERY_MS, ORDER_FAST_MS, SWITCH_EVERY_MS, askOrder, askSwitch, billingInApp, billingSite, chooseProject, claimProject, dueMoment, loadBilling, markSeen as markBillingSeen, newOrder, portalUrl, renewKey, saveKey, signSwitch, verifiedSwitch } from './billing.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
 const BOOT_ID = `${process.pid}-${Date.now().toString(36)}`;
@@ -321,6 +323,9 @@ export async function createPulseServer({
   // new one for this run. A project Home opens keeps Home's.
   ficha: fichaOn = false,
   renewFicha = false,
+  // The keys MADRE App's subscription checks against (src/billing.mjs). Only a test passes its own;
+  // no environment variable changes them.
+  billingKeys = {},
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   const currentFicha = fichaOn ? fichaReader(root) : async () => null;
@@ -770,6 +775,43 @@ export async function createPulseServer({
     const token = await readSecret(root, OWNER_VAULT, 'usage').catch(() => null);
     return Boolean(token) && existsSync(NOTICES_KEY_FILE);
   }
+  // MADRE App's subscription (src/billing.mjs, docs/private/SUSCRIPCION.md): only inside the app and
+  // only once the author's signed switch says so. Every server of the house reads the same files;
+  // Home alone asks madre.run, so a copy asks once however many projects are open.
+  let billing = { view: { state: 'off' }, saved: {}, at: 0 };
+  const switchKey = billingKeys.switchKey ?? undefined;
+  const billingKey = billingKeys.billingKey ?? BILLING_PUBLIC_KEY;
+  const billingView = () => billing.view;
+  async function billingNow({ ask = false } = {}) {
+    if (!billingInApp()) return billing;
+    if (ask && salasRoom) {
+      const due = Date.now() - billingAsked > SWITCH_EVERY_MS;
+      if (due) { billingAsked = Date.now(); await askSwitch(root, { switchKey }).catch(() => null); }
+      if (billing.saved?.order && Date.now() - orderAsked > ORDER_EVERY_MS) { orderAsked = Date.now(); await askOrder(root, { billingKey }).catch(() => null); }
+    }
+    billing = { ...(await loadBilling(root, { switchKey, billingKey }).catch(() => ({ view: { state: 'off' }, saved: {} }))), at: Date.now() };
+    return billing;
+  }
+  let billingAsked = 0;
+  let orderAsked = 0;
+  // Home keeps the copy current: the switch every half hour, a key it waits for every few seconds,
+  // and a fresh key every twelve hours.
+  if (billingInApp() && salasRoom && !testMode) {
+    const tick = async () => {
+      await billingNow({ ask: true }).catch(() => null);
+      if (billing.key) { await renewKey(root, { billingKey }).catch(() => null); await billingNow().catch(() => null); }
+    };
+    void tick();
+    const billingTimer = setInterval(() => void tick(), 60000);
+    billingTimer.unref?.();
+    const orderTimer = setInterval(() => { if (billing.saved?.order && Date.now() - Date.parse(billing.saved.order.at) < ORDER_FAST_MS) void billingNow({ ask: true }).catch(() => null); }, ORDER_EVERY_MS);
+    orderTimer.unref?.();
+  } else void billingNow().catch(() => null);
+  // What the page reads: where this copy stands and the one thing to tell the person now, if any.
+  async function billingForPage({ ask = true } = {}) {
+    const now = await billingNow({ ask });
+    return { ...now.view, moment: dueMoment(now.view, now.saved), project: salasRoom ? null : { room: projectRoomId(canonicalProjectRoot), name: basename(canonicalProjectRoot) }, site: billingSite() };
+  }
   async function homeWidget(kind) {
     // The author's error log (src/madre-logs.mjs): read from this disk every time, so Home shows it
     // as agents add and close errors. Only in the author's copy run from source, and only Home serves it.
@@ -890,6 +932,14 @@ export async function createPulseServer({
           .map((one) => ({ ...one, when: now < Date.parse(one.from) ? 'later' : now >= Date.parse(one.until) ? 'over' : 'now' })),
         unverified: Math.max(0, (data?.notices?.length ?? 0) - (feed?.entries?.length ?? 0)),
       };
+    } else if (kind === 'billing') {
+      // The author's switch for MADRE App's subscription (src/billing.mjs): what madre.run serves now,
+      // checked as every app checks it, and whether the key of the subscription keys exists yet.
+      if (!(await ownerCanNotify())) return null;
+      const answer = await globalThis.fetch(`${billingSite()}/api/cobro`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+      const data = answer?.ok ? await answer.json().catch(() => null) : null;
+      const served = data?.switch ? verifiedSwitch(data, switchKey) : null;
+      reading = { available: true, read: Boolean(data), switch: served, unverified: Boolean(data?.switch && !served), keyReady: Boolean(billingKey) };
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
@@ -1318,6 +1368,8 @@ export async function createPulseServer({
     // S-032: in the room of Salas nobody delegates. BISHOP speaks there, and what it sets in
     // motion goes through its own plans, never through a ```pulse plan of that room.
     delegation: salasRoom ? false : delegation,
+    // In the limited mode of MADRE App (src/billing.mjs), no plan among several AIs.
+    plansAllowed: () => billingView().state !== 'limited',
     maxPlanSteps,
     ...own,
   });
@@ -2716,7 +2768,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/missions.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/auto-open.js', '/changes.js', '/activity.js', '/notices.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/terms-field.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/missions.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/welcome-scene.js', '/news-scenes.js', '/remedy.js', '/icons.js', '/page-errors.js', '/auto-open.js', '/changes.js', '/activity.js', '/notices.js', '/subscription.js', '/tips.js', '/starters.js', '/provider-pick.js', '/notifications.js', '/provider-marks.js', '/terms.js', '/terms-field.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -4812,6 +4864,59 @@ export async function createPulseServer({
         if (typeof payload.enabled === 'boolean') await updateConfig(root, { notices: { enabled: payload.enabled } });
         return sendJson(response, 200, await noticesForPage());
       }
+      // MADRE App's subscription (src/billing.mjs): read and changed from the pages of this computer only.
+      if (url.pathname === '/api/subscription' || url.pathname.startsWith('/api/subscription/')) {
+        if (viaPhone) return sendJson(response, 404, { error: t('Not found.') });
+        if (request.method === 'GET' && url.pathname === '/api/subscription') return sendJson(response, 200, await billingForPage());
+        if (request.method !== 'POST' || request.headers.origin !== `http://${request.headers.host}`) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const now = await billingNow();
+        if (now.view.state === 'off') return sendJson(response, 409, { error: t('There is no subscription in this copy of MADRE.') });
+        if (url.pathname === '/api/subscription/subscribe') {
+          if (!billingKey) return sendJson(response, 503, { error: t('Subscriptions are not open yet. Try again in a few days.') });
+          const order = await newOrder(root, { language: roomLanguage() });
+          orderAsked = 0;
+          await billingNow();
+          return sendJson(response, 200, { url: order.url });
+        }
+        if (url.pathname === '/api/subscription/key') {
+          const key = await saveKey(root, String(payload.key ?? ''), { billingKey });
+          if (!key) return sendJson(response, 422, { error: t('That key is not valid. Copy it whole from the page where you paid, and paste it again.') });
+          return sendJson(response, 200, await billingForPage({ ask: false }));
+        }
+        if (url.pathname === '/api/subscription/manage') {
+          const where = await portalUrl(root, { language: roomLanguage() });
+          return where ? sendJson(response, 200, { url: where }) : sendJson(response, 502, { error: t('madre.run did not answer. Try again in a moment.') });
+        }
+        if (url.pathname === '/api/subscription/seen') {
+          await markBillingSeen(root, String(payload.moment ?? ''));
+          return sendJson(response, 200, await billingForPage({ ask: false }));
+        }
+        if (url.pathname === '/api/subscription/project' && !salasRoom) {
+          const chosen = await chooseProject(root, { room: projectRoomId(canonicalProjectRoot), name: basename(canonicalProjectRoot) });
+          if (!chosen.ok) return sendJson(response, 409, { error: t('You can change the project that takes messages once a day. Next time: {when}.', { when: new Date(chosen.next).toLocaleString(roomLanguage() === 'en' ? 'en-US' : 'es-MX', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) }), active: chosen.active });
+          return sendJson(response, 200, await billingForPage({ ask: false }));
+        }
+        return sendJson(response, 404, { error: t('Not found.') });
+      }
+      // The author's switch for the subscription: signed here with the notices' key, sent to madre.run,
+      // read by every app. Only in the author's copy run from source, from this computer.
+      if (request.method === 'POST' && url.pathname === '/api/owner/billing') {
+        const address = request.socket.remoteAddress ?? '';
+        if (viaPhone || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address) || !(await ownerCanNotify())) return sendJson(response, 404, { error: t('Not found.') });
+        if (request.headers.origin !== `http://${request.headers.host}`) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        if (typeof payload.on !== 'boolean') return sendJson(response, 422, { error: t('Say whether it is on or off.') });
+        if (payload.on && !billingKey) return sendJson(response, 409, { error: t('First make the key of the subscription keys: node scripts/billing-key.mjs. Without it nobody could pay.') });
+        const at = new Date().toISOString();
+        const sent = signSwitch({ on: payload.on, from: at, trialDays: 7, price: { mxn: 109 }, at }, await readFile(NOTICES_KEY_FILE, 'utf8'));
+        const token = await readSecret(root, OWNER_VAULT, 'usage');
+        const answer = await globalThis.fetch(`${billingSite()}/api/cobro`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(sent), signal: AbortSignal.timeout(10000) }).catch(() => null);
+        const said = answer ? await answer.json().catch(() => ({})) : {};
+        if (!answer?.ok) return sendJson(response, 502, { error: said.error ? t('madre.run said: {error}', { error: said.error }) : t('madre.run did not answer.') });
+        widgetReadings.delete('billing');
+        return sendJson(response, 200, { ok: true, switch: sent.switch });
+      }
       // Writing one, or taking it back: only from this computer, only in the author's copy.
       if (request.method === 'POST' && (url.pathname === '/api/owner/notices' || url.pathname === '/api/owner/notices/retire')) {
         const address = request.socket.remoteAddress ?? '';
@@ -5813,6 +5918,16 @@ export async function createPulseServer({
         // No turn before MADRE's license is accepted on this computer (src/terms.mjs): a page left open
         // from before, or a script, is told where to accept it.
         if (!viaPhone && !(await readTerms(root)).accepted) return sendJson(response, 403, { error: t('Accept MADRE\'s license in Home to start.'), terms: true });
+        // The limited mode of MADRE App (src/billing.mjs): the Coordinator comes with the subscription,
+        // and one project takes messages; the others are read, never locked or emptied.
+        if (billingInApp()) {
+          const plan = await billingNow();
+          if (plan.view.state === 'limited') {
+            if (salasRoom) return sendJson(response, 402, { error: t('The Coordinator comes with the subscription. Your projects still work: write in the one you are using.'), subscription: { limit: 'coordinator' } });
+            const claim = await claimProject(root, { room: projectRoomId(canonicalProjectRoot), name: basename(canonicalProjectRoot), view: plan.view });
+            if (!claim.ok) return sendJson(response, 402, { error: t('Without the subscription, one project takes messages: {name}. This one stays as it is, to read.', { name: claim.active?.name ?? '' }), subscription: { limit: 'project', active: claim.active } });
+          }
+        }
         const payload = await body(request, { limit: MESSAGE_LIMIT, tooLarge: t('Your message is too long to send as text. Attach it as a file instead.') });
         // A phone asks up to #2. The bridge already said so; the room says it again, and records
         // where the message came from. Only the bridge's word counts for that, never the body's.
