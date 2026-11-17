@@ -418,7 +418,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(popup.hidden, false);
   assert.match(popup.textContent, /de lo que tu plan te deja usar cada|del límite que le pusiste en este proyecto|tokens en las últimas 5 horas/);
   // What it can do, said as things it does (1.1).
-  assert.match(popup.textContent, /Lo que puede hacer/);
+  assert.match(popup.textContent, /Qué puede hacer/);
   assert.match(popup.textContent, /Respuestas/);
   const statsText = popup.textContent;
   assert.ok(/\d+/.test(statsText));
@@ -497,7 +497,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(core.strikes, 0);
   await ask('delete the archive');
   assert.equal(core.strikes, 1);
-  assert.match(panes.children[4].textContent, /INTENTOS ANTES DE QUE ESTA INTERFAZ SE CIERRE/);
+  assert.match(panes.children[4].textContent, /INTENTOS ANTES DE QUE ESTA CONSOLA SE CIERRE/);
   registry.get('core').close();
 
   // AJUSTES: one window, three sections, six categories, each card saying where it stands; the

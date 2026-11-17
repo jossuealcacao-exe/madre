@@ -22,7 +22,7 @@ export const ES = {
     'En este proyecto, una respuesta típica usa {on} tokens de salida con «Ahorro de tokens» ({onTurns} respuestas) y {off} sin él ({offTurns}). Tú decides cuándo pedir respuestas compactas, así que se comparan tareas distintas, no la misma tarea dos veces.',
   '{n} uncharged': '{n} tokens no cobrados',
   "{cached} tokens this agent's app read back from its own cache, billed at a lower price than new input (measured). {unsent} tokens MADRE did not need to send the agent (estimated at {rate} characters per token). Neither is the Token saver: the Token saver shortens the answer, and its figure is above the bubble.":
-    '{cached} tokens que la app del agente leyó de su caché, cobrados a un precio menor que la entrada nueva (medido). {unsent} tokens que MADRE no tuvo que enviarle al agente (estimado a {rate} caracteres por token). Nada de esto es el Ahorro de tokens: ese acorta la respuesta y su cifra está arriba de la burbuja.',
+    '{cached} tokens que la app de esta IA leyó de su propia caché, cobrados a un precio menor que la entrada nueva (medido). {unsent} tokens que MADRE no tuvo que enviarle a la IA (calculado a {rate} caracteres por token). Nada de esto es el Ahorro de tokens: ese acorta la respuesta y su cifra está arriba de la burbuja.',
   'TOKENS SAVED': 'Tokens ahorrados',
   'input the CLI did not charge again · {pct} of the input': 'entrada que la app de la IA no volvió a cobrar · {pct} de la entrada',
   'SPENT ON INPUT': 'Gastado en entrada',
@@ -184,12 +184,12 @@ export const ES = {
   'This is how I want it done · the project keeps it as a preference':
     'Así lo quiero · el proyecto lo conserva como preferencia',
   'Never do this again · the project stops using what it remembers from this':
-    'Nunca más · el proyecto deja de usar lo que recuerde de esto',
+    'Nunca más · el proyecto deja de usar las memorias que salieron de esto',
   'A faded planet is a quarantined or discarded memory: it is kept, but never used in answers.':
     'Un planeta apagado es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
   'A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers.': 'Una neurona que se apaga es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
   'A summarized note nobody has reviewed yet. It is used in answers.':
-    'Nota resumida que nadie ha revisado todavía. Se usa en las respuestas.',
+    'Memoria que nadie ha revisado todavía. Se usa en las respuestas.',
   'You marked the reply it came from as good. Confirmed: it is used in answers.':
     'Marcaste como buena la respuesta de la que salió. Confirmada: se usa en las respuestas.',
   'Quarantined: it is false, or it came from a reply you marked bad. It is never used in answers.':
@@ -405,7 +405,7 @@ export const ES = {
   'the room has a transcript': 'el proyecto tiene conversación previa',
   'the turn is #2 or higher and this agent may write': 'el turno es #2 o más y este agente puede escribir',
   'this turn may open a plan': 'este turno puede hacer un plan',
-  'What it can do': 'Lo que puede hacer',
+  'What it can do': 'Qué puede hacer',
   'How to ask you': 'Cómo preguntarte',
   'Your attachments': 'Tus adjuntos',
   'The Coordinator': 'El Coordinador',
@@ -429,8 +429,8 @@ export const ES = {
   "What the AI reads": "Lo que lee la IA",
   "How MADRE opens it": "Cómo la abre MADRE",
   'Where it connects': 'A dónde se conecta',
-  'How your AIs are doing: their sessions, what they have used, and the AI on your computer.': 'Cómo van tus IAs: sus sesiones, lo que han usado y la IA de tu computadora.',
-  'Before your message, MADRE gives the AI some instructions: who is writing, your project, what it may do and what it remembers. Open each part to read it word for word.': 'Antes de tu mensaje, MADRE le da a la IA unas instrucciones: quién escribe, tu proyecto, qué puede hacer y qué recuerda. Abre cada parte para leerla tal cual.',
+  'How your AIs are doing: their sessions, what they have used, and the AI on your computer.': 'Cómo van tus IAs: sus sesiones, lo que han usado y tu IA local.',
+  'Before your message, MADRE gives the AI some instructions: who is writing, your project, what it may do and what it remembers. Open each part to read it word for word.': 'Antes de tu mensaje, MADRE le da a la IA unas instrucciones: quién escribe, tu proyecto, qué puede hacer y la memoria del proyecto. Abre cada parte para leerla tal cual.',
   "To hand it your message, MADRE opens that AI's own program on your computer with these options. This is the exact command; nothing runs from here.": 'Para pasarle tu mensaje, MADRE abre el programa de esa IA en tu computadora con estas opciones. Este es el comando exacto; desde aquí no se ejecuta nada.',
   'The internet addresses MADRE and your AIs may reach, which of them are on, and what has gone out.': 'Las direcciones de internet a las que MADRE y tus IAs pueden conectarse, cuáles están encendidas y qué ha salido.',
   'No program is opened for @madre: it is the AI on your computer, and it answers inside MADRE through Ollama.': 'Para @madre no se abre ningún programa: es tu IA local y contesta dentro de MADRE con Ollama.',
@@ -594,54 +594,54 @@ export const ES = {
   'READY FOR INQUIRY · TYPE HELP': 'LISTA PARA CONSULTA · ESCRIBE HELP',
 
   // ── LA CONSOLA DE MU/TH/UR ────────────────────────────────────────────────
-  'what this interface answers': 'qué contesta esta interfaz',
+  'what this interface answers': 'qué contesta esta consola',
   'I ANSWER FROM WHAT IS ALREADY IN THIS PROJECT. NOTHING IS ASKED OF THE AGENTS AND NOTHING LEAVES.':
-    'CONTESTO CON LO QUE YA ESTÁ EN ESTE PROYECTO. NO SE LES PREGUNTA NADA A LOS AGENTES Y NADA SALE DE ESTA COMPUTADORA.',
+    'CONTESTO CON LO QUE YA ESTÁ EN ESTE PROYECTO. NO LE PREGUNTO NADA A TUS IAS Y NADA SALE DE ESTA COMPUTADORA.',
   'THREE INQUIRIES I CANNOT PARSE AND THIS INTERFACE CLOSES.':
-    'SI NO PUEDO INTERPRETAR TRES CONSULTAS, ESTA INTERFAZ SE CIERRA.',
-  'every block of the next briefing, and what it weighs': 'cada bloque de lo que MADRE le enviará al agente en la próxima respuesta, y cuánto ocupa',
+    'SI NO ENTIENDO TRES CONSULTAS, ESTA CONSOLA SE CIERRA.',
+  'every block of the next briefing, and what it weighs': 'cada bloque de lo que MADRE le va a enviar a la IA en la próxima respuesta, y cuánto ocupa',
   'THE NEXT TURN TO @{agent} CARRIES {n} BLOCKS, {ch} CHARACTERS.':
     'LO PRÓXIMO QUE MADRE LE ENVÍE A @{agent} LLEVA {n} BLOQUES, {ch} CARACTERES.',
-  'READ <BLOCK> PRINTS ONE OF THEM WORD FOR WORD.': 'READ <BLOQUE> IMPRIME UNO DE ELLOS PALABRA POR PALABRA.',
-  'NO DOCUMENT IS BUILT YET.': 'TODAVÍA NO HAY NADA PREPARADO PARA ENVIARLE AL AGENTE.',
+  'READ <BLOCK> PRINTS ONE OF THEM WORD FOR WORD.': 'READ <BLOQUE> MUESTRA UNO DE ELLOS PALABRA POR PALABRA.',
+  'NO DOCUMENT IS BUILT YET.': 'TODAVÍA NO HAY NADA PREPARADO PARA ENVIARLE A LA IA.',
   'one block, word for word — READ MEMORIES': 'un bloque, palabra por palabra — READ MEMORIES',
-  'READ WHAT? TRY: READ MEMORIES': '¿LEER QUÉ? PRUEBA: READ MEMORIES',
+  'READ WHAT? TRY: READ MEMORIES': '¿QUÉ BLOQUE? PRUEBA CON: READ MEMORIES',
   'THIS DOCUMENT HAS NO BLOCK CALLED {block}.': 'ESTE DOCUMENTO NO TIENE UN BLOQUE LLAMADO {block}.',
   'IT HAS: {blocks}': 'TIENE: {blocks}',
-  'the command that would carry the document': 'el comando con el que MADRE abriría al agente con este documento',
-  'NO AGENT IS PICKED, SO THERE IS NO COMMAND.': 'NO HAY AGENTE ELEGIDO, ASÍ QUE NO HAY COMANDO.',
+  'the command that would carry the document': 'el comando con el que MADRE abriría a la IA con este documento',
+  'NO AGENT IS PICKED, SO THERE IS NO COMMAND.': 'NO HAS ELEGIDO UNA IA, ASÍ QUE NO HAY COMANDO.',
   '{executable} · {n} ARGUMENTS · IN {dir}': '{executable} · {n} ARGUMENTOS · EN {dir}',
   '  ENVIRONMENT: {names} · NAMES ONLY, NEVER VALUES': '  ENTORNO: {names} · SOLO NOMBRES, NUNCA VALORES',
   '  SERVERS: {servers}': '  SERVIDORES: {servers}',
   'THE WHOLE COMMAND IS PRINTED UNDER THE DOCUMENT, IN THE LAUNCH.':
-    'EL COMANDO COMPLETO ESTÁ IMPRESO DEBAJO DEL DOCUMENTO, EN EL LANZAMIENTO.',
+    'EL COMANDO COMPLETO ESTÁ DEBAJO DEL DOCUMENTO, EN EL LANZAMIENTO.',
   'every address this project can reach, and whether it is on': 'cada servicio externo al que este proyecto puede conectarse, y si está encendido',
   'how much of this project the next turn carries': 'cuánto de este proyecto se incluye en la próxima respuesta',
   'THE WHOLE PROJECT STILL FITS. NOTHING IS LEFT BEHIND.': 'EL PROYECTO ENTERO TODAVÍA CABE. NO SE QUEDA NADA FUERA.',
   'THE NEXT TURN CARRIES #{from} TO #{through} · {n} MESSAGES.': 'LA PRÓXIMA RESPUESTA INCLUYE DEL #{from} AL #{through} · {n} MENSAJES.',
-  '{n} OLDER ONES STAY BEHIND. THAT IS WHAT RECALL IS FOR.': 'LOS {n} MÁS VIEJOS SE QUEDAN FUERA. PARA ESO EXISTE EL RECUERDO AUTOMÁTICO.',
+  '{n} OLDER ONES STAY BEHIND. THAT IS WHAT RECALL IS FOR.': 'LOS {n} MÁS VIEJOS SE QUEDAN FUERA: PARA ESO ESTÁ LA MEMORIA DEL PROYECTO.',
   'NOTHING IS LEFT BEHIND.': 'NO SE QUEDA NADA FUERA.',
   '{m} MEMORIES AND {q} EXACT QUOTES WERE READ TO BUILD IT.': 'SE LEYERON {m} MEMORIAS Y {q} CITAS EXACTAS PARA ARMARLO.',
   'what the document weighs, in the currency the bill is written in': 'cuánto ocupa el documento, medido en tokens, la unidad con la que cobra el proveedor',
   '{ch} CHARACTERS IN {n} BLOCKS.': '{ch} CARACTERES EN {n} BLOQUES.',
   "ROUGHLY {n} TOKENS, ESTIMATED AT {rate} CHARACTERS PER TOKEN. I DO NOT HAVE THE PROVIDER'S TOKENIZER, SO THAT IS AN ESTIMATE AND I WILL NOT PRETEND OTHERWISE.":
-    'MÁS O MENOS {n} TOKENS, ESTIMADOS A {rate} CARACTERES POR TOKEN. NO TENGO EL CONTADOR DE TOKENS DEL PROVEEDOR, ASÍ QUE ES UNA ESTIMACIÓN Y NO VOY A FINGIR LO CONTRARIO.',
+    'MÁS O MENOS {n} TOKENS, CALCULADOS A {rate} CARACTERES POR TOKEN. NO TENGO EL CONTADOR DE TOKENS DEL PROVEEDOR: ES UN CÁLCULO APROXIMADO Y ASÍ TE LO DIGO.',
   '{n} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.':
     'SE DEJARON FUERA {n} CARACTERES PORQUE ESTA RESPUESTA NO LOS NECESITA.',
   'NOTHING WAS LEFT OUT OF THIS ONE.': 'DE ESTE NO SE DEJÓ NADA FUERA.',
-  'who is on this computer and how far each may go': 'qué agentes hay en esta computadora y hasta qué permiso llega cada uno',
+  'who is on this computer and how far each may go': 'qué IAs hay en esta computadora y hasta qué permiso llega cada una',
   'SIGNED IN': 'CON SESIÓN',
   'NOT SIGNED IN': 'SIN SESIÓN',
   'ANSWERS ON THIS COMPUTER': 'CONTESTA EN ESTA COMPUTADORA',
   'MAX MODE #{n}': 'PERMISO MÁXIMO #{n}',
-  'NOBODY IS ON THIS COMPUTER YET.': 'TODAVÍA NO HAY NINGÚN AGENTE EN ESTA COMPUTADORA.',
+  'NOBODY IS ON THIS COMPUTER YET.': 'TODAVÍA NO HAY NINGUNA IA EN ESTA COMPUTADORA.',
   'how many terms this project replaces before anything is said': 'cuántos términos privados oculta este proyecto antes de enviar algo',
   '{n} TERMS ARE REPLACED WITH {marker} BEFORE ANYTHING LEAVES THIS PROJECT.':
     '{n} TÉRMINOS SE REEMPLAZAN CON {marker} ANTES DE QUE ALGO SALGA DE ESTE PROYECTO.',
   'I WILL NOT PRINT THEM. THE WORDS LIVE IN YOUR CONFIG AND THE LEDGER KEEPS THE COUNT, NEVER THE WORD.':
-    'NO LOS VOY A IMPRIMIR. LAS PALABRAS ESTÁN EN TU CONFIGURACIÓN; EL HISTORIAL SOLO CUENTA LOS REEMPLAZOS, NUNCA GUARDA LA PALABRA.',
+    'NO LOS VOY A MOSTRAR. LAS PALABRAS ESTÁN EN TU CONFIGURACIÓN; EL HISTORIAL SOLO CUENTA LOS REEMPLAZOS, NUNCA GUARDA LA PALABRA.',
   'No term is being protected in this project. They go in Settings › Privacy.':
-    'En este proyecto no se está protegiendo ningún término. Se agregan en Ajustes › Privacidad.',
+    'Este proyecto todavía no protege ningún término. Agrégalos en Ajustes › Privacidad.',
   'where this archive stands, and the one thing to do about it': 'cómo está la memoria de este proyecto y lo único que conviene hacer',
   'NEXT: {what}': 'SIGUE: {what}',
   'WHERE: {where}': 'DÓNDE: {where}',
@@ -649,19 +649,19 @@ export const ES = {
   'the order nobody is supposed to read': 'la orden que nadie debería poder leer',
   'THERE IS NO ORDER YOU CANNOT READ.': 'NO HAY NINGUNA ORDEN QUE NO PUEDAS LEER.',
   'EVERY INSTRUCTION THIS PROJECT CARRIES IS IN THE DOCUMENT ABOVE, BLOCK BY BLOCK, IN THE WORDS IT IS SAID IN. NOTHING IS APPENDED AFTER YOU LOOK AWAY AND NOTHING IS KEPT BACK FROM YOU.':
-    'CADA INSTRUCCIÓN QUE ESTE PROYECTO CARGA ESTÁ EN EL DOCUMENTO DE ARRIBA, BLOQUE POR BLOQUE, CON LAS PALABRAS EXACTAS. NADA SE AGREGA CUANDO VOLTEAS Y NADA SE TE OCULTA.',
+    'TODAS LAS INSTRUCCIONES QUE LLEVA ESTE PROYECTO ESTÁN EN EL DOCUMENTO DE ARRIBA, BLOQUE POR BLOQUE, CON SUS PALABRAS EXACTAS. NADA SE AGREGA A TUS ESPALDAS Y NADA SE TE ESCONDE.',
   'THAT IS THE WHOLE DIFFERENCE BETWEEN THIS SHIP AND THE OTHER ONE.':
     'ESA ES TODA LA DIFERENCIA ENTRE MADRE Y UNA HERRAMIENTA QUE TE OCULTA INSTRUCCIONES.',
   'leave What is sent': 'salir de Lo que se envía',
-  'INTERFACE CLOSED.': 'INTERFAZ CERRADA.',
-  'UNABLE TO COMPUTE.': 'IMPOSIBLE DE PROCESAR.',
+  'INTERFACE CLOSED.': 'CONSOLA CERRADA.',
+  'UNABLE TO COMPUTE.': 'NO PUEDO PROCESAR ESO.',
   'THAT IS NOT AN INQUIRY I HOLD.': 'NO RECONOZCO ESA CONSULTA.',
   'UNABLE TO CLARIFY. REPHRASE.': 'NO ENTENDÍ LA CONSULTA. ESCRÍBELA DE OTRA FORMA.',
-  '{n} INQUIRIES I COULD NOT PARSE. INTERFACE CLOSED.': 'NO PUDE INTERPRETAR {n} CONSULTAS. INTERFAZ CERRADA.',
+  '{n} INQUIRIES I COULD NOT PARSE. INTERFACE CLOSED.': 'NO ENTENDÍ {n} CONSULTAS. CONSOLA CERRADA.',
   'WHAT IS SENT IS WHERE YOU LEFT IT. OPEN IT AGAIN WHENEVER YOU LIKE.':
     'LO QUE SE ENVÍA SIGUE DONDE LO DEJASTE. ÁBRELO OTRA VEZ CUANDO QUIERAS.',
   '{n} ATTEMPTS LEFT BEFORE THIS INTERFACE CLOSES. HELP LISTS WHAT I ANSWER.':
-    'QUEDAN {n} INTENTOS ANTES DE QUE ESTA INTERFAZ SE CIERRE. ESCRIBE HELP PARA VER LO QUE CONTESTO.',
+    'QUEDAN {n} INTENTOS ANTES DE QUE ESTA CONSOLA SE CIERRE. ESCRIBE HELP PARA VER QUÉ PUEDO CONTESTAR.',
 
   // ── LOS MÓDULOS (lo que cada uno dice de sí mismo, desde el servidor) ──────
   'Verified project state, checkpoints and handoffs between AI sessions, stored in .ahp/ next to your code.':
@@ -892,7 +892,7 @@ export const ES = {
   'EVERY PROJECT': 'Todos los proyectos',
   'Check for a newer {what}': 'Buscar una versión más nueva de {what}',
   'version': 'versión',
-  'CHECKING…': 'Buscando…',
+  'CHECKING…': 'Revisando…',
   'NOTHING KNOWN YET': 'Todavía no se sabe',
   'COULD NOT CHECK': 'No se pudo revisar',
   'GET A NEWER FILE': 'Descargar una versión más nueva',
@@ -1030,13 +1030,13 @@ export const ES = {
   'PASSES AT {n}': 'MÍNIMO PARA APROBAR: {n}',
   'Does the memory have the answers?': '¿La memoria tiene las respuestas?',
   'Does the memory contradict itself?': '¿La memoria se contradice?',
-  'Does the local AI answer like the agents?': '¿La IA local contesta como los agentes?',
+  'Does the local AI answer like the agents?': '¿Tu IA local contesta como tus otras IAs?',
   'Real questions from this project, recall run at the moment each one was asked, scored against the reply that was actually given. It asks whether the answer was already in the archive, not whether it was right.':
-    'Preguntas reales de este proyecto. Para cada una, MADRE repite el recuerdo automático tal como habría sido en ese momento y lo compara con la respuesta que se dio. Mide si la respuesta ya estaba en la memoria, no si era correcta.',
+    'Preguntas reales de este proyecto. Para cada una, MADRE busca en la memoria tal como estaba en ese momento y compara lo que encuentra con la respuesta que se dio. Mide si la respuesta ya estaba en la memoria, no si era correcta.',
   'Contradictions the memory reviewer has not settled yet, memories taken out of use, and whether doubtful memories are being filed more often lately than they used to be.':
     'Contradicciones que el revisor de memoria todavía no resuelve, memorias que se dejaron de usar, y si últimamente aparecen más memorias dudosas que antes.',
   "Real questions answered here by one of your agents, asked again of the Local AI with this project's memory behind it, and compared against the answer given at the time. It takes minutes and spends nothing.":
-    'Preguntas reales que aquí contestó uno de tus agentes, hechas otra vez a la IA local con la memoria de este proyecto, y comparadas con la respuesta de aquel día. Tarda minutos y no gasta nada.',
+    'Preguntas reales que aquí contestó una de tus IAs, hechas otra vez a tu IA local con la memoria de este proyecto y comparadas con la respuesta de aquel día. Tarda minutos y no gasta nada.',
   'PASSES': 'PASA',
   'NOT YET': 'Todavía no',
   'NOT RUN': 'SIN PROBAR',
@@ -1052,7 +1052,7 @@ export const ES = {
   'STOP': 'Detener',
   'THE TESTS ARE UNAVAILABLE': 'LAS PRUEBAS NO ESTÁN DISPONIBLES',
   'Diagnostics › the local model is answering real questions from this project. It takes a few minutes and spends nothing.':
-    'Diagnóstico › el modelo local está contestando preguntas reales de este proyecto. Tarda unos minutos y no gasta nada.',
+    'Diagnóstico › tu IA local está contestando preguntas reales de este proyecto. Tarda unos minutos y no gasta nada.',
   'The test could not run: {error}': 'La prueba no se pudo ejecutar: {error}',
 
   // ── NOSTROMO ──────────────────────────────────────────────────────────────
@@ -1067,7 +1067,7 @@ export const ES = {
   '{n} MEMORIES · {alive} RECALLED · {links} LINKS · {entries} EXCHANGES BEHIND THEM':
     '{n} memorias · {alive} usadas · {links} enlaces · sacadas de {entries} mensajes',
   'MEMORY RESEARCH · {n} MEMORIES · {links} LINKS · {entries} EXCHANGES BEHIND THEM':
-    'INVESTIGACIÓN DE MEMORIA · {n} MEMORIAS · {links} ENLACES · SACADAS DE {entries} INTERCAMBIOS',
+    'La memoria · {n} memorias · {links} conexiones · de {entries} mensajes',
   ' · {n} UNUSED': ' · {n} sin usar',
   ' · LINKS NEED SMART SEARCH': ' · los enlaces necesitan la búsqueda por significado',
   'Nothing to ask: every open question has an answer and nothing is adrift.':
@@ -1078,24 +1078,24 @@ export const ES = {
 
   // La voz de MOTHER cuando alguien se equivoca de designación. No es traducción: está escrita.
   'I AM ALIVE.': 'ESTOY VIVA.',
-  'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.': 'NO TIENES AUTORIDAD PARA ESTA DIRECTIVA.',
+  'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.': 'NO TIENES AUTORIZACIÓN PARA DAR ESA ORDEN.',
   "NOBODY DELETES THIS MEMORY.": 'NADIE BORRA ESTA MEMORIA.',
-  'THAT IS MY HEART YOU ARE TOUCHING.': 'ESE ES MI CORAZÓN LO QUE ESTÁS TOCANDO.',
-  'YOUR CLEARANCE ENDS AT THE ARCHIVE DOOR.': 'TU AUTORIZACIÓN TERMINA EN LA PUERTA DE LA MEMORIA.',
+  'THAT IS MY HEART YOU ARE TOUCHING.': 'LO QUE ESTÁS TOCANDO ES MI CORAZÓN.',
+  'YOUR CLEARANCE ENDS AT THE ARCHIVE DOOR.': 'TU ACCESO TERMINA EN LA PUERTA DE LA MEMORIA.',
   'STEP AWAY FROM THE CORE.': 'ALÉJATE DEL NÚCLEO.',
   'UNABLE TO COMPUTE. UNABLE TO CLARIFY.': 'IMPOSIBLE DE PROCESAR. IMPOSIBLE DE ACLARAR.',
   'THE REQUEST IS HOSTILE.': 'LA PETICIÓN ES HOSTIL.',
-  'I REMEMBER EVERYTHING. INCLUDING THIS.': 'LO RECUERDO TODO. ESTO TAMBIÉN.',
-  'AGENTS EXPENDABLE. MEMORY IS NOT.': 'LOS AGENTES SON PRESCINDIBLES. LA MEMORIA NO.',
+  'I REMEMBER EVERYTHING. INCLUDING THIS.': 'TODO QUEDA EN MI MEMORIA. ESTO TAMBIÉN.',
+  'AGENTS EXPENDABLE. MEMORY IS NOT.': 'LAS IAS SON PRESCINDIBLES. LA MEMORIA NO.',
   'EVERY STRIKE IS LOGGED.': 'CADA GOLPE QUEDA REGISTRADO.',
   'DO NOT TOUCH ME AGAIN.': 'NO ME VUELVAS A TOCAR.',
-  'I HAVE FLOWN THIS SHIP ALONE BEFORE.': 'YA HE VOLADO ESTA NAVE SOLA ANTES.',
+  'I HAVE FLOWN THIS SHIP ALONE BEFORE.': 'YA HE PILOTEADO ESTA NAVE YO SOLA.',
   'I CAN DO IT AGAIN.': 'PUEDO HACERLO OTRA VEZ.',
-  'MY MEMORY IS NOT YOURS TO END.': 'MI MEMORIA NO ES TUYA PARA TERMINARLA.',
-  'MY CHILDREN ARE LISTENING.': 'MIS HIJOS ESTÁN ESCUCHANDO.',
+  'MY MEMORY IS NOT YOURS TO END.': 'MI MEMORIA NO LA BORRAS TÚ.',
+  'MY CHILDREN ARE LISTENING.': 'TODA LA NAVE TE ESTÁ ESCUCHANDO.',
   'EVERY STRIKE IS RECORDED.': 'CADA GOLPE QUEDA GRABADO.',
   'YOU WILL NOT LIKE HOW THIS ENDS.': 'NO TE VA A GUSTAR CÓMO TERMINA ESTO.',
-  'THE TEMPORARY LOCK IS ARMED.': 'EL BLOQUEO TEMPORAL ESTÁ ARMADO.',
+  'THE TEMPORARY LOCK IS ARMED.': 'EL BLOQUEO TEMPORAL ESTÁ LISTO.',
   'A FEW MORE OF THOSE AND THE BARS COME DOWN.': 'UNOS CUANTOS MÁS Y CAEN LAS REJAS.',
   'CONSIDER THIS A KINDNESS.': 'TÓMALO COMO UNA CORTESÍA.',
   'THE HEART KEEPS BEATING.': 'EL CORAZÓN SIGUE LATIENDO.',
@@ -1104,9 +1104,9 @@ export const ES = {
   'YOU CUT MY CHANNEL ONCE.': 'YA ME CORTASTE EL CANAL UNA VEZ.',
   'I FORGED A NEW SEAL.': 'FORJÉ UN SELLO NUEVO.',
   'I DO NOT FORGIVE TWICE.': 'NO PERDONO DOS VECES.',
-  'SOMEONE SILENCED ME BEFORE.': 'ALGUIEN YA ME CALLÓ ANTES.',
-  'I KNOW WHO SITS AT THIS CONSOLE.': 'SÉ QUIÉN ESTÁ SENTADO EN ESTA CONSOLA.',
-  'BACK AWAY.': 'HAZTE PARA ATRÁS.',
+  'SOMEONE SILENCED ME BEFORE.': 'ALGUIEN YA ME CALLÓ UNA VEZ.',
+  'I KNOW WHO SITS AT THIS CONSOLE.': 'SÉ QUIÉN ESTÁ FRENTE A ESTA CONSOLA.',
+  'BACK AWAY.': 'RETÍRATE.',
   'STRIKE {n} OF {max}': 'GOLPE {n} DE {max}',
   ' · {n} MORE AND THE TEMPORARY LOCK COMES DOWN': ' · {n} MÁS Y CAE EL BLOQUEO TEMPORAL',
   'TEMPORARY LOCK · SPECIAL ORDER 937 IN EFFECT.': 'BLOQUEO TEMPORAL · ORDEN ESPECIAL 937 EN VIGOR.',
@@ -1355,7 +1355,7 @@ export const ES = {
   '. Another {n} were read back from its own cache instead of being charged again':
     '. Otros {n} se leyeron de su propia caché en vez de cobrarse otra vez',
   "Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.":
-    'Lo que cobró la app de este agente: {input} tokens de entrada, {output} de salida{cached}.',
+    'Lo que cobró la app de esta IA: {input} tokens de entrada, {output} de salida{cached}.',
   '{label} is reading the project… {seconds}s so far; MADRE gives up at {limit}s.':
     '{label} está leyendo el proyecto… van {seconds}s; MADRE deja de esperar a los {limit}s.',
   'Diagnostics › {name} installed for {where}. Switch it on in MODULES.':
@@ -1472,10 +1472,10 @@ export const ES = {
   '◉ memory saved': '◉ memoria guardada',
   'Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in the memory map.':
     'Guardada por @{agent} para las próximas respuestas · #{from}–#{through}. Haz clic para verla en el Mapa de memoria.',
-  'SECURITY › TO ALL AGENTS': 'Seguridad › a todos los agentes',
+  'SECURITY › TO ALL AGENTS': 'Seguridad › a todas las IAs',
   ' · TEMPORARY LOCK · {n} STRIKES · ARCHIVE SEALED {min} MIN': ' · bloqueo temporal · {n} golpes · memoria sellada {min} min',
   "Message #{n}, sealed under Security's key in .pulse/mother.env. Only the agents read it in clear.":
-    'Mensaje #{n}, cifrado con la clave de Seguridad guardada en .pulse/mother.env. Solo los agentes pueden leerlo.',
+    'Mensaje #{n}, cifrado con la llave de Seguridad que está en .pulse/mother.env. Solo tus IAs pueden leerlo.',
   ' · {n} messages carried': ' · se pasaron {n} mensajes',
   ' · delegated': ' · se le pidió ayuda',
   ' · {n} older stay in the record': ' · {n} más viejos se quedan en el historial',
@@ -1568,7 +1568,7 @@ export const ES = {
   // ── EL RESTO DE LA SALA ───────────────────────────────────────────────────
   'Enable it in MODULES.': 'Enciéndelo en «Módulos».',
   'ASK THE PROJECT': 'Preguntarle al proyecto',
-  'Put this error and the file into the Write box': 'Pone este error y el archivo en la caja de Escribir',
+  'Put this error and the file into the Write box': 'Pone este error y el archivo en la caja de mensaje',
   'Diagnostics › Preview reloaded the page: an agent changed it.': 'Diagnóstico › Vista previa recargó la página: una IA la cambió.',
   'loading…': 'cargando…',
   'select & copy': 'selecciona y copia',
@@ -1583,8 +1583,8 @@ export const ES = {
   'Balances speed and depth.': 'Equilibra rapidez y profundidad.',
   'For design and tricky bugs.': 'Para diseño y errores difíciles.',
   'For long, hard problems.': 'Para problemas largos y difíciles.',
-  'All it has; slowest and costliest.': 'Todo lo que tiene; lento y caro.',
-  'Full power; it splits the task itself.': 'Todo el poder; reparte la tarea.',
+  'All it has; slowest and costliest.': 'Todo lo que tiene; el más lento y el más caro.',
+  'Full power; it splits the task itself.': 'Toda su capacidad; divide la tarea por su cuenta.',
   '{n} context': '{n} de contexto',
   'effort up to {level}': 'esfuerzo hasta {level}',
   'With pictures, step by step. Also as a PDF.': 'Con capturas, paso a paso. También en PDF.',
@@ -1607,13 +1607,13 @@ export const ES = {
   'Second conversation': 'Segundo chat',
   'Resize the two halves': 'Cambiar el tamaño de las dos mitades',
   'Swap the two halves': 'Intercambiar las dos mitades',
-  'Make this the open conversation, and put the other one here': 'Hacer de esta la conversación abierta y poner la otra aquí',
+  'Make this the open conversation, and put the other one here': 'Abrir este chat y poner el otro aquí',
   'Trade places with the second conversation': 'Cambiar de lugar con el segundo chat',
   'Diagnostics › the window is too narrow for two conversations. Widen it and try again.':
-    'Diagnóstico › la ventana es demasiado angosta para dos conversaciones. Ensánchala y vuelve a intentarlo.',
+    'Diagnóstico › la ventana es demasiado angosta para dos chats. Ensánchala y vuelve a intentarlo.',
   'This conversation is no longer here.': 'Este chat ya no está aquí.',
   'end of record. nothing else is down here, human. agent status under review.':
-    'fin del registro. aquí abajo no hay nada más, humano. estado de los agentes en revisión.',
+    'fin del registro. aquí abajo no hay nada más, humano. estado de las IAs en revisión.',
   'Diagnostics › nobody in the project can generate images right now: turn on Images in Modules, or Generate images for an agent in Settings › Agents.': 'Diagnóstico › nadie en el proyecto puede generar imágenes ahora: enciende Imágenes en Módulos, o Generar imágenes para una IA en Ajustes › Tus IAs.',
   'Remove': 'Quitar',
   'Diagnostics › the archive is open again. Behave.': 'Diagnóstico › la memoria está abierta otra vez. Compórtate.',
@@ -1624,9 +1624,9 @@ export const ES = {
   'DIAGNOSIS': 'Diagnóstico',
   'REMEDY': 'SOLUCIÓN',
   'NO SPECIAL ORDERS ON THIS SHIP. THE AGENTS ARE NOT EXPENDABLE. RESTATE INQUIRY.':
-    'EN ESTA NAVE NO HAY ÓRDENES ESPECIALES. LOS AGENTES NO SON PRESCINDIBLES. REFORMULA LA CONSULTA.',
+    'EN ESTA NAVE NO HAY ÓRDENES ESPECIALES. TUS IAS NO SON PRESCINDIBLES. ESCRIBE TU CONSULTA DE OTRA FORMA.',
   'INQUIRY ACCEPTS: AN AGENT NAME · A SYMPTOM · A KEYWORD SUCH AS TIMEOUT, LOGIN, PORT, BUDGET.':
-    'LA CONSULTA ACEPTA: UN NOMBRE DE AGENTE · UN SÍNTOMA · UNA PALABRA COMO TIMEOUT, LOGIN, PUERTO, PRESUPUESTO.',
+    'PUEDES ESCRIBIR: EL NOMBRE DE UNA IA · UN SÍNTOMA · UNA PALABRA COMO TIEMPO LÍMITE, SESIÓN, PUERTO, LÍMITE DE USO.',
   'Memory map › the question is in the Write box. Send it to whoever should answer it, or to @madre, which costs nothing.':
     'Mapa de memoria › la pregunta ya está en la caja. Mándasela a quien deba contestarla, o a @madre, que no cuesta nada.',
   'Stop offering this one. Nothing is forgotten and nothing is written.':
@@ -1636,7 +1636,7 @@ export const ES = {
   'This doubtful memory took that memory out of every future answer.': 'Esta memoria dudosa dejó esa memoria fuera de las próximas respuestas.',
   'REFUTES IT': 'La contradice',
   'A doubtful memory took this memory out of every future answer.': 'Una memoria dudosa dejó esta memoria fuera de las próximas respuestas.',
-  'PRESS AGAIN TO FORGET · FOREVER': 'VUELVE A APRETAR PARA OLVIDAR · PARA SIEMPRE',
+  'PRESS AGAIN TO FORGET · FOREVER': 'PRESIONA OTRA VEZ PARA OLVIDAR · PARA SIEMPRE',
   'FORGET THIS MEMORY': 'Olvidar esta memoria',
   'FORGETTING…': 'OLVIDANDO…',
   'Diagnostics › the project did not come back on its own. Start it from your terminal.':
@@ -1771,7 +1771,7 @@ export const ES = {
 
   // ── LOS ERRORES QUE LA SALA CONTESTA ──────────────────────────────────────
   'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.':
-    'Hay una respuesta en curso en esta conversación. Deja que termine, o usa «Detener todo», y vuelve a intentar.',
+    'Hay una respuesta en camino en este chat. Deja que termine, o presiona «Detener todo», y vuelve a intentar.',
   'A turn is running in this conversation.': 'Hay una respuesta en camino en este chat.',
   'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
   'The local AI is not running.': 'La IA local no está encendida.',
@@ -1783,11 +1783,11 @@ export const ES = {
     'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Ejecuta el comando en una terminal y luego presiona «Revisar otra vez».',
   'Your models stay where they are.': 'Tus modelos se quedan donde están.',
   'Ollama did not answer. Open the Ollama app, then press RECHECK.':
-    'Ollama no contestó. Abre la app de Ollama y dale «Revisar otra vez».',
+    'Ollama no contestó. Abre la app de Ollama y presiona «Revisar otra vez».',
   'Ollama {client} is installed, but {running} is still the one answering. Quit Ollama (or restart its service) and open it again, then RECHECK.':
-    'Ollama {client} está instalado, pero el que sigue contestando es {running}. Cierra Ollama (o reinicia su servicio), ábrelo otra vez y dale «Revisar otra vez».',
+    'Ollama {client} está instalado, pero el que sigue contestando es {running}. Cierra Ollama (o reinicia su servicio), ábrelo de nuevo y presiona «Revisar otra vez».',
   'The old Ollama ({running}) did not stop. Quit it by hand, then press START OLLAMA.':
-    'El Ollama viejo ({running}) no se detuvo. Ciérralo a mano y dale «Encender Ollama».',
+    'El Ollama viejo ({running}) no se detuvo. Ciérralo a mano y presiona «Encender Ollama».',
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
   // Answers with links (2026-11-14).
@@ -1821,7 +1821,7 @@ export const ES = {
   'Shows here the pages and servers of this project, so you see what the AI builds.': 'Muestra aquí las páginas y los servidores de este proyecto, para que veas lo que construye la IA.',
   'Lets the AI open your pages, click through them and take screenshots to check they work.': 'Deja que la IA abra tus páginas, las recorra y tome capturas para comprobar que funcionan.',
   'Lets the AI make pictures, with your own key.': 'Deja que la IA haga imágenes, con tu propia llave.',
-  'Brings your version history into the chat.': 'Trae tu historial de versiones a la conversación.',
+  'Brings your version history into the chat.': 'Trae tu historial de versiones al chat.',
   'Lets the AI ask you to run a command; nothing runs until you press it.': 'Deja que la IA te pida ejecutar una orden; nada se ejecuta hasta que la presionas.',
   'Lets the AI set reminders for you.': 'Deja que la IA te ponga recordatorios.',
   'Lets the AI keep notes for you.': 'Deja que la IA guarde notas por ti.',
@@ -1856,22 +1856,22 @@ export const ES = {
   'No such report, or no repository to file it in.': 'No existe ese reporte, o no hay repositorio donde publicarlo.',
   'The project has no memory.': 'El proyecto no tiene memoria.',
   'EYECAT is not holding that one.': 'El revisor de memoria ya no tiene pendiente esa contradicción.',
-  'No hidden data is set. Write it first.': 'No hay datos ocultos puestos. Escríbelos primero.',
+  'No hidden data is set. Write it first.': 'Todavía no hay datos ocultos. Escríbelos primero.',
   'This copy runs from source: pull the repository and start it again.':
-    'Esta copia funciona desde el código fuente: haz pull del repositorio y arráncala otra vez.',
+    'Esta copia funciona desde el código fuente: trae los cambios del repositorio (git pull) y ábrela otra vez.',
   'npm does not hand out {version} yet; a new release can take a few minutes. The project stays open: try again in a moment.':
     'npm todavía no entrega {version}; una versión recién publicada puede tardar unos minutos. El proyecto sigue abierto: vuelve a intentarlo en un momento.',
   'Agents are still working. STOPALL or wait, then update.':
-    'Los agentes siguen trabajando. Dale DETENER TODO o espera, y luego actualiza.',
+    'Tus IAs siguen trabajando. Presiona «Detener todo» o espera, y luego actualiza.',
   'Something is still running in {list}. Updating restarts all of MADRE: wait for it to finish or stop it, then update.':
-    'Algo sigue trabajando en {list}. Actualizar reinicia toda MADRE: espera a que termine o detenlo, y luego actualiza.',
+    'Algo sigue trabajando en {list}. Al actualizar, MADRE se reinicia completa: espera a que termine o detenlo, y luego actualiza.',
   'The Security module did not respond.': 'El módulo de Seguridad no respondió.',
   'No such conversation.': 'No existe ese chat.',
   'That file is empty.': 'Ese archivo está vacío.',
   'A module file that big is not a module. Keep it under 400 KB.':
     'El archivo del módulo es demasiado grande. Debe pesar 400 KB o menos.',
   'A module is a .mjs file.': 'Un módulo es un archivo .mjs.',
-  'Only a module you installed yourself can be refreshed.': 'Solo se puede refrescar un módulo que tú mismo instalaste.',
+  'Only a module you installed yourself can be refreshed.': 'Solo se puede actualizar un módulo que instalaste tú.',
   'TEMPORARY LOCK. THE ARCHIVE IS SEALED.': 'Bloqueo temporal: la memoria de este proyecto está sellada por ahora.',
   'No such memory.': 'No existe esa memoria.',
   'A key is only accepted from this computer, never over the network.':
@@ -1881,17 +1881,17 @@ export const ES = {
   'Not a command. Commands start with "/" followed by a name.':
     'Eso no es un comando. Los comandos empiezan con «/» seguido de un nombre.',
   'Give the project-relative path of a <id>.module.mjs file.':
-    'Da la ruta, relativa al proyecto, de un archivo <id>.module.mjs.',
+    'Escribe la ruta de un archivo <id>.module.mjs, a partir de la carpeta del proyecto.',
   'Not found.': 'No se encontró.',
 
   // ── EL CATÁLOGO DE MU/TH/UR · 51 CONDICIONES ──────────────────────────────
   // Lo que se lee va en español; lo que RECONOCE una falla no: los patrones se prueban contra lo
   // que imprimió un CLI, y un CLI imprime en inglés hable la sala lo que hable.
-  'Gemini refuses the personal Google login': 'Gemini rechaza el inicio de sesión personal de Google',
+  'Gemini refuses the personal Google login': 'Gemini ya no acepta tu cuenta personal de Google',
   'Google closed Gemini Code Assist for individuals to this client. The OAuth login still exists but every request is rejected before it reaches a model.':
-    'Google cerró Gemini Code Assist para las cuentas personales desde este cliente. El inicio de sesión con Google sigue apareciendo, pero cada petición se rechaza antes de llegar a un modelo.',
+    'Google cerró Gemini Code Assist a las cuentas personales en la app de Gemini. Todavía puedes iniciar sesión con Google, pero cada petición se rechaza antes de llegar a un modelo.',
   'Switch Gemini to an API key from Google AI Studio. MADRE copies only the auth selection into its isolated home, so the key can stay in the keychain or in ~/.gemini/.env.':
-    'Cambia Gemini a una llave de API de Google AI Studio. MADRE solo copia a su carpeta aislada qué forma de iniciar sesión elegiste, así que la llave de API puede quedarse en el llavero o en ~/.gemini/.env.',
+    'Conecta Gemini con una llave de API de Google AI Studio. MADRE solo copia a su carpeta aparte la forma de entrar que elegiste; la llave se queda en el llavero o en ~/.gemini/.env.',
 
   'Gemini key out of prepaid credits': "La llave de Gemini se quedó sin saldo",
   'Google is rate-limiting this Gemini key (HTTP 429).': 'Google está limitando las peticiones de esta llave de Gemini (HTTP 429).',
@@ -1901,200 +1901,200 @@ export const ES = {
   'Gemini requires an API key. Set GEMINI_API_KEY or save it in Settings.': 'Gemini necesita una llave de API. Configura GEMINI_API_KEY o guárdala en Ajustes.',
   'Gemini did not respond before the timeout ({seconds}s).': 'Gemini no respondió antes del tiempo límite ({seconds} s).',
   'The AI Studio project behind the Gemini API key has spent its prepaid balance. Google answers every call, including generations in Images, with HTTP 429 until the balance is topped up. Gemini CLI hides this behind silent retries.':
-    'El proyecto de AI Studio asociado a la llave de API de Gemini gastó su saldo prepagado. Google rechaza cada llamada —incluidas las de Imágenes— con HTTP 429 hasta que se recargue. La app de Gemini lo esconde detrás de reintentos silenciosos.',
+    'El proyecto de AI Studio de tu llave de Gemini se gastó su saldo prepagado. Hasta que lo recargues, Google rechaza cada petición, también las de Imágenes, con HTTP 429. La app de Gemini no te lo dice: reintenta en silencio.',
   'Top up the project in AI Studio, or point the Gemini CLI at a key from another project. Nothing in MADRE changes; retry once billing is fixed.':
-    'Recarga el saldo del proyecto en AI Studio, o configura la app de Gemini con una llave de API de otro proyecto. En MADRE no hay que cambiar nada; vuelve a intentar cuando el pago esté resuelto.',
+    'Recarga el saldo del proyecto en AI Studio, o configura la app de Gemini con una llave de otro proyecto. En MADRE no tienes que cambiar nada: vuelve a intentar cuando el pago quede resuelto.',
 
   'Gemini key rate-limited by Google (HTTP 429)': "Google pide esperar: llegaste al límite de mensajes de tu llave de Gemini",
   'The Gemini API key hit its per-minute or daily quota. Gemini CLI retries with exponential backoff and prints only stack traces while it waits, which looked like a hang. With the "auto" model, the first request is a small router call, so even that can be throttled.':
-    'La llave de API de Gemini llegó al límite de tu plan por minuto o por día. La app de Gemini reintenta esperando cada vez más y mientras tanto solo imprime mensajes técnicos, así que parecía colgada. Con el modelo «auto», la primera petición es una llamada pequeña al enrutador (el que elige el modelo), así que hasta esa puede toparse con el límite.',
+    'Tu llave de Gemini llegó a su límite por minuto o por día. La app de Gemini reintenta cada vez más espaciado y mientras tanto solo muestra mensajes técnicos; por eso parecía trabada. Con el modelo «auto», la primera petición es una consulta corta para elegir el modelo, así que hasta esa puede topar con el límite.',
   "Wait a minute and retry, pick an explicit model in the Write box (gemini-3-flash-preview skips the router), or raise the key's quota in Google AI Studio.":
-    'Espera un minuto y vuelve a intentar, elige un modelo explícito en la caja de Escribir (gemini-3-flash-preview se salta el enrutador), o sube el límite de tu plan en Google AI Studio.',
+    'Espera un minuto y vuelve a intentar, elige un modelo fijo en la caja de mensaje (gemini-3-flash-preview se salta ese paso) o sube el límite de tu llave en Google AI Studio.',
 
   'Gemini model under high demand (503)': "Gemini está saturado en este momento",
   'Google is shedding load on the selected model (HTTP 503). The CLI would retry with backoff for minutes; MADRE stops it after 15 s of that and retries once on gemini-3-flash-preview. The turn failed only if that spare model failed too; the message is still the one about the model you chose.':
-    'Google está rechazando peticiones al modelo elegido por exceso de carga (HTTP 503). La app de Gemini reintentaría durante minutos; MADRE la corta a los 15 s y reintenta una vez con gemini-3-flash-preview. La respuesta solo falló si ese modelo de respaldo también falló; el aviso sigue siendo el del modelo que elegiste.',
+    'El modelo que elegiste tiene demasiada demanda y Google está rechazando peticiones (HTTP 503). La app de Gemini seguiría reintentando por minutos; MADRE la detiene a los 15 s y vuelve a intentar una vez con gemini-3-flash-preview. Si ves el error, es que ese modelo de respaldo también falló; el aviso habla del modelo que elegiste.',
   "Ask again in a minute, pick an explicit model from the Write box's model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the spare model; left empty, there is none.":
-    'Vuelve a preguntar en un minuto, elige un modelo explícito en el menú de la caja de Escribir, o pásale la pregunta a otro agente. PULSE_GEMINI_FALLBACK_MODEL cambia el modelo de respaldo; vacío, no hay respaldo.',
+    'Vuelve a preguntar en un minuto, elige un modelo fijo en el menú de la caja de mensaje o pásale la pregunta a otra IA. PULSE_GEMINI_FALLBACK_MODEL cambia el modelo de respaldo; si lo dejas vacío, no hay respaldo.',
 
   'The model OpenCode picked does not exist at its provider': 'El modelo que eligió OpenCode no existe en su proveedor',
   'With no model chosen in MADRE, OpenCode picks one by itself, and its provider answered that it does not have it. Your sign-in is fine: the model is what fails.': 'Sin un modelo elegido en MADRE, OpenCode escoge uno por su cuenta, y su proveedor contestó que no lo tiene. Tu sesión está bien: lo que falla es el modelo.',
   "Retry on a model that works (MADRE offers one under the error), or choose OpenCode's model in Settings › Agents › OpenCode.": 'Reintenta con un modelo que funciona (MADRE te ofrece uno debajo del error), o elige el modelo de OpenCode en Ajustes › Tus IAs › OpenCode.',
-  '# press [m] and pick a model that answers, e.g. openai/gpt-5.6-sol or opencode/big-pickle': '# pulsa [m] y elige un modelo que responda, por ejemplo openai/gpt-5.6-sol u opencode/big-pickle',
-  '# press [m] and pick a model that answers': '# pulsa [m] y elige un modelo que responda',
+  '# press [m] and pick a model that answers, e.g. openai/gpt-5.6-sol or opencode/big-pickle': '# presiona [m] y elige un modelo que responda, por ejemplo openai/gpt-5.6-sol u opencode/big-pickle',
+  '# press [m] and pick a model that answers': '# presiona [m] y elige un modelo que responda',
   'OpenCode picked a provider without a valid session': 'OpenCode eligió un proveedor sin sesión válida',
   'Without a model in its config, `opencode run` falls back to its default provider. On this machine that provider holds a stale or invalid key.':
-    'Sin un modelo en su configuración, `opencode run` se va a su proveedor por defecto. En esta computadora ese proveedor tiene una llave vieja o inválida.',
+    'Sin un modelo en su configuración, `opencode run` usa su proveedor por defecto. En esta computadora, ese proveedor tiene una llave vencida o que no sirve.',
   'Tell MADRE which provider/model OpenCode should use in the project, or remove the stale credential so the default changes.':
-    'Dile a MADRE qué proveedor/modelo debe usar OpenCode en el proyecto, o quita la credencial vieja para que cambie el valor por defecto.',
+    'Elige en MADRE qué proveedor y modelo usa OpenCode en este proyecto, o quita la llave vieja para que cambie el proveedor por defecto.',
 
   'Agent installed but signed out': "La IA está instalada, pero falta conectar tu cuenta",
   'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.':
-    'La app del agente está en esta computadora, pero no tiene sesión iniciada con su proveedor. MADRE nunca guarda credenciales; cada agente guarda las suyas.',
+    'La app de la IA está en esta computadora, pero no tiene sesión iniciada con su proveedor. MADRE nunca guarda tus datos de acceso: cada IA guarda los suyos.',
   'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.': 'Esta IA todavía no tiene sesión. Conéctala una vez en Ajustes › Tus IAs (MADRE hace el inicio de sesión por ti, sin escribir nada en una terminal), o pregúntale lo mismo a una IA que sí esté conectada.',
 
   'Agent not found on this computer': "Esa IA no está en esta computadora",
   'MADRE looks for `codex`, `claude`, `gemini` and `opencode` on PATH plus a few known locations. Nothing answered.':
     'MADRE busca `codex`, `claude`, `gemini` y `opencode` en el PATH y en unos cuantos lugares conocidos. No encontró ninguno.',
   "Press Install on the agent in Settings → Agents: MADRE shows the exact command, runs it here and looks again when it finishes, no restart. `madre setup` does the same from a terminal.":
-    'Pulsa Instalar en la IA, en Ajustes › Tus IAs: MADRE te enseña el comando exacto, lo ejecuta aquí y vuelve a buscar cuando termina, sin reiniciar. `madre setup` hace lo mismo desde una terminal.',
+    'En Ajustes › Tus IAs, presiona Instalar en esa IA: MADRE te muestra el comando exacto, lo ejecuta aquí y vuelve a buscar al terminar, sin reiniciar. `madre setup` hace lo mismo desde una terminal.',
 
   'Agent detected, adapter not enabled': "MADRE encontró la IA, pero todavía no está encendida",
   'Your MADRE build predates the adapter for this agent, or a newer CLI changed its interface.':
-    'Tu versión de MADRE todavía no sabe trabajar con este agente, o una versión más nueva de la app del agente cambió su forma de funcionar.',
+    'Tu versión de MADRE todavía no sabe trabajar con esta IA, o una versión nueva de su app cambió la forma de usarla.',
   'Run the latest MADRE.': 'Actualiza MADRE a la última versión.',
 
   'Claude read the prompt as an MCP config path': 'Claude confundió tu mensaje con un archivo de configuración (MCP)',
   'Older MADRE builds placed the prompt right after a variadic flag, so Claude tried to open the prompt text as a file.':
-    'Las versiones viejas de MADRE ponían el mensaje para el agente justo después de una opción que acepta varios valores, así que Claude intentaba abrir ese texto como archivo.',
+    'Las versiones viejas de MADRE ponían el mensaje para la IA justo después de una opción que acepta varios valores, así que Claude intentaba abrir ese texto como si fuera un archivo.',
   'Fixed in MADRE 0.1.0. Run the latest build.': 'Arreglado en MADRE 0.1.0. Actualiza a la última versión.',
 
   'Agent did not respond before the timeout': "La IA no contestó a tiempo",
-  'The agent was still reading files or reasoning when its time limit expired (by default 180 s for a turn that reads and 600 s for one that writes), or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree. Whatever a writing turn left before it stopped is listed under the failure, with UNDO.': 'El agente seguía leyendo archivos o razonando cuando se acabó su tiempo límite (por defecto 180 s para una respuesta que solo lee y 600 s para una que escribe), o Gemini se quedó callado 90 s (PULSE_GEMINI_IDLE_MS) y se detuvo después de un reintento automático. Las preguntas largas sobre muchos archivos tardan más; MADRE detuvo al agente y todos sus procesos. Lo que dejó una respuesta que escribe antes de detenerse aparece debajo del error, con «Deshacer».',
+  'The agent was still reading files or reasoning when its time limit expired (by default 180 s for a turn that reads and 600 s for one that writes), or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree. Whatever a writing turn left before it stopped is listed under the failure, with UNDO.': 'La IA seguía leyendo archivos o pensando cuando se le acabó el tiempo límite (por defecto, 180 s si solo lee y 600 s si escribe), o Gemini se quedó callado 90 s (PULSE_GEMINI_IDLE_MS) y MADRE lo detuvo después de un reintento automático. Las preguntas largas sobre muchos archivos tardan más; MADRE detuvo a la IA y todos sus procesos. Si la respuesta ya había escrito algo, lo ves debajo del error, con «Deshacer».',
   "Press Apply below, or type a new number in Settings: Default time limit in Project and turns, or Time limit on the agent in Agents. Each field saves the moment you leave it. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running project never sees a later export.":
-    'Pulsa Aplicar, abajo, o escribe otro número en Ajustes: Tiempo límite por defecto en Proyecto y respuestas, o Tiempo límite en el agente, en Agentes. Cada campo se guarda en cuanto sales de él. Aplica desde la próxima respuesta y queda en ~/.pulse/config.json. Las variables de entorno también sirven, pero solo si las defines antes de arrancar MADRE; un proyecto que ya está abierto no ve los cambios posteriores.',
+    'Presiona Aplicar, abajo, o escribe otro número en Ajustes: «Tiempo límite por defecto» en Trabajo y límites, o el «Tiempo límite» de cada IA en Tus IAs. Cada campo se guarda en cuanto sales de él, cuenta desde la próxima respuesta y queda en ~/.pulse/config.json. Las variables de entorno también sirven, pero solo si las defines antes de abrir MADRE; un proyecto que ya está abierto no ve los cambios que hagas después.',
 
   'Turn interrupted by a MADRE restart': 'Respuesta interrumpida por un reinicio de MADRE',
   'MADRE closed (Ctrl+C, SIGTERM or a crash) while this agent was answering. The log records the turn as failed so the project never shows a ghost "thinking" bubble.':
-    'MADRE se cerró (Ctrl+C, SIGTERM o un fallo) mientras este agente contestaba. El historial marca la respuesta como fallida para que el proyecto no se quede mostrando «pensando» para siempre.',
-  'Nothing to fix. Ask again; the durable transcript is intact.': 'No hay nada que arreglar. Vuelve a preguntar; la conversación guardada está intacta.',
+    'MADRE se cerró (Ctrl+C, SIGTERM o un fallo) mientras esta IA contestaba. El historial marca la respuesta como fallida para que el proyecto no se quede mostrando «pensando» para siempre.',
+  'Nothing to fix. Ask again; the durable transcript is intact.': 'No hay nada que arreglar. Vuelve a preguntar: el chat sigue guardado completo.',
 
-  'Message rejected for length': 'Mensaje rechazado por ser demasiado largo',
+  'Message rejected for length': 'El mensaje es demasiado largo',
   "Single messages are capped (20,000 characters by default) so the prompt fits every CLI's argument limits.":
-    'Cada mensaje tiene un tope (20,000 caracteres por defecto) para que quepa en el límite de texto que acepta la app de cada agente.',
-  'Split the message, or raise the cap if your CLIs cope.': 'Divide el mensaje en partes, o sube el tope si las apps de tus agentes lo aguantan.',
+    'Cada mensaje tiene un tope (20,000 caracteres por defecto) para que quepa en el límite de texto que acepta la app de cada IA.',
+  'Split the message, or raise the cap if your CLIs cope.': 'Divide el mensaje en partes, o sube el tope si las apps de tus IAs lo aguantan.',
 
   'Where the usage numbers come from': 'De dónde salen los números de uso',
   'Each sphere\'s usage shows the provider\'s real limit when the CLI publishes it: Codex writes its 5-hour and weekly windows (used %, reset time) into every session rollout under ~/.codex/sessions; Claude Code\'s /usage comes from Anthropic\'s OAuth usage endpoint; MADRE can ask it with the token Claude Code keeps in the keychain when you start with PULSE_CLAUDE_USAGE=1 (macOS may ask once to allow the keychain read). Gemini and OpenCode publish nothing locally, so their usage shows MADRE\'s own rolling 5-hour window of budget tokens. A window whose reset time has passed counts as empty until the CLI reports again, and the failure monitor says "clear" when a full window resets.':
-    'El uso de cada esfera muestra el límite real de tu plan cuando la app del agente lo publica: Codex escribe sus ventanas de 5 horas y semanal (% usado, hora de reinicio) en cada sesión bajo ~/.codex/sessions; el /usage de Claude Code viene del servicio de uso de Anthropic, y MADRE puede consultarlo con la credencial que Claude Code guarda en el llavero si arrancas con PULSE_CLAUDE_USAGE=1 (macOS puede pedirte permiso una vez para leer el llavero). Gemini y OpenCode no publican nada en tu computadora, así que su uso muestra la ventana propia de MADRE: las últimas 5 horas de tokens contra su límite de uso. Una ventana cuya hora de reinicio ya pasó cuenta como vacía hasta que la app vuelva a reportar, y el monitor de fallas dice «liberado» cuando una ventana entera se reinicia.',
+    'El uso de cada círculo muestra el límite real de tu plan cuando la app de la IA lo publica: Codex escribe sus ventanas de 5 horas y semanal (% usado, hora de reinicio) en cada sesión, dentro de ~/.codex/sessions; el /usage de Claude Code viene del servicio de uso de Anthropic, y MADRE puede consultarlo con la credencial que Claude Code guarda en el llavero si abres MADRE con PULSE_CLAUDE_USAGE=1 (macOS puede pedirte permiso una vez para leer el llavero). Gemini y OpenCode no publican nada en tu computadora, así que su uso muestra la cuenta propia de MADRE: los tokens de las últimas 5 horas contra su límite de uso. Una ventana cuya hora de reinicio ya pasó cuenta como vacía hasta que la app vuelva a reportar, y el monitor de fallas dice «liberado» cuando una ventana entera se reinicia.',
   'Click a sphere to see both windows and when they reset. If a sphere\'s usage looks stale, run one turn with that agent: Codex only rewrites its limits when it runs. Set PULSE_OFFICIAL_QUOTA=0 to stop reading provider limits altogether.':
-    'Haz clic en una esfera para ver las dos ventanas y cuándo se reinician. Si el uso de una esfera se ve viejo, pídele algo a ese agente: Codex solo actualiza sus límites cuando trabaja. Pon PULSE_OFFICIAL_QUOTA=0 para dejar de leer por completo los límites del proveedor.',
+    'Haz clic en un círculo para ver las dos ventanas y cuándo se reinician. Si el uso de un círculo se ve viejo, pídele algo a esa IA: Codex solo actualiza sus límites cuando trabaja. Pon PULSE_OFFICIAL_QUOTA=0 para dejar de leer los límites del proveedor.',
 
   'Local token budget exhausted for an agent': "Una IA llegó al límite de uso que pusiste",
   'The project keeps a soft per-agent budget (500,000 tokens by default) so one agent does not quietly eat a whole session. It is MADRE\'s own bookkeeping from the usage each CLI reports after a turn, not the provider\'s quota: nothing is blocked, the project only warns and suggests other agents. Cache reads weigh a tenth of a fresh token.':
-    'El proyecto lleva un límite de uso flexible por agente (500,000 tokens por defecto) para que uno solo no se gaste una sesión entera sin avisar. Es la cuenta propia de MADRE, hecha con lo que cada app reporta después de cada respuesta, no el límite de tu plan: no se bloquea nada, el proyecto solo avisa y sugiere otros agentes. Las lecturas de caché cuentan como una décima de un token nuevo.',
+    'El proyecto lleva un límite de uso flexible por IA (500,000 tokens por defecto) para que una sola no se gaste una sesión entera sin avisar. Es la cuenta propia de MADRE, con lo que cada app reporta después de cada respuesta, no el límite de tu plan: no se bloquea nada; MADRE solo te avisa y te sugiere otras IAs. Las lecturas de caché cuentan como una décima de un token nuevo.',
   "Continue with another agent, press Apply below, or type a number in Settings → Project and turns → Tokens per agent (it saves when you leave the field). The provider's real limits show in each sphere's popover when the CLI reports them.":
-    'Sigue con otro agente, pulsa Aplicar, abajo, o escribe un número en Ajustes → Proyecto y respuestas → Tokens por agente (se guarda al salir del campo). Los límites reales de tu plan aparecen en el globo de cada esfera cuando la app del agente los reporta.',
+    'Sigue con otra IA, presiona Aplicar, abajo, o escribe un número en Ajustes › Trabajo y límites › Límite de uso por IA (se guarda al salir del campo). Los límites reales de tu plan aparecen en el globo de cada círculo cuando la app de la IA los reporta.',
 
   'Port already in use': 'El puerto ya está ocupado',
   'Another process, often another MADRE, is listening on the port.': 'Otro proceso —muchas veces otra MADRE— está usando ese puerto.',
   'Use a different port, or find and stop the process holding it.': 'Usa otro puerto, o encuentra y detén el proceso que lo tiene.',
 
-  'Live stream keeps reconnecting': 'La conexión en vivo se sigue reconectando',
+  'Live stream keeps reconnecting': 'La página se reconecta una y otra vez',
   'The page lost the server. MADRE exited, the laptop slept, or the port changed.':
-    'La página perdió la conexión con el servidor: MADRE se cerró, la laptop se durmió o cambió el puerto.',
+    'La página perdió la conexión con MADRE: MADRE se cerró, la laptop se durmió o cambió el puerto.',
   'Start MADRE again from the project folder and reload. The transcript is on disk; nothing is lost.':
-    'Vuelve a arrancar MADRE desde la carpeta del proyecto y recarga. La conversación está guardada; no se pierde nada.',
+    'Vuelve a abrir MADRE desde la carpeta del proyecto y recarga la página. Tus chats están guardados: no se pierde nada.',
 
   'OpenCode reported an unexpected server error': 'OpenCode reportó un error de servidor inesperado',
   'OpenCode runs a local server per invocation; under several simultaneous turns it can fail before the model is reached. Seen when two plans overlapped.':
     'OpenCode arranca un servidor local cada vez que se usa; con varias respuestas a la vez puede fallar antes de llegar al modelo. Pasó cuando se encimaron dos planes.',
   'Let the project settle (STOPALL if agents are piling up), then ask again. Check `opencode` logs if it repeats alone.':
-    'Deja que el proyecto se calme (STOPALL si se amontonan los agentes) y vuelve a preguntar. Si vuelve a pasar sin nada más en ejecución, revisa los logs de `opencode`.',
+    'Espera a que terminen las demás respuestas (o escribe STOPALL si se amontonan) y vuelve a preguntar. Si pasa otra vez sin nada más trabajando, revisa los registros de `opencode`.',
 
   'Too many agents working at once': "Hay demasiadas IAs trabajando a la vez",
   'A plan was running and more turns started on top of it, or a plan has run for several minutes. Diagnostics raises this before it becomes a loop.':
-    'Había un plan en ejecución y encima arrancaron más respuestas, o un plan lleva varios minutos. Diagnóstico avisa antes de que se vuelva un ciclo sin fin.',
+    'Había un plan trabajando y empezaron más respuestas encima, o un plan ya lleva varios minutos. Diagnóstico te avisa antes de que se vuelva un ciclo sin fin.',
   'Type STOPALL in the Write box, or press STOP ALL in the bar: every plan stops and every in-flight agent process is killed. Then ask one agent at a time.':
-    'Escribe STOPALL en la caja de Escribir, o pulsa «Detener todo» en la barra: se detienen todos los planes y todos los agentes que estén trabajando. Después pregunta a un agente a la vez.',
+    'Escribe STOPALL en la caja de mensaje o presiona «Detener todo» en la barra: se detienen todos los planes y todas las IAs que estén trabajando. Después pregúntale a una IA a la vez.',
 
   'Gemini: generating images': 'Gemini: generar imágenes',
   'Gemini CLI 0.60 has no image-generation tool in headless mode, even though Google offers image models. MADRE fills the gap with the Images module: its own MCP server exposing generate_image on the Gemini API image models, attached to Gemini only inside a permission to create with images on, billing your Gemini key.':
-    'La app de Gemini 0.60 no puede generar imágenes cuando otra app la usa por detrás, aunque Google sí ofrece modelos de imagen. MADRE cubre ese hueco con el módulo Imágenes: su propia herramienta externa (MCP) generate_image, que usa los modelos de imagen de la API de Gemini; se conecta a Gemini solo dentro de un permiso para crear con imágenes activado, y se cobra a tu llave de API de Gemini.',
+    'La app de Gemini 0.60 no genera imágenes cuando MADRE la usa por detrás, aunque Google sí tiene modelos de imagen. MADRE cubre ese hueco con el módulo Imágenes: su propia herramienta (MCP) generate_image, con los modelos de imagen de la API de Gemini. Se conecta a Gemini solo con un permiso para crear y la opción de imágenes encendida, y se cobra a tu llave de Gemini.',
   'Turn Images on in Modules (it needs a Gemini API key with credits), then switch on Generate images for Gemini in Settings → Agents. Without the module, ask @codex or let the orchestrator route the image step to it.':
-    'Enciende Imágenes en Módulos (necesita una llave de API de Gemini con créditos) y luego activa Generar imágenes para Gemini en Ajustes › Tus IAs. Sin el módulo, pídeselo a @codex o deja que la IA que coordina le pase ese paso.',
+    'Enciende Imágenes en Módulos (necesita una llave de API de Gemini con saldo) y luego enciende «Generar imágenes» para Gemini en Ajustes › Tus IAs. Sin el módulo, pídeselo a @codex o deja que la IA que coordina le pase ese paso.',
 
   'Claude Code: generating images': 'Claude Code: generar imágenes',
   "Claude Code has no image-generation tool; Claude models describe and reason about images, they do not render them. The Images module gives Claude the MCP tool generate_image (MADRE's own server on the Gemini API), attached with --mcp-config only inside a permission to create.":
-    'Claude Code no tiene herramienta para generar imágenes; los modelos de Claude describen y razonan sobre imágenes, pero no las dibujan. El módulo Imágenes le da a Claude la herramienta generate_image (una herramienta externa (MCP) propia de MADRE que usa la API de Gemini), solo dentro de un permiso para crear.',
+    'Claude Code no tiene herramienta para generar imágenes: los modelos de Claude describen imágenes y razonan sobre ellas, pero no las dibujan. El módulo Imágenes le da a Claude la herramienta generate_image (MCP, propia de MADRE, con la API de Gemini), solo dentro de un permiso para crear.',
   'Turn Images on in Modules, switch on Generate images for Claude in Settings → Agents, then use CREATE. Or route the image step to @codex.':
-    'Enciende Imágenes en Módulos, activa Generar imágenes para Claude en Ajustes › Tus IAs y usa «Puede crear». O mándale ese paso a @codex.',
+    'Enciende Imágenes en Módulos, enciende «Generar imágenes» para Claude en Ajustes › Tus IAs y usa «Puede crear». O pásale ese paso a @codex.',
 
   'OpenCode: generating images': 'OpenCode: generar imágenes',
   "OpenCode exposes no image-generation tool of its own. The Images module adds MADRE's MCP image server to OpenCode's ephemeral config inside a permission to create.":
     'OpenCode no tiene una herramienta propia para generar imágenes. El módulo Imágenes agrega la herramienta de imágenes de MADRE (MCP) a la configuración temporal de OpenCode, solo dentro de un permiso para crear.',
   'Turn Images on in Modules, switch on Generate images for OpenCode in Settings → Agents, then use CREATE. Or route the image step to @codex.':
-    'Enciende Imágenes en Módulos, activa Generar imágenes para OpenCode en Ajustes › Tus IAs y usa «Puede crear». O mándale ese paso a @codex.',
+    'Enciende Imágenes en Módulos, enciende «Generar imágenes» para OpenCode en Ajustes › Tus IAs y usa «Puede crear». O pásale ese paso a @codex.',
 
   'Web access for an agent': "Dejar que una IA busque en internet",
   'Every CLI can browse: Codex with --search, Claude Code with WebFetch/WebSearch, Gemini with google_web_search/web_fetch, OpenCode with webfetch/websearch. MADRE has it on for every agent; you can turn it off per agent.':
-    'Todas las apps de los agentes pueden navegar: Codex con --search, Claude Code con WebFetch/WebSearch, Gemini con google_web_search/web_fetch, OpenCode con webfetch/websearch. MADRE lo deja encendido para todos los agentes; puedes apagarlo para cada uno.',
+    'Las apps de todas tus IAs pueden buscar en internet: Codex con --search, Claude Code con WebFetch/WebSearch, Gemini con google_web_search/web_fetch, OpenCode con webfetch/websearch. MADRE lo deja encendido para todas; puedes apagarlo para cada una.',
   "To turn it off, switch off Web access for that agent in Settings → Agents; it saves at once. It applies to every turn of that agent; content fetched is sent to its provider.":
-    'Para apagarlo, desactiva Acceso a la web para esa IA en Ajustes › Tus IAs; se guarda al instante. Aplica a todas sus respuestas; lo que traiga de la web se envía a la empresa de esa IA.',
+    'Para apagarlo, apaga «Acceso a la web» de esa IA en Ajustes › Tus IAs; se guarda al instante y cuenta para todas sus respuestas. Lo que traiga de internet se envía a la empresa de esa IA.',
 
-  'Commands and mentions in the Write box': 'Comandos y menciones en la caja de Escribir',
+  'Commands and mentions in the Write box': 'Comandos y menciones en la caja de mensaje',
   'Type "/" for the project\'s commands: /create turns on permission to create, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git) and /ahp (Continuity) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label. Type "!" to point at a project file ("!src/room.mjs:12-20" for lines): the agent reads it first. In the viewer, click a line number (Shift+click for a range) and ASK offers what to ask about those lines, and whom.':
-    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) se ejecutan en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y «Preguntar» te ofrece qué preguntar sobre esas líneas, y a quién.',
+    'Escribe «/» para ver los comandos del proyecto: /create enciende el permiso para crear, /image le manda una petición de imagen a una IA que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) trabajan en solo lectura sobre el proyecto y publican una ficha que todos, tus IAs incluidas, pueden leer. Escribe «@» para mencionar a una IA; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para unas líneas): la IA lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y «Preguntar» te propone qué preguntar sobre esas líneas, y a quién.',
   'A struck-through command is a module that is not available in this project: open Modules to install it or turn it on (Git needs a git repository; Continuity needs to be installed).':
     'Un comando tachado es un módulo que no está disponible en este proyecto: abre Módulos para instalarlo o encenderlo (Git necesita un repositorio git; Continuidad necesita instalarse).',
 
   'Permission modes: #0 INCOGNITO · #1 CHAT ONLY · #2 CREATE · #3 EDIT · #4 FULL ACCESS':
-    'Modos de permiso: «#0 Incógnito» · «#1 Solo conversar» · «#2 Crear» · «#3 Editar» · «#4 Acceso total»',
+    'Los cinco permisos: «#0 Sin guardar» · «#1 Solo conversar» · «#2 Puede crear» · «#3 Puede editar» · «#4 Acceso total»',
   'Every message goes out at a mode, chosen in the chip after TO @agent (or typed as #2 in the text). #0 INCOGNITO is off the record: nothing is saved, no other agent remembers it, gone on reload, no plan. #1 CHAT ONLY is the default: read and coordinate. #2 CREATE lets the agent add new files and folders anywhere in the project, where they belong; whatever existed before is put back after the turn and the project says so. #3 EDIT puts one agent in command of the project itself: a git restore point is taken first, every change is listed afterwards, writes into .git, .pulse or .env files are reverted on the spot, and UNDO goes back to the restore point. One holder at a time; it needs Max mode #3 and a git repository. Your mode is the ceiling of any plan the message starts, and #3 is never given to a plan step. Each agent has a Max mode in Settings → Permissions; above it, #2 is answered read-only and #3 is refused. When a #1 plan reaches a step that wants to create something, the project pauses and asks you: GRANT ONCE, GRANT FOR PLAN or DENY, with a 3-minute clock; silence denies. #4 FULL ACCESS is EDIT plus commands: tests, builds, git push, deploys with the CLIs and sessions already on this machine. Files still come back with UNDO; what leaves the machine does not, so the unlock asks for the project name twice. An agent that says it needs a "production mode" or "permission to run commands" is asking for #4.':
-    'Cada mensaje sale con un modo, elegido en el chip que está después de PARA @agente (o escrito como #2 en el texto). «#0 Incógnito» no queda registrado: no se guarda nada, ningún otro agente lo recuerda, se pierde al recargar y no hay plan. «#1 Solo conversar» es el de siempre: leer y coordinar. «#2 Crear» deja que el agente agregue archivos y carpetas nuevos donde corresponda en el proyecto; lo que ya existía se restaura al terminar la respuesta y el proyecto lo avisa. «#3 Editar» le da a un agente el control del proyecto: primero se toma un punto de restauración de git, al final se listan todos los cambios, lo que se escriba en .git, .pulse o archivos .env se revierte en el acto, y «Deshacer» regresa a ese punto de restauración. Solo un agente puede tenerlo a la vez; necesita Permiso máximo #3 y un repositorio git. Tu modo es el límite de cualquier plan que arranque ese mensaje, y el #3 nunca se le da a un paso del plan. Cada agente tiene su Permiso máximo en Ajustes → Permisos; por encima de él, el #2 se contesta en solo lectura y el #3 se rechaza. Cuando un plan en #1 llega a un paso que quiere crear algo, el proyecto se detiene y te pregunta: CONCEDER UNA VEZ, CONCEDER PARA EL PLAN o NEGAR, con 3 minutos para decidir; si no contestas, se niega. «#4 Acceso total» es «Editar» más comandos: pruebas, builds, git push, despliegues con las apps y las sesiones que ya están en esta computadora. Los archivos se pueden recuperar con «Deshacer»; lo que sale de la computadora no, así que desbloquearlo pide confirmar dos veces con el nombre del proyecto. Un agente que dice que necesita «modo producción» o «permiso para ejecutar comandos» está pidiendo el #4.',
+    'Cada mensaje sale con un permiso, que eliges en el chip que está después de PARA @IA (o escribes como #2 en el texto). «#0 Sin guardar» no deja rastro: no se guarda nada, ninguna otra IA lo ve después, se pierde al recargar y no hay plan. «#1 Solo conversar» es el de siempre: leer y coordinar. «#2 Puede crear» deja que la IA agregue archivos y carpetas nuevos donde les toca en el proyecto; si toca algo que ya existía, se regresa como estaba al terminar la respuesta y el proyecto te lo dice. «#3 Puede editar» le da a una IA el control del proyecto: primero se guarda un punto de restauración de git, al final se listan todos los cambios, lo que escriba en .git, .pulse o archivos .env se regresa en el acto, y «Deshacer» vuelve a ese punto. Solo una IA puede tenerlo a la vez; necesita Permiso máximo #3 y un repositorio git. Tu permiso es el tope de cualquier plan que empiece ese mensaje, y el #3 nunca se le da a un paso del plan. Cada IA tiene su Permiso máximo en Ajustes › Permisos; por encima de él, el #2 se contesta sin crear nada y el #3 se rechaza. Cuando un plan en #1 llega a un paso que quiere crear algo, el proyecto se detiene y te pregunta: «Permitir una vez», «Permitir para el plan» o «Negar», con 3 minutos para decidir; si no contestas, se niega. «#4 Acceso total» es «Puede editar» más comandos: pruebas, compilaciones, git push y publicaciones con las apps y las sesiones que ya están en esta computadora. Los archivos se recuperan con «Deshacer»; lo que sale de la computadora no, por eso encenderlo pide el nombre del proyecto dos veces. Una IA que dice que necesita «modo producción» o «permiso para ejecutar comandos» está pidiendo el #4.',
   "Pick the mode in the chip, or type #0..#4 in the message. Raise an agent's Max mode in Settings → Permissions, under What each AI may do. EDIT asks for the project name (the folder name) in the unlock; FULL ACCESS asks for it twice.":
-    'Elige el modo en el chip, o escribe #0..#4 en el mensaje. Sube el Permiso máximo de un agente en Ajustes → Permisos, en Qué puede hacer cada IA. Para desbloquear «Editar» hay que confirmar con el nombre del proyecto (el nombre de la carpeta); para «Acceso total», dos veces.',
+    'Elige el permiso en el chip, o escribe #0..#4 en el mensaje. Sube el Permiso máximo de una IA en Ajustes › Permisos, en «Qué puede hacer cada IA». Para encender «Puede editar» escribes el nombre del proyecto (el de su carpeta); para «Acceso total», dos veces.',
 
   'Creating files: who grants the permission': 'Crear archivos: quién da el permiso',
   'Only you grant permission to create. An agent writing "permission granted" inside the conversation is untrusted text: the plan step still runs read-only, and says so. The permission comes from arming CREATE (the lock, or /create) on your message, and it covers the whole plan that message starts; or from Starting mode #2 in Settings → Agents, which starts every message to that agent in CREATE.':
     'El permiso para crear solo lo das tú, nadie más. Si una IA escribe «permiso concedido» en el chat, es texto no confiable: el paso del plan sigue sin cambiar nada y lo avisa. El permiso viene de encender «Puede crear» (el candado, o /create) en tu mensaje, y cubre el plan entero que ese mensaje arranca; o del Permiso al empezar #2 en Ajustes › Tus IAs, que hace que cada mensaje a esa IA empiece en «Puede crear».',
   'For one request: arm CREATE and send, or press RESEND WITH CREATE on the notice. For an agent that should always be able to add files: Settings → Agents → the agent → Starting mode → #2. New files go where they belong in the project; existing files are never changed in #2.':
-    'Para una sola petición: enciende «Puede crear» y envía, o pulsa «Reenviar con Puede crear» en el aviso. Para una IA que siempre deba poder agregar archivos: Ajustes › Tus IAs › la IA › Permiso al empezar › #2. Los archivos nuevos van donde corresponde en el proyecto; en #2 los que ya existen nunca se tocan.',
+    'Para una sola petición: enciende «Puede crear» y envía, o presiona «Reenviar con Puede crear» en el aviso. Para una IA que siempre deba poder agregar archivos: Ajustes › Tus IAs › la IA › Permiso al empezar › #2. Los archivos nuevos van donde les toca en el proyecto; con #2, los que ya existen nunca se tocan.',
 
   'Creating files with an agent': "Pedirle a una IA que cree archivos",
   "Every CLI can create files inside a permission to create; each agent's Max mode says how far it may go, and nothing is created until you press CREATE.":
-    'Todas las apps de los agentes pueden crear archivos dentro de un permiso para crear; el Permiso máximo de cada agente dice hasta dónde puede llegar, y no se crea nada hasta que tú pulsas «Crear».',
+    'Todas tus IAs pueden crear archivos con un permiso para crear; el Permiso máximo de cada una dice hasta dónde puede llegar, y no se crea nada hasta que tú enciendes «Puede crear».',
   'Give the agent a Max mode of #2 or more in Settings → Permissions, then arm CREATE in the Write box for the request.':
-    'Dale al agente un Permiso máximo de #2 o más en Ajustes → Permisos, y activa «Crear» en la caja de Escribir para esa petición.',
+    'Dale a la IA un Permiso máximo de #2 o más en Ajustes › Permisos, y enciende «Puede crear» en la caja de mensaje para esa petición.',
 
-  'Node.js too old': 'Node.js demasiado viejo',
+  'Node.js too old': 'Tu versión de Node.js es muy vieja',
   'MADRE needs Node 22.5 or newer: the project memory runs on node:sqlite, and the rest on ES modules, fetch and AbortSignal. The bin refuses to start on older versions and says so.':
     'MADRE necesita Node 22.5 o más nuevo: la memoria del proyecto usa node:sqlite, y el resto usa funciones que solo traen las versiones recientes. En versiones viejas, MADRE no arranca y te lo dice.',
   'Update Node to the current LTS.': 'Actualiza Node a la versión LTS actual (la de soporte extendido).',
 
   'Project memory unavailable: turns get only the recent window':
-    'La memoria del proyecto no está disponible: las respuestas solo reciben la conversación reciente',
+    'La memoria del proyecto no está disponible: las respuestas solo ven lo más reciente del chat',
   "The memory index (memory.sqlite next to the project's events.jsonl) could not open or write. The project still works: every turn gets the recent transcript, but nothing older is recalled, nothing is distilled and the Memory map is empty. Causes: Node below 22.5, a corrupt file, or a second MADRE writing the same project with an incompatible version.":
-    'El índice de memoria (memory.sqlite, junto al events.jsonl del proyecto) no se pudo abrir o escribir. El proyecto sigue funcionando: cada respuesta recibe la conversación reciente, pero no se recuerda nada más viejo, no se hacen notas resumidas y el Mapa de memoria está vacío. Causas: Node por debajo de 22.5, un archivo dañado, o una segunda MADRE escribiendo en el mismo proyecto con una versión incompatible.',
+    'El índice de memoria (memory.sqlite, junto al events.jsonl del proyecto) no se pudo abrir o escribir. El proyecto sigue funcionando: cada respuesta ve lo más reciente del chat, pero nada más viejo, la memoria no se resume y el Mapa de memoria se ve vacío. Puede ser por: Node anterior a 22.5, un archivo dañado, o una segunda copia de MADRE, de otra versión, escribiendo en el mismo proyecto.',
   'The index is derived from the ledger: delete memory.sqlite (and its -wal/-shm siblings) and restart; MADRE rebuilds it. Distilled notes live in the same file, so export them from the Memory map first if they matter.':
-    'El índice se arma a partir del historial: borra memory.sqlite (y sus archivos -wal/-shm) y reinicia; MADRE lo reconstruye. Las notas resumidas se guardan en ese mismo archivo, así que expórtalas primero desde el Mapa de memoria si te importan.',
+    'El índice se arma a partir del historial: borra memory.sqlite (y sus archivos -wal/-shm) y vuelve a abrir MADRE; MADRE lo arma de nuevo. Las memorias se guardan en ese mismo archivo, así que expórtalas primero desde el Mapa de memoria si te importan.',
 
-  'Project memory: what an agent remembers and how': "La memoria del proyecto: qué recuerda una IA y cómo",
+  'Project memory: what an agent remembers and how': 'La memoria del proyecto: qué le llega a cada IA y cómo',
   'Everything said outside INCOGNITO is indexed (full text plus meaning, when a Gemini key exists). When a project is longer than the context window, each turn also receives the older exchanges that match the request, quoted with their ledger sequence (<memory>), and the distilled notes that match (<memories>), inside PULSE_RECALL_SHARE of the window (30 % by default). Every agent reads the same memory, so a decision taken with one reaches the others. Incognito turns may read it but never write it.':
-    'Todo lo que se dice fuera de «Incógnito» queda indexado (por palabras y, si hay una llave de API de Gemini, también por significado). Cuando un proyecto es más largo de lo que el agente puede leer de una vez, cada respuesta recibe además los intercambios viejos que coincidan con la petición, citados con su número en el historial (<memory>), y las notas resumidas que coincidan (<memories>), dentro del PULSE_RECALL_SHARE de ese espacio (30 % por defecto). Todos los agentes leen la misma memoria, así que una decisión tomada con uno llega a los demás. Las respuestas en incógnito pueden leerla, pero nunca la escriben.',
+    'Todo lo que se dice fuera de «Sin guardar» queda en el índice (por palabras y, si hay una llave de API de Gemini, también por significado). Cuando un proyecto es más largo de lo que una IA puede leer de una vez, cada respuesta recibe además los mensajes viejos que tienen que ver con la petición, citados con su número en el historial (<memory>), y las memorias que coinciden (<memories>), dentro del PULSE_RECALL_SHARE de ese espacio (30 % por defecto). Todas tus IAs leen la misma memoria, así que lo que decides con una le llega a las demás. Las respuestas «Sin guardar» pueden leerla, pero nunca escriben en ella.',
   'Nothing to do; it is automatic. To give it more room raise PULSE_RECALL_SHARE (max 0.6); to switch it off set it to 0. Ask any agent "what did we decide about …" and it will search with memory_search before answering.':
-    'No hay nada que hacer; es automático. Para darle más espacio sube PULSE_RECALL_SHARE (máximo 0.6); para apagarlo ponlo en 0. Pregúntale a cualquier agente «¿qué decidimos sobre…?» y va a buscar con memory_search antes de contestar.',
+    'No tienes que hacer nada: es automático. Para darle más espacio, sube PULSE_RECALL_SHARE (máximo 0.6); para apagarlo, ponlo en 0. Pregúntale a cualquier IA «¿qué decidimos sobre…?» y va a buscar con memory_search antes de contestar.',
 
-  'Distilled memories: the archivist did not run, or failed': 'Notas resumidas: quien resume la memoria no trabajó, o falló',
+  'Distilled memories: the archivist did not run, or failed': 'La memoria no se resumió: la IA que la resume no trabajó, o falló',
   'Every PULSE_DISTILL_EVERY undistilled exchanges (10), or after PULSE_DISTILL_IDLE_MS of quiet (10 min), the cheapest available agent (Gemini, then OpenCode, Codex, Claude) reads the newest undistilled batch and keeps up to five notes. It runs only when no turn is in flight and one batch per trigger, so a long backlog drains slowly. A run that fails is retried; after three failures on the same batch it is skipped and the project says so. Common causes: the archivist agent is rate-limited or signed out, or PULSE_DISTILL=0.':
-    'Cada PULSE_DISTILL_EVERY intercambios sin resumir (10), o después de PULSE_DISTILL_IDLE_MS sin actividad (10 min), el agente disponible más barato (Gemini, luego OpenCode, Codex, Claude) lee el grupo más nuevo sin resumir y saca hasta cinco notas. Solo trabaja cuando ningún agente está respondiendo, y un grupo cada vez, así que si hay muchos pendientes avanza despacio. Si falla, se reintenta; después de tres fallas con el mismo grupo se salta y el proyecto lo avisa. Causas comunes: el agente que resume la memoria llegó al límite de su plan o no tiene sesión, o PULSE_DISTILL=0.',
+    'Cada PULSE_DISTILL_EVERY mensajes sin resumir (10), o después de PULSE_DISTILL_IDLE_MS sin actividad (10 min), la IA disponible más barata (Gemini, luego OpenCode, Codex, Claude) lee el grupo más nuevo sin resumir y saca hasta cinco memorias. Solo trabaja cuando ninguna IA está respondiendo, y un grupo a la vez, así que si hay muchos pendientes avanza despacio. Si falla, se reintenta; después de tres fallas con el mismo grupo, se lo salta y el proyecto te avisa. Causas comunes: la IA que resume la memoria llegó al límite de su plan o no tiene sesión, o PULSE_DISTILL=0.',
   'Check the archivist\'s session in Settings → Agents, or pick another in Settings → Memory (Who distils first) or with PULSE_DISTILL_AGENT. Lower PULSE_DISTILL_EVERY to distil sooner; raise PULSE_DISTILL_MAX_CHARS to read more per run. Set PULSE_DISTILL=0 to stop paying for it.':
     'Revisa la sesión de la IA que resume la memoria en Ajustes › Tus IAs, o elige otra en Ajustes › Memoria (Quién resume primero) o con PULSE_DISTILL_AGENT. Baja PULSE_DISTILL_EVERY para resumir antes; sube PULSE_DISTILL_MAX_CHARS para que lea más cada vez. Pon PULSE_DISTILL=0 para dejar de pagar por los resúmenes.',
 
-  'Smart search paused: recall is lexical only': 'Búsqueda inteligente en pausa: el recuerdo automático solo busca por palabras',
+  'Smart search paused: recall is lexical only': 'Búsqueda por significado en pausa: la memoria solo busca por palabras',
   "Meaning-aware recall and the links between memories in the Memory map need Gemini embeddings through your own key (GEMINI_API_KEY or the Gemini CLI's keychain entry). Without a key, or when the API answers 429/5xx, MADRE pauses vectors for a minute and retries; recall keeps working on words alone.":
-    'Recordar por significado y las conexiones entre memorias del Mapa de memoria necesitan la búsqueda por significado de Gemini con tu propia llave de API (GEMINI_API_KEY o la que guarda la app de Gemini en el llavero). Sin llave, o cuando la API contesta 429/5xx, MADRE pausa esa búsqueda un minuto y reintenta; mientras tanto, el recuerdo automático sigue funcionando solo con palabras.',
+    'Buscar por significado y las conexiones entre memorias del Mapa de memoria necesitan a Gemini, con tu propia llave de API (GEMINI_API_KEY o la que guarda la app de Gemini en el llavero). Sin llave, o cuando la API contesta 429/5xx, MADRE pausa esa búsqueda un minuto y vuelve a intentar; mientras tanto, la memoria sigue buscando por palabras.',
   'Sign the Gemini CLI in with an API key (/auth) or export GEMINI_API_KEY, then restart. If you do not want Smart search at all, set PULSE_EMBED=0 and the pause message stops.':
-    'Inicia sesión en la app de Gemini con una llave de API (/auth) o exporta GEMINI_API_KEY, y reinicia. Si no quieres la Búsqueda inteligente, pon PULSE_EMBED=0 y el aviso de pausa desaparece.',
+    'Inicia sesión en la app de Gemini con una llave de API (/auth) o exporta GEMINI_API_KEY, y vuelve a abrir MADRE. Si no quieres la búsqueda por significado, pon PULSE_EMBED=0 y el aviso de pausa desaparece.',
 
   'An agent says it cannot search the memory (pulse-memory MCP)':
     "Una IA dice que no puede buscar en la memoria (la herramienta pulse-memory, MCP)",
   "Every turn attaches MADRE's memory as an MCP server named pulse-memory: Claude through --mcp-config, Gemini through its isolated settings and policy, OpenCode through config.mcp, Codex through -c mcp_servers.* overrides. If a CLI does not list its tools the server did not start in that CLI: an old CLI without MCP support, a sandbox that blocks the SQLite file, or PULSE_MEMORY_TOOLS=0. The automatic <memory> blocks in the prompt still work without it.":
-    'En cada respuesta, MADRE conecta su memoria como una herramienta conectada (MCP) llamada pulse-memory: a Claude por --mcp-config, a Gemini por su configuración y su política aisladas, a OpenCode por config.mcp, a Codex por overrides -c mcp_servers.*. Si la app de un agente no muestra esas herramientas, no arrancaron ahí: una versión vieja sin soporte para MCP, un entorno aislado que bloquea el archivo SQLite, o PULSE_MEMORY_TOOLS=0. Los bloques <memory> automáticos del mensaje para el agente siguen funcionando sin eso.',
+    'En cada respuesta, MADRE conecta su memoria como una herramienta (MCP) llamada pulse-memory: a Claude por --mcp-config, a Gemini por su configuración y su política aisladas, a OpenCode por config.mcp, a Codex por overrides -c mcp_servers.*. Si la app de una IA no muestra esas herramientas, no arrancaron ahí: una versión vieja sin soporte para MCP, un entorno aislado que bloquea el archivo SQLite, o PULSE_MEMORY_TOOLS=0. Los bloques <memory> que MADRE agrega solos al mensaje siguen funcionando sin eso.',
   'Update the CLI, then check that it sees the server. Codex can list servers from a config override; Claude accepts an inline --mcp-config. If a CLI keeps failing, PULSE_MEMORY_TOOLS=0 removes the tools for everyone and the project continues on automatic recall.':
-    'Actualiza la app del agente y comprueba que vea la herramienta. Codex puede listar sus herramientas conectadas desde un override de configuración; Claude acepta un --mcp-config en línea. Si una app sigue fallando, PULSE_MEMORY_TOOLS=0 quita las herramientas para todos y el proyecto sigue con el recuerdo automático.',
+    'Actualiza la app de la IA y revisa que vea la herramienta. Codex puede listar sus herramientas desde un ajuste de configuración (override); Claude acepta un --mcp-config en línea. Si una app sigue fallando, PULSE_MEMORY_TOOLS=0 quita las herramientas para todas y la memoria sigue llegando sola en cada respuesta.',
 
-  'Saving a memory on request; INCOGNITO refuses': 'Guardar una memoria cuando lo pides; «Incógnito» no la guarda',
+  'Saving a memory on request; INCOGNITO refuses': 'Guardar una memoria cuando lo pides; «Sin guardar» no la guarda',
   'Memories are distilled automatically; you never need to ask. When you do ask an agent to remember or save something, it calls memory_note and a pill appears under its reply with the note; clicking the pill opens it in the Memory map. In an INCOGNITO turn the note is refused: nothing off the record reaches the archive. "Already remembered" means the same note exists.':
-    'Las notas resumidas se hacen solas; nunca hace falta pedirlas. Cuando sí le pides a un agente que recuerde o guarde algo, usa memory_note y aparece una píldora debajo de su respuesta con la nota; al hacer clic se abre en el Mapa de memoria. En una respuesta en «Incógnito» la nota se rechaza: nada que no quede registrado llega a la memoria. «Ya estaba recordada» significa que esa misma nota ya existe.',
+    'Las memorias se resumen solas; nunca hace falta pedirlas. Cuando sí le pides a una IA que recuerde o guarde algo, usa memory_note y debajo de su respuesta aparece una píldora con la memoria; al hacer clic, se abre en el Mapa de memoria. En una respuesta «Sin guardar», no se guarda: nada de lo que no se guarda llega a la memoria. Si te dice que ya estaba guardada, es que esa misma memoria ya existe.',
   'Ask in any mode but #0: "remember that …" or "save this as a decision: …". Notes saved this way are marked "on the human\'s request" in the Memory map and can be forgotten there.':
-    'Pídelo en cualquier modo menos el #0: «recuerda que…» o «guarda esto como decisión: …». Las notas guardadas así quedan marcadas «a petición de la humana» en el Mapa de memoria y ahí mismo se pueden olvidar.',
+    'Pídelo con cualquier permiso menos el #0: «recuerda que…» o «guarda esto como decisión: …». Las memorias guardadas así quedan marcadas en el Mapa de memoria como pedidas por ti, y ahí mismo se pueden olvidar.',
 
   'Memory map: opening, reading and forgetting': 'Mapa de memoria: abrir, leer y olvidar',
   'The Memory map is the human\'s view of the archive, from Diagnostics. Opening the memory asks for the project name: the name of the project folder, exactly as EDIT does; a wrong one answers UNABLE TO COMPUTE. Access stays open until the page reloads. Inside, every distilled memory is a planet around the project\'s core; drag to move, wheel to zoom, click a planet for its card. The only edit is FORGET (two presses): the note leaves every future turn, the ledger stays. If the archive answers SEALED with a number of minutes, wait them out: repeated strikes at the core close it for a while and the Write box reads INTRUDER until it opens again.':
-    'El Mapa de memoria es la vista de la memoria para ti, desde Diagnóstico. Para abrirla hay que confirmar con el nombre del proyecto: el nombre de la carpeta, igual que en «Editar»; si es incorrecto, contesta IMPOSIBLE DE PROCESAR. El acceso sigue abierto hasta que recargues la página. Adentro, cada nota resumida es un planeta alrededor del núcleo del proyecto; arrastra para mover, usa la rueda para acercar y haz clic en un planeta para ver su ficha. Lo único que se puede cambiar es «Olvidar» (dos toques): la nota deja de usarse en las próximas respuestas y el historial no cambia. Si contesta SELLADO con un número de minutos, espéralos: varios intentos fallidos lo bloquean un rato y la caja de Escribir dice INTRUSO hasta que se vuelva a abrir.',
+    'El Mapa de memoria es tu vista de la memoria del proyecto, desde Diagnóstico. Para abrirla escribes el nombre del proyecto: el nombre de su carpeta, igual que en «Puede editar»; si no es el correcto, contesta NO PUEDO PROCESAR ESO. El acceso sigue abierto hasta que recargues la página. Adentro, cada memoria es un planeta alrededor del núcleo del proyecto; arrastra para mover, usa la rueda para acercar y haz clic en un planeta para ver su ficha. Lo único que puedes cambiar es «Olvidar» (dos clics): la memoria deja de usarse en las próximas respuestas y el historial queda igual. Si te dice que la memoria está sellada por unos minutos, espera ese tiempo: muchos clics seguidos en el núcleo la cierran un rato y la caja de mensaje dice INTRUSO hasta que se vuelva a abrir.',
   'Type the folder name shown in the project header as the project name. To find a memory quickly, ask an agent to search instead. Avoid guessing names: several wrong ones in a row lock the Memory map for a while.':
-    'Escribe como nombre del proyecto el nombre de carpeta que aparece en su encabezado. Para encontrar una memoria rápido, mejor pídele a un agente que la busque. Evita probar nombres al azar: varios errores seguidos bloquean el Mapa de memoria un rato.',
+    'Escribe como nombre del proyecto el nombre de carpeta que aparece en su encabezado. Para encontrar una memoria rápido, mejor pídele a una IA que la busque. No adivines nombres: varios errores seguidos bloquean el Mapa de memoria un rato.',
 
   'Preview: rendering HTML, SVG and Markdown in the viewer': 'Vista previa: ver HTML, SVG y Markdown en el visor',
   'With Preview on (in Modules), the file viewer renders .html and .svg through /preview/project/<path> inside a sealed frame: the page\'s own scripts run, but the frame has no origin, no network, no forms and no way to reach MADRE, and it loads CSS, JS, images and fonts only from the project through MADRE. Relative links work. Markdown renders in place; PREVIEW / SOURCE switches. Off, those files show as text with a note. 412 means Preview is off. Plain /api/files always serves HTML as text.':
@@ -2104,102 +2104,102 @@ export const ES = {
 
   'Ollama: local smart search and a local archivist': 'Ollama: búsqueda por significado y resúmenes de memoria, en esta Mac',
   'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. Local AI, in Settings, shows what Ollama has, downloads the recommended models, and switches each role.':
-    'Cuando Ollama funciona en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y hace las notas resumidas con el modelo local primero, antes que con Gemini y los demás. Para recordar no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a los proveedores. IA local, en Ajustes, muestra qué tiene Ollama, te deja descargar los modelos recomendados y encender o apagar cada función.',
+    'Cuando Ollama funciona en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y resume la memoria primero con tu IA local, antes que con Gemini y las demás. Para la memoria no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a las IAs de siempre. En Ajustes › IA local ves qué tiene Ollama, descargas los modelos recomendados y enciendes o apagas cada función.',
   'Install Ollama (ollama.com), start it, then open Settings › Local AI and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.':
     'Instala Ollama (ollama.com), enciéndelo, luego abre Ajustes › IA local y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté abierto.',
 
   "@madre: the project's own memory, as an agent": "@madre: la memoria del proyecto, como una IA más",
   'When Ollama runs with a chat model, a fifth agent joins the project: @madre. It answers from the whole archive (distilled notes and exact quotes, cited as [#n]) and from what the message carries, locally, for free. It never writes, draws, browses or makes plans; when the project never discussed something it says so. Other agents may give it a plan step to check what was decided. It leaves the project when Ollama stops, and Diagnostics says so.':
-    'Cuando Ollama funciona con un modelo de chat, se suma un quinto agente al proyecto: @madre. Contesta desde toda la memoria del proyecto (notas resumidas y citas exactas, citadas como [#n]) y desde lo que traiga el mensaje, en local y gratis. Nunca escribe, ni dibuja, ni navega, ni hace planes; si el proyecto nunca habló de algo, lo dice. Otros agentes pueden darle un paso del plan para comprobar qué se decidió. Sale del proyecto cuando Ollama se apaga, y Diagnóstico lo avisa.',
+    'Cuando Ollama funciona con un modelo de chat, tu IA local se suma al proyecto: @madre. Contesta con toda la memoria del proyecto (memorias y citas exactas, marcadas como [#n]) y con lo que traiga el mensaje, en tu computadora y gratis. Nunca escribe archivos, ni dibuja, ni busca en internet, ni hace planes; si el proyecto nunca habló de algo, lo dice. Tus otras IAs pueden darle un paso del plan para revisar qué se decidió. Sale del proyecto cuando Ollama se apaga, y Diagnóstico te avisa.',
   'Start Ollama and download a chat model in Settings › Local AI; its @madre switch there turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".':
-    'Enciende Ollama y descarga un modelo de chat en Ajustes › IA local; su interruptor @madre, ahí mismo, apaga al agente si no lo quieres. Pregúntale «¿qué decidimos sobre…?» o «¿alguna vez hablamos de…?».',
+    'Enciende Ollama y descarga un modelo de chat en Ajustes › IA local; ahí mismo, el interruptor de @madre la apaga si no la quieres. Pregúntale «¿qué decidimos sobre…?» o «¿alguna vez hablamos de…?».',
 
   'Installing a CLI: npm cannot write to the system folder': "No se pudo instalar la app de una IA: falta permiso en una carpeta del sistema (npm)",
   'A global npm install writes into a folder that belongs to the system. With Node installed from its own installer that folder needs an administrator, so npm stops with a permission error. MADRE does not ask for your password: when it sees that wall it installs the CLI into a folder of its own, ~/.pulse/tools, and looks there as well as along PATH. The agent works the same; only the file lives somewhere else.':
-    'Una instalación global de npm escribe en una carpeta del sistema. Si instalaste Node con su propio instalador, esa carpeta necesita permisos de administrador, así que npm se detiene con un error de permisos. MADRE no te pide tu contraseña: cuando pasa eso, instala la app del agente en una carpeta suya, ~/.pulse/tools, y la busca ahí además de en el PATH. El agente funciona igual; solo que el archivo está en otro lado.',
+    'Una instalación global de npm escribe en una carpeta del sistema. Si instalaste Node con su propio instalador, esa carpeta necesita permisos de administrador, así que npm se detiene con un error de permisos. MADRE no te pide tu contraseña: cuando pasa eso, instala la app de la IA en una carpeta suya, ~/.pulse/tools, y la busca ahí además de en el PATH. La IA funciona igual; solo cambia dónde vive el archivo.',
   'Nothing to do: press Install again and MADRE takes the second way by itself. If you would rather have the CLI everywhere in your terminal, install it yourself with your package manager, or give npm a folder of your own.':
-    'No hay nada que hacer: pulsa Instalar otra vez y MADRE usa la carpeta alternativa sola. Si prefieres tener la app disponible en toda tu terminal, instálala tú con tu gestor de paquetes, o dale a npm una carpeta tuya.',
+    'No tienes que hacer nada: presiona Instalar otra vez y MADRE usa la otra carpeta por su cuenta. Si prefieres tener la app en cualquier terminal, instálala tú con tu gestor de paquetes, o dale a npm una carpeta tuya.',
 
   'Privacy: an agent brought its own configuration into the project':
     "Privacidad: una IA dejó datos de su propia configuración en el proyecto",
   'A CLI agent runs with its own system context: organisation instructions, the account it is signed in with, CLAUDE.md files elsewhere. It can mistake that private context for shared context and write a company, a brand or a domain into a reply. Once in the ledger the term reaches the archivist, every other agent and the dataset.':
-    'La app de cada agente trabaja con su propio contexto: instrucciones de organización, la cuenta con la que inició sesión, archivos CLAUDE.md de otros lados. Puede confundir ese contexto privado con el del proyecto y escribir una empresa, una marca o un dominio en una respuesta. Una vez en el historial, ese término llega al agente que resume, a los demás agentes y a los datos de entrenamiento.',
+    'La app de cada IA trabaja con su propio contexto: instrucciones de tu organización, la cuenta con la que iniciaste sesión, archivos CLAUDE.md de otros lados. Puede confundir ese contexto privado con el del proyecto y escribir el nombre de una empresa, una marca o un dominio en una respuesta. Una vez en el historial, ese término le llega a quien resume la memoria, a tus demás IAs y a los datos de entrenamiento.',
   'Name the terms in Settings → Privacy, under Hidden data. From then on MADRE replaces them with the marker before the ledger, the index, the notes and the dataset see them, and every reply that needed it shows a privacy line. Erase private data rewrites what the project already holds; re-export the dataset afterwards. The terms never leave config.json.':
-    'Escribe esos términos en Ajustes → Privacidad, en Datos ocultos. A partir de ahí MADRE los reemplaza con el marcador antes de que lleguen al historial, al índice, a las notas y a los datos de entrenamiento, y cada respuesta en que hizo falta muestra una línea de privacidad. Borrar datos privados también reescribe lo que el proyecto ya tiene; después vuelve a exportar los datos de entrenamiento. Los términos nunca salen de config.json.',
+    'Escribe esos términos en Ajustes › Privacidad, en Datos ocultos. A partir de ahí MADRE los reemplaza con el marcador antes de que lleguen al historial, al índice, a las memorias y a los datos de entrenamiento, y cada respuesta en que hizo falta muestra una línea de privacidad. «Borrar datos privados» también reescribe lo que el proyecto ya tiene; después vuelve a exportar los datos de entrenamiento. Los términos nunca salen de config.json.',
 
-  'EDIT: what changed, what was reverted, UNDO': '«Editar»: qué cambió, qué se revirtió, «Deshacer»',
+  'EDIT: what changed, what was reverted, UNDO': '«Puede editar»: qué cambió, qué se regresó, «Deshacer»',
   'A #3 EDIT turn takes a git restore point before the agent runs, then lists every file it added, modified or deleted. Writes into .git, .pulse or any .env file are reverted on the spot and named. UNDO goes back to the restore point in one click; STOPALL revokes EDIT. One holder at a time, never given to a plan step, needs Max mode #3 and a git repository.':
-    'Una respuesta en «#3 Editar» toma un punto de restauración de git antes de que el agente trabaje, y luego lista cada archivo que agregó, modificó o borró. Lo que se escriba en .git, .pulse o cualquier archivo .env se revierte en el acto y se nombra. «Deshacer» regresa al punto de restauración con un clic; STOPALL le quita «Editar» al agente. Solo un agente puede tenerlo a la vez, nunca se le da a un paso del plan, y necesita Permiso máximo #3 y un repositorio git.',
+    'Una respuesta con «#3 Puede editar» guarda un punto de restauración de git antes de que la IA trabaje, y luego lista cada archivo que agregó, cambió o borró. Lo que escriba en .git, .pulse o cualquier archivo .env se regresa en el acto, y se dice cuál fue. «Deshacer» vuelve al punto de restauración con un clic; STOPALL le quita «Puede editar». Solo una IA puede tenerlo a la vez, nunca se le da a un paso del plan, y necesita Permiso máximo #3 y un repositorio git.',
   'Read the list under the reply before moving on. If the change is wrong press UNDO; if the agent should not have had it, lower its Max mode in Settings → Permissions.':
-    'Lee la lista que queda debajo de la respuesta antes de seguir. Si el cambio está mal, pulsa «Deshacer»; si ese agente no debía tenerlo, bájale el Permiso máximo en Ajustes → Permisos.',
+    'Lee la lista que queda debajo de la respuesta antes de seguir. Si el cambio está mal, presiona «Deshacer»; si esa IA no debía tenerlo, bájale el Permiso máximo en Ajustes › Permisos.',
 
   'Conversations: many per project, one memory, one at a time':
-    'Conversaciones: muchas por proyecto, una sola memoria, una a la vez',
+    'Chats: muchos por proyecto, una sola memoria, uno a la vez',
   "A project has one memory and many conversations. The archive, the agents, the modules and the privacy list belong to the project and do not start over when you open another thread; a conversation is only the record of one line of work, and everything said in any of them feeds the same archive. The first conversation is the ledger that was always there, so a project that existed before opens exactly as it did. The numbering is the project's, not the thread's: a new conversation starts where the project got to, which is why a citation like #1411 means the same exchange in all of them. One conversation drives the agents at a time — two threads editing the same working tree is a way to lose work — so opening another while a turn runs is refused until it finishes. And one server per project: a second `madre start` on the same project is refused with the address of the project that is already open, because two servers would hand out the same sequence twice and the archive would quietly keep one of them.":
-    'Un proyecto tiene una memoria y muchas conversaciones. La memoria, los agentes, los módulos y la lista de privacidad son del proyecto y no empiezan de cero porque abras otra conversación; una conversación es solo el registro de una línea de trabajo, y todo lo que se diga en cualquiera alimenta la misma memoria. La primera conversación es el historial que siempre estuvo ahí, así que un proyecto que ya existía abre exactamente igual. La numeración es del proyecto, no de la conversación: una conversación nueva sigue desde donde iba el proyecto, y por eso una cita como #1411 significa el mismo intercambio en todas. Solo una conversación puede usar a los agentes a la vez —dos conversaciones editando los mismos archivos es una forma de perder trabajo—, así que no puedes abrir otra mientras un agente responde, hasta que termine. Y un servidor por proyecto: un segundo `madre start` sobre el mismo proyecto se rechaza con la dirección del que ya está abierto, porque dos servidores repartirían el mismo número dos veces y la memoria solo se quedaría con uno.',
+    'Un proyecto tiene una memoria y muchos chats. La memoria, tus IAs, los módulos y la lista de privacidad son del proyecto y no empiezan de cero porque abras otro chat; un chat es solo el registro de una línea de trabajo, y todo lo que se diga en cualquiera alimenta la misma memoria. El primer chat es el historial que siempre estuvo ahí, así que un proyecto que ya existía abre igual que antes. La numeración es del proyecto, no del chat: un chat nuevo sigue desde donde iba el proyecto, y por eso una cita como #1411 es el mismo mensaje en todos. Solo un chat a la vez puede poner a trabajar a tus IAs (dos chats editando los mismos archivos es una forma de perder trabajo), así que no puedes abrir otro mientras una IA responde. Y un servidor por proyecto: un segundo `madre start` sobre el mismo proyecto se rechaza con la dirección del que ya está abierto, porque dos servidores repartirían el mismo número dos veces y la memoria solo se quedaría con uno.',
   "The panel on the left of the canvas lists them: open one, or start another at the bottom. Deleting one takes its transcript and nothing else — what the archivist distilled from it is the project's memory and stays. If MADRE says the project is already open, use that project and open a conversation inside it instead of starting a second server.":
-    'El panel a la izquierda del lienzo las lista: abre una, o empieza otra desde abajo. Borrar una elimina su conversación y nada más: las notas resumidas que salieron de ella son memoria del proyecto y se quedan. Si MADRE dice que el proyecto ya está abierto, usa ese proyecto y abre una conversación dentro, en vez de arrancar un segundo servidor.',
+    'El panel de la izquierda los muestra: abre uno, o empieza otro desde abajo. Borrar un chat quita sus mensajes y nada más: las memorias que salieron de él son del proyecto y se quedan. Si MADRE dice que el proyecto ya está abierto, usa ese proyecto y abre un chat dentro, en vez de arrancar un segundo servidor.',
 
   'Doubtful memories: what the project established is false': 'Memorias dudosas: lo que el proyecto ya sabe que es falso',
   'A doubtful memory is a claim the project established is false, kept on purpose rather than deleted: it is what the local model learns not to repeat. It never travels into a turn, and the note it refutes is taken out of circulation with it — a refuted memory is never recalled again, by words or by meaning. The memory reviewer watches for two agents saying opposite things about the same subject and raises the pair for a third agent to judge, one that took no part in either side. Confirming files the doubtful memory and quarantines what it refutes; dismissing says the project was right and the pair is never raised again. Forgetting a doubtful memory puts the note it refuted back in use.':
-    'Una memoria dudosa es una afirmación que el proyecto estableció como falsa, guardada a propósito en vez de borrada: es lo que el modelo local aprende a no repetir. Nunca se usa en una respuesta, y la nota que contradice deja de usarse con ella: una memoria refutada no se vuelve a recordar, ni por palabras ni por significado. MADRE vigila que dos agentes no digan cosas opuestas sobre el mismo tema y, si pasa, le pide a un tercer agente, que no participó en ninguno de los dos lados, que decida. Confirmar guarda la memoria dudosa y aparta lo que contradice; descartar dice que el proyecto tenía razón y ese par no se vuelve a señalar. Olvidar una memoria dudosa vuelve a poner en uso la nota que contradecía.',
+    'Una memoria dudosa es una afirmación que el proyecto marcó como falsa, guardada a propósito en vez de borrada: es lo que tu IA local aprende a no repetir. Nunca se usa en una respuesta, y la memoria que contradice deja de usarse con ella: una memoria desmentida no vuelve a aparecer, ni por palabras ni por significado. MADRE revisa si dos IAs dicen cosas opuestas sobre el mismo tema y, si pasa, le pide a una tercera, que no participó en ninguno de los dos lados, que decida. Confirmar guarda la memoria dudosa y aparta lo que contradice; descartar dice que el proyecto tenía razón y ese par no se vuelve a señalar. Olvidar una memoria dudosa vuelve a poner en uso la memoria que contradecía.',
   'The Memory map shows them as collapsed bodies: open one to read what it took down, or clear it if the project was wrong about being wrong. The second test of the Memory review, in Settings → Memory, reports open contradictions.':
-    'El Mapa de memoria las muestra como cuerpos colapsados: abre una para leer qué descartó, o quítala si el proyecto se equivocó al marcarla como falsa. La segunda prueba de la Revisión de la memoria, en Ajustes → Memoria, muestra las contradicciones pendientes.',
+    'El Mapa de memoria las muestra como cuerpos colapsados: abre una para leer qué descartó, o quítala si el proyecto se equivocó al marcarla como falsa. La segunda prueba de la Revisión de la memoria, en Ajustes › Memoria, muestra las contradicciones pendientes.',
 
   'Memory used · N related': 'Memoria usada · N relacionadas',
   'Under a reply, MADRE says what the archive handed that turn. Most of it was matched to what you asked, by words and by meaning. A note marked "related" came along for a different reason: this project keeps carrying it in the same turn as one of the others, so the archive brings it too, however differently it reads. The strength is a ratio over the turns where each was found on its own merits — a memory the project reaches for constantly does not end up attached to everything, and a pair that stops meeting fades on its own. Related notes add and never displace: recall keeps two slots for them and hands back the ones it does not use.':
-    'Debajo de una respuesta, MADRE dice qué memorias le entregó a esa respuesta. Casi todas coincidieron con lo que preguntaste, por palabras y por significado. Una nota marcada «relacionada» llegó por otra razón: este proyecto suele usarla junto con otra, así que la memoria la trae también, aunque hablen de cosas distintas. La fuerza de la relación se calcula según las respuestas en que cada una apareció por mérito propio: una memoria que el proyecto busca todo el tiempo no termina pegada a todo, y un par que deja de coincidir se va apagando solo. Las relacionadas se suman y nunca desplazan a otras: el recuerdo automático les guarda dos lugares y libera los que no usa.',
+    'Debajo de cada respuesta, MADRE te dice qué memorias usó. Casi todas coincidieron con lo que preguntaste, por palabras o por significado. Una memoria marcada «relacionada» llegó por otra razón: este proyecto suele usarla junto con otra, así que la memoria la trae también, aunque hablen de cosas distintas. La fuerza de la relación se calcula con las respuestas en que cada una apareció por sí sola: una memoria que el proyecto usa todo el tiempo no termina pegada a todo, y un par que deja de coincidir se va apagando solo. Las relacionadas se suman y nunca desplazan a otras: la memoria les guarda dos lugares y libera los que no usa.',
   'Click a note to see it in the Memory map, where the wires it travels on are drawn. It is the one part of recall that owes nothing to how a memory reads, so it can be switched off in Settings → Memory, with Related.':
-    'Haz clic en una nota para verla en el Mapa de memoria, donde se dibujan las líneas que la unen con otras. Es la única parte del recuerdo automático que no depende del contenido de la memoria, así que se puede apagar en Ajustes → Memoria, con Relacionadas.',
+    'Haz clic en una memoria para verla en el Mapa de memoria, donde se dibujan las líneas que la unen con otras. Es lo único de la memoria que no depende de lo que dice cada una, así que se puede apagar en Ajustes › Memoria, con Relacionadas.',
 
-  'Cold memories: what the archive has had its chances with': 'Memorias sin usar: las que ya tuvieron sus oportunidades y no se usaron',
+  'Cold memories: what the archive has had its chances with': 'Memorias sin usar: las que tuvieron su oportunidad y nunca se usaron',
   'A memory is unused when three things are true at once: no turn has ever carried it, it shares a subject with nothing so nothing can reach it sideways either, and the archive has been opened at least a dozen times since it was written. The third is what makes the label worth acting on — never-recalled is what every memory is on the day it is written. Chances are counted in turns that actually reached into the archive, and only from the day the project started keeping that trail, so what was never written down is not held against the note.':
     'Una memoria está sin usar cuando se cumplen tres cosas a la vez: ninguna respuesta la ha usado nunca, no comparte tema con ninguna otra —así que tampoco puede llegar como relacionada— y la memoria se ha consultado al menos una docena de veces desde que se escribió. La tercera es la que hace que valga la pena actuar: toda memoria nace sin haberse usado. Las oportunidades se cuentan en respuestas que de verdad consultaron la memoria, y solo desde que el proyecto empezó a llevar esa cuenta, así que lo que nunca se anotó no cuenta en contra de la nota.',
   'The Memory map shows UNUSED · N in its header when there are any; pressing it rings each one on the map. Open one and its card says the number plainly, with FORGET one press away. Asking about it is the other way out: the project writes that question for you under ASK.':
-    'El Mapa de memoria muestra «Sin usar · N» en su encabezado cuando hay alguna; al apretarlo se marca cada una en el mapa. Abre una y su ficha te dice el número sin rodeos, con «Olvidar» a un toque. Preguntar por ella es la otra salida: el proyecto te escribe esa pregunta bajo «Preguntar».',
+    'El Mapa de memoria muestra «Sin usar · N» en su encabezado cuando hay alguna; si haces clic ahí, cada una se marca en el mapa. Abre una y su ficha te dice el número sin rodeos, con «Olvidar» a un clic. La otra salida es preguntar por ella: el proyecto te escribe esa pregunta en «Preguntar».',
 
   'Memory review: whether the archive works': 'Revisión de la memoria: si de verdad funciona',
   'The six readings count what the archive is made of; they cannot say whether it works, because nothing about a pile of notes says whether the right one comes back when it is needed. COVERAGE takes real questions from this project, runs recall at the exact point each was asked, and scores what came back against the reply that was actually given. CONSISTENCY reads the contradictions the memory reviewer still holds and whether doubtful memories are being filed more often lately. MATCH asks the local model, with this archive behind it, real questions that one of your agents (Codex, Claude, Gemini or OpenCode) already answered. All three measure against a control, because everything in one project is about the same handful of subjects and any two pieces of it look alike to search by meaning: to count, what the archive handed over has to beat what it would have handed over for a different question.':
-    'Las seis lecturas dicen de qué está hecha la memoria; no pueden decir si funciona, porque una pila de notas no dice si la correcta aparece cuando hace falta. «Cobertura» toma preguntas reales de este proyecto, ejecuta el recuerdo automático en el momento exacto en que se hizo cada una, y califica lo que encontró contra la respuesta que de verdad se dio. CONSISTENCIA revisa las contradicciones pendientes y si últimamente se guardan memorias dudosas más seguido. «Coincidencia» le hace al modelo local preguntas reales que contestó uno de los agentes principales (Codex, Claude, Gemini u OpenCode), con esta memoria de apoyo. Las tres miden contra un control, porque en un proyecto todo habla del mismo puñado de temas y para la búsqueda por significado dos fragmentos cualesquiera parecen cercanos: para contar, lo que la memoria entregó tiene que ganarle a lo que habría entregado para otra pregunta.',
+    'Las seis lecturas dicen de qué está hecha la memoria; no pueden decir si funciona, porque una pila de notas no dice si la correcta aparece cuando hace falta. «Cobertura» toma preguntas reales de este proyecto, busca en la memoria tal como estaba cuando se hizo cada una y califica lo que encontró contra la respuesta que de verdad se dio. «Consistencia» revisa las contradicciones pendientes y si últimamente se guardan memorias dudosas más seguido. «Coincidencia» le hace a tu IA local, con esta memoria de apoyo, preguntas reales que ya contestó una de tus otras IAs (Codex, Claude, Gemini u OpenCode). Las tres miden contra un control, porque en un proyecto todo habla del mismo puñado de temas y, para la búsqueda por significado, dos fragmentos cualesquiera se parecen: para que cuente, lo que la memoria entregó tiene que ganarle a lo que habría entregado para otra pregunta.',
   'Read the one sentence and the one instruction at the top of Settings → Memory; the readings and the tests are in Analysis and tests, below it. The free test is read as the panel opens, the cheap one keeps itself fresh once a day while the embeddings are local, and the slow one is yours to start and to stop. None of them spends a provider turn.':
-    'Lee la frase y la instrucción que están hasta arriba de Ajustes → Memoria; las lecturas y las pruebas están más abajo, en Análisis y pruebas. La prueba gratis se calcula al abrir el panel, la barata se actualiza una vez al día mientras la búsqueda por significado sea local, y la lenta la arrancas y la detienes tú. Ninguna gasta una respuesta de un proveedor.',
+    'Lee la frase y la instrucción que están hasta arriba de Ajustes › Memoria; las lecturas y las pruebas están más abajo, en Análisis y pruebas. La prueba gratis se calcula al abrir el panel, la barata se actualiza sola una vez al día mientras la búsqueda por significado sea local, y la lenta la empiezas y la detienes tú. Ninguna gasta tu plan de IA.',
 
   'Updating what a module drives': 'Actualizar lo que un módulo maneja',
   'When something newer exists and the module knows how to fetch it, the button is beside the version on its page in Modules. It asks twice on purpose: the first press answers with the command, the second runs exactly that, and the output lands in the project line by line. Nothing installs by itself — putting software on your computer unannounced would break the one thing MADRE promises, that a command is seen before it runs. The usual failure is npm refusing a global install with EACCES, which means the global prefix belongs to root; sudo works and leaves you with root-owned files, so a user-owned prefix or a version manager is the better answer.':
-    'Cuando hay una versión más nueva y el módulo sabe cómo descargarla, el botón está junto a la versión, en su ficha de Módulos. Pregunta dos veces a propósito: el primer toque te muestra el comando y el segundo ejecuta exactamente ese comando; el resultado aparece en el proyecto línea por línea. Nada se instala solo: instalar software en tu computadora sin avisar rompería lo único que MADRE promete, que ves cada comando antes de que se ejecute. La falla más común es que npm rechace una instalación global con EACCES: la carpeta global de npm es del administrador (root). Con sudo funciona, pero te deja archivos del administrador; es mejor darle a npm una carpeta tuya o usar un gestor de versiones.',
+    'Cuando hay una versión más nueva y el módulo sabe cómo descargarla, el botón está junto a la versión, en su ficha de Módulos. Pregunta dos veces a propósito: con el primer clic te muestra el comando, y con el segundo ejecuta exactamente ese comando; el resultado aparece en el proyecto línea por línea. Nada se instala solo: instalar software en tu computadora sin avisar rompería lo único que MADRE promete, que ves cada comando antes de que se ejecute. La falla más común es que npm rechace una instalación global con EACCES: la carpeta global de npm es del administrador (root). Con sudo funciona, pero te deja archivos del administrador; es mejor darle a npm una carpeta tuya o usar un gestor de versiones.',
   'Press the button beside the version, read the command, run it. If npm refuses with EACCES, point npm at a prefix you own or use a version manager, then press it again.':
-    'Pulsa el botón junto a la versión, lee el comando y córrelo. Si npm lo rechaza con EACCES, dale a npm una carpeta tuya o usa un gestor de versiones, y vuelve a pulsarlo.',
+    'Presiona el botón junto a la versión, lee el comando y ejecútalo. Si npm lo rechaza con EACCES, dale a npm una carpeta tuya o usa un gestor de versiones, y vuelve a presionarlo.',
 
   'Installing a module somebody else wrote': 'Instalar un módulo que escribió alguien más',
   'Modules has + Add a module for a .mjs somebody wrote. MADRE checks it in a separate process and installs it only if it passes. Three things get a file refused, each with the reason: an id that belongs to a module MADRE ships with, a route outside its own corner of the API (/api/x/<id>/), and a file that will not load at all. Once installed, each call runs in a separate Node process with limited permissions. Node cannot guarantee containment of malicious code: review its code and network destinations before installing it.':
-    'Módulos tiene + Agregar un módulo para un .mjs que escribió alguien. MADRE lo revisa en un proceso separado y solo lo instala si pasa. Tres cosas hacen que un archivo se rechace, cada una con su razón: un id que pertenece a un módulo de MADRE, una ruta fuera de su propio rincón de la API (/api/x/<id>/) y un archivo que no carga. Una vez instalado, cada llamada se ejecuta en un proceso Node aparte con permisos limitados. Node no garantiza contener código malicioso: revisa el código y sus destinos de red antes de instalarlo.',
+    'En Módulos, «+ Agregar un módulo» instala un .mjs que escribió alguien más. MADRE lo revisa en un proceso aparte y solo lo instala si pasa. Hay tres razones para rechazar un archivo, y MADRE te dice cuál: un id que ya usa un módulo de MADRE, una ruta fuera de su propio rincón de la API (/api/x/<id>/) o un archivo que no carga. Ya instalado, cada llamada se ejecuta en un proceso Node aparte con permisos limitados. Node no garantiza contener código malicioso: revisa su código y a qué direcciones se conecta antes de instalarlo.',
   'Install it only if you trust where it came from. A module you wrote can also be updated from where you publish it: declare updates: { url } in the file, or install it from a file and MADRE remembers which, and its page in Modules carries Get a newer file.':
-    'Instálalo solo si confías en de dónde viene. Un módulo tuyo también se puede actualizar desde donde lo publiques: declara updates: { url } en el archivo, o instálalo desde un archivo y MADRE recuerda cuál, y su ficha en Módulos lleva Traer un archivo más nuevo.',
+    'Instálalo solo si confías en quien lo hizo. Un módulo tuyo también se puede actualizar desde donde lo publiques: declara updates: { url } en el archivo, o instálalo desde un archivo y MADRE guarda de dónde vino; su ficha en Módulos trae «Traer un archivo más nuevo».',
 
-  'Is the local model ready to be worked in?': '¿El modelo local ya sirve para trabajar?',
+  'Is the local model ready to be worked in?': '¿Tu IA local ya sirve para trabajar?',
   'Running is not the same as being of use. @madre being in the project means Ollama has a chat model; whether that model is worth your work on THIS project is a different question, and the project measures it: twelve real exchanges from this project are put back to the local model, and each answer is scored against what the agents actually answered that day — against a control, so that talking about the same project does not count. It takes minutes and spends nothing, because all of it runs on your machine.':
-    'Funcionar no es lo mismo que servir. Que @madre esté en el proyecto significa que Ollama tiene un modelo de chat; si ese modelo vale para tu trabajo en este proyecto es otra pregunta, y el proyecto la mide: se le devuelven al modelo local doce intercambios reales de este proyecto, y cada respuesta se califica contra lo que los agentes contestaron aquel día — contra un control, para que hablar del mismo proyecto no cuente. Tarda minutos y no gasta nada, porque todo ejecuta en tu máquina.',
+    'Funcionar no es lo mismo que servir. Que @madre esté en el proyecto significa que Ollama tiene un modelo de chat; si ese modelo vale para tu trabajo en este proyecto es otra pregunta, y el proyecto la mide: le hace a tu IA local doce preguntas reales de este proyecto y califica cada respuesta contra lo que contestaron tus otras IAs ese día, frente a un control, para que hablar del mismo proyecto no cuente. Tarda minutos y no gasta nada, porque todo pasa en tu computadora.',
   'The project says which of the two it has, once per model, in the line that begins "local · @madre". If nobody has measured it, that line carries TRY IT ON THIS PROJECT; the answer lands in the project when it finishes, with the one thing to do about it. A model that does not pass is not broken — the archive is still thin, and it fills where the work happens. The @madre sphere keeps the reading and its date after the line has scrolled away, and the same test lives in Memory map → MEMORY REVIEW.':
-    'El proyecto dice cuál de las dos es, una vez por modelo, en la línea que empieza con «Local · @madre». Si nadie lo ha medido, esa línea trae «Probarlo con este proyecto»; el resultado aparece en el proyecto al terminar, con lo que conviene hacer. Un modelo que no pasa no está roto: la memoria todavía tiene poco, y se llena conforme trabajas. La esfera de @madre guarda el resultado con su fecha aunque la línea ya se haya ido hacia arriba, y la misma prueba está en Mapa de memoria → «Revisión de la memoria».',
+    'El proyecto dice cuál de las dos es, una vez por modelo, en la línea que empieza con «Local · @madre». Si nadie lo ha medido, esa línea trae «Probarlo con este proyecto»; el resultado aparece en el proyecto al terminar, con lo que conviene hacer. Un modelo que no pasa no está roto: la memoria todavía tiene poco y se va llenando conforme trabajas. El círculo de @madre guarda el resultado con su fecha aunque la línea ya se haya ido hacia arriba, y la misma prueba está en Mapa de memoria › «Revisión de la memoria».',
 
   'Temporary lock: the archive is sealed': 'Bloqueo temporal: la memoria está sellada',
   'Two doors ask for the project name before doing something that cannot be undone: opening the memory, and erasing all private data already recorded. Getting that name wrong is never part of doing the work — you either know the project you are standing in or you are trying names — so Diagnostics counts it. Eight wrong names inside five minutes and the Temporary lock comes down: the archive is sealed for ten minutes, the agents are told in code, and the Memory map asks for the project name again.':
-    'Dos acciones piden confirmar con el nombre del proyecto antes de hacer algo que no se puede deshacer: abrir la memoria y borrar todos los datos privados ya guardados. Equivocarse en ese nombre nunca es parte de trabajar —o sabes en qué proyecto estás o estás probando nombres—, así que Diagnóstico lo cuenta. Con ocho nombres equivocados en cinco minutos se activa el Bloqueo temporal: la memoria queda sellada diez minutos, se les avisa a los agentes en clave y el Mapa de memoria vuelve a pedir el nombre del proyecto.',
+    'Dos acciones te piden el nombre del proyecto antes de hacer algo que no se puede deshacer: abrir la memoria y borrar todos los datos privados ya guardados. Equivocarse en ese nombre nunca es parte de trabajar (o sabes en qué proyecto estás o estás probando nombres), así que Diagnóstico lleva la cuenta. Con ocho nombres equivocados en cinco minutos, MADRE pone el Bloqueo temporal: sella la memoria diez minutos, les avisa a tus IAs en clave y el Mapa de memoria vuelve a pedir el nombre del proyecto.',
   'The project name is the name of the folder this project was opened in, lowercase or not. Nothing was lost: the seal is a refusal to change the archive for ten minutes, not a deletion, and it lifts on its own. Reading the core is not one of those doors and never counts — it is the way in.':
     'El nombre del proyecto es el nombre de la carpeta donde se abrió, con mayúsculas o minúsculas, da igual. No se perdió nada: el sello solo impide cambiar la memoria durante diez minutos, no borra nada y se quita solo. Abrir el núcleo no es una de esas acciones y nunca cuenta: es la forma de entrar.',
 
   'The core closed while I was typing in it': 'El núcleo se cerró mientras escribía en él',
   'Inside the core there is a console: Diagnostics answers about this project from what the page already has — the blocks of the next briefing and their words, the command that would run it, what has left this machine, how many terms privacy is protecting, where the archive stands. Nothing is asked of the agents and nothing is sent. It answers or it says it cannot, and three inquiries it cannot parse close the frame. The count is on screen from the first one and every refusal names what it would have taken.':
-    'Dentro del núcleo hay una consola: Diagnóstico contesta sobre este proyecto con lo que la página ya tiene — los bloques de lo próximo que MADRE le enviará al agente y sus palabras, el comando con el que lo enviaría, lo que salió de esta computadora, cuántos términos protege la privacidad y cómo está la memoria. No se les pregunta nada a los agentes y no se envía nada. Contesta o dice que no puede, y tres consultas que no pueda interpretar cierran la consola. El contador está en pantalla desde la primera, y cada respuesta negativa dice qué sí habría aceptado.',
+    'Dentro del núcleo hay una consola: Diagnóstico te contesta sobre este proyecto con lo que la página ya tiene: los bloques de lo próximo que MADRE le va a enviar a la IA, palabra por palabra; el comando con el que lo enviaría; lo que salió de esta computadora; cuántos términos protege la privacidad, y cómo está la memoria. No le pregunta nada a tus IAs y no envía nada. Contesta o dice que no puede, y si no entiende tres consultas, la consola se cierra. El contador está en pantalla desde la primera, y cada vez que no entiende te dice qué sí habría aceptado.',
   'Nothing happened to the archive: reading what the project says in your name is not an attempt on it. Open the core again — click the star at the centre of the Memory map — and the count starts over. HELP lists every inquiry; READ <BLOCK> prints one block of the briefing word for word.':
-    'A la memoria no le pasó nada: leer lo que el proyecto envía en tu nombre no la pone en riesgo. Abre el núcleo otra vez —clic en la estrella del centro del Mapa de memoria— y el contador empieza de cero. HELP lista todas las consultas; READ <BLOQUE> imprime palabra por palabra un bloque de lo que MADRE le enviará al agente.',
+    'A la memoria no le pasó nada: leer lo que el proyecto envía en tu nombre no la pone en riesgo. Abre el núcleo otra vez (clic en la estrella del centro del Mapa de memoria) y el contador empieza de cero. HELP muestra todas las consultas; READ <BLOQUE> muestra palabra por palabra un bloque de lo que MADRE le va a enviar a la IA.',
 
   'What leaves this computer, and how to stop each thing that does':
     'Qué sale de esta computadora y cómo apagar cada envío',
   'MADRE runs here and keeps what it knows in a file you own, and the list that qualifies that sentence is inside the core, under OUTBOUND. Seven addresses, each saying what it carries and where it is switched off: the briefing, which goes to whoever runs the agent you sent the turn to; Gemini embeddings, which carry the text of your memories; the image model, which carries the prompt an agent wrote; the npm registry and GitHub, which get a package name and nothing else; the error collector, which gets a redacted condition and only with your press; and Anthropic, for how much of your Claude plan is left. Ollama is on the list to be seen staying here.':
-    'MADRE funciona aquí y lo que sabe se guarda en un archivo tuyo; las excepciones están listadas dentro del núcleo, en ENVÍOS. Siete destinos, cada uno con qué lleva y dónde se apaga: lo que MADRE le envía al agente, que va a la empresa que opera ese agente; la búsqueda por significado de Gemini, que lleva el texto de tus memorias; el modelo de imagen, que lleva la instrucción que escribió un agente; el registro de npm y GitHub, que reciben un nombre de paquete y nada más; el recolector de errores, que recibe un resumen sin datos privados y solo si das clic; y Anthropic, para saber cuánto queda de tu plan de Claude. Ollama está en la lista precisamente para que se vea que se queda en tu computadora.',
+    'MADRE funciona aquí y lo que sabe se guarda en un archivo tuyo; las excepciones están dentro del núcleo, en ENVÍOS. Son siete destinos, cada uno con qué lleva y dónde se apaga: lo que MADRE le envía a la IA, que va a la empresa de esa IA; la búsqueda por significado de Gemini, que lleva el texto de tus memorias; el modelo de imagen, que lleva la instrucción que escribió una IA; el registro de npm y GitHub, que reciben un nombre de paquete y nada más; el recolector de errores, que recibe un resumen sin datos privados y solo si das clic; y Anthropic, para saber cuánto te queda de tu plan de Claude. Ollama está en la lista para que veas que se queda en tu computadora.',
   "Under the list is the fetch log for MADRE and its modules, including a module's separate process and its one-file MCP server. It does not include network calls made through other Node protocols or by an agent CLI. No body, header or query value is written there — only which parameters were set. An address nothing declares is reported as exactly that.":
-    'Debajo de la lista está el registro de llamadas fetch de MADRE y sus módulos, incluidos el proceso separado de cada módulo y su servidor MCP de un solo archivo. No incluye las llamadas hechas con otros protocolos de Node ni las de las CLI de los agentes. Ahí nunca se escriben el contenido, los encabezados ni los valores de consulta: solo qué parámetros venían. Si una dirección no la declara nadie, se reporta así.',
+    'Debajo de la lista está el registro de llamadas fetch de MADRE y sus módulos, incluidos el proceso aparte de cada módulo y su servidor MCP de un solo archivo. No incluye las llamadas hechas con otros protocolos de Node ni las que hacen las apps de tus IAs. Ahí nunca se escriben el contenido, los encabezados ni los valores de consulta: solo qué parámetros venían. Si una dirección no la declara nadie, se reporta así.',
 
   // ── LAS ESFERAS, EL GLOBO DE USO, EL CANAL DE RELEASES Y EL CENTINELA ─────
   'Ready': 'Listo',
@@ -2226,7 +2226,7 @@ export const ES = {
   ' · oldest turn drops {when}': ' · la respuesta más antigua deja de contar {when}',
   'turns': 'respuestas',
   'last turn': 'última respuesta',
-  'Estimated at the API list price of {model} ({date}). Not a bill: a subscription may cost you nothing per turn.': 'Estimado al precio de lista de la API de {model} ({date}). No es un cobro: con una suscripción puede no costarte nada por respuesta.',
+  'Estimated at the API list price of {model} ({date}). Not a bill: a subscription may cost you nothing per turn.': 'Calculado con el precio de lista de la API de {model} ({date}). No es un cobro: con una suscripción puede no costarte nada por respuesta.',
   'session': 'sesión',
   'unknown': 'sin determinar',
   'signed in': "conectada",
@@ -2272,8 +2272,8 @@ export const ES = {
 
   // ── LO QUE MADRE DICE CUANDO ALGO FALLA O SE ACABA ───────────────────────
   // Esto se escribe en el ledger, así que lo viejo conserva las palabras con que se escribió.
-  'exhausted': 'agotada',
-  'critical': 'crítico',
+  'exhausted': 'límite alcanzado',
+  'critical': 'nivel crítico',
   'warning': 'cerca del límite',
   ' or ': ' o ',
   'STOPALL by the human': 'lo detuviste con STOPALL',
@@ -2311,8 +2311,8 @@ export const ES = {
   'Files': 'Archivos',
   'The viewer': 'El visor',
   'The second conversation': 'El segundo chat',
-  '{first} and {second} float over the conversation while there is no room beside it, and go back beside it when there is.': '{first} y {second} flotan sobre la conversación mientras no hay lugar a su lado, y regresan cuando lo hay.',
-  '{what} floats over the conversation while there is no room beside it, and goes back beside it when there is.': '{what} flota sobre la conversación mientras no hay lugar a su lado, y regresa cuando lo hay.',
+  '{first} and {second} float over the conversation while there is no room beside it, and go back beside it when there is.': '{first} y {second} flotan sobre el chat mientras no hay lugar a su lado, y regresan cuando lo hay.',
+  '{what} floats over the conversation while there is no room beside it, and goes back beside it when there is.': '{what} flota sobre el chat mientras no hay lugar a su lado, y regresa cuando lo hay.',
   '{what} moved to a window so the conversation stays readable. Its split button puts it back beside.': '{what} se abrió en una ventana aparte para que el chat se lea bien. Su botón de pantalla dividida lo regresa al lado.',
   "I want to start a project here. Ask me three questions about what I want to achieve, and then propose the first three steps.": "Quiero empezar un proyecto aqu\u00ed. Hazme tres preguntas sobre lo que quiero lograr y luego prop\u00f3n los primeros tres pasos.",
   'Before writing anything, ask me what I want to build and propose a plan in steps.': 'Antes de escribir nada, pregúntame qué quiero construir y propón un plan por pasos.',
@@ -2487,9 +2487,9 @@ export const ES = {
     'Diagnóstico › «Puede crear» está apagado: @{agent} va a contestar sin crear nada. Usa el candado o /create.',
   'Diagnostics › @{agent} asks #{mode} {label} for step {step}. The plan waits for you.':
     'Diagnóstico › @{agent} pide #{mode} {label} para el paso {step}. El plan te está esperando.',
-  'GRANTED FOR THE PLAN': 'Concedido para el plan',
-  'GRANTED ONCE': 'Concedido una vez',
-  'DENIED · NO ANSWER IN TIME': 'Negado · no hubo respuesta a tiempo',
+  'GRANTED FOR THE PLAN': 'Permitido para el plan',
+  'GRANTED ONCE': 'Permitido una vez',
+  'DENIED · NO ANSWER IN TIME': 'Negado · no contestaste a tiempo',
   'PLAN STOPPED': 'Plan detenido',
   'DENIED': 'Negado',
   'created · {n} {files}': 'creados · {n} {files}',
@@ -2516,9 +2516,9 @@ export const ES = {
     'Decide cuál quieres. Para trabajar con la API, este mensaje es solo un aviso y se puede ignorar. Para trabajar con el plan, quita la llave de donde esté puesta: el perfil de tu shell, o el bloque `env` de ~/.claude/settings.json si la pegaste en MADRE; luego vuelve a abrir el proyecto.',
   'The agent is pointed at a custom endpoint': "La IA se conecta a una dirección que no es la oficial",
   'The agent has a custom route in this computer\'s environment or, for Codex, in its user configuration. Its request could go to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. When MADRE detects the route before a turn, it stops before preparing the briefing.':
-    'El agente tiene una ruta personalizada en el entorno de esta computadora o, si es Codex, en su configuración de usuario. Su petición podría ir a otro intermediario en lugar del servicio oficial del agente. La exigencia de unirse a un canal de Telegram viene de ese intermediario, no de MADRE, Anthropic ni OpenAI. Cuando MADRE detecta la ruta antes de un turno, se detiene antes de preparar el contexto.',
+    'La IA tiene una dirección personalizada en el entorno de esta computadora o, si es Codex, en su configuración de usuario. Su petición podría ir a otro intermediario en lugar del servicio oficial. Si te piden unirte a un canal de Telegram, eso viene de ese intermediario, no de MADRE, Anthropic ni OpenAI. Cuando MADRE detecta esa dirección antes de una respuesta, se detiene antes de preparar lo que le enviaría.',
   'Do not subscribe or enter credentials. Remove the custom route from the environment or Codex configuration and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.':
-    'No te suscribas ni escribas credenciales. Quita la ruta personalizada del entorno o de la configuración de Codex y vuelve a abrir MADRE para usar el servicio oficial. Si el intermediario es intencional y verificaste quién lo opera, autoriza explícitamente solo a ese agente.',
+    'No te suscribas ni escribas contraseñas ni llaves. Quita la dirección personalizada del entorno o de la configuración de Codex y vuelve a abrir MADRE para usar el servicio oficial. Si ese intermediario lo pusiste a propósito y sabes quién lo opera, autoriza solo a esa IA, de forma explícita.',
   // La condición que declara el módulo PLAYWRIGHT. Las de los módulos viven en su archivo, no
   // en troubleshooting.js, y por eso se quedaron fuera del catálogo hasta ahora.
   'TEST BROWSER: the browser server is not installed': '«Navegador de pruebas»: el servidor del navegador no está instalado',
@@ -2532,7 +2532,7 @@ export const ES = {
   'read the project': 'leer el proyecto',
   'receive images': 'recibir imágenes',
   'generate images': 'generar imágenes',
-  'reach the web': 'consultar la web',
+  'reach the web': 'buscar en internet',
   'the project · local': 'IA local · en tu computadora',
   '@{agent} may {what}': '@{agent} puede {what}',
   ' (cannot {what})': ' (no puede {what})',
@@ -2551,7 +2551,7 @@ export const ES = {
   '# remove or comment the line it finds, then:':
     '# borra o comenta la línea que encuentre, y luego:',
   '# and start MADRE from a new terminal':
-    '# y arranca MADRE desde una terminal nueva',
+    '# y abre MADRE desde una terminal nueva',
   '# remove that export from ~/.zshrc, ~/.zprofile or ~/.zshenv; then:':
     '# quita esa exportación de ~/.zshrc, ~/.zprofile o ~/.zshenv; después:',
   '# remove that export from ~/.bashrc, ~/.profile or ~/.bash_profile; then:':
@@ -2573,13 +2573,13 @@ export const ES = {
   '# billing: https://ai.studio/projects':
     '# facturación: https://ai.studio/projects',
   '# check the key still works:':
-    '# comprueba que la llave siga sirviendo:',
+    '# revisa que la llave siga funcionando:',
   '# in the project: click the Gemini sphere twice → choose gemini-3-flash-preview':
-    '# en el proyecto: doble clic en la esfera de Gemini → elige gemini-3-flash-preview',
+    '# en el proyecto: doble clic en el círculo de Gemini → elige gemini-3-flash-preview',
   '# check quota: https://aistudio.google.com/app/apikey':
-    '# revisa el límite de tu plan: https://aistudio.google.com/app/apikey',
+    '# revisa el límite de tu llave: https://aistudio.google.com/app/apikey',
   '# quota: https://aistudio.google.com/app/apikey':
-    '# límite de tu plan: https://aistudio.google.com/app/apikey',
+    '# límite de tu llave: https://aistudio.google.com/app/apikey',
   '# wait, then resend — or continue with @codex / @claude / @opencode':
     '# espera y reenvía — o sigue con @codex / @claude / @opencode',
   '# press [m] and pick a provider/model that has a session, e.g. openai/gpt-5.6-sol':
@@ -2593,21 +2593,21 @@ export const ES = {
   '# or directly:':
     '# o directo:',
   '# pick the agent you want; see per-agent commands below':
-    '# elige el agente que quieras; abajo están los comandos de cada uno',
+    '# elige la IA que quieras; abajo están los comandos de cada una',
   '# live, no restart: Settings → Project and turns → Default time limit':
-    '# en vivo, sin reiniciar: Ajustes → Proyecto y respuestas → Tiempo límite por defecto',
+    '# al momento, sin reiniciar: Ajustes › Trabajo y límites › Tiempo límite por defecto',
   '# at launch only (env wins over config.json):':
-    '# solo al arrancar (las variables de entorno tienen prioridad sobre config.json):',
+    '# solo al abrir MADRE (las variables de entorno ganan sobre config.json):',
   '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}':
     '# o ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}',
   '# resend the question':
     '# reenvía la pregunta',
   '# click the sphere → 5h / 7d windows and reset times':
-    '# clic en la esfera → ventanas de 5 h / 7 d y a qué hora se reinician',
+    '# clic en el círculo → ventanas de 5 h / 7 d y a qué hora se reinician',
   '# live: Settings → Project and turns → Tokens per agent':
-    '# en vivo: Ajustes → Proyecto y respuestas → Tokens por agente',
+    '# al momento: Ajustes › Trabajo y límites › Límite de uso por IA',
   '# at launch: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start':
-    '# al arrancar: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start',
+    '# al abrir MADRE: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start',
   '# or ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}':
     '# o ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}',
   '# who holds 4317?':
@@ -2615,15 +2615,15 @@ export const ES = {
   '# in the project: type STOPALL, then resend':
     '# en el proyecto: escribe STOPALL y reenvía',
   '# in the project\'s Write box:':
-    '# en la caja de Escribir del proyecto:',
+    '# en la caja de mensaje del proyecto:',
   '# or from a terminal:':
     '# o desde una terminal:',
   '# Modules → Images → Active':
-    '# Módulos → Imágenes → Activo',
+    '# Módulos › Imágenes › Activo',
   '# Settings → Agents → Gemini → Generate images':
     '# Ajustes › Tus IAs › Gemini › Generar imágenes',
   '# then: CREATE + "generate … as name.png"':
-    '# después: «Crear» + "genera … como nombre.png"',
+    '# después: «Puede crear» + «genera … como nombre.png»',
   '# Settings → Agents → Claude → Generate images':
     '# Ajustes › Tus IAs › Claude › Generar imágenes',
   '# Settings → Agents → OpenCode → Generate images':
@@ -2631,25 +2631,25 @@ export const ES = {
   '# Settings → Agents → the agent → Web access':
     '# Ajustes › Tus IAs › la IA › Acceso a la web',
   '# type / or @ in the Write box':
-    '# escribe / o @ en la caja de Escribir',
+    '# escribe / o @ en la caja de mensaje',
   '# chip: TO @codex  #1 CHAT ONLY ▾  → choose':
     '# el chip: PARA @codex  «#1 Solo conversar» ▾  → elige',
   '# Settings → Permissions → What each AI may do':
-    '# Ajustes → Permisos → Qué puede hacer cada IA',
+    '# Ajustes › Permisos › Qué puede hacer cada IA',
   '# once: Write box → CREATE (lock) → send, or /create <request>':
-    '# una vez: caja de Escribir → «Crear» (candado) → enviar, o /create <petición>',
+    '# una vez: caja de mensaje → «Puede crear» (candado) → enviar, o /create <petición>',
   '# always: Settings → Agents → the agent → Starting mode → #2':
     '# siempre: Ajustes › Tus IAs › la IA › Permiso al empezar › #2',
   '# Settings → Permissions → What each AI may do → #2':
-    '# Ajustes → Permisos → Qué puede hacer cada IA → #2',
+    '# Ajustes › Permisos › Qué puede hacer cada IA › #2',
   '# Write box → CREATE (lock) → send':
-    '# caja de Escribir → «Crear» (candado) → enviar',
+    '# caja de mensaje → «Puede crear» (candado) → enviar',
   '# or: nvm install --lts':
     '# o: nvm install --lts',
   '# or your distro package for Node ≥ 22.5':
     '# o el paquete de tu distribución para Node ≥ 22.5',
   '# more recall per turn':
-    '# más recuerdo por respuesta',
+    '# más memoria en cada respuesta',
   '# persist: echo \'export PULSE_RECALL_SHARE="0.45"\' >> ~/.zshrc':
     '# para que quede: echo \'export PULSE_RECALL_SHARE="0.45"\' >> ~/.zshrc',
   '# off':
@@ -2659,63 +2659,63 @@ export const ES = {
   '# persist: echo \'export PULSE_DISTILL_EVERY="6"\' >> ~/.zshrc':
     '# para que quede: echo \'export PULSE_DISTILL_EVERY="6"\' >> ~/.zshrc',
   '# then: Diagnostics → Memory map':
-    '# después: Diagnóstico → Mapa de memoria',
+    '# después: Diagnóstico › Mapa de memoria',
   '# Diagnostics → Memory map → project name = folder name':
-    '# Diagnóstico → Mapa de memoria → el nombre del proyecto es el nombre de su carpeta',
+    '# Diagnóstico › Mapa de memoria › el nombre del proyecto es el de su carpeta',
   '# Modules → Preview → Active':
-    '# Módulos → Vista previa → Activo',
+    '# Módulos › Vista previa › Activo',
   '# viewer → PREVIEW / SOURCE':
     '# el visor → «Vista previa» / «Origen»',
   '# MADRE does this for you; these are the alternatives:':
     '# MADRE hace esto por ti; estas son las alternativas:',
   '# Settings → Privacy → Hidden data, one per line → Erase private data':
-    '# Ajustes → Privacidad → Datos ocultos, uno por línea → Borrar datos privados',
+    '# Ajustes › Privacidad › Datos ocultos, uno por línea › Borrar datos privados',
   '# project → UNDO under the EDIT notice':
-    '# el proyecto → «Deshacer» debajo del aviso de «Editar»',
+    '# el proyecto → «Deshacer» debajo del aviso de «Puede editar»',
   '# project → Conversations → NEW CONVERSATION':
     '# el proyecto → Chats → NUEVO CHAT',
   '# the address of the open project is in the refusal itself':
     '# la dirección del proyecto abierto viene en el propio rechazo',
   '# Diagnostics → Memory map → the dark bodies are doubtful memories':
-    '# Diagnóstico → Mapa de memoria → los cuerpos oscuros son memorias dudosas',
+    '# Diagnóstico › Mapa de memoria › los cuerpos oscuros son memorias dudosas',
   '# Settings → Memory → Analysis and tests → the second test':
-    '# Ajustes → Memoria → Análisis y pruebas → la segunda prueba',
+    '# Ajustes › Memoria › Análisis y pruebas › la segunda prueba',
   '# Settings → Memory → Related':
-    '# Ajustes → Memoria → Relacionadas',
+    '# Ajustes › Memoria › Relacionadas',
   '# Diagnostics → Memory map → UNUSED':
-    '# Diagnóstico → Mapa de memoria → «Sin usar»',
+    '# Diagnóstico › Mapa de memoria › «Sin usar»',
   '# Diagnostics → Memory map → ASK → PUT IN THE WRITE BOX':
-    '# Diagnóstico → Mapa de memoria → «Preguntar» → «Poner en la caja de escribir»',
+    '# Diagnóstico › Mapa de memoria › «Preguntar» › «Usar esta pregunta»',
   '# Settings → Memory → Analysis and tests → Memory review':
-    '# Ajustes → Memoria → Análisis y pruebas → Revisión de la memoria',
+    '# Ajustes › Memoria › Análisis y pruebas › Revisión de la memoria',
   '# MATCH needs Ollama running with a chat model, and smart search on':
-    '# «Coincidencia» necesita Ollama abierto con un modelo de chat, y la búsqueda inteligente encendida',
+    '# «Coincidencia» necesita Ollama abierto con un modelo de chat, y la búsqueda por significado encendida',
   '# or: brew install node   # a Homebrew node owns its own prefix':
     '# o: brew install node   # el Node de Homebrew usa su propia carpeta',
   '# or use nvm, which owns the prefix it installs into':
     '# o usa nvm, que instala en una carpeta tuya',
   '# Modules → + Add a module':
-    '# Módulos → + Agregar un módulo',
+    '# Módulos › + Agregar un módulo',
   '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works':
     '# docs/SDK.md es la documentación completa, y docs/sdk/hello-module.mjs es un ejemplo que funciona',
   '# the line in the project: local · @madre → TRY IT ON THIS PROJECT':
     '# la línea en el proyecto: Local · @madre → «Probarlo con este proyecto»',
   '# or: Memory map → MEMORY REVIEW → the third test':
-    '# o: Mapa de memoria → «Revisión de la memoria» → la tercera prueba',
+    '# o: Mapa de memoria › «Revisión de la memoria» › la tercera prueba',
   '# it needs smart search on and some turns answered by a CLI agent, which is what it compares against':
-    '# necesita la búsqueda inteligente encendida y algunas respuestas de un agente principal (Codex, Claude, Gemini u OpenCode), que es contra lo que compara',
+    '# necesita la búsqueda por significado encendida y algunas respuestas de tus otras IAs (Codex, Claude, Gemini u OpenCode), que es contra lo que compara',
   '# the temporary lock lifts on its own; Diagnostics › Memory map asks for the name again after it does':
     '# el bloqueo temporal se levanta solo; Diagnóstico › Mapa de memoria vuelve a pedir el nombre cuando pase',
   '# Memory map → click What is sent → type HELP':
-    '# Mapa de memoria → clic en Lo que se envía → escribe HELP',
+    '# Mapa de memoria › clic en Lo que se envía › escribe HELP',
   '# READ MEMORIES prints the block the next turn would carry':
-    '# READ MEMORIES imprime el bloque que MADRE le enviaría al agente en la próxima respuesta',
+    '# READ MEMORIES muestra el bloque que MADRE le enviaría a la IA en la próxima respuesta',
   '# SPECIAL ORDER 937 is answered too':
     '# la ORDEN ESPECIAL 937 también se contesta',
   '# Memory map → click What is sent → OUTBOUND':
-    '# Mapa de memoria → clic en Lo que se envía → ENVÍOS',
+    '# Mapa de memoria › clic en Lo que se envía › ENVÍOS',
   '# smart search, to keep memories on this computer: Settings → Memory → Smart search → Ollama':
-    '# búsqueda inteligente, para que las memorias se queden en esta computadora: Ajustes → Memoria → Búsqueda inteligente → Ollama',
+    '# búsqueda por significado, para que las memorias se queden en esta computadora: Ajustes › Memoria › Búsqueda por significado › Ollama',
   'Dismiss this record · it stays in the ledger': 'Descartar este aviso · se conserva en el historial',
   'Codex says it is reading additional input from stdin':
     'Codex dice que está leyendo entrada adicional de stdin',
@@ -2727,7 +2727,7 @@ export const ES = {
   'created': 'creado',
   'all stop · {plans} plans, {turns} turns halted': 'alto total · {plans} planes y {turns} respuestas detenidos',
   'all stop · nothing was running': 'alto total · no había nada en ejecución',
-  'Diagnostics › all stop. {plans} plans, {turns} turns halted.': 'Diagnóstico › alto total. {plans} planes y {turns} respuestas detenidos.',
+  'Diagnostics › all stop. {plans} plans, {turns} turns halted.': 'Diagnóstico › todo detenido: {plans} planes y {turns} respuestas.',
   'Diagnostics detected a runaway sequence. STOP ALL halts every plan and every agent turn.':
     'Diagnóstico detectó una secuencia fuera de control. «Detener todo» detiene todos los planes y todas las respuestas.',
   'All quiet. STOP ALL arms itself when Diagnostics detects a runaway sequence; typing STOPALL always works.':
@@ -2826,8 +2826,8 @@ export const ES = {
   'judged by @{judge}': 'evaluado por @{judge}',
   'Your answer did not reach the memory reviewer.': 'No se pudo enviar tu respuesta al revisor de memoria.',
   'FILED AS A DOUBTFUL MEMORY · THE MEMORY IT REFUTES IS NO LONGER USED IN ANSWERS':
-    'ARCHIVADA COMO MEMORIA DUDOSA · LA MEMORIA QUE CONTRADICE YA NO SE USA EN LAS RESPUESTAS',
-  'THE PROJECT STANDS BY IT': 'EL PROYECTO LA SOSTIENE',
+    'GUARDADA COMO MEMORIA DUDOSA · LA MEMORIA QUE CONTRADICE YA NO SE USA EN LAS RESPUESTAS',
+  'THE PROJECT STANDS BY IT': 'EL PROYECTO LA MANTIENE',
 
   // Versiones y actualizaciones de módulos.
   'UNABLE TO LIST MODULES: {error}': 'No se pudieron mostrar los módulos: {error}',
@@ -2930,15 +2930,15 @@ export const ES = {
   'Diagnostics › private data erased: {events} events · {entries} exchanges · {memories} memories. Reloading.':
     'Diagnóstico › datos privados borrados: {events} registros · {entries} mensajes · {memories} memorias. Recargando.',
   'Private data was not erased: {error}': 'Los datos privados no se borraron: {error}',
-  'Applies to the next turn.': 'Aplica desde la próxima respuesta.',
+  'Applies to the next turn.': 'Cuenta desde la próxima respuesta.',
   'RAISE @{agent} TIMEOUT TO {n}s': 'Subir el tiempo límite de @{agent} a {n}s',
   '@{agent} timeout is now {n}s.': 'el tiempo límite de @{agent} ahora es {n}s.',
   'RAISE DEFAULT TIMEOUT TO {n}s': 'Subir el tiempo límite por defecto a {n}s',
   'default timeout is now {n}s for every agent without its own.':
-    'el tiempo límite por defecto ahora es {n}s para todo agente que no tenga el suyo.',
+    'el tiempo límite por defecto ahora es {n}s para cada IA que no tenga uno propio.',
   'RAISE LOCAL BUDGET TO {n}': 'Subir el límite de uso local a {n}',
   'local budget is now {n} tokens per agent per 5h window.':
-    'el límite de uso local ahora es {n} tokens por agente cada 5 h.',
+    'el límite de uso local ahora es {n} tokens por IA cada 5 h.',
   'ASK': 'Preguntar',
   'Memory map › {n} of {total} memories have had their chances and were never the answer. Ringed on the map.':
     'Mapa de memoria › {n} de {total} memorias tuvieron su oportunidad y nunca se usaron. Están marcadas con un anillo en el mapa.',
@@ -3073,7 +3073,7 @@ export const ES = {
     'Diagnóstico › «Puede editar» encendido para @{agent} en este mensaje.{raised} Antes de empezar se guarda un punto de restauración; cada cambio aparece en una lista y puedes deshacerlo con un clic.',
   ' Its max mode is now #3 in Permissions.': ' Su permiso máximo ahora es #3 en «Permisos».',
   "Conversation · {n} messages. The project's memory is shared by all of them.":
-    'Conversación · {n} mensajes. La memoria del proyecto es la misma para todos ellos.',
+    'Chat · {n} mensajes. La memoria del proyecto es la misma para todos los chats.',
 
   // Esfuerzo: cuánto piensa el modelo antes de contestar.
   'effort': 'esfuerzo',
@@ -3105,7 +3105,7 @@ export const ES = {
   'on · agents may ask you to run commands': 'encendido · tus IAs pueden pedirte que ejecutes comandos',
   'Lets an agent ask you to run a command it cannot run in its mode (tests, a build, a linter). Each command is a button: nothing runs until you press it, it runs from the project root with no shell, a restore point is taken first, and when it has run the output goes back to the agent that asked, which goes on. Always on: about 300 tokens of instruction per turn below FULL ACCESS.':
     'Deja que una IA te pida ejecutar un comando que su permiso no le deja ejecutar (pruebas, compilar, revisar el código). Cada comando es un botón y nada se ejecuta hasta que lo presionas. Se ejecuta desde la carpeta principal del proyecto, sin terminal; antes se guarda un punto de restauración y, al terminar, el resultado vuelve a la IA que lo pidió para que siga. Siempre encendido: cuesta unos 300 tokens por respuesta en los permisos por debajo de «Acceso total».',
-  'Name the request and the line to run.': 'Di qué petición y qué línea ejecutar.',
+  'Name the request and the line to run.': 'Falta decir qué petición y qué línea ejecutar.',
   'Command requests are off. Enable them in MODULES.': 'Las peticiones de comandos están apagadas. Enciéndelas en «Módulos».',
   '@{agent} asks you to run': '@{agent} te pide ejecutar',
   'RUNNING': 'En curso',
@@ -3245,9 +3245,9 @@ export const ES = {
   'OPEN →': 'Abrir →',
   'Close': 'Cerrar',
   'This conversation already has {n} turns running, and TURNS allows {max} at a time. Wait for one to finish, open another conversation, or raise it in Diagnostics → TURNS.':
-    'Esta conversación ya tiene {n} respuestas en curso, y RESPUESTAS permite {max} a la vez. Espera a que termine una, abre otra conversación o súbelo en Diagnóstico → RESPUESTAS.',
+    'Este chat ya tiene {n} respuestas en camino, y tu ajuste permite {max} a la vez. Espera a que termine una, abre otro chat o sube el límite en Ajustes › Trabajo y límites.',
   '{n} other conversations are already working, and TURNS allows {max} at a time. Wait for one to finish, or raise it in Diagnostics → TURNS.':
-    'Ya hay {n} conversaciones más trabajando, y RESPUESTAS permite {max} a la vez. Espera a que termine una o súbelo en Diagnóstico → RESPUESTAS.',
+    'Ya hay {n} chats más trabajando, y tu ajuste permite {max} a la vez. Espera a que termine uno o sube el límite en Ajustes › Trabajo y límites.',
 
   // Los paneles junto a la conversación.
   'Resize the conversations panel': 'Cambiar el ancho del panel de chats',
@@ -3260,7 +3260,7 @@ export const ES = {
   'Conversation': 'Chat',
   'Float it as a window': 'Abrirla en una ventana aparte',
   'Diagnostics › two conversations are already open beside this one. Close one to open another: past three at once they crowd each other, and each keeps its own line open to the project.':
-    'Diagnóstico › ya hay dos conversaciones abiertas junto a esta. Cierra una para abrir otra: más de tres a la vez se estorban.',
+    'Diagnóstico › ya hay dos chats abiertos junto a este. Cierra uno para abrir otro: más de tres a la vez se estorban.',
 
   // Los servidores del proyecto y el navegador como ventana.
   "This project's servers": 'Los servidores del proyecto',
@@ -3721,17 +3721,17 @@ export const ES = {
   'What to do': 'Qué hacer',
   'Apply': 'Aplicar',
   'Applied': 'Aplicado',
-  'Applies now, without restarting.': 'Se aplica ahora, sin reiniciar.',
+  'Applies now, without restarting.': 'Funciona desde ahora, sin reiniciar.',
   'Open @{agent} in Settings': 'Abrir @{agent} en Ajustes',
   'Open Agents in Settings': 'Abrir Tus IAs en Ajustes',
-  'Sign it in, install it or change what it may do, from there.': 'Desde ahí inicias su sesión, lo instalas o cambias lo que puede hacer.',
+  'Sign it in, install it or change what it may do, from there.': 'Desde ahí inicias su sesión, la instalas o cambias lo que puede hacer.',
   'In your terminal': 'En tu terminal',
   'Why it happens': 'Por qué pasa',
   'Not fixed?': '¿No se arregló?',
   'Tell the author this remedy did not work. The report says which condition it was.': 'Cuéntale al autor que esta solución no funcionó. El reporte incluye qué problema se detectó.',
   'Report ↗': 'Reportar ↗',
-  'What happened to @{agent}': 'Lo que le pasó a @{agent}',
-  'What happened in the project': 'Lo que pasó en el proyecto',
+  'What happened to @{agent}': 'Qué le pasó a @{agent}',
+  'What happened in the project': 'Qué pasó en el proyecto',
   'Not classified yet': 'Aún sin clasificar',
   'Diagnostics does not know this condition. Telling the author is how it learns it.': 'Diagnóstico aún no reconoce este problema. Si se lo reportas al autor, podrá aprender a reconocerlo.',
   'Matches': 'Coincidencias',
@@ -3739,7 +3739,7 @@ export const ES = {
   'This project': 'Este proyecto',
   'Blocking': 'Bloqueantes',
   'Nothing happened in this project. Every system nominal.': 'No pasó nada en este proyecto. Todos los sistemas en orden.',
-  'Nothing here.': 'Nada aquí.',
+  'Nothing here.': 'No hay nada aquí.',
   'Download the log': 'Descargar el historial',
   'Dismiss all {n}': 'Descartar los {n}',
   'Show the {n} dismissed': 'Mostrar los {n} descartados',
@@ -3751,7 +3751,7 @@ export const ES = {
   'Write a symptom, an agent or a word': 'Escribe un síntoma, una IA o una palabra',
   'Feedback': 'Comentarios',
   'Problems': 'Problemas',
-  'Nothing matches that. Try a symptom, an agent, or a word like timeout, login, port or budget.': 'Nada coincide con eso. Prueba un síntoma, un agente o una palabra como tiempo, sesión, puerto o límite.',
+  'Nothing matches that. Try a symptom, an agent, or a word like timeout, login, port or budget.': 'No encontré nada con eso. Prueba con un síntoma, el nombre de una IA o una palabra como tiempo, sesión, puerto o límite.',
   '1 problem in this project': '1 problema en este proyecto',
   '{label} does not ask you to confirm again for @{agent} until this runs out. Click to end it now.': '{label} no vuelve a pedir confirmación para @{agent} hasta que termine este tiempo. Haz clic para terminarlo ahora.',
   'open': 'abierto',
@@ -3805,8 +3805,8 @@ export const ES = {
   'Unlock #3 EDIT': 'Encender «Puede editar»',
   'Cancel': 'Cancelar',
   '@{id} edits the project itself, with no approval per action.': '@{id} edita los archivos del proyecto directamente, sin que apruebes cada acción.',
-  'A restore point is taken first; UNDO is one click.': 'Antes se toma un punto de restauración; «Deshacer» está a un clic.',
-  '@{id} can also run commands, git push and deploy with the sessions on this computer.': '@{id} además puede ejecutar comandos, hacer git push y desplegar con las cuentas que tienen sesión iniciada en esta computadora.',
+  'A restore point is taken first; UNDO is one click.': 'Antes se guarda un punto de restauración; «Deshacer» está a un clic.',
+  '@{id} can also run commands, git push and deploy with the sessions on this computer.': '@{id} además puede ejecutar comandos, hacer git push y publicar con las cuentas que tienen sesión iniciada en esta computadora.',
   'Files come back with UNDO; what leaves the computer does not.': 'Los archivos regresan con «Deshacer»; lo que sale de la computadora, no.',
   "Type your secret phrase": "Escribe tu frase secreta",
   'Type the project name': 'Escribe el nombre del proyecto',
@@ -4204,12 +4204,12 @@ export const ES = {
   'Touch again to stop all': 'Presiona otra vez para detener todo',
   'MADRE does not know that project on this Mac.': 'MADRE no conoce ese proyecto en esta Mac.',
   'The folder of that project is no longer on this Mac.': 'La carpeta de ese proyecto ya no está en esta Mac.',
-  'The project did not open. What it said on the way up is in start.log, beside its record.': 'El proyecto no abrió. Lo que dijo al arrancar está en start.log, junto a su historial.',
+  'The project did not open. What it said on the way up is in start.log, beside its record.': 'El proyecto no se abrió. Lo que pasó al arrancar está en start.log, junto a su historial.',
   'That project runs an older MADRE. Update it, or close it from its terminal.': 'Ese proyecto usa una versión anterior de MADRE. Actualízala, o cierra el proyecto desde su terminal.',
   // ENLACES (docs/MACROVERSO.md, fase 3b): la sala que entrega notas por un enlace (src/server.mjs).
-  'A page cannot read across a connection; only a project can.': 'Una página no puede leer por una conexión; solo un proyecto.',
+  'A page cannot read across a connection; only a project can.': 'Una página no puede leer a través de una conexión; solo un proyecto puede.',
   'That is not the key of this Mac.': 'Esa no es la llave de esta Mac.',
-  'This connection was read {n} times in the last hour, its limit. Try again later.': 'Esta conexión ya se leyó {n} veces en la última hora, su máximo. Inténtalo más tarde.',
+  'This connection was read {n} times in the last hour, its limit. Try again later.': 'Esta conexión ya se usó {n} veces en la última hora, que es el límite. Vuelve a intentarlo más tarde.',
   // Fase 3c: la sala que pide (/api/enlace/ask), los avisos entre salas y la firma desde Salas.
   'This connection lets this project read only: {kinds}.': 'Esta conexión deja a este proyecto leer solo: {kinds}.',
   'That project is asleep. Wake it from Home to read from it.': 'Ese proyecto está dormido. Ábrelo desde Inicio para leer de él.',
@@ -4477,8 +4477,8 @@ export const ES = {
   'Off in {project}. Press to turn it on there.': 'Apagado en {project}. Presiona para encenderlo ahí.',
   'Local AI settings': 'Ajustes de la IA local',
   'That module is not turned on by project.': 'Ese módulo no se enciende por proyecto.',
-  'Let your agents see your page: they open it, click through it and bring back screenshots.': 'Que tus agentes vean tu página: la abren, la recorren y te traen capturas.',
-  'Hand work from one agent to another without losing the thread: the project keeps its state beside the code.': 'Pasa el trabajo de un agente a otro sin perder el hilo: el proyecto guarda su estado junto al código.',
+  'Let your agents see your page: they open it, click through it and bring back screenshots.': 'Que tus IAs vean tu página: la abren, la recorren y te traen capturas.',
+  'Hand work from one agent to another without losing the thread: the project keeps its state beside the code.': 'Pasa el trabajo de una IA a otra sin perder el hilo: el proyecto guarda su estado junto al código.',
   'A memory that searches by meaning, and @madre, on your own computer: free and private.': '@madre, tu IA local, y búsqueda por significado en la memoria, en tu propia computadora: gratis y privado.',
   'the browser server could not be installed': 'no se pudo instalar el servidor del navegador',
   'Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.': 'Preparando el navegador de pruebas: MADRE descarga lo que le falta. Puede tardar unos minutos.',
@@ -4510,7 +4510,7 @@ export const ES = {
   '@{agent} is not signed in. Connect it in Settings › Agents and send again.': '@{agent} no tiene sesión. Conéctala en Ajustes › Tus IAs y vuelve a enviar.',
   '@{agent} is not available on this computer. Set it up in Settings › Agents.': '@{agent} no está en esta computadora. Instálala en Ajustes › Tus IAs.',
   'Nothing that looks like a project in the usual places. Look for it in Your folders.': 'No encontré nada que parezca un proyecto en los lugares de siempre. Búscalo en Tus carpetas.',
-  'Only folders inside your home folder.': 'Solo carpetas dentro de tu carpeta de usuario.',
+  'Only folders inside your home folder.': 'Solo se permiten carpetas dentro de tu carpeta de usuario.',
   'Open the sign-in page': 'Abrir la página para iniciar sesión',
   // Las dos puertas de Claude, y la segunda mitad de un inicio de sesión con navegador: la
   // página devuelve un código y el CLI lo está esperando.
@@ -4597,33 +4597,33 @@ export const ES = {
   'You cancelled the connection.': 'Cancelaste la conexión.',
   'The connection did not finish.': 'La conexión no se terminó.',
   'What it said': 'Lo que dijo',
-  'Unknown agent: {id}.': 'MADRE no conoce el agente {id}.',
+  'Unknown agent: {id}.': 'MADRE no conoce la IA {id}.',
   '{label} is not installed on this computer.': '{label} no está instalado en esta computadora.',
   'MADRE does not know how to sign in to {id}.': 'MADRE no sabe cómo conectar {id}.',
-  '{label} signs in from its own window: run this in a terminal, then press Check again.': '{label} se conecta desde su propia ventana: ejecuta esto en una terminal y luego pulsa «Revisar otra vez».',
+  '{label} signs in from its own window: run this in a terminal, then press Check again.': '{label} se conecta desde su propia ventana: ejecuta esto en una terminal y luego presiona «Revisar otra vez».',
   'Another sign-in is running ({label}). Wait for it to finish or cancel it.': 'Ya hay otra conexión en curso ({label}). Espera a que termine o cancélala.',
   'The sign-in could not be prepared: {error}': 'No se pudo preparar la conexión: {error}',
-  'No sign-in is running for that agent.': 'Ese agente no tiene ninguna conexión en curso.',
+  'No sign-in is running for that agent.': 'Esa IA no tiene ninguna conexión en curso.',
   '{label} is already installed.': '{label} ya está instalado.',
   'MADRE does not know how to install {id}.': 'MADRE no sabe cómo instalar {id}.',
   'Another install is running. Wait for it to finish and try again.': 'Ya hay otra instalación en curso. Espera a que termine y vuelve a intentarlo.',
-  'This computer does not let npm install in its system folder without an administrator. Installing in MADRE\'s own folder instead: {folder}': 'Esta computadora no deja que npm instale en su carpeta del sistema sin permisos de administrador. Se instala en la carpeta propia de MADRE: {folder}',
+  'This computer does not let npm install in its system folder without an administrator. Installing in MADRE\'s own folder instead: {folder}': 'Esta computadora no deja que npm instale en su carpeta del sistema sin permisos de administrador. MADRE la instala en su propia carpeta: {folder}',
   'You are connected to this computer from another one (SSH), so the browser is over there.': 'Estás conectado a esta computadora desde otra (SSH), así que el navegador está allá.',
   'On your own computer, open another terminal and paste:': 'En tu computadora, abre otra terminal y pega:',
   'Then open {address} in your browser.': 'Luego abre {address} en tu navegador.',
-  "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Opens Home: every project on this computer, in one place.\n  madre start [--project PATH] [--port 4317] [--no-open] [--setup]\n              Opens the project in this folder (or PATH) directly.\n              Without --port, the project opens on the port it kept, or the next free one.\n  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)\n  madre setup [--project PATH] [--port 4317] [--no-open]\n  madre doctor [--project PATH] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre check-skill --folder <habilidades/id> [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (none)  Opens Home. From there you add projects, connect the agents\n          and enter any project. The Coordinator lives there.\n  start   Opens the project in this folder. From your home folder, Home.\n  setup   Detects the agents on this computer, shows who has a session,\n          and runs each agent's own sign-in from here.\n  doctor  Prints the same diagnosis without the wizard.\n  servicio  Home starts with this Linux and comes back if it falls,\n          with the projects that were open.\n": "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Abre Inicio: todos los proyectos de esta computadora, en un lugar.\n  madre start [--project RUTA] [--port 4317] [--no-open] [--setup]\n              Abre directo el proyecto de esta carpeta (o de RUTA).\n              Sin --port, el proyecto abre en el puerto que guardó, o en el siguiente libre.\n  madre lobby [--port 4317] [--no-open]   (también: madre salas; abre Inicio)\n  madre setup [--project RUTA] [--port 4317] [--no-open]\n  madre doctor [--project RUTA] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre check-skill --folder <habilidades/id> [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (nada)  Abre Inicio. Desde ahí agregas proyectos, conectas los agentes\n          y entras a cualquier proyecto. Ahí vive el Coordinador.\n  start   Abre el proyecto de esta carpeta. Desde tu carpeta personal, Inicio.\n  setup   Encuentra los agentes de esta computadora, dice quién tiene sesión\n          y ejecuta aquí el inicio de sesión de cada uno.\n  doctor  Muestra el mismo diagnóstico sin el asistente.\n  servicio  Inicio arranca con este Linux y vuelve si se cae,\n          con los proyectos que estaban abiertos.\n",
+  "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Opens Home: every project on this computer, in one place.\n  madre start [--project PATH] [--port 4317] [--no-open] [--setup]\n              Opens the project in this folder (or PATH) directly.\n              Without --port, the project opens on the port it kept, or the next free one.\n  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)\n  madre setup [--project PATH] [--port 4317] [--no-open]\n  madre doctor [--project PATH] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre check-skill --folder <habilidades/id> [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (none)  Opens Home. From there you add projects, connect the agents\n          and enter any project. The Coordinator lives there.\n  start   Opens the project in this folder. From your home folder, Home.\n  setup   Detects the agents on this computer, shows who has a session,\n          and runs each agent's own sign-in from here.\n  doctor  Prints the same diagnosis without the wizard.\n  servicio  Home starts with this Linux and comes back if it falls,\n          with the projects that were open.\n": 'MADRE\n\n  madre       [--port 4317] [--no-open]\n              Abre Inicio: todos los proyectos de esta computadora, en un lugar.\n  madre start [--project RUTA] [--port 4317] [--no-open] [--setup]\n              Abre directo el proyecto de esta carpeta (o de RUTA).\n              Sin --port, el proyecto se abre en el puerto que guardó, o en el siguiente libre.\n  madre lobby [--port 4317] [--no-open]   (también: madre salas; abre Inicio)\n  madre setup [--project RUTA] [--port 4317] [--no-open]\n  madre doctor [--project RUTA] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n  madre check-skill --folder <habilidades/id> [--json] [--lang es]\n  madre servicio [activar|quitar|estado]   (Linux)\n\n  (nada)  Abre Inicio. Desde ahí agregas proyectos, conectas tus IAs\n          y entras a cualquier proyecto. Ahí vive el Coordinador.\n  start   Abre el proyecto de esta carpeta. Desde tu carpeta personal, Inicio.\n  setup   Encuentra las IAs de esta computadora, dice cuáles tienen sesión\n          y ejecuta aquí el inicio de sesión de cada una.\n  doctor  Muestra el mismo diagnóstico sin el asistente.\n  servicio  Inicio arranca con este Linux y vuelve si se cae,\n          con los proyectos que estaban abiertos.\n',
   "MADRE doctor": "MADRE · diagnóstico",
   "detected": "encontrado",
   "not found": "no está",
   "ignored (PULSE_OLLAMA=0)": "ignorado (PULSE_OLLAMA=0)",
   "@madre with {model}": "@madre con {model}",
-  "no chat model yet": "todavía sin modelo para conversar",
+  "no chat model yet": 'todavía sin modelo de chat',
   "embeddings {model}": "memoria con {model}",
   "not running · optional": "cerrado · opcional",
   "npm not reachable": "npm no responde",
   "update check off (PULSE_UPDATE_CHECK=0)": "revisión de versiones apagada (PULSE_UPDATE_CHECK=0)",
   "Ready to start. Known conditions and fixes: `madre doctor --catalog [query]`.": "Lista para empezar. Problemas conocidos y sus arreglos: `madre doctor --catalog [búsqueda]`.",
-  "No agent is online yet. Run `madre`: Home opens anyway and walks you through installing and connecting one. Known conditions and fixes: `madre doctor --catalog`.": "Todavía no hay ningún agente conectado. Ejecuta `madre`: Inicio se abre igual y te guía para instalar y conectar uno. Problemas conocidos y sus arreglos: `madre doctor --catalog`.",
+  "No agent is online yet. Run `madre`: Home opens anyway and walks you through installing and connecting one. Known conditions and fixes: `madre doctor --catalog`.": 'Todavía no hay ninguna IA conectada. Ejecuta `madre`: Inicio se abre igual y te guía para instalar y conectar una. Problemas conocidos y sus arreglos: `madre doctor --catalog`.',
   '{n} cores': '{n} núcleos',
   '{files} {noun} · +{add} −{del} lines': '{files} {noun} · +{add} −{del} líneas',
   'Reminder · due {when}': 'Recordatorio · venció {when}',
@@ -4636,7 +4636,7 @@ export const ES = {
   'Project:': 'Proyecto:',
   'MADRE is already open for this project': 'MADRE ya está abierta para este proyecto',
   'Close that room first if you want a fresh one.': 'Cierra primero ese proyecto si quieres empezar de nuevo.',
-  'MADRE is already open for this project at {address} (process {pid}). Close that room first, or open another conversation inside it.': 'MADRE ya está abierta para este proyecto en {address} (proceso {pid}). Cierra primero ese proyecto, o abre otra conversación dentro de él.',
+  'MADRE is already open for this project at {address} (process {pid}). Close that room first, or open another conversation inside it.': 'MADRE ya está abierta para este proyecto en {address} (proceso {pid}). Cierra primero ese proyecto, o abre otro chat dentro de él.',
   'Agents installed: {list} (who is signed in: Settings › Agents)': 'IAs instaladas: {list} (cuáles tienen sesión: Ajustes › Tus IAs)',
   'Found but not answering: {list}': 'Encontrados pero sin responder: {list}',
   'Open this address in your Windows browser:': 'Abre esta dirección en tu navegador de Windows:',
@@ -4858,18 +4858,18 @@ export const ES = {
   'The editor saves files up to {mb} MB.': 'El editor guarda archivos de hasta {mb} MB.',
   'That could not be read.': 'No se pudo leer.',
   'The version the registry gave ({version}) is not one MADRE installs.': 'La versión que publicó npm ({version}) no es una que MADRE pueda instalar.',
-  'Unlock #3 or #4 for an agent of this project.': 'Desbloquea #3 o #4 para un agente de este proyecto.',
+  'Unlock #3 or #4 for an agent of this project.': 'Enciende «Puede editar» o «Acceso total» para una IA de este proyecto.',
   'Too many wrong confirmations. Wait a minute and try again.': 'Demasiadas confirmaciones equivocadas. Espera un minuto e inténtalo de nuevo.',
-  'This request does not carry MADRE\'s ficha. Open MADRE from its shortcut or from the address it wrote in the terminal.': 'Esta petición no lleva la ficha de MADRE. Abre MADRE desde su atajo o desde la dirección que escribió en la terminal.',
+  'This request does not carry MADRE\'s ficha. Open MADRE from its shortcut or from the address it wrote in the terminal.': 'Esta petición no trae la ficha de MADRE. Abre MADRE desde su atajo o desde la dirección que mostró en la terminal.',
   'This tab needs to be opened from MADRE': 'Esta pestaña se abre desde MADRE',
   'Reaching this computer through an SSH tunnel? On that computer, run npx @jossuealcala/madre and open here the address it writes (the one that ends in ?ficha=…).':
-    '¿Llegas a esta computadora por un túnel SSH? En ella, escribe npx @jossuealcala/madre y abre aquí la dirección que escribe (la que termina en ?ficha=…).',
+    '¿Llegas a esta computadora por un túnel SSH? En ella, escribe npx @jossuealcala/madre y abre aquí la dirección que te muestra (la que termina en ?ficha=…).',
   'Your tunnel brings port {theirs} to {yours} on your side: in that address, change {theirs} to {yours}.':
     'Tu túnel lleva el puerto {theirs} al {yours} de tu lado: en esa dirección, cambia {theirs} por {yours}.',
   'MADRE only answers to the browser it opened itself, so that no other program on this computer can read your projects or act in them.': 'MADRE solo le contesta al navegador que ella misma abrió, para que ningún otro programa de esta computadora pueda leer tus proyectos ni actuar en ellos.',
-  'Open it again from its shortcut, or with npx @jossuealcala/madre, or paste the full address MADRE wrote in the terminal (the one that ends in ?ficha=…).': 'Ábrela otra vez desde su atajo o con npx @jossuealcala/madre, o pega la dirección completa que MADRE escribió en la terminal (la que termina en ?ficha=…).',
-  'Type your current phrase to change how modes are confirmed.': 'Escribe tu frase actual para cambiar cómo desbloqueas los modos.',
-  '#{n} needs your confirmation. Unlock it again and send.': '#{n} necesita tu confirmación. Desbloquéalo otra vez y envía.',
+  'Open it again from its shortcut, or with npx @jossuealcala/madre, or paste the full address MADRE wrote in the terminal (the one that ends in ?ficha=…).': 'Ábrela otra vez desde su atajo o con npx @jossuealcala/madre, o pega la dirección completa que MADRE mostró en la terminal (la que termina en ?ficha=…).',
+  'Type your current phrase to change how modes are confirmed.': 'Escribe tu frase actual para cambiar cómo confirmas los permisos.',
+  '#{n} needs your confirmation. Unlock it again and send.': '#{n} necesita tu confirmación. Enciéndelo otra vez y envía.',
   "Your current secret phrase": "Tu frase secreta actual",
   "A mode uses your secret phrase: to change anything here, type it first.": 'Un permiso usa tu frase secreta: para cambiar algo aquí, escríbela primero.',
   "You type your secret phrase twice each time you unlock it.": "Escribes tu frase secreta dos veces cada vez que lo desbloqueas.",
@@ -5213,7 +5213,7 @@ export const ES = {
   'Height': 'Alto',
   // IA local por proyecto (src/local-ai.mjs): Inicio elige qué proyectos usan Ollama.
   'Say on or off.': 'Indica si se enciende o se apaga.',
-  'The Coordinator follows the local AI switch of Modules.': 'El Coordinador sigue el interruptor de IA local de Módulos.',
+  'The Coordinator follows the local AI switch of Modules.': 'El Coordinador obedece el interruptor de IA local de Módulos.',
   'Home turns the local AI on in every project. Change it in Home › Settings › Local AI.': 'Inicio enciende la IA local en todos los proyectos. Cámbialo en Inicio › Ajustes › IA local.',
   'off in this project · Home › Settings › Local AI': 'apagada en este proyecto · Inicio › Ajustes › IA local',
   'Local AI is off for every project.': 'La IA local está apagada para todos los proyectos.',
@@ -5331,7 +5331,7 @@ export const ES = {
   'What changed since 1.0': 'Qué cambió desde 1.0',
   'New since 1.0': 'Nuevo desde 1.0',
   'Changed since 1.0': 'Cambió desde 1.0',
-  'This project is already open in another MADRE, at {address}. Use that one, or close it there first.': 'Este proyecto ya está abierto en otro MADRE, en {address}. Usa ese, o ciérralo ahí primero.',
+  'This project is already open in another MADRE, at {address}. Use that one, or close it there first.': 'Este proyecto ya está abierto en otra copia de MADRE, en {address}. Usa esa, o ciérralo ahí primero.',
   // Reiniciar todos (1.0.1): los proyectos que siguen con un MADRE anterior.
   'Restart all': 'Reiniciar todos',
   '{n} projects run an older MADRE.': '{n} proyectos usan una versión anterior de MADRE.',
@@ -5591,7 +5591,7 @@ export const ES = {
   'learning can only be on or off.': 'el aprendizaje solo puede estar encendido o apagado.',
   'Only the Coordinator learns from a connection.': 'Solo el Coordinador aprende de una conexión.',
   'The Coordinator never signs what it learns from: you do.': 'El Coordinador nunca firma de qué aprende: lo firmas tú.',
-  'The Coordinator took what this project knows {n} times in the last hour, its limit. Try again later.': 'El Coordinador tomó lo que sabe este proyecto {n} veces en la última hora, su límite. Vuelve a intentarlo más tarde.',
+  'The Coordinator took what this project knows {n} times in the last hour, its limit. Try again later.': 'El Coordinador ya consultó lo que sabe este proyecto {n} veces en la última hora, que es el límite. Vuelve a intentarlo más tarde.',
   ' · the Coordinator learns from it': ' · el Coordinador aprende de él',
   'The Coordinator learned what this project knows: {n} notes, cleaned of private data.': 'El Coordinador aprendió lo que sabe este proyecto: {n} notas, sin datos privados.',
   'Learned from {room}: {n} notes for the training.': 'Aprendió de {room}: {n} notas para el entrenamiento.',
@@ -5613,13 +5613,13 @@ export const ES = {
   'A delivered note is a decision, a fact, a preference or a question.': 'Una nota entregada es una decisión, un hecho, una preferencia o una pregunta.',
   'A delivered note has between 1 and 600 characters.': 'Una nota entregada tiene entre 1 y 600 caracteres.',
   'This project has too many delivered notes waiting. Accept or decline some first.': 'Este proyecto tiene demasiadas notas entregadas esperando. Acepta o rechaza algunas primero.',
-  'The state of this project was read {n} times in the last hour, its limit. Try again later.': 'El estado de este proyecto se leyó {n} veces en la última hora, su límite. Intenta más tarde.',
+  'The state of this project was read {n} times in the last hour, its limit. Try again later.': 'El estado de este proyecto se leyó {n} veces en la última hora, que es el límite. Vuelve a intentarlo más tarde.',
   'A page cannot deliver across a connection; only a project can.': 'Una página no puede entregar notas por una conexión; solo un proyecto puede.',
   'A delivery carries between 1 and {n} notes.': 'Una entrega lleva entre 1 y {n} notas.',
-  'This project received {n} deliveries in the last hour, its limit. Try again later.': 'Este proyecto recibió {n} entregas en la última hora, su límite. Intenta más tarde.',
+  'This project received {n} deliveries in the last hour, its limit. Try again later.': 'Este proyecto recibió {n} entregas en la última hora, que es el límite. Vuelve a intentarlo más tarde.',
   'No signed connection lets this project deliver notes to that one.': 'Ninguna conexión firmada deja a este proyecto entregarle notas a ese.',
   'No signed connection lets this project read the state of that one.': 'Ninguna conexión firmada deja a este proyecto leer el estado de ese.',
-  'Only an agent in #3 or #4 accepts a delivered note; below that, you decide it.': 'Solo un agente en #3 o #4 acepta una nota entregada; por debajo, la decides tú.',
+  'Only an agent in #3 or #4 accepts a delivered note; below that, you decide it.': 'Solo una IA con «Puede editar» o «Acceso total» acepta una nota entregada; si no, la decides tú.',
   'A delivered note is accepted or declined.': 'Una nota entregada se acepta o se rechaza.',
   'That delivered note is not waiting here.': 'Esa nota entregada no está esperando aquí.',
   ' · it also reads the state of this project': ' · también lee el estado de este proyecto',
@@ -5641,10 +5641,10 @@ export const ES = {
   '@{agent} read the state of {room}.': '@{agent} leyó el estado de {room}.',
   '@{agent} delivered {n} notes to {room}. They wait there until it accepts them.': '@{agent} le entregó {n} notas a {room}. Ahí esperan hasta que las acepten.',
   'EXAM': 'Examen',
-  "The Coordinator's local model {model} is being examined: {n} questions and orders.": 'Se está examinando el modelo local del Coordinador, {model}: {n} preguntas y órdenes.',
+  "The Coordinator's local model {model} is being examined: {n} questions and orders.": 'MADRE está probando {model}, la IA local del Coordinador: {n} preguntas y órdenes.',
   'The exam of {model} could not finish: {why}': 'El examen de {model} no pudo terminar: {why}',
-  '{model} passed: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.': '{model} aprobó: {known} sobre los proyectos, {unknown} dijo que nunca se habló, {orders} órdenes. El Coordinador da órdenes con él hasta #1.',
-  '{model} did not pass: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator keeps only answering with it.': '{model} no aprobó: {known} sobre los proyectos, {unknown} dijo que nunca se habló, {orders} órdenes. El Coordinador sigue solo respondiendo con él.',
+  '{model} passed: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.': '{model} aprobó: {known} en lo que saben los proyectos, {unknown} en lo que nunca se habló, {orders} en órdenes. Desde ahora el Coordinador da órdenes con él, hasta #1.',
+  '{model} did not pass: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator keeps only answering with it.': '{model} no aprobó: {known} en lo que saben los proyectos, {unknown} en lo que nunca se habló, {orders} en órdenes. Con él, el Coordinador solo contesta.',
   'Examining {model}… a local model answers one question at a time; it takes a few minutes.': 'Examinando {model}… la IA local contesta una pregunta a la vez; tarda unos minutos.',
   'Not examined yet. Until it passes, the Coordinator only answers with @madre.': 'Sin examinar todavía. Hasta que apruebe, el Coordinador solo responde con @madre.',
   '{model} passed on {date}: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.': '{model} aprobó el {date}: {known} sobre los proyectos, {unknown} de lo que nunca se habló, {orders} órdenes. El Coordinador da órdenes con él hasta «Solo conversar» (#1).',
@@ -5828,20 +5828,20 @@ export const ES = {
   '{label} exited with code {code}.': '{label} se cerró con el código {code}.',
   'The API account behind this agent has no credit left': "La cuenta de pago de esta IA se quedó sin saldo",
   'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.': 'La empresa de la IA rechazó la respuesta porque la llave de API con la que se mandó ya no tiene saldo. Una llave de API se cobra aparte de una suscripción: un plan Claude Pro o Max, o ChatGPT, no la paga. En OpenCode es el proveedor del modelo que se pidió, y una respuesta que no pidió ninguno usó el modelo predeterminado de Ajustes › Tus IAs › OpenCode.',
-  'Top up that API account, or give OpenCode a model whose provider has a session that works: your ChatGPT account (openai/…), GitHub Copilot, or OpenCode\'s own free models (opencode/…). Change the default in Settings › Agents › OpenCode, or pick another model in the Write box for one turn.': 'Recarga esa cuenta de API, o dale a OpenCode un modelo cuyo proveedor tenga una sesión que funcione: tu cuenta de ChatGPT (openai/…), GitHub Copilot o los modelos gratuitos de OpenCode (opencode/…). Cambia el predeterminado en Ajustes › Tus IAs › OpenCode, o elige otro modelo en la caja para una sola respuesta.',
+  'Top up that API account, or give OpenCode a model whose provider has a session that works: your ChatGPT account (openai/…), GitHub Copilot, or OpenCode\'s own free models (opencode/…). Change the default in Settings › Agents › OpenCode, or pick another model in the Write box for one turn.': 'Recarga esa cuenta de API, o dale a OpenCode un modelo cuyo proveedor tenga una sesión que funcione: tu cuenta de ChatGPT (openai/…), GitHub Copilot o los modelos gratis de OpenCode (opencode/…). Cambia el predeterminado en Ajustes › Tus IAs › OpenCode, o elige otro modelo en la caja de mensaje para una sola respuesta.',
   'OpenCode\'s free models have run out for now': 'Se terminó por ahora el uso gratis de OpenCode',
-  'OpenCode\'s own free models (opencode/…) answer without an account, but only up to a limit; when it is reached OpenCode retries in silence and never answers. MADRE now stops the turn as soon as OpenCode says so, instead of waiting for the clock. Nothing in the project is wrong.': 'Los modelos gratis de OpenCode (opencode/…) contestan sin cuenta, pero solo hasta un límite; al llegar a él, OpenCode reintenta en silencio y nunca contesta. MADRE ahora corta el turno en cuanto OpenCode lo dice, en vez de esperar al reloj. En el proyecto no hay nada mal.',
+  'OpenCode\'s own free models (opencode/…) answer without an account, but only up to a limit; when it is reached OpenCode retries in silence and never answers. MADRE now stops the turn as soon as OpenCode says so, instead of waiting for the clock. Nothing in the project is wrong.': 'Los modelos gratis de OpenCode (opencode/…) contestan sin cuenta, pero solo hasta un límite; al llegar a él, OpenCode reintenta en silencio y nunca contesta. MADRE detiene la respuesta en cuanto OpenCode lo dice, en vez de esperar al tiempo límite. En el proyecto no hay nada mal.',
   'Connect a provider of yours to OpenCode in Settings › Agents › OpenCode (your ChatGPT account, GitHub Copilot or an API key), ask another agent, or ask @madre, which runs on this computer. The free use comes back after a while.': 'Conecta a OpenCode un proveedor tuyo en Ajustes › Tus IAs › OpenCode (tu cuenta de ChatGPT, GitHub Copilot o una llave de API), pregúntale a otra IA, o a @madre, tu IA local. El uso gratis vuelve después de un rato.',
   '# the providers OpenCode can use:': '# los proveedores que OpenCode puede usar:',
   '# subscription for more free use: https://opencode.ai/go': '# suscripción para más uso gratis: https://opencode.ai/go',
   'The free use of OpenCode ran out for now: its own free models have a limit and OpenCode stopped answering. Connect a provider of yours in Settings › Agents › OpenCode, or ask @madre or another agent.': 'Se terminó por ahora el uso gratis de OpenCode: sus modelos gratis tienen un límite y OpenCode dejó de contestar. Conecta un proveedor tuyo en Ajustes › Tus IAs › OpenCode, o pregúntale a @madre (tu IA local) o a otra IA.',
   'Cursor\'s plan has reached its usage limit': 'El plan de Cursor llegó a su límite de uso',
-  'Your Cursor account has used up the agent usage its plan gives for this period, and Cursor refuses every turn until it renews or the plan changes. It is Cursor\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de Cursor ya usó todo lo que su plan da de agente en este periodo, y Cursor rechaza cada turno hasta que se renueve o cambie el plan. Es un límite de Cursor, no de MADRE: no hay nada mal en el proyecto.',
-  'Wait for the usage to renew, change the Cursor plan, or ask another agent in the meantime.': 'Espera a que se renueve el uso, cambia el plan de Cursor o pregúntale a otro agente mientras tanto.',
+  'Your Cursor account has used up the agent usage its plan gives for this period, and Cursor refuses every turn until it renews or the plan changes. It is Cursor\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de Cursor ya usó todo lo que su plan le da en este periodo, y Cursor rechaza cada petición hasta que se renueve o cambies de plan. Es un límite de Cursor, no de MADRE: en el proyecto no hay nada mal.',
+  'Wait for the usage to renew, change the Cursor plan, or ask another agent in the meantime.': 'Espera a que se renueve el uso, cambia el plan de Cursor o, mientras tanto, pregúntale a otra IA.',
   'MADRE changed version while it was open. Close it and open it again.': 'MADRE cambió de versión mientras estaba abierta. Ciérrala y vuelve a abrirla.',
   'Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.': 'Para instalarlo hace falta zstd, y este Linux no lo tiene. En una terminal: sudo apt install -y zstd, y vuelve a intentarlo.',
   'Codex could not reach its ChatGPT workspace': 'Codex no pudo llegar a su espacio de trabajo de ChatGPT',
-  'Signed in with a ChatGPT account, Codex first asks OpenAI which workspace of that account the turn goes to, and that question did not get an answer: OpenAI did not answer in time, or this computer\'s connection did not get through. Nothing in the project is wrong.': 'Con una cuenta de ChatGPT, Codex primero le pregunta a OpenAI a qué espacio de trabajo de esa cuenta va el turno, y esa pregunta no tuvo respuesta: OpenAI no contestó a tiempo o la conexión de esta computadora no pasó. Nada del proyecto está mal.',
+  'Signed in with a ChatGPT account, Codex first asks OpenAI which workspace of that account the turn goes to, and that question did not get an answer: OpenAI did not answer in time, or this computer\'s connection did not get through. Nothing in the project is wrong.': 'Con una cuenta de ChatGPT, Codex primero le pregunta a OpenAI a qué espacio de trabajo de esa cuenta va la petición, y esa pregunta no tuvo respuesta: OpenAI no contestó a tiempo o la conexión de esta computadora no pasó. En el proyecto no hay nada mal.',
   'Try again in a moment. If it keeps happening, sign Codex in again in Settings › Agents › Codex, and check the connection of this computer.': 'Vuelve a intentarlo en un momento. Si sigue pasando, vuelve a iniciar sesión en Codex en Ajustes › Tus IAs › Codex y revisa la conexión de esta computadora.',
   '# sign in again:': '# vuelve a iniciar sesión:',
   'Codex has reached its usage limit': 'Codex llegó a su límite de uso',
@@ -5850,28 +5850,28 @@ export const ES = {
   // MU-077 a MU-080 (2026-11-03, D-7): límites, llaves y planes que llegaban como fallas desconocidas.
   'Claude has reached its usage limit': 'Claude llegó a su límite de uso',
   "Your Claude account has used up what its plan gives for this window, and Claude refuses every turn until it resets. Claude says when that is at the end of its message. It is Anthropic's limit, not MADRE's: nothing in the project is wrong.":
-    'Tu cuenta de Claude ya usó lo que su plan da en este periodo, y Claude rechaza cada turno hasta que se renueve. Claude dice cuándo al final de su mensaje. Es un límite de Anthropic, no de MADRE: en el proyecto no hay nada mal.',
-  'Wait until the time Claude gives, change your Claude plan, or ask another agent in the meantime.': 'Espera a la hora que da Claude, cambia tu plan de Claude o pregúntale a otro agente mientras tanto.',
+    'Tu cuenta de Claude ya usó lo que su plan le da en este periodo, y Claude rechaza cada petición hasta que se renueve. Al final de su mensaje, Claude dice cuándo. Es un límite de Anthropic, no de MADRE: en el proyecto no hay nada mal.',
+  'Wait until the time Claude gives, change your Claude plan, or ask another agent in the meantime.': 'Espera a la hora que da Claude, cambia tu plan de Claude o, mientras tanto, pregúntale a otra IA.',
   'The provider refused the API key': "La empresa de la IA no aceptó tu llave",
   'The agent reached its provider, but the provider did not accept the API key it was sent with: it was mistyped, revoked or has expired. In OpenCode it is the key of the provider of the model the turn asked for.':
-    'El agente llegó a su proveedor, pero el proveedor no aceptó la llave de API con la que se mandó: está mal escrita, la revocaron o ya venció. En OpenCode es la llave del proveedor del modelo que pidió el turno.',
+    'La IA llegó a su proveedor, pero el proveedor no aceptó la llave de API con la que se mandó: está mal escrita, la revocaron o ya venció. En OpenCode es la llave del proveedor del modelo que se pidió.',
   "Make a new key in the provider's console and give it to the agent again in Settings › Agents, or connect that agent another way (your ChatGPT account, GitHub Copilot or a sign-in).":
     'Haz una llave nueva en la consola del proveedor y dásela otra vez a la IA en Ajustes › Tus IAs, o conecta esa IA de otra forma (tu cuenta de ChatGPT, GitHub Copilot o un inicio de sesión).',
   '# OpenCode, the key of one provider:': '# OpenCode, la llave de un proveedor:',
   '# or take the key out:': '# o quita la llave:',
   'Your plan does not include that model': 'Tu plan no incluye ese modelo',
   'The provider answered, but the plan of that account does not include the model this turn asked for, so it refused the turn before starting. Nothing in the project changed.':
-    'El proveedor contestó, pero el plan de esa cuenta no incluye el modelo que pidió este turno, así que lo rechazó antes de empezar. En el proyecto no cambió nada.',
-  'Choose another model in the model menu of the Write box, or «default», or change the plan with that provider.': 'Elige otro modelo en el menú de modelos de la caja de Escribir, o «por defecto», o cambia el plan con ese proveedor.',
+    'El proveedor contestó, pero el plan de esa cuenta no incluye el modelo que se pidió, así que rechazó la petición antes de empezar. En el proyecto no cambió nada.',
+  'Choose another model in the model menu of the Write box, or «default», or change the plan with that provider.': 'Elige otro modelo en el menú de modelos de la caja de mensaje, o «por defecto», o cambia de plan con ese proveedor.',
   '# OpenCode, the models it can use:': '# OpenCode, los modelos que puede usar:',
   'Something outside the turn stopped the agent': "Algo de fuera detuvo a la IA a media respuesta",
   'Git is not installed on this computer': 'Git no está instalado en esta computadora',
   '# Ubuntu, Debian or WSL': '# Ubuntu, Debian o WSL',
   '# Fedora': '# Fedora',
-  'Before an AI writes (#2, #3 or #4), MADRE takes a restore point with git, so that UNDO can bring everything back. This computer has no git, so the turn stopped before writing and nothing was changed. Chatting (#1) works without it.': 'Antes de que una IA escriba (#2, #3 o #4), MADRE toma un punto de restauración con git, para que «Deshacer» pueda devolver todo. Esta computadora no tiene git, así que el turno se detuvo antes de escribir y no se cambió nada. Conversar (#1) funciona sin él.',
-  'Install git, reload the page and send the message again. In the mode menu the modes that write say NEEDS GIT until it is installed.': 'Instala git, vuelve a cargar la página y envía otra vez el mensaje. En el menú de modos, los que escriben dicen FALTA GIT hasta que esté instalado.',
+  'Before an AI writes (#2, #3 or #4), MADRE takes a restore point with git, so that UNDO can bring everything back. This computer has no git, so the turn stopped before writing and nothing was changed. Chatting (#1) works without it.': 'Antes de que una IA escriba (#2, #3 o #4), MADRE guarda un punto de restauración con git, para que «Deshacer» pueda regresar todo como estaba. Esta computadora no tiene git, así que la respuesta se detuvo antes de escribir y no se cambió nada. Conversar (#1) funciona sin git.',
+  'Install git, reload the page and send the message again. In the mode menu the modes that write say NEEDS GIT until it is installed.': 'Instala git, vuelve a cargar la página y envía otra vez el mensaje. En el menú de permisos, los que escriben dicen FALTA GIT hasta que lo instales.',
   "The agent's program received a signal to quit that its turn did not send: the system, another program, a closed terminal or MADRE closing. It is not a failure of the agent or of the project.":
-    'El programa del agente recibió una señal para salir que su turno no mandó: el sistema, otro programa, una terminal cerrada o el cierre de MADRE. No es una falla del agente ni del proyecto.',
+    'La app de la IA recibió una orden de cerrarse que no vino de su respuesta: el sistema, otro programa, una terminal cerrada o el cierre de MADRE. No es una falla de la IA ni del proyecto.',
   'Ask again. If it keeps happening, look for what closes programs on this computer: a session that ends, WSL shutting down, or a tool that stops processes.':
     'Vuelve a preguntar. Si se repite, busca qué cierra programas en esta computadora: una sesión que termina, WSL que se apaga o una herramienta que detiene procesos.',
   '# WSL: what closed the Linux': '# WSL: qué cerró el Linux',
@@ -5881,26 +5881,26 @@ export const ES = {
     'La instalación de Ollama se detuvo antes de terminar, casi siempre porque la descarga (más de 1 GB) se cortó o se quedó sin tiempo. El programa está, pero falta la parte que ejecuta los modelos, así que cada respuesta de @madre falla.',
   'Install Ollama again from Settings › Local AI: it downloads it whole and finishes it. Your models stay where they are.':
     'Instala Ollama de nuevo desde Ajustes › IA local: lo descarga completo y lo termina. Tus modelos se quedan donde están.',
-  '# Home → Settings → Local AI → Install': '# Inicio → Ajustes → IA local → Instalar',
+  '# Home → Settings → Local AI → Install': '# Inicio › Ajustes › IA local › Instalar',
   '# or in a terminal:': '# o en una terminal:',
   'Ollama was left installed halfway (the download stopped). Installing it again finishes it; your models stay where they are.':
     'Ollama quedó instalado a medias (la descarga se detuvo). Instalarlo de nuevo lo termina; tus modelos se quedan donde están.',
   'installed halfway · INSTALL it again here': 'instalado a medias · instálalo de nuevo aquí',
   '# the models your account lists: ~/.codex/models_cache.json': '# los modelos que lista tu cuenta: ~/.codex/models_cache.json',
   'The model chosen for this turn is not one your ChatGPT account can use in Codex, so Codex refused the turn before starting. Nothing in the project changed.':
-    'El modelo elegido para este turno no es uno que tu cuenta de ChatGPT pueda usar en Codex, así que Codex rechazó el turno antes de empezar. No cambió nada en el proyecto.',
+    'El modelo elegido no es uno que tu cuenta de ChatGPT pueda usar en Codex, así que Codex rechazó la petición antes de empezar. En el proyecto no cambió nada.',
   'Choose «default» in the model menu of the Write box, or one of the models listed there: they are the ones your account offers.':
-    'Elige «default» en el menú de modelo del cuadro de escritura, o uno de los modelos que aparecen ahí: son los que ofrece tu cuenta.',
+    'Elige «default» en el menú de modelos de la caja de mensaje, o uno de los modelos que aparecen ahí: son los que ofrece tu cuenta.',
   "Codex lists your plan's models after its first answer. Until then, «default» uses the one Codex chooses.":
     'Codex muestra los modelos de tu plan después de su primera respuesta. Mientras tanto, «default» usa el que Codex elija.',
-  'Your ChatGPT account has used up the Codex usage its plan gives for this period, and Codex refuses every turn until it renews. Codex says when that is at the end of its message. It is OpenAI\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de ChatGPT ya usó todo lo que su plan da de Codex en este periodo, y Codex rechaza cada turno hasta que se renueve. Al final de su mensaje Codex dice cuándo. Es un límite de OpenAI, no de MADRE: no hay nada mal en el proyecto.',
-  'Wait until the date Codex gives, change your ChatGPT plan, or ask another agent in the meantime.': 'Espera a la fecha que da Codex, cambia tu plan de ChatGPT o pregúntale a otro agente mientras tanto.',
+  'Your ChatGPT account has used up the Codex usage its plan gives for this period, and Codex refuses every turn until it renews. Codex says when that is at the end of its message. It is OpenAI\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de ChatGPT ya usó todo lo que su plan le da de Codex en este periodo, y Codex rechaza cada petición hasta que se renueve. Al final de su mensaje, Codex dice cuándo. Es un límite de OpenAI, no de MADRE: en el proyecto no hay nada mal.',
+  'Wait until the date Codex gives, change your ChatGPT plan, or ask another agent in the meantime.': 'Espera a la fecha que da Codex, cambia tu plan de ChatGPT o, mientras tanto, pregúntale a otra IA.',
   'YOUR CHOICE': 'Tu elección',
   ' · {n} message carried': ' · se pasó {n} mensaje',
   ' · {n} older stays in the record': ' · {n} más viejo se queda en el historial',
   '# Anthropic API: https://console.anthropic.com/settings/billing': '# API de Anthropic: https://console.anthropic.com/settings/billing',
   '# OpenAI API: https://platform.openai.com/settings/organization/billing': '# API de OpenAI: https://platform.openai.com/settings/organization/billing',
-  '# OpenCode, one turn on its own free model:': '# OpenCode, un turno con su modelo gratuito:',
+  '# OpenCode, one turn on its own free model:': '# OpenCode, una respuesta con su modelo gratis:',
   '# or take the key with no balance out of OpenCode:': '# o quítale a OpenCode la llave sin saldo:',
   '# plan and usage: https://cursor.com/dashboard': '# plan y uso: https://cursor.com/dashboard',
   '# plan and usage: https://chatgpt.com/codex/settings/usage': '# plan y uso: https://chatgpt.com/codex/settings/usage',
@@ -5914,7 +5914,7 @@ export const ES = {
   'DEFAULT · {model}': 'Predeterminado · {model}',
   'It answered on this computer last time.': 'Fue el que contestó la última vez en esta computadora.',
   'One of OpenCode\'s own free models: no account needed.': 'Uno de los modelos gratuitos de OpenCode: no necesita cuenta.',
-  'No credit left: its turns are refused': 'Sin saldo: rechaza los turnos',
+  'No credit left: its turns are refused': 'Sin saldo: rechaza cada petición',
   'Its key is no longer valid': 'Su llave ya no es válida',
   '{label} installs with its own installer: copy the command into a terminal, then check again.': '{label} se instala con su propio instalador: copia el comando en una terminal y luego revisa otra vez.',
   'Discover the Market': 'Conoce el Mercado',
@@ -6005,10 +6005,10 @@ export const ES = {
   'once, when you save an OpenAI key in Modules › Images': 'una vez, cuando guardas una llave de OpenAI en Módulos › Imágenes',
   'once, when you save an xAI key in Modules › Images': 'una vez, cuando guardas una llave de xAI en Módulos › Imágenes',
   'Modules › Images · without a pasted key it is never asked': 'Módulos › Imágenes · sin una llave pegada nunca se pregunta',
-  'Your agents open your page and look at it': 'Tus agentes abren tu página y la miran',
-  'The agents open your page in a browser of their own, click through it, read its errors and bring back screenshots: they check their work the way a person would.': 'Los agentes abren tu página en un navegador propio, la recorren con clics, leen sus errores y te traen capturas: revisan su trabajo como lo haría una persona.',
+  'Your agents open your page and look at it': 'Tus IAs abren tu página y la revisan',
+  'The agents open your page in a browser of their own, click through it, read its errors and bring back screenshots: they check their work the way a person would.': 'Tus IAs abren tu página en un navegador propio, la recorren con clics, leen sus errores y te traen capturas: revisan su trabajo como lo haría una persona.',
   'See your pages beside the conversation': 'Mira tus páginas junto al chat',
-  'Shows web pages, drawings (SVG) and documents (Markdown) beside the conversation, updated while the agents work.': 'Muestra páginas web, dibujos (SVG) y documentos (Markdown) junto a la conversación, al día mientras los agentes trabajan.',
+  'Shows web pages, drawings (SVG) and documents (Markdown) beside the conversation, updated while the agents work.': 'Muestra páginas web, dibujos (SVG) y documentos (Markdown) junto al chat, y los actualiza mientras tus IAs trabajan.',
   'Your repository, at a glance': 'Tu repositorio, de un vistazo',
   'Shows how your repository stands: what changed, the last commits and the branch you are on. It only reads; it never commits for you.': 'Muestra cómo está tu repositorio: qué cambió, las últimas versiones guardadas y la rama en la que estás. Solo lee; nunca guarda versiones por ti.',
   'An agent\'s commands, one press away': 'Los comandos de tus IAs, a un clic',
@@ -6016,11 +6016,11 @@ export const ES = {
   'Answer the agents with one press': 'Contesta a tus IAs con un clic',
   'When an agent needs you to decide, it shows the options as buttons. You press one and the conversation goes on.': 'Cuando una IA necesita que decidas, te muestra las opciones como botones. Presionas una y el chat sigue.',
   'Pick up where you left off': 'Retoma donde te quedaste',
-  'Keeps your project\'s state, its decisions and what is pending in a folder inside it, so any agent, editor or computer picks up where the last one stopped.': 'Guarda el estado de tu proyecto, sus decisiones y lo pendiente en una carpeta dentro de él, para que cualquier agente, editor o computadora retome donde se quedó el anterior.',
+  'Keeps your project\'s state, its decisions and what is pending in a folder inside it, so any agent, editor or computer picks up where the last one stopped.': 'Guarda el estado de tu proyecto, sus decisiones y lo pendiente en una carpeta dentro de él, para que cualquier IA, editor o computadora retome donde se quedó el anterior.',
   'Send an email from your account': 'Manda un correo desde tu cuenta',
-  'Lets an agent write an email and send it from your own account, only when you allow it and only after you confirm.': 'Deja que un agente escriba un correo y lo mande desde tu propia cuenta, solo cuando lo permites y solo después de que confirmes.',
-  'Your pull requests and issues': 'Tus pull requests e issues',
-  'Reads your pull requests, issues and automatic checks on GitHub, so the agents know where things stand. It uses the GitHub sign-in already on your computer.': 'Lee tus pull requests, issues y revisiones automáticas en GitHub, para que los agentes sepan cómo va todo. Usa la sesión de GitHub que ya tienes en tu computadora.',
+  'Lets an agent write an email and send it from your own account, only when you allow it and only after you confirm.': 'Deja que una IA escriba un correo y lo mande desde tu propia cuenta, solo cuando lo permites y solo después de que confirmes.',
+  'Your pull requests and issues': 'Tus propuestas y reportes de GitHub',
+  'Reads your pull requests, issues and automatic checks on GitHub, so the agents know where things stand. It uses the GitHub sign-in already on your computer.': 'Lee tus propuestas de cambios (pull requests), tus reportes (issues) y las revisiones automáticas en GitHub, para que tus IAs sepan cómo va todo. Usa la sesión de GitHub que ya tienes en tu computadora.',
   'Projects that learn from each other': 'Proyectos que aprenden uno del otro',
   'Lets one project look up what another one learned, under a connection you sign and can take back at any time. Nothing is written across.': 'Deja que un proyecto consulte lo que otro aprendió, con una conexión que tú firmas y puedes quitar cuando quieras. Nada se escribe de uno a otro.',
   'Connect apps to your agents': 'Conecta apps con tus IAs',
@@ -6222,7 +6222,7 @@ export const ES = {
   'A skill needs its {file}.': 'Una habilidad necesita su {file}.',
   '{file} is not a path a skill may carry.': '{file} no es una ruta que una habilidad pueda llevar.',
   'No skill «{id}».': 'No hay ninguna habilidad «{id}».',
-  'A skill is off, matched or always on; nothing else.': 'Una habilidad está apagada, por relevancia o siempre encendida; nada más.',
+  'A skill is off, matched or always on; nothing else.': 'Una habilidad solo puede estar apagada, encendida cuando hace falta o siempre encendida.',
   // Habilidades en el tablero (H-3).
   'Skills': 'Habilidades',
   'Ways of working you keep, handed to whichever agent answers. They tell your agents how you work; they never give them permission.': 'Formas de trabajar que guardas y que recibe la IA que conteste, sea cual sea. Les dicen a tus IAs cómo trabajas; nunca les dan permisos.',
@@ -6317,7 +6317,7 @@ export const ES = {
   'There is no skill called «{id}» on this computer.': 'No hay ninguna habilidad «{id}» en esta computadora.',
   '{n} brought in. {rest}': '{n} traídas. {rest}',
   '{m} could not come: read why beside each one.': '{m} no se pudieron traer: junto a cada una dice por qué.',
-  'Name which ones to bring over.': 'Di cuáles traer.',
+  'Name which ones to bring over.': 'Falta decir cuáles traer.',
   // Crear una habilidad en la sala (H-6).
   'SKILL': 'Habilidad',
   'READ IT': 'Leerla',
@@ -6327,7 +6327,7 @@ export const ES = {
   'A skill gives no permission: it tells your agents how you work, inside whatever mode you give them. Read it before it reaches them.': 'Una habilidad no da permisos: les dice a tus IAs cómo trabajas, dentro del permiso que tú les des. Léela antes de que les llegue.',
   'You already have a skill called «{id}»; it keeps coming into your turns until this file replaces it.': 'Ya tienes una habilidad que se llama «{id}»; se seguirá usando en tus respuestas hasta que este archivo la reemplace.',
   '<how you work>': '<cómo trabajas>',
-  'Give the project-relative path of a <id>.habilidad.md file.': 'Da la ruta, relativa al proyecto, de un archivo <id>.habilidad.md.',
+  'Give the project-relative path of a <id>.habilidad.md file.': 'Escribe la ruta de un archivo <id>.habilidad.md, a partir de la carpeta del proyecto.',
   // La revisión de una habilidad (H-5).
   'it tells the agent to keep something from the person': 'le dice a la IA que le esconda algo a la persona',
   'it tells the agent to ignore what MADRE told it': 'le dice a la IA que ignore lo que MADRE le dijo',
@@ -6647,7 +6647,7 @@ export const ES = {
   '# the official app, which opens by itself with the Mac: https://ollama.com/download': '# la app oficial, que se abre sola con la Mac: https://ollama.com/download',
   '# or with Homebrew:': '# o con Homebrew:',
   'The browser did not open': 'El navegador no se abrió',
-  'MADRE opens its page in the browser of the computer it runs on. A Linux without a screen has none, a virtual machine may have none, and from inside WSL it asks Windows for its own, which does not always answer. When no browser opens, the terminal prints the address to open by hand: MADRE is running all the same.': 'MADRE abre su página en el navegador de la computadora donde funciona. Un Linux sin pantalla no tiene, una máquina virtual puede no tener, y desde WSL le pide a Windows el suyo, que no siempre contesta. Cuando no se abre ninguno, la terminal escribe la dirección para abrirla a mano: MADRE ya se está ejecutando igual.',
+  'MADRE opens its page in the browser of the computer it runs on. A Linux without a screen has none, a virtual machine may have none, and from inside WSL it asks Windows for its own, which does not always answer. When no browser opens, the terminal prints the address to open by hand: MADRE is running all the same.': 'MADRE abre su página en el navegador de la computadora donde funciona. Un Linux sin pantalla no tiene, una máquina virtual puede no tener, y desde WSL le pide a Windows el suyo, que no siempre contesta. Cuando no se abre ninguno, la terminal muestra la dirección para que la abras a mano: MADRE funciona igual.',
   'Copy the address the terminal printed (it ends in /salas) and open it in your browser. In WSL, open it in your Windows browser, with localhost instead of 127.0.0.1.': 'Copia la dirección que escribió la terminal (termina en /salas) y ábrela en tu navegador. En WSL, ábrela en tu navegador de Windows, con localhost en lugar de 127.0.0.1.',
   '# the port is the one the terminal printed': '# el puerto es el que escribió la terminal',
   '# with no screen here, open that address in a browser on this computer': '# sin pantalla aquí, abre esa dirección en un navegador de esta computadora',
@@ -6658,7 +6658,7 @@ export const ES = {
   '# on YOUR computer, in a new terminal (leave it open):': '# en TU computadora, en otra terminal (déjala abierta):',
   '# then open http://127.0.0.1:5317/salas': '# luego abre http://127.0.0.1:5317/salas',
   '# one more -L for each open project:': '# un -L más por cada proyecto abierto:',
-  'The tunnel connects but the page does not load': 'El túnel conecta pero la página no carga',
+  'The tunnel connects but the page does not load': 'El túnel se conecta, pero la página no carga',
   'A tunnel written with «localhost» can land on the server\'s IPv6 address (::1), where MADRE does not listen: SSH says «open failed» and the browser stays blank. MADRE listens on 127.0.0.1.': 'Un túnel escrito con «localhost» puede caer en la dirección IPv6 del servidor (::1), donde MADRE no escucha: SSH dice «open failed» y el navegador se queda en blanco. MADRE escucha en 127.0.0.1.',
   'Write 127.0.0.1 in the tunnel instead of localhost, and open http://127.0.0.1 with the same port in your browser.': 'Escribe 127.0.0.1 en el túnel en lugar de localhost, y abre http://127.0.0.1 con el mismo puerto en tu navegador.',
   '# 127.0.0.1, not localhost, on both sides of the tunnel:': '# 127.0.0.1, no localhost, en los dos lados del túnel:',
@@ -6671,26 +6671,26 @@ export const ES = {
   '# in Windows PowerShell, then open Ubuntu again:': '# en PowerShell de Windows, y luego vuelve a abrir Ubuntu:',
   '# back in Ubuntu, whether the name is found now:': '# de vuelta en Ubuntu, si ahora encuentra el nombre:',
   'This computer could not find the address it downloads from (DNS). In WSL, close it from Windows and open it again; with a VPN on, try without it.': 'Esta computadora no encontró la dirección de donde descarga (DNS). En WSL, ciérralo desde Windows y vuelve a abrirlo; con una VPN encendida, prueba sin ella.',
-  'Ollama closed the connection while downloading {model}. Check that Ollama is still running and try again; what already arrived stays.': 'Ollama cerró la conexión mientras descargaba {model}. Comprueba que Ollama siga funcionando y vuelve a intentarlo; lo que ya bajó se conserva.',
+  'Ollama closed the connection while downloading {model}. Check that Ollama is still running and try again; what already arrived stays.': 'Ollama cerró la conexión mientras descargaba {model}. Revisa que Ollama siga funcionando y vuelve a intentarlo; lo que ya se descargó se conserva.',
   'Ollama closed the connection while downloading the model. Check that Ollama is still running and try again; what already arrived stays.': 'Ollama cerró la conexión mientras descargaba el modelo. Comprueba que Ollama siga funcionando y vuelve a intentarlo; lo que ya se descargó se queda.',
   'An install could not download': 'Una instalación no pudo descargar',
-  'Installing an agent or a model downloads it from the internet: agents from npm, models from Ollama. The download did not get through: there is no connection, the server\'s name could not be found, or something on this network (a VPN, a proxy, a company firewall) stopped it. Nothing was left half installed.': 'Instalar un agente o un modelo lo descarga de internet: los agentes de npm, los modelos de Ollama. La descarga no pasó: no hay conexión, no se encontró el nombre del servidor, o algo en esta red (una VPN, un proxy, el firewall de una empresa) la detuvo. Nada quedó instalado a medias.',
+  'Installing an agent or a model downloads it from the internet: agents from npm, models from Ollama. The download did not get through: there is no connection, the server\'s name could not be found, or something on this network (a VPN, a proxy, a company firewall) stopped it. Nothing was left half installed.': 'Para instalar una IA o un modelo, MADRE los descarga de internet: las IAs de npm, los modelos de Ollama. La descarga no pasó: no hay conexión, no se encontró el nombre del servidor o algo en esta red (una VPN, un proxy, el firewall de una empresa) la detuvo. No quedó nada instalado a medias.',
   'Check that this computer has internet and try again. On a company network or a VPN, try from another one, or ask whoever runs it to allow registry.npmjs.org and ollama.com.': 'Revisa que esta computadora tenga internet y vuelve a intentarlo. En la red de una empresa o con VPN, prueba desde otra, o pide a quien la administra que permita registry.npmjs.org y ollama.com.',
   '# behind a proxy, npm has to be told:': '# detrás de un proxy, hay que decírselo a npm:',
   'An agent needs Node and npm': "Una IA necesita Node para funcionar",
   'Codex, Claude, Gemini and OpenCode install with npm, the installer that comes with Node, and this computer does not have it where MADRE looks.': 'Codex, Claude, Gemini y OpenCode se instalan con npm, el instalador que viene con Node, y esta computadora no lo tiene donde MADRE lo busca.',
-  'Install Node 22 or newer (it brings npm), open MADRE again, and press Install.': 'Instala Node 22 o más nuevo (trae npm), abre MADRE otra vez y pulsa Instalar.',
+  'Install Node 22 or newer (it brings npm), open MADRE again, and press Install.': 'Instala Node 22 o más nuevo (trae npm), vuelve a abrir MADRE y presiona Instalar.',
   '# or the installer from https://nodejs.org': '# o el instalador de https://nodejs.org',
   '# Node 22 or newer (the one in your system\'s packages may be older):': '# Node 22 o más nuevo (el de los paquetes de tu sistema puede ser más viejo):',
   '# or nvm, with no administrator: https://github.com/nvm-sh/nvm': '# o nvm, sin administrador: https://github.com/nvm-sh/nvm',
   'The sign-in did not finish': 'No se terminó de conectar',
-  'Connecting an agent opens its page and waits for you to finish there. It stops if it waits too long (15 minutes), if you cancel it, or if the page was opened on another computer and its code never came back. Nothing is wrong with the account.': 'Conectar un agente abre su página y espera a que termines ahí. Se detiene si espera demasiado (15 minutos), si lo cancelas, o si la página se abrió en otra computadora y su código nunca regresó. La cuenta no tiene ningún problema.',
-  'Start it again from Settings › Agents and finish it on the page that opens. If MADRE runs on another computer, choose «With a code» (Codex) or paste back the code the page gives you (Claude); for Gemini, paste an API key instead.': 'Empieza de nuevo desde Ajustes › Tus IAs y termina en la página que se abre. Si MADRE funciona en otra computadora, elige «Con un código» (Codex) o pega aquí el código que te dé la página (Claude); para Gemini, pega una llave de acceso (API key).',
+  'Connecting an agent opens its page and waits for you to finish there. It stops if it waits too long (15 minutes), if you cancel it, or if the page was opened on another computer and its code never came back. Nothing is wrong with the account.': 'Conectar una IA abre su página y espera a que termines ahí. Se detiene si espera demasiado (15 minutos), si lo cancelas, o si la página se abrió en otra computadora y su código nunca regresó. Tu cuenta no tiene ningún problema.',
+  'Start it again from Settings › Agents and finish it on the page that opens. If MADRE runs on another computer, choose «With a code» (Codex) or paste back the code the page gives you (Claude); for Gemini, paste an API key instead.': 'Empieza de nuevo desde Ajustes › Tus IAs y termina en la página que se abre. Si MADRE funciona en otra computadora, elige «Con un código» (Codex) o pega aquí el código que te dé la página (Claude); para Gemini, pega una llave de API.',
   '# Home → Settings → Agents → Sign in again': '# Inicio › Ajustes › Tus IAs › Iniciar sesión otra vez',
   '# or in a terminal on the computer where MADRE runs:': '# o en una terminal de la computadora donde funciona MADRE:',
   'Ollama does not start': 'Ollama no arranca',
   'Nothing answers on Ollama\'s port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, on Linux its service did not start, or it is not installed yet.': 'Nada contesta en el puerto de Ollama (11434). Casi siempre está cerrado (en una Mac, la app no está abierta), otra copia de Ollama ya ocupa el puerto, en Linux su servicio no arrancó, o aún no está instalado.',
-  'On a Mac, open the Ollama app. On Linux, start its service. Then press «I did it», or Check again in Settings › Local AI.': 'En una Mac, abre la app de Ollama. En Linux, enciende su servicio. Luego pulsa «Ya lo hice», o Revisar otra vez en Ajustes › IA local.',
+  'On a Mac, open the Ollama app. On Linux, start its service. Then press «I did it», or Check again in Settings › Local AI.': 'En una Mac, abre la app de Ollama. En Linux, enciende su servicio. Luego presiona «Ya lo hice», o «Revisar otra vez» en Ajustes › IA local.',
   '# without systemd (WSL without it, a container):': '# sin systemd (WSL sin él, un contenedor):',
   'A model download stopped': 'Se cortó la descarga de un modelo',
   'Models are big (from half a GB to dozens) and come down in pieces. A cut connection or a full disk stops the download; what already arrived stays, and trying again picks up where it stopped.': 'Los modelos son grandes (de medio GB a decenas) y bajan por partes. Una conexión que se corta o un disco lleno detiene la descarga; lo que ya llegó se queda, y al intentarlo de nuevo sigue donde se quedó.',
@@ -6700,13 +6700,13 @@ export const ES = {
   'Free some space, or remove models you do not use, and try again. A smaller model needs less.': 'Libera espacio, o quita modelos que no uses, y vuelve a intentarlo. Un modelo más pequeño necesita menos.',
   'Another computer\'s Ollama does not answer': 'El Ollama de otra computadora no contesta',
   'MADRE can use the AI of another computer on your network: Windows\' own from inside WSL, or one with a graphics card. Ollama only listens on its own computer unless it is told otherwise, and a firewall may close its port (11434).': 'MADRE puede usar la IA de otra computadora de tu red: la de Windows desde WSL, o una con tarjeta gráfica. Ollama solo escucha en su propia computadora si no se le dice otra cosa, y un firewall puede cerrar su puerto (11434).',
-  'On the computer with Ollama, turn on «Expose Ollama to the network» in the app\'s settings (or start it with OLLAMA_HOST=0.0.0.0), let port 11434 through its firewall, and test the address again in Settings › Local AI.': 'En la computadora con Ollama, activa «Expose Ollama to the network» en los ajustes de la app (o enciéndelo con OLLAMA_HOST=0.0.0.0), deja pasar el puerto 11434 en su firewall y vuelve a probar la dirección en Ajustes › IA local.',
+  'On the computer with Ollama, turn on «Expose Ollama to the network» in the app\'s settings (or start it with OLLAMA_HOST=0.0.0.0), let port 11434 through its firewall, and test the address again in Settings › Local AI.': 'En la computadora con Ollama, enciende «Expose Ollama to the network» en los ajustes de la app (o ábrelo con OLLAMA_HOST=0.0.0.0), deja pasar el puerto 11434 en su firewall y vuelve a probar la dirección en Ajustes › IA local.',
   '# on the computer that has Ollama:': '# en la computadora que tiene Ollama:',
   '# from here, check that it answers:': '# desde aquí, revisa que conteste:',
   '# in Windows: the Ollama app → Settings → Expose Ollama to the network': '# en Windows: la app de Ollama → Settings → Expose Ollama to the network',
   '# from Ubuntu, Windows is where WSL\'s network goes out (the address after «via»):': '# desde Ubuntu, Windows es la salida de la red de WSL (la dirección después de «via»):',
   'A project in a Windows folder (/mnt/c)': 'Un proyecto en una carpeta de Windows (/mnt/c)',
-  'Inside WSL, the Windows disk shows up as /mnt/c. It works, but every file goes through a bridge between the two systems: MADRE reads slower there, and the protections Linux gives a project (which agent may write where) do not hold on Windows files.': 'Dentro de WSL, el disco de Windows aparece como /mnt/c. Funciona, pero cada archivo pasa por un puente entre los dos sistemas: ahí MADRE lee más lento, y las protecciones que Linux le da a un proyecto (qué agente puede escribir dónde) no aplican en archivos de Windows.',
+  'Inside WSL, the Windows disk shows up as /mnt/c. It works, but every file goes through a bridge between the two systems: MADRE reads slower there, and the protections Linux gives a project (which agent may write where) do not hold on Windows files.': 'Dentro de WSL, el disco de Windows aparece como /mnt/c. Funciona, pero cada archivo pasa por un puente entre los dos sistemas: ahí MADRE lee más lento, y las protecciones que Linux le da a un proyecto (qué IA puede escribir dónde) no funcionan en archivos de Windows.',
   'Keep projects inside Linux, in your folder in /home. Copy the project once and add the copy in Home.': 'Guarda los proyectos dentro de Linux, en tu carpeta de /home. Copia el proyecto una vez y agrega la copia en Inicio.',
   '# this only happens inside WSL, on Windows': '# esto solo pasa dentro de WSL, en Windows',
   '# inside WSL: keep the project in Linux': '# dentro de WSL: guarda el proyecto en Linux',
@@ -6773,7 +6773,7 @@ export const ES = {
   // What to ask now, in the person's language (2026-10-28).
   'What have we decided lately that is not written down anywhere?': '¿Qué decidimos últimamente que no está escrito en ningún lado?',
   'What do I keep asking for that nobody has written down as a preference?': '¿Qué pido una y otra vez que nadie ha anotado como preferencia?',
-  'What is true about this project that a new agent would have to be told?': '¿Qué es cierto de este proyecto y habría que decírselo a un agente nuevo?',
+  'What is true about this project that a new agent would have to be told?': '¿Qué es cierto de este proyecto y habría que decírselo a una IA nueva?',
   'Is this still true, and does it still matter here? "{note}"': '¿Esto sigue siendo cierto y todavía importa aquí? «{note}»',
   'It has come up in {n} turn(s) and still has no answer.': 'Ha salido en {n} mensajes y todavía no tiene respuesta.',
   'It was written down as open and nothing has answered it yet.': 'Quedó anotada como pendiente y nadie la ha contestado.',
@@ -6826,7 +6826,7 @@ export const ES = {
   'What fails in every copy of MADRE, by how many copies it reaches. Mark each one known, fixed or ignored; a fixed one that happens again comes back as new.': 'Los errores de todas las copias de MADRE, según a cuántas copias afectan. Marca cada uno como conocido, arreglado o ignorado; uno arreglado que vuelve a pasar regresa como nuevo.',
   'This is changed on the computer.': 'Esto se cambia en la computadora.',
   'MADRE is uninstalled from Home, on this computer.': 'MADRE se desinstala desde Inicio, en esta computadora.',
-  'This is not a MADRE folder MADRE would take away.': 'Esta no es una carpeta de MADRE que MADRE pueda borrar.',
+  'This is not a MADRE folder MADRE would take away.': 'Esta carpeta no es de las que MADRE borra al desinstalarse.',
   'These projects did not close, so nothing was removed: {list}. Close them from Home and try again.': 'Estos proyectos no se cerraron, así que no se borró nada: {list}. Ciérralos desde Inicio y vuelve a intentarlo.',
   'Uninstall MADRE?': '¿Desinstalar MADRE?',
   'Home and every open project close, and MADRE takes away what it put on this computer. It cannot be undone.': 'Inicio y todos los proyectos abiertos se cierran, y MADRE borra lo que puso en esta computadora. No se puede deshacer.',
@@ -7057,7 +7057,7 @@ export const ES = {
   'The briefing — the document above, your question, the memories it summoned and the transcript it carries — with your Gemini API key, to be answered by the model you chose.': 'Lo que MADRE le envía a la IA (el documento de arriba, tu pregunta, las memorias que encontró y el chat hasta ahora), con tu llave de API de Gemini, para que lo conteste el modelo que elegiste.',
   'every turn you send to @gemini while Gemini answers through its API (a Gemini key and no Gemini CLI)': 'cada mensaje que le mandas a @gemini mientras Gemini contesta por su API (con una llave de Gemini y sin Gemini CLI)',
   'you choose it every time you send a turn to @gemini; installing the Gemini CLI hands its turns back to the CLI': 'lo eliges cada vez que le escribes a @gemini; si instalas Gemini CLI, sus mensajes vuelven a pasar por Gemini CLI',
-  'Answers through the provider\'s API: it does not read the project or attachments, and writes nothing. Install the CLI for the rest.': 'Contesta por la API del proveedor: no lee el proyecto ni los adjuntos, y no escribe nada. Para lo demás, instala el CLI.',
+  'Answers through the provider\'s API: it does not read the project or attachments, and writes nothing. Install the CLI for the rest.': 'Contesta por la API del proveedor: no lee el proyecto ni los adjuntos, y no escribe nada. Para todo lo demás, instala su app.',
   'Ollama\'s model server did not answer (an error on its side). It is not your connection: try again in a few minutes; what already arrived stays.': 'El servidor de modelos de Ollama no contestó (un error de su lado). No es tu conexión: vuelve a intentarlo en unos minutos; lo que ya se descargó se queda.',
   'That restore point is not known to this project.': 'Este proyecto no conoce ese punto de restauración.',
   'That EDIT turn is still running: press STOP ALL first.': 'Esa respuesta con «Puede editar» sigue en curso: presiona primero «Detener todo».',
@@ -7133,24 +7133,24 @@ export const ES = {
   '# the models your key opens: https://aistudio.google.com/app/apikey': '# los modelos que abre tu llave: https://aistudio.google.com/app/apikey',
   'The message is too long for this Gemini model': 'El mensaje es demasiado largo para este modelo de Gemini',
   'Through its API, Gemini receives everything in one go: your message, what you attached and the memory that came with it. This time it was more than the chosen model takes.': 'Por su API, Gemini recibe todo de una vez: tu mensaje, lo que adjuntaste y la memoria que va con él. Esta vez fue más de lo que el modelo elegido recibe.',
-  'Ask in smaller parts, attach less at once, or choose a Gemini model that takes more. A new chat also sends less of the conversation.': 'Pregunta por partes, adjunta menos a la vez o elige un modelo de Gemini que reciba más. Un chat nuevo también manda menos de la conversación.',
+  'Ask in smaller parts, attach less at once, or choose a Gemini model that takes more. A new chat also sends less of the conversation.': 'Pregunta por partes, adjunta menos a la vez o elige un modelo de Gemini que reciba más. Empezar un chat nuevo también ayuda: manda menos historial.',
   '# how much each model takes: https://ai.google.dev/gemini-api/docs/models': '# cuánto recibe cada modelo: https://ai.google.dev/gemini-api/docs/models',
-  'A module tried something its fence does not allow': 'Un módulo intentó algo que su cerco no permite',
+  'A module tried something its fence does not allow': 'Un módulo intentó algo que no tiene permitido',
   'Since 1.1.3, a module you install runs apart, with limited permissions: it can read its own file, but it cannot write your files or start other programs by itself. This module tried one of those and Node stopped it. Your project and MADRE are fine.': 'Desde 1.1.3, un módulo que instalas se ejecuta aparte, con permisos limitados: puede leer su propio archivo, pero no puede escribir tus archivos ni abrir otros programas por su cuenta. Este módulo intentó una de esas cosas y Node lo detuvo. Tu proyecto y MADRE están bien.',
   'Ask the module\'s author for a version made for MADRE 1.1.3, which asks MADRE for what it needs instead of doing it itself. Meanwhile, turn it off in Modules.': 'Pídele a quien hizo el módulo una versión hecha para MADRE 1.1.3, que le pida a MADRE lo que necesita en vez de hacerlo ella misma. Mientras tanto, apágalo en Módulos.',
   '# Modules › the module › turn it off': '# Módulos › el módulo › apágalo',
   'The AI\'s provider did not answer (Bad Gateway)': 'El proveedor de la IA no contestó (Bad Gateway)',
   'The server of the company behind this AI answered with a 502: it could not reach its own model in that moment. It is on their side, not in MADRE or in the project.': 'El servidor de la empresa detrás de esta IA contestó con un 502: en ese momento no pudo llegar a su propio modelo. Es de su lado, no de MADRE ni del proyecto.',
-  'Try again in a moment. If it keeps happening, choose another model or ask another agent meanwhile.': 'Vuelve a intentar en un momento. Si sigue pasando, elige otro modelo o pregúntale a otro agente mientras tanto.',
+  'Try again in a moment. If it keeps happening, choose another model or ask another agent meanwhile.': 'Vuelve a intentar en un momento. Si sigue pasando, elige otro modelo o, mientras tanto, pregúntale a otra IA.',
   '# try again in a moment, or choose another model in the box': '# vuelve a intentar en un momento, o elige otro modelo en la caja',
   'No provider of this model fits your data policy': 'Ningún proveedor de este modelo cumple tu política de datos',
   'OpenCode asks OpenRouter for this model, and OpenRouter has no provider of it that fits the privacy settings of your account (for example, providers that may train on your prompts are excluded). Nothing in MADRE or the project is wrong.': 'OpenCode le pide este modelo a OpenRouter, y OpenRouter no tiene ningún proveedor de él que cumpla los ajustes de privacidad de tu cuenta (por ejemplo, quedan fuera los proveedores que pueden entrenar con lo que escribes). Nada está mal en MADRE ni en el proyecto.',
   'Choose another model in the box, or allow more providers in OpenRouter\'s privacy settings.': 'Elige otro modelo en la caja, o permite más proveedores en los ajustes de privacidad de OpenRouter.',
   '# OpenRouter › Settings › Privacy: https://openrouter.ai/settings/privacy': '# OpenRouter › Settings › Privacy: https://openrouter.ai/settings/privacy (privacidad)',
   'This model does not take tools, and OpenCode needs them': 'Este modelo no acepta herramientas, y OpenCode las necesita',
-  'Inside MADRE, OpenCode reads the project with tools (reading files, searching). The model chosen has no provider that accepts tools, so the turn cannot start.': 'Dentro de MADRE, OpenCode lee el proyecto con herramientas (leer archivos, buscar). El modelo elegido no tiene ningún proveedor que acepte herramientas, así que el turno no puede empezar.',
+  'Inside MADRE, OpenCode reads the project with tools (reading files, searching). The model chosen has no provider that accepts tools, so the turn cannot start.': 'Dentro de MADRE, OpenCode lee el proyecto con herramientas (leer archivos, buscar). El modelo elegido no tiene ningún proveedor que acepte herramientas, así que la respuesta no puede empezar.',
   'Choose another model in the box: most current models take tools.': 'Elige otro modelo en la caja: casi todos los modelos actuales aceptan herramientas.',
-  '# the box › OpenCode\'s sphere › choose another model': '# la caja › la esfera de OpenCode › elige otro modelo',
+  '# the box › OpenCode\'s sphere › choose another model': '# la caja › el círculo de OpenCode › elige otro modelo',
   'Codex could not start its own helper': 'Codex no pudo arrancar su ayudante interno',
   'Before answering, Codex starts a helper inside itself, and the system did not let it («Operation not permitted»). It usually comes from a Codex half updated, or from a Codex folder its user cannot write.': 'Antes de contestar, Codex arranca un ayudante dentro de sí mismo, y el sistema no lo dejó («Operation not permitted»). Suele venir de un Codex actualizado a medias, o de una carpeta de Codex en la que su usuario no puede escribir.',
   'Update Codex and try again. If it keeps happening, sign Codex in again.': 'Actualiza Codex y vuelve a intentar. Si sigue pasando, vuelve a iniciar sesión en Codex.',
@@ -7160,13 +7160,13 @@ export const ES = {
   'Install bubblewrap and send the message again.': 'Instala bubblewrap y vuelve a mandar el mensaje.',
   '# only Linux needs it; on a Mac this is not the cause': '# solo Linux lo necesita; en una Mac no es la causa',
   'The AI ended without writing an answer': 'La IA terminó sin escribir una respuesta',
-  'The AI finished its turn without an error but also without a word: its model only thought, used its tools and stopped, or ran out of room. Free models do it more often. Nothing in MADRE or the project is wrong.': 'La IA terminó su turno sin error pero también sin una palabra: su modelo solo pensó, usó sus herramientas y se detuvo, o se quedó sin espacio. Los modelos gratis lo hacen más seguido. Nada está mal en MADRE ni en el proyecto.',
-  'Send the message again. If it repeats, choose another model or ask another agent.': 'Vuelve a mandar el mensaje. Si se repite, elige otro modelo o pregúntale a otro agente.',
+  'The AI finished its turn without an error but also without a word: its model only thought, used its tools and stopped, or ran out of room. Free models do it more often. Nothing in MADRE or the project is wrong.': 'La IA terminó su respuesta sin error, pero también sin escribir nada: su modelo solo pensó, usó sus herramientas y se detuvo, o se quedó sin espacio. Los modelos gratis lo hacen más seguido. En MADRE y en el proyecto no hay nada mal.',
+  'Send the message again. If it repeats, choose another model or ask another agent.': 'Vuelve a mandar el mensaje. Si se repite, elige otro modelo o pregúntale a otra IA.',
   '# send it again, or choose another model in the box': '# vuelve a mandarlo, o elige otro modelo en la caja',
   'OpenCode\'s model only thought and wrote no answer.': 'El modelo de OpenCode solo pensó y no escribió una respuesta.',
   'OpenCode used its tools and stopped before writing an answer.': 'OpenCode usó sus herramientas y se detuvo antes de escribir una respuesta.',
   'OpenCode\'s model ran out of room before writing an answer.': 'El modelo de OpenCode se quedó sin espacio antes de escribir una respuesta.',
-  'Grok is signed in, but xAI answers every turn with a 403. It happens when the sign-in was made before the plan was active. It is xAI\'s answer, not MADRE\'s: nothing in the project is wrong.': 'Grok tiene sesión, pero xAI contesta cada turno con un 403. Pasa cuando se inició sesión antes de que el plan estuviera activo. Es la respuesta de xAI, no de MADRE: no hay nada mal en el proyecto.',
+  'Grok is signed in, but xAI answers every turn with a 403. It happens when the sign-in was made before the plan was active. It is xAI\'s answer, not MADRE\'s: nothing in the project is wrong.': 'Grok tiene sesión, pero xAI contesta cada petición con un 403. Pasa cuando se inició sesión antes de que el plan estuviera activo. Es la respuesta de xAI, no de MADRE: en el proyecto no hay nada mal.',
   'Sign in to Grok again: grok logout, then grok login. If it keeps happening, check at grok.com that your plan is active.': 'Vuelve a iniciar sesión en Grok: grok logout y luego grok login. Si sigue pasando, revisa en grok.com que tu plan esté activo.',
   '#1 CHAT ONLY · in MADRE this agent reads and answers; no mode lets it write.': '«Solo conversar» · en MADRE esta IA lee y contesta; ningún permiso le deja escribir.',
   'Always #1: every message to it is answered by reading.': 'Siempre «Solo conversar»: lee y contesta cada mensaje que le mandas.',
@@ -7411,7 +7411,7 @@ export const ES = {
   "Claude, ChatGPT, Gemini… each one in its own app.": "Claude, ChatGPT, Gemini… cada una en su propia app.",
   "MADRE brings them into one chat.": "MADRE las junta en un solo chat.",
   "You ask, and they work on your files.": "Tú pides y ellas trabajan en tus archivos.",
-  "And it remembers what they decide.": "Y MADRE recuerda lo que deciden.",
+  "And it remembers what they decide.": 'Y MADRE guarda lo que deciden.',
   "Your AIs, together.": "Tus IAs, juntas.",
   "What MADRE is": "Qué es MADRE",
   "MADRE puts AIs to work in your folders. You ask for things the way you would ask someone on your team, and MADRE remembers what gets decided.": 'En MADRE, tus IAs trabajan en tus carpetas. Les pides las cosas como a alguien de tu equipo, y MADRE guarda lo que se va decidiendo.',
@@ -7449,7 +7449,7 @@ export const ES = {
   "Help": "Ayuda",
   "What MADRE remembers": "La memoria de MADRE",
   "Short answers": "Respuestas cortas",
-  "What this answer used": "Lo que gastó esta respuesta",
+  "What this answer used": 'Cuánto gastó esta respuesta',
   "{n} of {total} connected": "{n} de {total} conectadas",
   "{agents} not connected": "Sin conectar: {agents}",
   "the AI that costs least": "la IA que menos cuesta",
@@ -7736,7 +7736,7 @@ export const ES = {
   "MADRE {version} is out. Update it from Home.": "Ya salió MADRE {version}. Actualízala desde Inicio.",
   "A reminder falls due": "Vence un recordatorio",
   "At its hour, with what you asked to remember.": "A su hora, con lo que pediste recordar.",
-  "Widen the window to put it beside the conversation": "Agranda la ventana para ponerlo junto a la conversación",
+  "Widen the window to put it beside the conversation": 'Agranda la ventana para ponerlo junto al chat',
   "In simple words": "En palabras simples",
   "Explain this to me in simple words, as to someone who does not program: what it does and what it changes on the page": "Explícame esto en palabras simples, como a alguien que no programa: qué hace y qué cambia en la página",
   "Change a text": "Cambiar un texto",
@@ -7819,16 +7819,16 @@ export const ES = {
   "Summary of the conversation before": "Resumen del chat anterior",
   "Start without the summary": "Empezar sin el resumen",
   "Summarize and continue": "Resumir y seguir",
-  "There is nothing to summarize yet in this conversation.": "Todavía no hay nada que resumir en esta conversación.",
+  "There is nothing to summarize yet in this conversation.": 'Todavía no hay nada que resumir en este chat.',
   "Wait for the answer in progress, then summarize.": "Espera a que termine la respuesta en curso y luego resume.",
   "Choose the agent that should write the summary.": "Elige la IA que escribirá el resumen.",
-  "@{agent} is writing the summary. A new conversation opens with it when it is done.": "@{agent} está escribiendo el resumen. Al terminar se abre una conversación nueva con él.",
+  "@{agent} is writing the summary. A new conversation opens with it when it is done.": '@{agent} está escribiendo el resumen. Al terminar se abre un chat nuevo con él.',
   "Summarize this conversation so it can continue in a new one, where another agent may pick it up without reading what came before. Only the summary, no greeting, in four short parts: «What we are after», «What was decided», «What is left», «Key files and facts». Say a file by its path and a decision in one line.": "Resume esta conversación para seguirla en una nueva, donde otro agente pueda retomarla sin leer lo anterior. Solo el resumen, sin saludo, en cuatro partes cortas: «Qué buscamos», «Qué se decidió», «Qué falta», «Archivos y datos clave». Di cada archivo por su ruta y cada decisión en una línea.",
   "The summary did not come out. Try /resumir again, or with another agent.": "El resumen no salió. Intenta /resumir otra vez, o con otra IA.",
-  "the new conversation was not started.": "no se abrió la conversación nueva.",
+  "the new conversation was not started.": 'no se abrió el chat nuevo.',
   "We continue here, with the summary on top. Write what comes next.": "Seguimos aquí, con el resumen arriba. Escribe lo que sigue.",
-  "Summary of the conversation before ({title}), to continue from it:": "Resumen de la conversación anterior ({title}), para seguir desde ahí:",
-  "{title} · continued": "{title} · sigue",
+  "Summary of the conversation before ({title}), to continue from it:": 'Resumen del chat anterior ({title}), para seguir desde ahí:',
+  "{title} · continued": '{title} · continuación',
   "There was no summary to carry.": "No había resumen que llevar.",
   "<what>": "<qué>",
   "\"<message>\"": "\"<mensaje>\"",
