@@ -790,7 +790,7 @@ test('a connector\'s card asks for its key and never shows it back', () => {
   const text = all.map((node) => node.textContent ?? '').join(' ');
   assert.match(text, /Llaves/, 'the keys floor did not draw at all');
   assert.match(text, /Borrarla/, 'a key that is held cannot be taken out again');
-  assert.match(text, /Dónde sacarla/, 'the card does not say where to get the key');
+  assert.match(text, /Dónde conseguirla/, 'the card does not say where to get the key');
 
   const field = all.find((node) => node.tagName === 'INPUT' && node.type === 'password');
   assert.ok(field, 'the key would be typed into a field that shows it');

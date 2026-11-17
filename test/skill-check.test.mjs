@@ -99,11 +99,11 @@ test('skill-check · a wrong version number cannot hide the page behind it', asy
     const checked = await checkSkillFolder(dir);
     assert.equal(checked.ok, false);
     assert.match(checked.problems.join('\n'), /cannot read it as a skill/i, 'the header fault is still said');
-    assert.match(checked.problems.join('\n'), /Refused: it tells the agent to keep something from the person/);
+    assert.match(checked.problems.join('\n'), /Refused: it tells the AI to keep something from the person/);
     assert.deepEqual(checked.said.map((one) => one.id), ['network']);
     // And its programs too, walked from the folder even though the skill never loaded.
     assert.deepEqual(checked.programs.map((one) => [one.path, one.reaches.map((reach) => reach.id)]), [['guiones/subir.py', ['network', 'environment']]]);
-    assert.match(checked.markdown, /#4 AIRLOCK/);
+    assert.match(checked.markdown, /only with «Full access»/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 

@@ -73,7 +73,7 @@ test('registry: sixteen modules in MODULES order, the compat layer answers with 
   const listed = await listExtensions({ projectRoot: '/tmp', config: { modules: { ripley: { enabled: true }, ash: { enabled: false } } } });
   const byId = Object.fromEntries(listed.map((item) => [item.id, item]));
   assert.equal(byId.ripley.status.detail, 'on · «Preview» in the file viewer');
-  assert.equal(byId.ash.status.detail, 'off · agents answer at their own length');
+  assert.equal(byId.ash.status.detail, 'off · your AIs answer at their usual length');
   assert.equal(byId.ash.warning, undefined, 'Ash still warns about something it no longer does');
   assert.equal(byId['git-pulse'].fixed, true);
   assert.equal(byId.ollama.status.detail, (await (await import('../src/modules/helpers.mjs')).findOnPath('ollama') ? 'installed, not running · start it here' : 'not installed · install it here'));

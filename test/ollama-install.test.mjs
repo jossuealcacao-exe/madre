@@ -41,7 +41,7 @@ test('Linux without passwordless sudo: nothing runs, the command is handed over 
   }
   assert.match(ollamaUpdatePlan({ platform: 'linux', admin }).note, /modelos se quedan/);
   setLanguage('en');
-  assert.match(ollamaInstallPlan({ platform: 'linux', admin }).note, /administrator password.*terminal.*RECHECK/);
+  assert.match(ollamaInstallPlan({ platform: 'linux', admin }).note, /administrator password.*terminal.*«Recheck»/);
   setLanguage('es');
 });
 

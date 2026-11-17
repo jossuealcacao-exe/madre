@@ -76,7 +76,7 @@ test('grok · the answer, its tokens and its cost come from the closing result; 
 test('grok · a step that needed an approval, a stop and a refused account answer nothing and say why', () => {
   const cancelled = parseGrokOutput(fixture('cancelled'));
   assert.equal(cancelled.text, '');
-  assert.match(cancelled.error, /approval that a turn cannot give|aprobación que un turno no puede dar/);
+  assert.match(cancelled.error, /approval that cannot be given in the middle of an answer|aprobación que no se puede dar a mitad de una respuesta/);
   const stopped = parseGrokOutput(fixture('stopped'));
   assert.equal(stopped.text, '');
   assert.ok(stopped.error);
