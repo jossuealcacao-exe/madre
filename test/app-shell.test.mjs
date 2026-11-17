@@ -38,8 +38,10 @@ test('inside the app, Home closes itself when the app\'s pipe closes', { timeout
     assert.ok(ended, 'Home stayed open after the app was gone');
     assert.equal(ended.code, 0);
   } finally {
-    await rm(home, { recursive: true, force: true });
-    await rm(state, { recursive: true, force: true });
+    // Retried (Q-25): an AI's probe Home started (grok writes its ~/.grok) can still be writing in
+    // this house for a moment after Home closed, and the folder was not empty yet.
+    await rm(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(state, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 
