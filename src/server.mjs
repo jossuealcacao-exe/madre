@@ -216,12 +216,14 @@ function sendJson(response, status, value) {
 // A request's JSON, read whole before it is decoded (2026-10-12, SRV-08): a «ñ» split between two
 // packets came out as «��». The limit is in bytes; a route that takes more says so (the editor).
 const BODY_LIMIT = 100_000;
-async function body(request, { limit = BODY_LIMIT } = {}) {
+// A message takes a long paste — a log, a file pasted whole (D-40, 2026-11-10: refused at 100 KB).
+const MESSAGE_LIMIT = 1_000_000;
+async function body(request, { limit = BODY_LIMIT, tooLarge = null } = {}) {
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > limit) throw Object.assign(new Error('Request too large.'), { status: 413 });
+    if (size > limit) throw Object.assign(new Error(tooLarge ?? t('That is too much to send at once.')), { status: 413 });
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
@@ -5811,7 +5813,7 @@ export async function createPulseServer({
         // No turn before MADRE's license is accepted on this computer (src/terms.mjs): a page left open
         // from before, or a script, is told where to accept it.
         if (!viaPhone && !(await readTerms(root)).accepted) return sendJson(response, 403, { error: t('Accept MADRE\'s license in Home to start.'), terms: true });
-        const payload = await body(request);
+        const payload = await body(request, { limit: MESSAGE_LIMIT, tooLarge: t('Your message is too long to send as text. Attach it as a file instead.') });
         // A phone asks up to #2. The bridge already said so; the room says it again, and records
         // where the message came from. Only the bridge's word counts for that, never the body's.
         if (viaPhone) {
@@ -5871,11 +5873,12 @@ export async function createPulseServer({
       // A route that broke is a failure of MADRE's, not of the request: told, with the route's shape
       // (its ids taken out) and MADRE's own lines it went through. A body that was not JSON is the
       // request's.
-      if (!(error instanceof SyntaxError)) {
+      // Nor is one that was too big to take (D-40): said as it is, with its own status.
+      if (!(error instanceof SyntaxError) && error?.status !== 413) {
         const shape = url.pathname.replace(/\/[0-9a-f]{6,}(?=\/|$)/gi, '/:id').replace(/\/\d+(?=\/|$)/g, '/:n');
         diagnostics.error({ kind: 'route', where: `${request.method} ${shape}`, message: error?.message ?? String(error), stack: error?.stack ?? null });
       }
-      sendJson(response, 400, { error: error.message });
+      sendJson(response, error?.status === 413 ? 413 : 400, { error: error.message });
     }
   });
   listening = server;

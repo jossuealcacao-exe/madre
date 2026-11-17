@@ -532,6 +532,9 @@ export const ES = {
   'at most once a day per package, to tell you a new version is out':
     'como mucho una vez al día por paquete, para avisarte cuando sale una versión nueva',
   'Settings › Updates and errors': 'Ajustes › Actualizaciones y errores',
+  // Un mensaje demasiado largo (D-40, 2026-11-17): qué hacer, sin «Request too large».
+  'That is too much to send at once.': 'Es demasiado para enviarlo de una vez.',
+  'Your message is too long to send as text. Attach it as a file instead.': 'Tu mensaje es demasiado largo para enviarlo como texto. Adjúntalo como archivo.',
   // La licencia según dónde corre MADRE (2026-11-17): en la app, su licencia personal; desde npm o el código, la BSL.
   'Free for you. What you make with MADRE is yours.': 'Gratis para ti. Lo que creas con MADRE es tuyo.',
   'Free for individuals and teams of up to 10. What you make with MADRE is yours.': 'Gratis para personas y equipos de hasta 10. Lo que creas con MADRE es tuyo.',
