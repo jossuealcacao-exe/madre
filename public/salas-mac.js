@@ -6992,7 +6992,8 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360, keys = true
   const fresh = () => {
     const w = Math.min(size.w, window.innerWidth - 32);
     const h = Math.min(size.h, window.innerHeight - 90);
-    return { x: Math.max(16, Math.round((window.innerWidth - w) / 2)), y: 56, w, h };
+    // 68 px from the top, where a project's windows open (app.js, settingsBoxFor; 2026-11-17: it was 56).
+    return { x: Math.max(16, Math.round((window.innerWidth - w) / 2)), y: 68, w, h };
   };
   let want = kept?.w && kept?.h ? kept : fresh();
   let box = null;

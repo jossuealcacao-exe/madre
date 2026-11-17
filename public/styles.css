@@ -195,6 +195,12 @@
     --lift-1: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
     --ring-soft: 0 0 0 3px color-mix(in srgb, var(--phosphor) 10%, transparent);
     --glow-a: 14%;
+    /* The modes' light tones, as when the system is light (2026-11-17): «Claro» chosen on a dark Mac
+       kept the amber and the red made for black, 1.9:1 on white. */
+    --mode-0: #6f786e; --mode-0-ink: #ffffff;
+    --mode-2: #a06e00; --mode-2-ink: #ffffff;
+    --mode-3: #d81b12; --mode-3-ink: #ffffff;
+    --mode-4: #0b6fa8; --mode-4-ink: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -7152,7 +7158,8 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 @container settings (max-width: 560px) { .mods-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mods-stat.hero { grid-row: span 1; } .mods-stat.hero strong { font-size: 32px; } }
 
 /* The version sits with its key, on the row's right. */
-.mods-version { padding: 4px 9px; border-radius: 8px; font-family: var(--mono); font-size: 12px; color: var(--text); background: transparent; box-shadow: var(--key-track); }
+/* As tall as the key beside it, «Buscar una nueva» (2026-11-17: it measured 24 and the key 30). */
+.mods-version { display: inline-flex; align-items: center; box-sizing: border-box; height: 30px; padding: 0 9px; border-radius: 8px; font-family: var(--mono); font-size: 12px; color: var(--text); background: transparent; box-shadow: var(--key-track); }
 .mods-detail .sx-row .sx-actions.inline { flex: none; gap: 8px; }
 
 /* (2) What it touches: the tag and the words on one line, the words in the reading weight. */
@@ -7278,11 +7285,19 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 /* (4) A field sinks clearly when written in. */
 :is(.sx-input:focus, .sx-num:focus-within, .settings-search:focus-within) { box-shadow: var(--key-sink) !important; }
 
-/* (5) The permission modes wear their own colours, chosen or not. */
+/* (5) The permission modes wear their own colours, chosen or not. The chosen one is told by its raised
+   key, not by dimming the others (2026-11-17): at 70 % they read at 2.5 to 3.4:1 on light. On light
+   each colour goes one step deeper, so every name reads at 4.5:1 or more. */
 .sx-seg button.o0 { color: var(--mode-0) !important; } .sx-seg button.o1 { color: var(--mode-1) !important; }
 .sx-seg button.o2 { color: var(--mode-2) !important; } .sx-seg button.o3 { color: var(--mode-3) !important; }
 .sx-seg button.o4 { color: var(--mode-4) !important; }
-.sx-seg button:is(.o0, .o1, .o2, .o3, .o4):not([aria-checked="true"]):not(:disabled) { opacity: .7; }
+:root[data-scheme="light"] .sx-seg button.o0:not([aria-checked="true"]) { color: color-mix(in srgb, var(--mode-0) 80%, #000000) !important; }
+:root[data-scheme="light"] .sx-seg button.o1:not([aria-checked="true"]) { color: color-mix(in srgb, var(--mode-1) 80%, #000000) !important; }
+:root[data-scheme="light"] .sx-seg button.o2:not([aria-checked="true"]) { color: color-mix(in srgb, var(--mode-2) 80%, #000000) !important; }
+:root[data-scheme="light"] .sx-seg button.o3:not([aria-checked="true"]) { color: color-mix(in srgb, var(--mode-3) 80%, #000000) !important; }
+:root[data-scheme="light"] .sx-seg button.o4:not([aria-checked="true"]) { color: color-mix(in srgb, var(--mode-4) 80%, #000000) !important; }
+/* On dark the red screen's red read 4.4:1 as a word; a touch of white brings it over 4.5. */
+:root:not([data-scheme="light"]) .sx-seg button.o3:not([aria-checked="true"]) { color: color-mix(in srgb, var(--mode-3) 88%, #ffffff) !important; }
 .sx-seg button:is(.o0, .o1, .o2, .o3, .o4):disabled { opacity: .28; }
 
 /* (6) An agent's key and its sign-in command, in the sheet's own hand. */
@@ -8485,7 +8500,8 @@ dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-
 .session-lamp.ok::before { background: var(--session-ok) !important; }
 .session-lamp.wait::before { background: var(--session-wait) !important; }
 .session-lamp.bad::before { background: var(--session-bad) !important; }
-.sx-chip.session-lamp { background: color-mix(in srgb, var(--text) 6%, transparent) !important; }
+/* A capsule, as «Conectado» is in the welcome (2026-11-17; it had the chips' 7 px corner). */
+.sx-chip.session-lamp { background: color-mix(in srgb, var(--text) 6%, transparent) !important; border-radius: 999px; }
 
 /* SIGUE ABIERTO AQUÍ (2026-10-09): the row moves a whole question at a time, so the one at its start
    is never cut; the pill the edge cuts fades out over 40 px instead of being sliced. */
@@ -11746,7 +11762,9 @@ html.chat-shell .composer > :is(.attachments, .free-offer, .openq) { grid-column
 html.chat-shell .composer .reply-quote { grid-area: quote; }
 html.chat-shell .composer .editor { grid-area: editor; min-height: 44px; padding: 0 4px; }
 html.chat-shell .composer .editor textarea { font: 450 15px/1.5 var(--read) !important; }
-html.chat-shell .composer .picker.crew { grid-area: picker; }
+/* The AI's circle starts where the text above it starts (2026-11-17): the text sits 10 px in and the
+   circle 2 px inside its 30 px key, so the key steps 8 px in; it stood 10 px out (18 in a narrow box). */
+html.chat-shell .composer .picker.crew { grid-area: picker; margin-left: 8px; }
 html.chat-shell .composer .crew-label { display: none !important; }
 html.chat-shell .composer > .pick-options { grid-area: options; justify-self: start; min-width: 0; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; }
 html.chat-shell .composer .create-toggle { grid-area: create; }
@@ -11867,7 +11885,8 @@ html.chat-shell .shell > .composer {
     "picker options create ash attach . send";
   gap: 6px 2px; padding: 14px 10px 8px 10px !important; border-radius: 22px !important;
 }
-html.chat-shell .composer .editor { min-height: 0; padding: 0 10px; }
+/* No margin of the old narrow box (.field > .editor, 8 px): the text keeps its 10 px at any width. */
+html.chat-shell .composer .editor { min-height: 0; padding: 0 10px; margin-left: 0; }
 html.chat-shell .composer .editor :is(textarea, .highlight) { font: 450 15px/24px var(--read) !important; padding: 2px 5px !important; }
 /* The keys of its row: drawings with no plate, as the bar's. */
 html.chat-shell .composer :is(.attach, .field > button[type="submit"]) {
@@ -12197,7 +12216,8 @@ html.chat-shell .browser-dock .viewer-sizes button { height: 28px; padding: 0 8p
 html.chat-shell .browser-dock .viewer-sizes button::first-letter { text-transform: uppercase; }
 html.chat-shell .browser-dock .viewer-sizes button:hover { background: var(--cs-hover); color: var(--text); }
 html.chat-shell .browser-dock .viewer-sizes button[aria-pressed="true"] { background: none; color: var(--phosphor); }
-html.chat-shell .browser-dock .surface-gear:is(*, :hover, :focus-visible, :active) { width: 28px; height: 28px; border-radius: 8px; background: none !important; box-shadow: none !important; color: var(--text-3); }
+/* Without the hairline of the quiet gears (2026-11-17): the other keys of this bar have none. */
+html.chat-shell .browser-dock .surface-gear:is(*, :hover, :focus-visible, :active) { width: 28px; height: 28px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; color: var(--text-3); }
 html.chat-shell .browser-dock .surface-gear:hover { background: var(--cs-hover) !important; color: var(--text); }
 html.chat-shell .browser-dock .ports-menu { padding: 4px; border: 1px solid var(--cs-line); border-radius: 12px; box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
 html.chat-shell .browser-dock .ports-row { padding: 7px 10px; border-radius: 8px; }
@@ -12313,6 +12333,7 @@ html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chi
   html.chat-shell #composer #pick-options :is(.mode-chip, .model-chip, .effort-chip, .copilot-chip) { min-height: 36px; }
   html.chat-shell #composer #pick-options .copilot-chip { width: 36px; min-width: 36px; }
   html.chat-shell #composer .crew-orb { width: 36px; height: 36px; }
+  html.chat-shell #composer .picker.crew { margin-left: 5px; } /* the circle sits 5 px inside a 36 px key */
   html.chat-shell #composer :is(#attach, .attach) { min-width: 36px; min-height: 36px; }
   .bubble-actions .act { min-width: 36px; min-height: 36px; }
 }
@@ -14853,6 +14874,82 @@ html.chat-shell #settings .settings-detail-head .settings-line, #settings .setti
 /* UPDATES › what the diagnostics would send: its lines wrap inside the box instead of scrolling
    sideways. */
 .sx-code { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: hidden; }
+
+/* ---- THE REVIEW'S FIXES, APPROVED (2026-11-17, the author: «sí, hazlos»). Contrast on light, measures,
+   and one control for one kind of setting; the look stays (one emerald accent, glass, the planes of
+   depth). Fixed in place the same day: the modes of «Qué puede hacer cada IA» are no longer dimmed and
+   go one step deeper on light (each name 4.5:1 or more), with the modes' light tones also when «Claro»
+   is chosen on a dark Mac; the AI's circle in the box starts where the text starts; Notes' version is
+   as tall as the key beside it (30 px); the browser's settings key has no hairline, like the other keys
+   of its bar; the session chip of each AI is a capsule. Home's half is in salas-mac.css. ---- */
+
+/* The accent key on light. White on #059669 read 3.77:1 at 12.5 px. Every filled key that says the
+   main thing (Settings, the windows, the modules, the offers in the conversation, the Market) takes the
+   same green one step deeper, as «Qué cambió» does: 80 % of the accent with black, 5.5:1 with its white
+   letter; under the pointer, a step deeper still. The accent where it is not a key (a dot, a switch, a
+   word) does not change. */
+:root[data-scheme="light"] .sx-btn.primary,
+:root[data-scheme="light"] .mods-detail .module-card :is(.actions, .version, .card-panel) button.primary,
+:root[data-scheme="light"] .mods-detail .mods-reading button.primary,
+:root[data-scheme="light"] .sx-slot .key-form .key-row button,
+:root[data-scheme="light"] dialog.room-ask:not(.console) .room-ask-choice.primary,
+:root[data-scheme="light"] dialog#core .exam .actions button.primary,
+:root[data-scheme="light"] .custom-accept,
+:root[data-scheme="light"] :is(.wn-go, .wn-start),
+:root[data-scheme="light"] .hint-ok,
+:root[data-scheme="light"] .terms-btn.primary,
+:root[data-scheme="light"] .empty-suggest-open,
+:root[data-scheme="light"] .tree-ask .go,
+:root[data-scheme="light"] .intent-offer .free-go,
+:root[data-scheme="light"] .point-check-again,
+:root[data-scheme="light"] .ap-acts button.go,
+:root[data-scheme="light"] :is(.lab-copy, .lab-again),
+:root[data-scheme="light"] .ports-turn-on .ports-on,
+:root[data-scheme="light"] .bubble .module-ask:not(.done) .module-ask-on,
+:root[data-scheme="light"] #messages#messages .system.local-model .acts button:not(button + button) {
+  background-color: color-mix(in srgb, var(--phosphor) 80%, #000000) !important; color: #ffffff !important;
+}
+:root[data-scheme="light"] .sx-btn.primary:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .mods-detail .module-card :is(.actions, .version, .card-panel) button.primary:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .mods-detail .mods-reading button.primary:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .sx-slot .key-form .key-row button:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] dialog.room-ask:not(.console) .room-ask-choice.primary:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] dialog#core .exam .actions button.primary:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .custom-accept:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] :is(.wn-go, .wn-start):is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .hint-ok:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .terms-btn.primary:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .empty-suggest-open:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .tree-ask .go:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .intent-offer .free-go:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .point-check-again:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .ap-acts button.go:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] :is(.lab-copy, .lab-again):is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .ports-turn-on .ports-on:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .bubble .module-ask:not(.done) .module-ask-on:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] #messages#messages .system.local-model .acts button:not(button + button):is(:hover, :focus-visible):not(:disabled) {
+  background-color: color-mix(in srgb, var(--phosphor) 68%, #000000) !important;
+}
+/* The Market's keys and the terminal's are MADRE's own green, which an accent never repaints; a
+   module's result takes the accent. */
+:root[data-scheme="light"] .mk-get.big:not(.quiet, .on),
+:root[data-scheme="light"] .mk.flat .mk-get.light,
+:root[data-scheme="light"] .colophon-card-go,
+:root[data-scheme="light"] .command-card.terminal:not(.module-result) .term-link {
+  background-color: color-mix(in srgb, var(--madre-green) 80%, #000000) !important; color: #ffffff !important;
+}
+:root[data-scheme="light"] .mk-get.big:not(.quiet, .on):is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .mk.flat .mk-get.light:is(:hover, :focus-visible):not(:disabled),
+:root[data-scheme="light"] .colophon-card-go:is(:hover, :focus-visible),
+:root[data-scheme="light"] .command-card.terminal:not(.module-result) .term-link:is(:hover, :focus-visible) {
+  background-color: color-mix(in srgb, var(--madre-green) 68%, #000000) !important;
+}
+:root[data-scheme="light"] .command-card.terminal.module-result .term-link { background-color: color-mix(in srgb, var(--acc, var(--phosphor)) 80%, #000000) !important; color: #ffffff !important; }
+
+/* Settings › Files and local sites: the two choices one under the other are one width, so their left
+   edges meet (they were 142 and 158 px, 16 px apart). Each option takes half. */
+.files-where .sx-seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); min-width: 176px; }
+.files-where .sx-seg > button { min-width: 0; }
 
 /* ---- Terminal and editor: Coldbrew, Oldcode and Simple (2026-11-14, the author) ----
    Ajustes › Apariencia › Terminal y editor puts data-code-theme on the root (app.js, LOOKS.codeTheme).

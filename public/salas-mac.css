@@ -576,10 +576,11 @@ dialog.sm-sheet > .sm-sheet-body { border: 0 solid transparent; border-width: 8p
 .sm-picker { display: grid; gap: 12px; }
 .sm-picker-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sm-picker-head .custom-seg { flex: none; display: inline-grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: auto; gap: 2px; padding: 2px; border: 0; border-radius: 10px; background: color-mix(in srgb, var(--text) 7%, transparent); }
-.sm-picker-head .seg-option { min-height: 28px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; }
+/* 30 px in its rail of 3 + 3 (2026-11-17): the rail stands 36, as the room's selectors and the search beside it. */
+.sm-picker-head .seg-option { min-height: 30px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; }
 .sm-picker-head .seg-option[aria-checked="true"] { background: var(--surface, var(--panel)); box-shadow: 0 1px 2px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .06); }
 /* The room's search (styles.css, .settings-search), not the sheet's uppercase field label. */
-.sm-picker-head > .sm-picker-search { flex: 1 1 auto; max-width: none; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-2); }
+.sm-picker-head > .sm-picker-search { flex: 1 1 auto; max-width: none; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-2); }
 .sm-picker-search input::-webkit-search-cancel-button { cursor: pointer; }
 /* A project from nothing (2026-10-17): the name, where it goes, one key. */
 .sm-new-project { display: grid; gap: 12px; justify-items: start; padding: 18px 2px 6px; }
@@ -2681,3 +2682,24 @@ html.home-shell .sm-sheet-body > .scene-link { clip-path: inset(0 round 12px); }
    proyecto» is as tall and as round as the rail beside it (34 px and 10; it was 32 and 9); the
    welcome's «Español · English» the same way, 7 in 10 with 3 between. ---- */
 html.home-shell .sm-side .side-project .side-dot { margin-inline: 4.5px; }
+
+/* ---- THE REVIEW'S FIXES, APPROVED (2026-11-17, the author: «sí, hazlos»): Home's half; the room's is
+   in styles.css, before «Terminal and editor». Fixed in place the same day: the rail and the folder
+   search of «Agregar proyecto» stand 36 px, as the room's selectors (they were 34), and Home's windows
+   open 68 px from the top, as a project's (salas-mac.js, homeWindow; it was 56). ---- */
+
+/* The accent key on light, as in the room: white on #059669 read 3.77:1; the same green one step
+   deeper reads 5.5:1, and a step deeper still under the pointer. The map's night keeps its own. */
+:root[data-scheme="light"] .sm-btn.primary:not(.mv .sm-btn) { background-color: color-mix(in srgb, var(--s-acc) 80%, #000000) !important; color: #ffffff; }
+:root[data-scheme="light"] .sm-btn.primary:not(.mv .sm-btn):is(:hover, :focus-visible):not([disabled]) { background-color: color-mix(in srgb, var(--s-acc) 68%, #000000) !important; }
+:root[data-scheme="light"] .wl-btn.primary { background-color: color-mix(in srgb, var(--wl-acc) 80%, #000000) !important; color: #ffffff; }
+:root[data-scheme="light"] .wl-btn.primary:is(:hover, :focus-visible):not(:disabled) { background-color: color-mix(in srgb, var(--wl-acc) 68%, #000000) !important; }
+
+/* Home's searches on light: the soft well the room's searches have (its conversations', its files'),
+   not a shadow of 1 px that all but vanished on a white card; deeper while they have the cursor. */
+:root[data-scheme="light"] .sm-search, :root[data-scheme="light"] .sm-picker-head > .sm-picker-search {
+  background: color-mix(in srgb, var(--text) 6%, transparent) !important; box-shadow: inset 0 1px 2px rgba(20, 30, 20, .1) !important;
+}
+:root[data-scheme="light"] .sm-search:focus-within, :root[data-scheme="light"] .sm-picker-head > .sm-picker-search:focus-within {
+  background: color-mix(in srgb, var(--text) 4%, transparent) !important; box-shadow: inset 0 2px 5px rgba(20, 30, 20, .12), inset 0 1px 1.5px rgba(20, 30, 20, .1) !important;
+}

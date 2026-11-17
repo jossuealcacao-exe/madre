@@ -12045,14 +12045,21 @@ function sxNumber(value, unit, { min = 0, step = 1, wire = null, label = null } 
   box.input = input;
   return box;
 }
-function sxStepper(value, { min = 1, max = 99, disabled = false } = {}, change) {
+// − n +, the one control for a count. It keeps the count it shows: a row that is not drawn again after
+// saving (Steps per plan) says the new one with `box.show(n)`.
+function sxStepper(value, { min = 1, max = 99, disabled = false, label = null } = {}, change) {
   const box = el('div', 'sx-stepper');
-  const less = el('button', null, '−'); less.type = 'button'; less.disabled = disabled || value <= min;
-  const more = el('button', null, '+'); more.type = 'button'; more.disabled = disabled || value >= max;
+  if (label) { box.setAttribute('role', 'group'); box.setAttribute('aria-label', label); }
+  const less = el('button', null, '−'); less.type = 'button';
+  const more = el('button', null, '+'); more.type = 'button';
+  const shown = el('output', null, String(value));
+  let now = value;
+  box.show = (n) => { now = n; shown.textContent = String(n); less.disabled = disabled || n <= min; more.disabled = disabled || n >= max; };
+  box.show(value);
   less.setAttribute('aria-label', t('fewer')); more.setAttribute('aria-label', t('more'));
-  less.addEventListener('click', () => void change(value - 1));
-  more.addEventListener('click', () => void change(value + 1));
-  box.append(less, el('output', null, String(value)), more);
+  less.addEventListener('click', () => void change(now - 1, box));
+  more.addEventListener('click', () => void change(now + 1, box));
+  box.append(less, shown, more);
   return box;
 }
 const sxChip = (text, tone = '') => el('span', `sx-chip${tone ? ` ${tone}` : ''}`, text);
@@ -18252,7 +18259,7 @@ function drawMcpImport(host) {
 
 function drawFilesSettings(host) {
   const tree = surfaces.find((one) => one.key === 'tree');
-  const where = sxBlock(host, t('Where they open'), t('Each one remembers how you left it. This is the same choice, without opening them.'));
+  const where = sxBlock(host, t('Where they open'), t('Each one remembers how you left it. This is the same choice, without opening them.'), { className: 'files-where' });
   sxRow(where, t('Files'), t("The project's files, beside the conversation or as a window of their own."), sxSeg([
     { value: 'base', text: t('Beside') }, { value: 'window', text: t('Window') },
   ], modeOf(tree) === 'window' ? 'window' : 'base', (value) => {
@@ -23708,8 +23715,11 @@ function drawRoomSettings(host, data) {
     catch (error) { box.checked = !on; toast(t('The setting was not saved: {error}', { error: error.message })); }
   }, { label: t('Agents may make plans') });
   sxRow(plans, t('Agents may make plans'), t('An agent may open a plan and hand its steps to the others.'), delegation);
-  sxRow(plans, t('Steps per plan'), t('The most steps one plan may have.'), sxNumber(s.maxPlanSteps, null, {
-    min: 1, label: t('Steps per plan'), wire: { toPatch: (value) => ({ room: { maxPlanSteps: value } }), describe: (value) => t('max plan steps saved: {n}.', { n: value }) },
+  // − n +, as «Conversations at once» in the same category (2026-11-17): the same kind of setting, the
+  // same control. It saves as the number field did, the same patch and the same note.
+  sxRow(plans, t('Steps per plan'), t('The most steps one plan may have.'), sxStepper(s.maxPlanSteps, { min: 1, label: t('Steps per plan') }, async (n, box) => {
+    try { await saveSettingNow({ room: { maxPlanSteps: n } }, t('max plan steps saved: {n}.', { n })); box.show(n); }
+    catch (error) { toast(t('The setting was not saved: {error}', { error: error.message })); }
   }));
 
   const limits = sxBlock(host, t('Spending and waiting'), t('What each agent may spend, and how long the project waits for it.'));
