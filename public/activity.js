@@ -458,7 +458,9 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
   }
   key.addEventListener('click', () => (state.open ? close() : openPanel()));
   document.addEventListener?.('keydown', (event) => { if (event.key === 'Escape' && state.open) { close(); key.focus(); } });
-  document.addEventListener?.('pointerdown', (event) => { if (state.open && !panel.contains(event.target) && !key.contains(event.target)) close(); }, true);
+  // A press on a first-time card (its «Entendido») is not a press outside the panel: closing the card
+  // closed «Plan actual» with it (2026-11-17, the author).
+  document.addEventListener?.('pointerdown', (event) => { if (state.open && !panel.contains(event.target) && !key.contains(event.target) && !event.target?.closest?.('.hint-card')) close(); }, true);
   globalThis.addEventListener?.('resize', () => { if (state.open) place(); });
 
   void load();

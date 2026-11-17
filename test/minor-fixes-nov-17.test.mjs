@@ -89,3 +89,14 @@ test('17 nov · five texts said plainly', () => {
   assert.match(room, /el\('span', null, sentenceCase\(title\)\)/);
   assert.match(pub('styles.css'), /\.module-app \.card-head span \{ display: inline-block; text-transform: none; \}/);
 });
+
+test('closing the first-time card of «Plan actual» leaves the panel open (2026-11-17)', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const activity = await readFile(join(import.meta.dirname, '..', 'public', 'activity.js'), 'utf8');
+  const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  // A press on the card is not a press outside the panel.
+  assert.match(activity, /!key\.contains\(event\.target\) && !event\.target\?\.closest\?\.\('\.hint-card'\)\) close\(\);/);
+  // Escape puts the card away without reaching the panel's own Escape.
+  assert.match(app, /const escape = \(event\) => \{ if \(event\.key === 'Escape'\) \{ event\.stopPropagation\(\); close\(\); \} \};/);
+});

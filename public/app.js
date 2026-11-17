@@ -25745,7 +25745,8 @@ function showFirstTouch(hint, button, { step = 0, of = 0, skip = null } = {}) {
     document.removeEventListener('keydown', escape, true);
   };
   const outside = (event) => { if (!card.contains(event.target) && !button.contains(event.target)) close(); };
-  const escape = (event) => { if (event.key === 'Escape') close(); };
+  // Escape puts the card away and nothing else: the panel it speaks of stays open for a second one.
+  const escape = (event) => { if (event.key === 'Escape') { event.stopPropagation(); close(); } };
   ok.addEventListener('click', close);
   setTimeout(() => {
     document.addEventListener('pointerdown', outside, true);
