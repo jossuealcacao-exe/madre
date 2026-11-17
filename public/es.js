@@ -13,6 +13,7 @@
 export const ES = {
   // El compositor: lo primero que una persona lee de MADRE.
   'Type here, human. Ask the project…': '¿Qué necesitas? Pregunta lo que quieras de tu proyecto…',
+  'What do you need? Ask anything about all your projects…': '¿Qué necesitas? Pregunta lo que quieras de todos tus proyectos…',
   'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.':
     '«Puede crear» encendido: di qué quieres crear. Los archivos nuevos se guardan donde les toca en tu proyecto; no cambia nada de lo que ya tienes.',
   'Compact prose. Nothing you write is altered; only the answers get shorter.':
@@ -677,6 +678,9 @@ export const ES = {
   '.git/ when the project does not use git yet': '.git/ si el proyecto todavía no usa git',
   'npx on the PATH of the terminal MADRE was started from': 'npx disponible (en el PATH) en la terminal desde donde abriste MADRE',
   'not in this project': 'no está en este proyecto',
+  // Continuidad instalada: la versión de su programa y la de su protocolo (src/modules/ahp.mjs).
+  'cli {version}': 'programa {version}',
+  'protocol {version}': 'protocolo {version}',
 
   'nothing in the project · images land in the lease folder':
     'nada en el proyecto · las imágenes se guardan en la carpeta del permiso para crear',
@@ -3709,7 +3713,7 @@ export const ES = {
   'Without Ollama running, the project keeps using its providers.': 'Sin Ollama encendido, el proyecto sigue trabajando con tus otras IAs.',
   'Roles': 'Funciones',
   'What Local AI does in this project.': 'Lo que hace la IA local en este proyecto.',
-  'Archivist': 'Quien resume la memoria',
+  'Archivist': 'Quién resume la memoria',
   'Download {model}': 'Descargar {model}',
   'No model for it yet.': 'Aún no hay modelo para esto.',
   'Kept in MADRE\'s vault under this module\'s name. The value goes nowhere but the module.': 'Se guarda de forma segura en MADRE con el nombre de este módulo. Solo lo recibe el módulo.',
@@ -3809,7 +3813,7 @@ export const ES = {
   'This also raises its max mode to #{n}.': 'También sube su permiso máximo a #{n}.',
   'Accepted. Opening the memory.': 'Aceptado. Abriendo la memoria.',
   'Open the memory': 'Abrir la memoria',
-  'The archive of this project: every memory the agents distilled, linked by what they share.': 'La memoria de este proyecto: cada nota que resumieron los agentes, conectada con las que tratan temas en común.',
+  'The archive of this project: every memory the agents distilled, linked by what they share.': 'La memoria de este proyecto: cada nota que resumieron las IAs, conectada con las que tratan temas en común.',
   'Reading is free; forgetting is forever.': 'Leer no cambia nada; lo que olvides se borra para siempre.',
   'Enter': 'Entrar',
   'Open Ollama': 'Abrir Ollama',

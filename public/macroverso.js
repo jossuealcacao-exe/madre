@@ -27,6 +27,7 @@
 import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, buildPlanets, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, drawSun, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, planetChip, sunOrb, texturesReady } from './nostromo-engine.js';
 import { createStrain, inviteNeural, neuralKey, paintNeuralKey, tellViews } from './neural.js';
 import { trazo } from './icons.js';
+import { dateWords } from './i18n.js';
 
 const KINDS = Object.keys(MEMORY_COLORS);
 const TILT = 0.42;                 // how flat the orbits read: the plane seen a little from above
@@ -977,7 +978,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#34d
     const meta = document.createElement('p');
     meta.className = 'mv-mem-meta';
     const span = memory.fromSequence ? (memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}`) : null;
-    meta.textContent = [span, memory.agent ? `@${memory.agent}` : null, memory.created ? new Date(memory.created).toLocaleString() : null].filter(Boolean).join(' · ');
+    meta.textContent = [span, memory.agent ? `@${memory.agent}` : null, memory.created ? dateWords(memory.created) : null].filter(Boolean).join(' · ');
     el.append(head, text);
     if (meta.textContent) el.append(meta);
     shelf.append(el);

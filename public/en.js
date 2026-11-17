@@ -677,4 +677,6 @@ export const EN = {
   // ux/refresh · Inicio B, textos
   "The project that reads can hand it notes. They wait there until you accept them (or an agent of that project in #3 EDIT or above): nothing enters its memory on its own.": "The project that reads can hand it notes. They wait there until you accept them (or an AI of that project with «Can edit» or more): nothing enters its memory on its own.",
   "{version} AVAILABLE": "{version} available",
+  // «The AIs», as MADRE says it, in the memory's gate too (2026-11-17).
+  "The archive of this project: every memory the agents distilled, linked by what they share.": "This project's memory: every note your AIs summed up, linked to the ones on the same subjects.",
 };

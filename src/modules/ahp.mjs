@@ -27,7 +27,8 @@ async function detect(projectRoot) {
     version: pinned ?? null,
     protocolVersion: manifest.protocol_version ?? null,
     projectId: manifest.project_id ?? null,
-    detail: [pinned ? `cli ${pinned}` : null, manifest.protocol_version ? `protocol ${manifest.protocol_version}` : null].filter(Boolean).join(' · '),
+    // In the room's language (2026-11-17): Modules › Continuity read «Cli 1.4.2 · protocol 1.4.0».
+    detail: [pinned ? t('cli {version}', { version: pinned }) : null, manifest.protocol_version ? t('protocol {version}', { version: manifest.protocol_version }) : null].filter(Boolean).join(' · '),
   };
 }
 

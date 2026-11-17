@@ -109,6 +109,17 @@ export function pick(value) {
   return out;
 }
 
+// A date, and its time unless `time` is false, in MADRE's language and not the browser's (2026-11-17):
+// with the browser in English, Settings › Version said «Última revisión 11/15/2026, 4:11 PM» in a
+// MADRE in Spanish. Spanish says 15/11/2026, 16:11; English, 11/15/2026, 4:11 PM.
+export function dateWords(at, { time = true } = {}) {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return '';
+  const english = current === 'en';
+  const day = english ? 'numeric' : '2-digit';
+  return date.toLocaleString(english ? 'en-US' : 'es-MX', { day, month: day, year: 'numeric', ...(time ? { hour: english ? 'numeric' : '2-digit', minute: '2-digit', hourCycle: english ? 'h12' : 'h23' } : {}) });
+}
+
 // What the catalogue holds, for the test that keeps it honest: every key it has must be a
 // sentence the product actually says, and every sentence the product asks for must be in it.
 export const catalogue = (id = current) => CATALOGUES[id] ?? {};

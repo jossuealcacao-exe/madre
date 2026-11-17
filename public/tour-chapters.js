@@ -86,7 +86,7 @@ export const CHAPTERS = [
       [{ es: 'Turnos', en: 'Turns' }, { es: 'Respuestas', en: 'Replies' }],
       [{ es: 'Remedio · condición', en: 'Remedy · condition' }, { es: 'Solución · problema', en: 'Solution · problem' }],
       [{ es: 'BODEGA · PUENTE · ENFERMERÍA · ESCLUSA', en: 'HOLD · BRIDGE · MED BAY · JETTISONED' }, { es: 'SIN CONFIRMAR · CONFIRMADA · EN CUARENTENA · DESCARTADA', en: 'UNCONFIRMED · CONFIRMED · QUARANTINED · DISCARDED' }],
-      [{ es: 'Archivista', en: 'Archivist' }, { es: 'Quien resume la memoria', en: 'Who sums up the memory' }],
+      [{ es: 'Archivista', en: 'Archivist' }, { es: 'Quién resume la memoria', en: 'Who sums up the memory' }],
       [{ es: 'La llave de #3 y #4', en: 'The key of #3 and #4' }, { es: 'Confirmar', en: 'Confirm' }],
       [{ es: 'Abordar · Papeles', en: 'Board · Roles' }, { es: 'Entrar · Funciones', en: 'Board · Roles' }],
     ],
