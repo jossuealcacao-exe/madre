@@ -256,7 +256,7 @@ test('models: a model chosen for one agent never reaches another, and a CLI that
     const failed = events.filter((event) => event.type === 'message.failed').at(-1);
     assert.match(failed.payload.error, /^Gemini does not know the model `gemini-typo`\. Choose another on the model chip beside TO @gemini.*permissions and modes have nothing to do with it\. CLI: \[API Error/);
     const { resay } = await import('../public/resay.js');
-    assert.match(resay(failed.payload.error, { when: 'es' }), /^Gemini no conoce el modelo `gemini-typo`\. Elige otro en el chip de modelo junto a PARA @gemini.*los permisos y los modos no tienen nada que ver\. CLI: \[API Error/);
+    assert.match(resay(failed.payload.error, { when: 'es' }), /^Gemini no conoce el modelo `gemini-typo`\. Elige otro en el menú de modelos, junto al nombre de @gemini.*los permisos no tienen nada que ver\. CLI: \[API Error/);
     await room.shutdown();
   } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });

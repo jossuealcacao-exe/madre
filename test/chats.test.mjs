@@ -949,7 +949,7 @@ test('chat shell: a plan says each step\'s mode in its colour, the bar\'s keys l
   const market = await readFile(new URL('../public/market.js', import.meta.url), 'utf8');
   const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
   assert.match(app, /node\.append\(el\('span', 'step-mode-in', ` \$\{t\('in mode'\)\} `\), el\('span', `step-mode m\$\{step\.mode\}`, `#\$\{step\.mode\}`\)\);/);
-  assert.match(es, /'in mode': 'en modo',/);
+  assert.match(es, /'in mode': 'con el permiso',/);
   for (const n of [0, 2, 3, 4]) assert.match(css, new RegExp(`html\\.chat-shell #messages \\.system\\.plan \\.step-mode\\.m${n} \\{ color: var\\(--mode-${n}\\); \\}`));
   assert.match(css, /html\.chat-shell #messages \.system\.plan \.step-mode\.m1 \{ color: var\(--acc, var\(--mode-1\)\); \}/);
   assert.match(css, /html\.chat-shell \.shell > \.bar :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\):is\(:hover, :focus-visible\) \{ color: var\(--phosphor\) !important; \}/);
