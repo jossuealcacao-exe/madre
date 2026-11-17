@@ -6,7 +6,7 @@ import { brandOf, monogram } from './brands.js';
 import { hideTip, installTips } from './tips.js';
 import { allConditions, detectPlatform, diagnose, findConditions, fixesFor, PLATFORMS } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
-import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
+import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, dateWords, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
 import { createEditor } from './editor.js';
 import { POWER_ICON, asProjectKey, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
@@ -243,6 +243,8 @@ const ASKING_FOR = { notas: 'notes', nota: 'notes', notes: 'notes', note: 'notes
 
 const PLACEHOLDERS = {
   plain: t('Type here, human. Ask the project…'),
+  // The Coordinator sees every project, not one (2026-11-17): its box says so.
+  coordinator: t('What do you need? Ask anything about all your projects…'),
   create: t('CREATE on: what to make. New files land where they belong in the project; nothing existing changes.'),
   ash: t('Compact prose. Nothing you write is altered; only the answers get shorter.'),
   ghost: t('Incognito. Ask anything; nothing is saved and the project will not remember it.'),
@@ -10840,10 +10842,43 @@ function spacedText(node) {
 function noticeWords(node) {
   return spacedText(node).replace(/\s+/g, ' ').replace(/\s+([,.:;])/g, '$1').trim().slice(0, 220);
 }
+// Where the person was reading when a notice folds: whether the notice was above what is on screen,
+// how tall the conversation was and where its scroll stood.
+function readingPlace(node) {
+  const frameTop = pageScrolls() ? 0 : (els.thread?.getBoundingClientRect?.().top ?? 0);
+  return { above: node.getBoundingClientRect().bottom <= frameTop, tall: els.column.getBoundingClientRect().height, top: scroller.top };
+}
+// Folded, the notice leaves the conversation shorter. Above what is on screen the place is put back
+// before the frame is drawn (WebKit has no scroll anchoring). On screen, the space it leaves closes
+// gently under the row of dots, from where the notice was, instead of in one frame: at the end of
+// the conversation what is above comes down with it, and further up what is under it rises. With
+// reduced motion it closes at once.
+function keepReading(was, strip, { overRow = false } = {}) {
+  const shrunk = was.tall - els.column.getBoundingClientRect().height;
+  if (!(shrunk >= 1)) return;
+  if (was.above) {
+    // What the browser already put right (anchoring, or the end of the thread holding it) is not done twice.
+    const left = shrunk - (was.top - scroller.top);
+    if (Math.abs(left) >= 1) { ourScroll(); scroller.top -= left; }
+    return;
+  }
+  if (reducedMotion() || typeof strip.animate !== 'function') return;
+  // A notice that stood over its row leaves its space above the row; any other, under it.
+  const side = overRow ? 'marginTop' : 'marginBottom';
+  const rest = Number.parseFloat(getComputedStyle(strip)[side]) || 0;
+  strip.animate([{ [side]: `${rest + shrunk}px` }, { [side]: `${rest}px` }], { duration: motion(320), easing: 'cubic-bezier(.4, 0, .2, 1)' });
+  // Shortened for a moment before the space was given back, the thread may have been pulled up to
+  // its new end: it goes back to where it was, and the space closes from there.
+  if (Math.abs(scroller.top - was.top) >= 1) { ourScroll(); scroller.top = was.top; }
+}
 function foldNotice(node, { quiet = false } = {}) {
   if (!node.isConnected || node.classList.contains('folded') || !foldableNotice(node)) return;
   const finish = () => {
     if (!node.isConnected) return;
+    // Folding takes the notice's height out of the conversation, about 40 px (2026-11-17): at the end
+    // of the conversation what was above it came down that much at once, and in WebKit, scrolled back,
+    // what was being read went up. Measured here, put right after (keepReading).
+    const reading = !quiet && !replaying && !drawingRecord ? readingPlace(node) : null;
     const before = node.previousElementSibling?.classList.contains('sys-dots') ? node.previousElementSibling : null;
     const after = node.nextElementSibling?.classList.contains('sys-dots') ? node.nextElementSibling : null;
     let strip = before ?? after;
@@ -10864,6 +10899,7 @@ function foldNotice(node, { quiet = false } = {}) {
     // The row says what it holds (countStrip); a tip on the notice too was a second one over it.
     node.removeAttribute('title');
     countStrip(strip);
+    if (reading) keepReading(reading, strip, { overRow: strip === after });
   };
   if (quiet || matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
   node.classList.add('folding');
@@ -14326,7 +14362,7 @@ function whenWords(iso) {
   if (minutes < 60) return `${Math.round(minutes)}m`;
   if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
   const days = Math.round(minutes / 1440);
-  return days < 30 ? `${days}d` : new Date(when).toLocaleDateString();
+  return days < 30 ? `${days}d` : dateWords(when, { time: false });
 }
 
 // One drawing per conversation, in the bar's own hand: 20×20, a 1.6 stroke, round ends.
@@ -14486,7 +14522,7 @@ function renderChats() {
     open.addEventListener('dblclick', (event) => { event.preventDefault(); requestAnimationFrame(() => renameChatInPlace(chat, els.chatsBody.querySelector(`.chat-row[data-chat="${chat.id}"] .name`) ?? name)); });
     open.addEventListener('contextmenu', (event) => openChatMenu(event, chat, name));
     // Its count and date for a screen reader, not as a tip over the list (2026-11-10).
-    open.setAttribute('aria-description', `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`);
+    open.setAttribute('aria-description', `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${dateWords(chat.updatedAt)}` : ''}`);
     open.addEventListener('click', (event) => {
       if (chat.id === chats.active) return;
       // ⌘-click (Ctrl-click) opens it beside, the way a browser opens a link in another tab.
@@ -16898,7 +16934,7 @@ function updateCrewLabel() {
 }
 function updatePlaceholder() {
   const local = Boolean(state.agents.get(els.target.value)?.local);
-  els.input.placeholder = state.mode === 4 ? PLACEHOLDERS.airlock : copilotSends(els.target.value) ? PLACEHOLDERS.copilot : state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ash && state.ashInstalled) ? PLACEHOLDERS.ash : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
+  els.input.placeholder = state.mode === 4 ? PLACEHOLDERS.airlock : copilotSends(els.target.value) ? PLACEHOLDERS.copilot : state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ash && state.ashInstalled) ? PLACEHOLDERS.ash : state.expendable ? PLACEHOLDERS.expendable : state.salas ? PLACEHOLDERS.coordinator : PLACEHOLDERS.plain;
 }
 function setAsh(on, { wink = false } = {}) {
   state.ash = on;
@@ -18955,7 +18991,9 @@ async function updateModule(item, button) {
 // A card's heading, with the glyph that says which card it is before the words are read.
 function cardHead(icon, title) {
   const head = el('h5', 'card-head');
-  head.append(pixelIcon(icon, 'pixel-icon card-icon'), el('span', null, title));
+  // Its title in sentence case, from here and not from the stylesheet (2026-11-17): lowercasing it all
+  // read «Qué le hace «ahorro de tokens» a una respuesta», the module's own name in lowercase.
+  head.append(pixelIcon(icon, 'pixel-icon card-icon'), el('span', null, sentenceCase(title)));
   return head;
 }
 
@@ -23608,7 +23646,7 @@ function drawMemory(host, data) {
   const showDataset = (payload) => {
     lastPayload = payload;
     const d = payload?.dataset;
-    const exported = d ? t('Last export {when} · {train} to train · {valid} to check', { when: new Date(d.exportedAt).toLocaleString(), train: d.train, valid: d.valid }) : t('Not exported yet.');
+    const exported = d ? t('Last export {when} · {train} to train · {valid} to check', { when: dateWords(d.exportedAt), train: d.train, valid: d.valid }) : t('Not exported yet.');
     const trained = payload?.trained ? t('Trained model {model} in use.', { model: payload.trained }) : t('No trained model yet.');
     // D-S15: in Home, which projects the Coordinator learned from this time, and how.
     const sources = (d?.linked ?? []).map((one) => (one.source === 'missing'
@@ -25160,7 +25198,7 @@ function agoWords(iso) {
   const hours = minutes / 60;
   if (hours < 24) return t('{n} h ago', { n: Math.round(hours) });
   const days = hours / 24;
-  return days < 30 ? t('{n} d ago', { n: Math.round(days) }) : new Date(when).toLocaleDateString();
+  return days < 30 ? t('{n} d ago', { n: Math.round(days) }) : dateWords(when, { time: false });
 }
 
 // The links this memory has on the map, strongest first. The card shows exactly what is drawn:
@@ -25273,7 +25311,7 @@ function showNostromoCard(node) {
   const noSource = memory.origin === 'noted' && !memory.sources?.length;
   cardPart(card, 'span').textContent = noSource ? t('no source') : memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
   cardPart(card, 'agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? t(' · noted by the agent') : memory.origin === 'flagged' ? t(' · flagged by {who}', { who: memory.detector ?? t('the project') }) : t(' · distilled')}`;
-  cardPart(card, 'when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
+  cardPart(card, 'when').textContent = memory.created ? dateWords(memory.created) : '';
   // Where it stands aboard, said where it can be seen: the word on a mark of its own and what it
   // means on the line under it. The meaning used to live only in a tooltip, which a finger never
   // opens, and the mark took the colour of every other line in the card.
@@ -25338,7 +25376,7 @@ async function nostromoTraffic(card = frontCard()) {
     said.push(t('last turn: {who} · {when}', { who: last.agent ? `@${last.agent}` : t('the project'), when: agoWords(last.at) }));
   } else if (traffic.recalled && traffic.since) {
     // The counters are older than the trail. Saying nothing here would read as "always alone".
-    said.push(t('MADRE has tracked what it is used with since {when} · nothing yet', { when: new Date(traffic.since).toLocaleDateString() }));
+    said.push(t('MADRE has tracked what it is used with since {when} · nothing yet', { when: dateWords(traffic.since, { time: false }) }));
   }
   cardPart(card, 'exchange').textContent = said.join('\n');
 
@@ -26075,7 +26113,7 @@ function drawRelease(section, info) {
   // Whoever came from 0.7.2 took the tour of what changed; whoever is new, the one of the essentials.
   const back = roomTour().path() === 'back';
   if (!state.device) sxRow(block, back ? t('The tour of MADRE 1.0') : t('Getting to know MADRE'), back ? t('Everything new, chapter by chapter. ? opens the gestures anywhere.') : t('The essentials, chapter by chapter. ? opens the gestures anywhere.'), sxButton(t('See the tour'), () => { openSettings(false); roomTour().openChapters(); }));
-  const when = info.checkedAt ? new Date(info.checkedAt).toLocaleString() : null;
+  const when = info.checkedAt ? dateWords(info.checkedAt) : null;
   const check = sxSwitch(info.enabled, async (on, box) => {
     box.disabled = true;
     try { await fetch('/api/updates/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ check: on }) }); toast(on ? t('Diagnostics › Look for new versions on: one check a day.') : t('Diagnostics › Look for new versions off: no request leaves for npm.')); await loadVersion(); }

@@ -1302,7 +1302,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
       assert.equal(finished.payload.status.protocolVersion, '1.4.0');
       const output = events.filter((event) => event.type === 'extension.install.output').flatMap((event) => event.payload.lines);
       assert.ok(output.includes('AHP+ setup: pinning package') && output.includes('AHP+ setup: done') && output.includes('warning: sample stderr line'));
-      assert.deepEqual(await ahp.detect(project), { installed: true, version: '1.4.1', protocolVersion: '1.4.0', projectId: 'demo', detail: 'cli 1.4.1 · protocol 1.4.0' });
+      assert.deepEqual(await ahp.detect(project), { installed: true, version: '1.4.1', protocolVersion: '1.4.0', projectId: 'demo', detail: `${t('cli {version}', { version: '1.4.1' })} · ${t('protocol {version}', { version: '1.4.0' })}` });
       const after = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
       assert.equal(after.extensions[0].status.installed, true);
       assert.equal(after.installing, null);

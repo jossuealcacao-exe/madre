@@ -7,7 +7,7 @@
 //
 // The phone has its own SALAS (salas.js), served by the bridge; the two read the same rooms.
 
-import { browserLanguage, sessionDetail, setLanguage, t } from './i18n.js';
+import { browserLanguage, dateWords, sessionDetail, setLanguage, t } from './i18n.js';
 import { brandOf, monogram } from './brands.js';
 import { installTips } from './tips.js';
 import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
@@ -285,6 +285,15 @@ const el = (tag, className, text) => {
 
 // The same small words as the phone's SALAS (salas.js).
 const chatName = (title) => (title === 'First conversation' ? t('First conversation') : title === 'Untitled' ? t('Untitled') : title === 'Coordinator' ? t('Coordinator') : title);
+// A title made from the first message is cut at 80 characters (src/chats.mjs, CHAT_TITLE_MAX), often
+// inside a word («…y un botón. Explíc»): Home says it was cut, at the last whole word, and the whole
+// title shows on the pointer, as a project's bar does (app.js, paintShellTitle; 2026-11-17).
+function chatNameNode(tag, title) {
+  const whole = chatName(title);
+  const node = el(tag, null, whole.length >= 80 ? `${whole.replace(/\s+\S*$/, '').replace(/[\s.,;:·-]+$/, '')}…` : whole);
+  if (node.textContent !== whole) node.title = whole;
+  return node;
+}
 function ago(iso) {
   const at = Date.parse(iso ?? '');
   if (!Number.isFinite(at)) return '';
@@ -431,7 +440,7 @@ function card(room) {
   }
   if (glance.chat && !glance.outdated) {
     const chat = el('div', 'sm-chat');
-    chat.append(el('b', null, chatName(glance.chat.title)));
+    chat.append(chatNameNode('b', glance.chat.title));
     if (glance.chat.preview) chat.append(el('span', null, glance.chat.preview));
     node.append(chat);
   }
@@ -938,7 +947,7 @@ function drawWork() {
     for (const one of (work.sources ?? []).slice(0, 5)) {
       const item = el('li', 'raw');
       const words = el('span');
-      words.append(el('b', null, chatName(one.title)));
+      words.append(chatNameNode('b', one.title));
       if (one.last?.text) words.append(document.createTextNode(` — ${one.last.text}`));
       item.append(roomTag(one.room, one.name), words, el('time', null, ago(one.at)));
       w.list.append(item);
@@ -2303,7 +2312,7 @@ const WIDGET_PAINT = {
     else if (!list.length) out.append(el('p', 'sm-hint', t('No notice is out.')));
     for (const one of list) {
       const row = el('div', `sm-notice-row is-${one.level}`);
-      const when = one.when === 'later' ? t('from {date}', { date: new Date(one.from).toLocaleString() }) : one.when === 'over' ? t('ended') : t('until {date}', { date: new Date(one.until).toLocaleString() });
+      const when = one.when === 'later' ? t('from {date}', { date: dateWords(one.from) }) : one.when === 'over' ? t('ended') : t('until {date}', { date: dateWords(one.until) });
       row.append(el('b', null, one.title?.[language] ?? one.title?.es ?? one.id), el('small', null, `${LEVEL_NAMES[one.level]()} · ${when}`));
       let sure = false;
       const back = button('sm-btn small', t('Take back'), async () => {
