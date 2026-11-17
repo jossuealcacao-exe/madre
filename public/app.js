@@ -25556,7 +25556,8 @@ const FIRST_TOUCH = {
   mother: {
     button: '#mother-button',
     panel: '#mother',
-    title: t('Diagnostics'),
+    // Named as its key and its window are, «Ayuda» (2026-11-17): «Diagnóstico» stays the word inside it.
+    title: t('Help'),
     text: t('When something goes wrong, write it as you see it, for example «Claude asks me to sign in». Diagnostics finds the case and tells you what to do.'),
   },
   memory: {
