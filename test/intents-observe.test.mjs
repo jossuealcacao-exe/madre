@@ -83,6 +83,13 @@ test('intenciones · uso real: a failure that was the machine\'s, or a STOP said
   assert.deepEqual(outcomes(events), [['unknown', 'not-the-answer'], ['unknown', 'not-the-answer'], ['unknown', 'stopped'], ['fell-short', 'failed']]);
 });
 
+test('intenciones · uso real: a STOP said in today\'s Spanish is still a stop, not a failure (2026-11-17)', () => {
+  const { events, turn } = ledger();
+  turn({ text: 'explica cómo funciona el enrutador', agent: 'codex', at: T0, fail: 'lo detuviste tú' });
+  turn({ text: 'explica cómo funciona el guardia', agent: 'codex', at: T0 + 30 * MIN, fail: 'detenido por ti' });
+  assert.deepEqual(outcomes(events).map(([, why]) => why), ['stopped', 'stopped']);
+});
+
 test('intenciones · uso real: a turn too recent to know, or still running, is not counted', () => {
   const { events, turn } = ledger();
   turn({ text: 'explica cómo funciona el destilador de memoria', at: NOW - 5 * MIN });

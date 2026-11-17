@@ -40,7 +40,9 @@ const POSITIVE = new Set(['good', 'preference']);
 // A crash of the CLI is one of them too: it ended the turn before anything was answered.
 const NOT_THE_ANSWER = /rate.?limit|usage limit|quota|\b429\b|too many requests|overloaded|unavailable|HTTP 5\d\d|server error|not ready|not enabled|too long \(|does not know the model|is not found for|not supported|not logged in|\blog ?in\b|sign in|authenticat|unauthori[sz]ed|api.?key|ENOENT|ECONN|network|exited with code|shutting down|MADRE stopped while|waiting for the project/i;
 // Ledgers written before a STOP carried its own flag say so only in words.
-const STOPPED_WORDS = /stopped by the human|detenido por el humano|STOPALL/i;
+// In either language the room wrote it: a turn the person stopped is not a turn that failed
+// (2026-11-17: Spanish said «detenido por ti», now «lo detuviste tú», and neither was heard).
+const STOPPED_WORDS = /stopped by the human|detenido por el humano|detenido por ti|detenida por ti|lo detuviste|STOPALL/i;
 
 /* ---------- what the reader keeps ---------- */
 
