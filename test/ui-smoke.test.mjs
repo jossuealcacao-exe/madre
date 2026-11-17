@@ -477,13 +477,13 @@ test('the room UI boots against a real transcript without throwing', async () =>
   await new Promise((resolve) => setTimeout(resolve, 0));
   // Nothing wired answers here but the verdict, and the board says what it could not read
   // instead of drawing figures nobody measured.
-  assert.match(panes.children[0].textContent, /TÚ[\s\S]*TU MODELO LOCAL[\s\S]*IA LOCAL[\s\S]*LA CALIDAD[\s\S]*NO HAY NADA QUE LEER/);
+  assert.match(panes.children[0].textContent, /Tú[\s\S]*Tu IA local[\s\S]*IA local[\s\S]*La calidad[\s\S]*no hay nada que leer/);
   // Each one filled from the room, and each one with its own `==>` sections.
   // In the language MADRE speaks, which is the point of reading it here rather than in the
   // catalogue: the page, the panes and the words all came up together.
-  assert.match(panes.children[1].textContent, /LAS INSTRUCCIONES[\s\S]*MEMORIES[\s\S]*LO QUE INCLUYE/);
-  assert.match(panes.children[2].textContent, /CÓMO SE ABRE[\s\S]*\/usr\/local\/bin\/codex/);
-  assert.match(panes.children[3].textContent, /ENVÍOS[\s\S]*the npm registry/);
+  assert.match(panes.children[1].textContent, /Las instrucciones[\s\S]*MEMORIES[\s\S]*Lo que incluye/);
+  assert.match(panes.children[2].textContent, /Cómo se abre[\s\S]*\/usr\/local\/bin\/codex/);
+  assert.match(panes.children[3].textContent, /Lo que sale[\s\S]*the npm registry/);
   // An inquiry that is already a pane opens it rather than printing it twice.
   const prompt = body.querySelector('.console-line');
   const ask = async (text) => { prompt.querySelector('INPUT').value = text; await prompt.listeners.submit[0]({ preventDefault() {} }); };
@@ -1130,7 +1130,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     const card = moduleCard(item);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const text = card.textContent;
-    for (const said of ['Lo que se midió aquí', '@codex', 'Búsqueda', '«Rápido»', 'Diseño', 'medido · lo necesita', 'Cambio', '«Normal»', 'visto en 9 respuestas', '«Rápido» no fue suficiente · en pausa hasta', 'probando «Rápido» · 3 de 8 respuestas', 'ninguno fue suficiente las veces necesarias · 10 respuestas', 'Medir más rápido', 'proyecto con «A fondo»', 'Hay 10 preguntas listas para hacer.', 'El juez detectó 6 de 6 pruebas de control · confiable', 'Prueba rápida · 12 respuestas', 'Prueba completa · ~40 respuestas', 'Sugerencias aceptadas · 3 de 4']) {
+    for (const said of ['Lo que se midió aquí', '@codex', 'Búsqueda', '«Rápido»', 'Diseño', 'medido · lo necesita', 'Cambio', '«Normal»', 'visto en 9 respuestas', '«Rápido» no fue suficiente · en pausa hasta', 'probando «Rápido» · 3 de 8 respuestas', 'ningún nivel bastó las veces necesarias · 10 respuestas', 'Medir más rápido', 'proyecto con «A fondo»', 'Hay 10 preguntas listas para hacer.', 'El juez detectó 6 de 6 pruebas de control · confiable', 'Prueba rápida · 12 respuestas', 'Prueba completa · ~40 respuestas', 'Sugerencias aceptadas · 3 de 4']) {
       assert.ok(text.includes(said), `the card does not say "${said}"`);
     }
     // A kind the calibration settled says so, over what real use saw; a short reply nobody sent is left out.

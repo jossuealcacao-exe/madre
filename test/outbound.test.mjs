@@ -240,7 +240,7 @@ test('outbound: the room answers for what left it, and the log holds what it did
       assert.deepEqual(view.destinations.map((one) => one.id).sort(), DESTINATIONS.map((one) => one.id).sort());
       const crew = view.destinations.find((one) => one.id === 'crew');
       assert.equal(crew.to, '@claude → Anthropic');
-      assert.match(crew.what, /briefing/i);
+      assert.match(crew.what, /what MADRE sends the AI/i);
       // Every row says where it is switched off, which is what makes the list actionable.
       for (const one of view.destinations) assert.ok(one.where.length > 5, `${one.id} points nowhere`);
       // The room names the file the image studio writes its own line into.
