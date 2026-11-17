@@ -148,7 +148,7 @@ test('i18n: a reading taken in another language is read in this one', async () =
   const { saysFor } = await import('../src/exam.mjs');
   const { setLanguage: setRoomLanguage } = await import('../src/i18n.mjs');
 
-  const stored = { id: 'match', ran: true, n: 12, matched: 10, control: 0.4, says: 'On 10 of 12 real questions the local model landed where the agent of the day landed, and not merely in the same project.' };
+  const stored = { id: 'match', ran: true, n: 12, matched: 10, control: 0.4, says: 'On 10 of 12 real questions your local AI landed where the AI of that day landed, and not merely in the same project.' };
   setRoomLanguage('es');
   assert.match(saysFor(stored), /En 10 de 12 preguntas reales/);
   setRoomLanguage('en');

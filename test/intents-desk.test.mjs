@@ -212,7 +212,7 @@ test('intenciones desk: the full test is judged by an agent that is not the one 
 });
 
 test('intenciones desk: it refuses, with the reason, whatever it should not start', async (t) => {
-  assert.match((await (await room(t)).desk.start({ kind: 'quick', agent: 'gemini' })).error, /no effort per turn/);
+  assert.match((await (await room(t)).desk.start({ kind: 'quick', agent: 'gemini' })).error, /no effort per message/);
   assert.match((await (await room(t, { ready: false })).desk.start({ kind: 'quick', agent: 'claude' })).error, /not ready/);
   assert.match((await (await room(t)).desk.start({ kind: 'weird', agent: 'claude' })).error, /No such test/);
   const full = conversation({ extra: [{ type: 'quota.updated', payload: { agent: 'claude', usedPercent: 85 } }] });

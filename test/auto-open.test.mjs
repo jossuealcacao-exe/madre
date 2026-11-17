@@ -96,7 +96,7 @@ test('auto-open: the room opens what an answer made and what an edit changed, ne
   for (const key of ['Open what is made', 'Made {name}', 'Changed {name}', 'View', 'Your first result, already on screen.', 'A spreadsheet. Open it with your spreadsheet app.']) {
     assert.ok(ES[key], `«${key}» has no Spanish`);
   }
-  assert.equal(ES['Open what is made'], 'Abrir solo lo que se crea');
+  assert.equal(ES['Open what is made'], 'Abrir en automático lo que se crea');
   assert.equal(ES['Made {name}'], 'Se creó {name}');
 });
 

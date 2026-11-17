@@ -68,7 +68,7 @@ test('the second #3 an agent asks for offers Copilot, live and only where it can
   assert.match(app, /if \(times >= 2 && !copilotOn\(\) && canWrite\(agent\)\)/);
   assert.match(app, /toggleCopilotMenu\(document\.querySelector\('\.copilot-chip'\) \?\? see, \{ keep: true \}\)/);
   const { ES } = await import('../public/es.js');
-  assert.equal(ES['SEE COPILOT'], 'VER COPILOTO');
+  assert.equal(ES['SEE COPILOT'], 'Ver copiloto');
 });
 
 // Q-17: on a phone the mode said «#1» and nothing else.

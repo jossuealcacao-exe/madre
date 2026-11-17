@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { verdictFor, WHERE } from '../src/verdict.mjs';
+import { t } from '../src/i18n.mjs';
 
 const stage = { id: 'working', label: 'WORKING', says: 'it is coming along' };
 const signals = (weakest = 'coverage', value = 0.2) => ({
@@ -21,7 +22,7 @@ test('verdict: something false outranks everything, whatever the scores say', ()
     },
   });
   assert.match(v.next.text, /Settle the 2 contradiction/);
-  assert.equal(v.next.where, WHERE.nostromo);
+  assert.equal(v.next.where, t(WHERE.nostromo));
   assert.match(v.says, /holding 2 contradictions/);
 });
 
@@ -32,7 +33,7 @@ test('verdict: what the archive cannot answer points at the questions the room a
     asks: 6,
   });
   assert.match(asked.next.text, /Answer the 6 questions/);
-  assert.equal(asked.next.where, WHERE.ask);
+  assert.equal(asked.next.where, t(WHERE.ask));
 
   // With nothing written to ask, it says the one thing that does fill an archive.
   const quiet = verdictFor({
@@ -41,7 +42,7 @@ test('verdict: what the archive cannot answer points at the questions the room a
     asks: 0,
   });
   assert.match(quiet.next.text, /Keep working in the project/);
-  assert.equal(quiet.next.where, WHERE.room);
+  assert.equal(quiet.next.where, t(WHERE.room));
 });
 
 test('verdict: with nothing wrong it quotes the thinnest reading rather than inventing advice', () => {
@@ -58,16 +59,16 @@ test('verdict: when everything passes, the only honest thing left is the test no
   const exams = { consistency: { ran: true, open: 0 }, coverage: { ran: true, passed: true, says: '26 of 30 questions had their answer in the archive.' } };
   const v = verdictFor({ maturity, exams });
   assert.match(v.next.text, /Run the third test/);
-  assert.equal(v.next.where, WHERE.tests);
+  assert.equal(v.next.where, t(WHERE.tests));
 
   // And once it has run and passed, the room says so plainly and points at what is left over.
   const done = verdictFor({ maturity, exams: { ...exams, match: { ran: true, passed: true, says: 'On 10 of 12 real questions the local model landed where the agent landed.' } }, cold: { count: 3 } });
-  assert.match(done.says, /ready to be worked on with the local model/);
+  assert.match(done.says, /ready to work with your local AI/);
   assert.match(done.next.text, /3 memories have had every chance/);
 
   // A local model that is not there yet is told to wait, not to be trusted.
   const behind = verdictFor({ maturity, exams: { ...exams, match: { ran: true, passed: false, says: 'On 3 of 12…' } } });
-  assert.match(behind.next.text, /does not land where the agents land yet/);
+  assert.match(behind.next.text, /does not land where your other AIs land yet/);
 });
 
 test('verdict: a room with nothing measured yet still answers', () => {
