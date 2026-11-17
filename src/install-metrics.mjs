@@ -19,7 +19,7 @@
 //     copy says it; the others see it was said.
 //
 // docs/REFERENCE.md › «Lo que sale de la máquina» says all of it; madre.run's privacy page too.
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { installId } from './heartbeat.mjs';
 import { compareVersions } from './updates.mjs';
@@ -77,7 +77,12 @@ export async function noteLifecycle({ root, version, hadId, now = new Date() }) 
   if (!kept?.version || kept.version !== version) {
     // `before`: this copy was in use before 1.1.0 (src/terms.mjs tells it what changed).
     const before = kept ? kept.before === true : Boolean(hadId);
-    await writeFile(file, `${JSON.stringify({ first: kept?.first ?? now.toISOString(), version, at: now.toISOString(), ...(before ? { before: true } : {}) })}\n`).catch(() => null);
+    // Written beside it and swapped in one step (Q-19): Home and a project read this file while
+    // another start rewrites it, and a file emptied before being filled read as «this copy is new».
+    const temp = `${file}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(temp, `${JSON.stringify({ first: kept?.first ?? now.toISOString(), version, at: now.toISOString(), ...(before ? { before: true } : {}) })}\n`)
+      .then(() => rename(temp, file))
+      .catch(() => rm(temp, { force: true }).catch(() => null));
   }
   return { event, first: kept?.first ?? now.toISOString() };
 }

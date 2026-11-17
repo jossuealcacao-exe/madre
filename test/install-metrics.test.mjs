@@ -58,3 +58,26 @@ test('install metrics: presence says only the id, the version and the system, on
   assert.equal(sent.length, 2);
   assert.deepEqual(sent[0].body, { id: '00000000-0000-4000-8000-000000000001', version: '1.1.0', os: ['darwin', 'linux', 'win32'].includes(process.platform) ? process.platform : 'other' });
 });
+
+// Q-19 (2026-11-17): Home and a project read lifecycle.json while another start rewrites it. A
+// rewrite that empties the file before filling it was read as «this copy is new» (cameFromBefore
+// false), and a copy from before 1.1.0 was greeted as someone new.
+test('install metrics: a start that rewrites the lifecycle never leaves it half written for a reader', async () => {
+  const { cameFromBefore } = await import('../src/terms.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'madre-lifecycle-race-'));
+  await writeFile(join(root, 'lifecycle.json'), `${JSON.stringify({ first: '2026-09-01T00:00:00.000Z', version: '0.7.2', at: '2026-09-01T00:00:00.000Z', before: true })}\n`);
+  let writing = true;
+  let missed = 0;
+  let reads = 0;
+  const reader = (async () => {
+    while (writing) {
+      reads += 1;
+      if (!(await cameFromBefore(root))) missed += 1;
+    }
+  })();
+  for (let minor = 1; minor <= 300; minor += 1) await noteLifecycle({ root, version: `1.${minor}.0`, hadId: true });
+  writing = false;
+  await reader;
+  assert.ok(reads > 50, 'the reader never ran beside the writes');
+  assert.equal(missed, 0, `${missed} of ${reads} reads found the lifecycle half written`);
+});
