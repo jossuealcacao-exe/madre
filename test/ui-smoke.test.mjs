@@ -344,7 +344,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(column.querySelector('.empty'), null, 'the empty state is gone once messages exist');
   const firstUser = column.children.find((child) => child instanceof FakeElement && child.classList.contains('user'));
   assert.ok(firstUser, 'a human message rendered');
-  assert.match(firstUser.textContent, /Tú · agentes/, 'human messages carry the agents label');
+  assert.match(firstUser.textContent, /Tú · a tus IAs/, 'human messages carry the agents label');
   assert.equal(registry.get('crew-label') !== undefined, true);
   // And the whole pipe, on a rendered page rather than on the catalogue alone: what the page
   // itself builds comes out in Spanish. (The markup's own words are walked through the catalogue
@@ -433,11 +433,11 @@ test('the room UI boots against a real transcript without throwing', async () =>
   message.value = '/module un reloj local';
   for (const listener of message.listeners.input ?? []) listener({});
   assert.equal(registry.get('composer').classList.contains('module-command'), true, 'the module typebox did not turn on');
-  assert.match(registry.get('crew-label').textContent, /Módulo · Requiere #2/);
+  assert.match(registry.get('crew-label').textContent, /Módulo · Necesita #2/);
   const chosenTarget = registry.get('target').value;
   // Sent, it arms #2 for its message the way /image does, and goes.
   const moduleRequest = await globalThis.__pulse.runSlashCommand(message.value);
-  assert.match(registry.get('crew-label').textContent, /Módulo · Crear/);
+  assert.match(registry.get('crew-label').textContent, /Módulo · Puede crear/);
   assert.equal(moduleRequest.handled, false);
   assert.equal(moduleRequest.target, chosenTarget, '/module changed the selected agent');
   assert.equal(moduleRequest.draft, true, '/module asked for the whole project instead of its draft folder');
@@ -634,7 +634,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.equal(ash.querySelector('.state').textContent, 'ON', 'the state is not a plain word');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
   assert.match(ash.querySelector('.card-fold').textContent, /Qué toca/);
-  assert.match(ash.querySelector('.card-fold').textContent, /Abrir|Cerrar/, 'the fold has no button');
+  assert.match(ash.querySelector('.card-fold').textContent, /Ver más|Ver menos/, 'the fold has no button');
   assert.equal(ash.querySelector('.remove-module'), null, 'a module that ships with MADRE offers to delete itself');
 
   const custom = moduleCard({

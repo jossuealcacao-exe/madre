@@ -75,5 +75,5 @@ test('no git on the computer · said as what to install, before and after choosi
   assert.match(server, /JSON\.stringify\(\{ \.\.\.hostFacts\(\), \.\.\.\(gitHere \? \{\} : \{ git: false \}\) \}\)/);
   const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
   assert.match(app, /const noGit = n >= 2 && !locked && hostLacksGit\(\);/);
-  assert.equal(ES['NEEDS GIT'], 'FALTA GIT');
+  assert.equal(ES['NEEDS GIT'], 'Falta git');
 });
