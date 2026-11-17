@@ -5,6 +5,7 @@
 // Spanish, so a word can be changed without touching the code that uses it. «Chats», not
 // «Conversations»; «Connectors», not «Outside tools»; «messages», not «exchanges».
 export const EN = {
+  "What MADRE remembers": "MADRE's memory",
   // AI, not agent, in what a person meets in the first days (2026-11-14, docs/private/NARRATIVA-TEXTOS.md).
   "Ask the agent for a note: it writes it and it opens as a colored note.": "Ask the AI for a note: it writes it and it opens as a coloured note.",
   "Ask the agent for a reminder: MADRE tells you when it is due.": "Ask the AI for a reminder: MADRE tells you when it is due.",
