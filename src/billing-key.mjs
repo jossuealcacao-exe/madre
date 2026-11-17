@@ -3,4 +3,6 @@
 // The public half of the key madre.run signs subscription keys with (scripts/billing-key.mjs,
 // docs/private/SUSCRIPCION.md). The private half lives only in madre.run's secrets and on the author's
 // computer. Null: no key is ever accepted, and the author's switch refuses to turn the subscription on.
-export const BILLING_PUBLIC_KEY = null;
+export const BILLING_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAb69EhVG3QhRsB7uH6vxgyQYvt8tQ+lkOHTrrxl3RkMY=
+-----END PUBLIC KEY-----`;
