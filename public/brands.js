@@ -83,7 +83,9 @@ BRANDS.madre = {
   label: '@madre',
   vendor: 'the project · local',
   color: '#34d399',
-  colorLight: '#10b981',
+  // On white, the green one step deeper (2026-11-17): #10b981 read 2.5:1 as a name in «Tus IAs» and
+  // the AIs' window, and #059669 still 3.8; this one reads 5.5, as the other AIs' light tones do.
+  colorLight: '#047857',
   ink: '#04261a',
   // MADRE's M of one stroke and its dot (the rebranding, 2026-11-13), on the 32 grid of the marks.
   mark: () => glyph('<path d="M6.1 25.24V12.04C6.1 5.11 13.03 5.11 14.68 11.05L16.0 15.34L17.32 11.05C18.97 5.11 25.9 5.11 25.9 12.04V17.98" fill="none" stroke="currentColor" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="25.9" cy="24.91" r="3.1" fill="currentColor"/>'),
