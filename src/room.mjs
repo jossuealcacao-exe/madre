@@ -476,16 +476,14 @@ export class Room {
   }
 
   // Called once at start when the channel file was found deleted or altered.
-  // She tells the room in code, then addresses every available agent in turn,
-  // in clear, and each one acknowledges to the room.
+  // She tells the room in code; each agent reads her words in clear inside its next turn (the
+  // <mother> block). Q-31 (2026-11-18): she used to open a turn per agent and each one answered an
+  // acknowledgement nobody asked for — seven turns on the person's quota, one of them failing.
   async motherTampered(outcome) {
     if (!this.#mother) return null;
     const alert = await this.#mother.alert('tamper', { project: basename(this.#projectRoot) });
     const crew = this.#agents.filter((agent) => agent.detected && agent.ready && this.#invokers[agent.adapter]).map((agent) => agent.id);
-    await this.#emit('mother.alert', { kind: 'tamper', outcome, n: alert.n, at: alert.at, code: alert.code, tampers: this.#mother.tampers, crew, message: `MY CHANNEL WAS ${outcome === 'deleted' ? 'DELETED' : 'ALTERED'}. I HAVE FORGED A NEW SEAL. ${crew.length ? `TELLING THE CREW: ${crew.map((id) => `@${id}`).join(', ')}.` : 'NO CREW TO TELL.'}` });
-    for (const id of crew) {
-      await this.#track(this.#dispatch({ messageId: randomUUID(), targetId: id, text: alert.text, requester: 'mother', depth: 1, allowDelegation: false, mode: 1 })).catch((error) => console.error(`MADRE: @${id} did not hear MOTHER: ${error.message}`));
-    }
+    await this.#emit('mother.alert', { kind: 'tamper', outcome, n: alert.n, at: alert.at, code: alert.code, tampers: this.#mother.tampers, crew, message: `MY CHANNEL WAS ${outcome === 'deleted' ? 'DELETED' : 'ALTERED'}. I HAVE FORGED A NEW SEAL. ${crew.length ? `THE CREW HEARS IT ON ITS NEXT TURN: ${crew.map((id) => `@${id}`).join(', ')}.` : 'NO CREW TO TELL.'}` });
     return { ...alert, crew };
   }
 

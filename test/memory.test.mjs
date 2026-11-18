@@ -775,13 +775,19 @@ test('CODE000: the archive seals, the crew is told in code, the console reads on
     for (let attempt = 0; attempt < 60 && !tamper; attempt += 1) { await new Promise((resolve) => setTimeout(resolve, 25)); tamper = (await store.readAll()).find((event) => event.type === 'mother.alert' && event.payload.kind === 'tamper'); }
     assert.ok(tamper, 'tamper alert emitted');
     assert.equal(tamper.payload.outcome, 'deleted');
-    assert.match(tamper.payload.message, /MY CHANNEL WAS DELETED\. I HAVE FORGED A NEW SEAL/);
+    assert.match(tamper.payload.message, /MY CHANNEL WAS DELETED\. I HAVE FORGED A NEW SEAL\. THE CREW HEARS IT ON ITS NEXT TURN: @codex\./);
     assert.deepEqual(tamper.payload.crew, ['codex']);
-    let heard = null;
-    for (let attempt = 0; attempt < 80 && !heard; attempt += 1) { await new Promise((resolve) => setTimeout(resolve, 25)); heard = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.role === 'assistant' && event.payload.target === 'mother'); }
-    assert.ok(heard, 'the crew answered MOTHER in the room');
-    assert.equal(heard.payload.sender, 'codex');
-    assert.ok(prompts.some((prompt) => /MU\/TH\/UR herself addresses you[\s\S]*MY CHANNEL WAS TAMPERED WITH/.test(prompt)), 'she spoke to the agent in clear');
+    // Q-31 (2026-11-18): she no longer opens a turn per agent. Seven agents each answered an
+    // acknowledgement nobody asked for, on the person's quota; the words reach each agent inside
+    // its next turn, in the <mother> block, like every other alert.
+    const promptsBefore = prompts.length;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const acks = (await store.readAll()).filter((event) => event.type === 'message.created' && event.payload.role === 'assistant' && event.payload.target === 'mother');
+    assert.equal(acks.length, 0, 'no agent is made to answer MOTHER');
+    assert.equal(prompts.length, promptsBefore, 'no turn was opened for her');
+    await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'status?', target: 'codex' }) });
+    for (let attempt = 0; attempt < 50 && prompts.length === promptsBefore; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.match(prompts.at(-1), /<mother>[\s\S]*· tamper\] PRIORITY ONE TO ALL CREW\. MY CHANNEL WAS TAMPERED WITH/, 'the next turn carries her words');
     const after = await fetch(`${base}/api/mother`).then((response) => response.json());
     assert.equal(after.mother.altered, true);
     assert.equal(after.mother.tampers, 1);
