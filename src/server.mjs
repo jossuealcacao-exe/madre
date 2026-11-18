@@ -2299,6 +2299,8 @@ export async function createPulseServer({
   // privacy list and its numbering; what changes is the record being shown. With TURNS on, a
   // conversation still at work is parked, not stopped; with it off, a turn in flight is a reason to
   // refuse, as it always was.
+  // Conversations left while their memory work was still running, until it is done.
+  const closing = new Set();
   async function mountChat(id) {
     if (!isChatId(id)) return { error: `No conversation "${id}".` };
     const policy = await turnsPolicy();
@@ -2317,8 +2319,13 @@ export async function createPulseServer({
       // Still writing its record and touching the list; only the page stops watching it.
       hold(chatId, leaving, store);
     } else if (leaving) {
-      await leaving.shutdown().catch(() => null);
-      retireLedger(store);
+      // Q-29 (2026-11-18): the room left may still be distilling with the local model, half a
+      // minute with qwen2.5:7b, and the new conversation waited for it. It finishes on its own;
+      // closing MADRE still waits for it (`closing`, in server.close).
+      const leavingStore = store;
+      const closed = leaving.shutdown().catch(() => null).then(() => retireLedger(leavingStore));
+      closing.add(closed);
+      void closed.finally(() => closing.delete(closed));
     }
     chatId = id;
     const held = parked.get(id);
@@ -6014,7 +6021,7 @@ export async function createPulseServer({
     unwatchOutbound();
     // In-flight agent processes are killed and their turns recorded as failed
     // before the SSE clients go away, so open pages see the outcome.
-    const shutdown = Promise.all([room, ...[...parked.values()].map((held) => held.room)].map((each) => each.shutdown().catch((error) => console.error(`MADRE shutdown error: ${error.message}`))));
+    const shutdown = Promise.all([...[room, ...[...parked.values()].map((held) => held.room)].map((each) => each.shutdown().catch((error) => console.error(`MADRE shutdown error: ${error.message}`))), ...closing]);
     // off() also ends the streams of pages watching a conversation held open beside.
     for (const held of parked.values()) held.off();
     parked.clear();

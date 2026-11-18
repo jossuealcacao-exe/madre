@@ -336,6 +336,45 @@ test('ollama: every conversation distills locally, the one switched to and the o
   }
 });
 
+// Q-29 (2026-11-18): with the local archivist distilling the conversation that was open (half a
+// minute with qwen2.5:7b), opening a new one waited for it: POST /api/chats did not answer in 30 s.
+// The conversation left finishes its memory work on its own; the person does not wait for it.
+test('a new conversation opens at once while the one left is still distilling with the local model (Q-29)', async () => {
+  const probe = { running: true, host: 'http://o', models: tags.models.map((model) => ({ name: model.name, size: model.size, family: model.details.family })), embedModel: 'nomic-embed-text:latest', chatModel: 'llama3.2:3b' };
+  const root = await mkdtemp(join(tmpdir(), 'pulse-q29-'));
+  const project = join(root, 'p'); await mkdir(project);
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+  const invokers = { 'codex-readonly': async () => ({ text: 'ok, noted', usage: null }) };
+  let distilling = 0;
+  const slow = fakeOllama();
+  const reportFetch = async (url, init = {}) => {
+    if (String(url).endsWith('/api/chat')) { distilling += 1; await new Promise((resolve) => setTimeout(resolve, 4000)); }
+    return slow(url, init);
+  };
+  const was = { every: process.env.PULSE_DISTILL_EVERY, eyecat: process.env.PULSE_EYECAT };
+  process.env.PULSE_DISTILL_EVERY = '2';
+  process.env.PULSE_EYECAT = '0';
+  const { server } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers, ollamaProbe: async () => probe, reportFetch });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, payload) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).then((response) => response.json());
+  try {
+    for (const text of ['We store amounts in cents.', 'Dates stay as YYYY-MM-DD text.']) await post('/api/messages', { text, target: 'codex' });
+    for (let attempt = 0; attempt < 400 && !distilling; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.ok(distilling, 'the local archivist never started');
+    const started = Date.now();
+    const made = await post('/api/chats', {});
+    const waited = Date.now() - started;
+    assert.ok(made.opened, 'no new conversation');
+    assert.ok(waited < 1500, `opening a conversation waited ${waited} ms for the distillation of the one left`);
+  } finally {
+    if (was.every === undefined) delete process.env.PULSE_DISTILL_EVERY; else process.env.PULSE_DISTILL_EVERY = was.every;
+    if (was.eyecat === undefined) delete process.env.PULSE_EYECAT; else process.env.PULSE_EYECAT = was.eyecat;
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
 test('a local model that takes longer than the turn allows says so in words, not as an abort', async () => {
   // Seen in the Coordinator's project (2026-10-12): «The operation was aborted due to timeout».
   const hang = (url, options) => new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason)));
