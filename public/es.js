@@ -4983,7 +4983,8 @@ export const ES = {
   'The other project': 'El otro proyecto',
   // La invitación a dejar una estrella o una reseña (2026-10-10).
   'Are you enjoying MADRE?': '¿Te está gustando MADRE?',
-  'If MADRE saves you work, a star on GitHub or a few words about it help more people find it. And if you can, a donation keeps it going: MADRE is made by one person.': 'Si MADRE te ahorra trabajo, una estrella en GitHub o una reseña ayudan a que llegue a más gente. Y si puedes, una donación la mantiene viva: MADRE la hace una sola persona.',
+  'If MADRE saves you work, a few words about it help more people find it. And if you can, a donation keeps it going: MADRE is made by one person.': 'Si MADRE te ahorra trabajo, unas palabras sobre ella ayudan a que llegue a más gente. Y si puedes, una donación la mantiene viva: MADRE la hace una sola persona.',
+  'If MADRE saves you work, a star on GitHub helps more people find it. And if you can, a donation keeps it going: MADRE is made by one person.': 'Si MADRE te ahorra trabajo, una estrella en GitHub ayuda a que llegue a más gente. Y si puedes, una donación la mantiene viva: MADRE la hace una sola persona.',
   'Donate on GitHub': 'Donar en GitHub',
   'Continuity: no agent starts from scratch': 'Continuidad: ninguna IA empieza de cero',
   'Your project remembers where it left off: what was decided, what is pending and what was already tried, kept beside your code.': 'Tu proyecto recuerda dónde se quedó: lo que se decidió, lo que falta y lo que ya se probó, guardado en la carpeta del proyecto.',

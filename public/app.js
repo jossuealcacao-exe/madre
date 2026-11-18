@@ -28,6 +28,8 @@ dropStickyHover();
 // Made the first time the room asks for it (roomTour, below), which can be while this file is
 // still being read: declared here, before anything can ask.
 let roomTourKept = null;
+// When this page last saw an AI end a turn, live (not replayed): the review ask counts it (review-ask.js).
+let lastTurnEnded = 0;
 import { LOADER_MARK, bootDone, creep, finishLoader, makeLoader, playProjectOpening, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
@@ -10600,7 +10602,7 @@ function renderEventNode(event) {
       if (open && !replaying) void paintAshEconomy(open);
       return;
     }
-    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { treeFollowWrites(); void notesAfterTurn(); offerAhpInConversation(); } return;
+    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { lastTurnEnded = Date.now(); treeFollowWrites(); void notesAfterTurn(); offerAhpInConversation(); } return;
     case 'files.touched': markTouched(event.payload.agent, event.payload.files, event.timestamp); if (!replaying) { treeFollowWrites(); missionFiles(event.payload.files); } return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); slot = turnSlot(event.payload.messageId); planStepEnded(event.payload.messageId, 'failed', event.payload.target); node = renderFailure(event, { inPlace: Boolean(slot) }); break;
     case 'handoff.created': node = renderHandoff(event); break;
@@ -28118,7 +28120,9 @@ boot();
 // Asking for a star or a review (review-ask.js): on the Mac, and never while something is going on
 // — an agent at work, a plan running, words half written in the box.
 // Asked by the page, never by the half on the right of a split view, which is this same page (WEB-12).
-if (!SPLIT_CHAT) startReviewAsk({ busy: () => Boolean(state.device || state.running.size || state.plansRunning.size || els.input?.value?.trim()) });
+// Only the minutes with an AI at work count toward asking (2026-11-18): a turn running, or one
+// that ended within the last five minutes (lastTurnEnded, set in the room's events).
+if (!SPLIT_CHAT) startReviewAsk({ busy: () => Boolean(state.device || state.running.size || state.plansRunning.size || els.input?.value?.trim()), using: () => state.running.size > 0 || Date.now() - lastTurnEnded < 5 * 60 * 1000 });
 // The author's notices (Q-11): in a project only the important and security ones, as a strip above
 // the conversation; the rest wait in Home. Not in the right half of a split view: the left one has it.
 let askNoticesAgain = () => {};

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Asking for a star or a review (2026-10-10), in the room and in Home: the server keeps when to
-// ask (src/review-ask.mjs); this page says once a minute that it is in view, and when a moment is
-// due it asks — only when nothing is going on: no turn running, nothing half written, no other
-// window open. Otherwise it waits for the next minute. The sheet is the room's question
-// (styles.css, dialog.room-ask): a star on GitHub, a review on madre.run, a donation on GitHub
-// Sponsors (2026-10-30), not now, or never again. The links open in the person's browser; MADRE
-// itself sends nothing.
+// ask (src/review-ask.mjs); this page says once a minute that it is in view and whether an AI is at
+// work in it (`using`), and when a moment is due it asks — only when nothing is going on: no turn
+// running, nothing half written, no other window open. Otherwise it waits for the next minute. The
+// sheet is the room's question (styles.css, dialog.room-ask). Where it sends depends on how MADRE
+// came (2026-11-18): from the desktop app, a review on madre.run; from npm or the source, a star on
+// GitHub, since npm keeps no reviews. Then a donation on GitHub Sponsors (2026-10-30), not now, or
+// never again. The links open in the person's browser; MADRE itself sends nothing.
 
 import { language, t } from './i18n.js';
 import { trazo } from './icons.js';
@@ -21,16 +22,17 @@ const STAR = trazo('star');
 const post = (url, payload) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload ?? {}) })
   .then((response) => (response.ok ? response.json() : null)).catch(() => null);
 
-export function startReviewAsk({ busy = () => false } = {}) {
+export function startReviewAsk({ busy = () => false, using = () => false } = {}) {
   if (typeof document === 'undefined' || typeof setInterval !== 'function') return null;
   let dialog = null;
   async function tick() {
     if (document.hidden || dialog?.open) return;
-    const answer = await post('/api/review-ask/tick');
+    const answer = await post('/api/review-ask/tick', { using: Boolean(using()) });
     if (!answer?.due || document.hidden || busy() || document.querySelector('dialog[open], .reload-curtain')) return;
-    ask(answer.due);
+    ask(answer.due, answer.via);
   }
-  function ask(moment) {
+  function ask(moment, via = 'npm') {
+    const app = via === 'app';
     dialog?.remove();
     dialog = document.createElement('dialog');
     dialog.className = 'room-ask review-ask';
@@ -47,7 +49,9 @@ export function startReviewAsk({ busy = () => false } = {}) {
     title.textContent = t('Are you enjoying MADRE?');
     const body = document.createElement('p');
     body.className = 'room-ask-body';
-    body.textContent = t('If MADRE saves you work, a star on GitHub or a few words about it help more people find it. And if you can, a donation keeps it going: MADRE is made by one person.');
+    body.textContent = app
+      ? t('If MADRE saves you work, a few words about it help more people find it. And if you can, a donation keeps it going: MADRE is made by one person.')
+      : t('If MADRE saves you work, a star on GitHub helps more people find it. And if you can, a donation keeps it going: MADRE is made by one person.');
     const actions = document.createElement('div');
     actions.className = 'room-ask-actions review-ask-actions';
     const choice = (words, tone, answer, href = null) => {
@@ -62,8 +66,7 @@ export function startReviewAsk({ busy = () => false } = {}) {
     quiet.className = 'review-ask-quiet';
     quiet.append(choice(t('Not now'), 'quiet', 'later'), choice(t('Don\'t ask again'), 'quiet', 'never'));
     actions.append(
-      choice(t('Write a review'), null, 'review', REVIEW_URLS[language()] ?? REVIEW_URLS.es),
-      choice(t('Give it a star on GitHub'), 'primary', 'star', STAR_URL),
+      app ? choice(t('Write a review'), 'primary', 'review', REVIEW_URLS[language()] ?? REVIEW_URLS.es) : choice(t('Give it a star on GitHub'), 'primary', 'star', STAR_URL),
       choice(t('Donate on GitHub'), 'give', 'donate', SPONSORS_URL),
     );
     const note = document.createElement('p');

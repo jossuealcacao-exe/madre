@@ -91,7 +91,7 @@ import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
 import { canReplace, checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand, nextProcess, opensBrowser, roomsBehind, takesItsPlace } from './updates.mjs';
 import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAppInvite, appInvite } from './app-invite.mjs';
-import { answerAsk, tickAsk } from './review-ask.mjs';
+import { answerAsk, askVia, tickAsk } from './review-ask.mjs';
 import { CHAPTERS, HINTS, MISSIONS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
 // Where a person reads the module contract, in the language the room is speaking.
@@ -4713,8 +4713,11 @@ export async function createPulseServer({
       // is never asked.
       if (request.method === 'POST' && url.pathname === '/api/review-ask/tick') {
         if (viaPhone) return sendJson(response, 200, { due: null });
-        // Never on the day of the bonjour: one welcome is enough for a day.
-        return sendJson(response, 200, await tickAsk(root, Date.now(), { quietSince: (await readTour(root)).bonjourAt }));
+        // Never on the day of the bonjour: one welcome is enough for a day. Only the minutes the page
+        // says an AI is at work count (`using`); `via` says where the question sends the person.
+        const payload = await body(request).catch(() => ({}));
+        const ticked = await tickAsk(root, Date.now(), { quietSince: (await readTour(root)).bonjourAt, using: payload?.using === true });
+        return sendJson(response, 200, { ...ticked, via: askVia() });
       }
       if (request.method === 'POST' && url.pathname === '/api/review-ask/answer') {
         if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });

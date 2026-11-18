@@ -189,10 +189,10 @@ test('logic: a moment to ask for a review is handed to one page, not to every pa
   const root = await mkdtemp(join(tmpdir(), 'madre-ask-once-'));
   try {
     const now = Date.parse('2026-10-12T12:00:00Z');
-    await writeFile(join(root, 'review-ask.json'), JSON.stringify({ first: '2026-10-12T09:00:00Z', minutes: 25, lastTick: new Date(now - 1000).toISOString(), shown: {}, answer: null }));
+    await writeFile(join(root, 'review-ask.json'), JSON.stringify({ first: '2026-10-12T09:00:00Z', aiMinutes: 35, lastUse: new Date(now - 1000).toISOString(), shown: {}, answer: null }));
     const pages = await Promise.all([tickAsk(root, now), tickAsk(root, now), tickAsk(root, now)]);
-    assert.deepEqual(pages.map((page) => page.due).filter(Boolean), ['m20'], 'more than one page was asked at once');
-    assert.equal((await tickAsk(root, now + 11 * 60 * 1000)).due, 'm20', 'a page that closed without answering kept it from ever coming back');
+    assert.deepEqual(pages.map((page) => page.due).filter(Boolean), ['m30'], 'more than one page was asked at once');
+    assert.equal((await tickAsk(root, now + 11 * 60 * 1000)).due, 'm30', 'a page that closed without answering kept it from ever coming back');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

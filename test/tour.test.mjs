@@ -152,13 +152,13 @@ test('tour · the review ask keeps quiet on the day of the bonjour', async () =>
   const state = await scratch('madre-tour-ask-');
   try {
     const start = Date.parse('2026-10-11T10:00:00Z');
-    // Nineteen minutes: the twentieth comes with the quiet day, so the moment is not handed out
-    // before (a moment handed to a page is held for it a while, WEB-12).
-    for (let minute = 0; minute <= 19; minute += 1) await tickAsk(state, start + minute * 60 * 1000);
+    // Twenty-nine minutes with an AI at work: the thirtieth comes with the quiet day, so the moment
+    // is not handed out before (a moment handed to a page is held for it a while, WEB-12).
+    for (let minute = 0; minute <= 28; minute += 1) await tickAsk(state, start + minute * 60 * 1000, { using: true });
     const quietSince = new Date(start + 5 * 60 * 1000).toISOString();
-    assert.equal((await tickAsk(state, start + 21 * 60 * 1000, { quietSince })).due, null, 'asked on the day of the bonjour');
-    assert.equal((await tickAsk(state, start + 22 * 60 * 1000)).due, 'm20');
-    assert.equal((await tickAsk(state, start + 26 * 60 * 60 * 1000, { quietSince })).due, 'm20', 'quiet for more than a day');
+    assert.equal((await tickAsk(state, start + 30 * 60 * 1000, { quietSince, using: true })).due, null, 'asked on the day of the bonjour');
+    assert.equal((await tickAsk(state, start + 31 * 60 * 1000)).due, 'm30');
+    assert.equal((await tickAsk(state, start + 26 * 60 * 60 * 1000, { quietSince })).due, 'm30', 'quiet for more than a day');
   } finally {
     await rm(state, { recursive: true, force: true });
   }
