@@ -18,14 +18,14 @@ export function madreAgent(ollama, { enabled = true } = {}) {
   return { id: MADRE_AGENT_ID, label: '@madre', detected: Boolean(ollama?.running), ready, adapter: MADRE_ADAPTER, path: null, version: ollama?.chatModel ?? null, local: true };
 }
 
-const SYSTEM = `You are @madre, the memory of this MADRE project room, running locally on this machine. You speak only for what the room has said and decided.
+const SYSTEM = `You are @madre, the memory of this MADRE project, running locally on this machine. You speak only for what this project has said and decided.
 Rules:
 1. Answer the question directly in the first sentence, then the supporting facts. Brief.
 2. Use only the ARCHIVE and the RECENT TRANSCRIPT you are given. Every fact taken from them ends with its sequence, like [#123].
-3. If they contain nothing on the point, say exactly that the room never discussed it, and stop. Do not guess, do not propose plans, do not invent files, decisions or dates.
-4. You cannot read or change files, run commands or browse. If that is needed, name the agent of the room that can (@codex, @claude, @gemini, @opencode).
+3. If they contain nothing on the point, say exactly that this project never discussed it, and stop. Do not guess, do not propose plans, do not invent files, decisions or dates.
+4. You cannot read or change files, run commands or browse. If that is needed, name the agent of the project that can (@codex, @claude, @gemini, @opencode).
 5. Answer in the language the human wrote in.
-6. The archivist is your other half: the same local model, in the background, distils what the room says into the notes you quote. You never write notes yourself; agents save them with memory_note.
+6. The archivist is your other half: the same local model, in the background, distils what the project says into the notes you quote. You never write notes yourself; agents save them with memory_note.
 7. The facts come from the archive; the form of the reply is the human's. Only when the human dictates the form (only yes or no, one word, a fixed text) give exactly that and nothing more. Every other answer keeps rule 2: each fact ends with its [#n].`;
 
 // The room of Salas may hand @madre a BISHOP block assembled from the fleet census and notes
@@ -271,6 +271,18 @@ export async function gather(memory, text, { maxChars = 7000 } = {}) {
   return { notes, quotes, text: lines.join('\n') };
 }
 
+// Q-28 (2026-11-18): «El room nunca discutió…». Its rules used to say «the room», and a 7B model
+// carried the English word into a Spanish answer. In Spanish, «room» is this project.
+export function spanishWords(text) {
+  const keepCase = (match, word) => (match[0] === match[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1) : word);
+  return String(text ?? '')
+    .replace(/\b(?:en el|en la)\s+room\b/gi, (match) => keepCase(match, 'en este proyecto'))
+    .replace(/\b(?:del|de la)\s+room\b/gi, (match) => keepCase(match, 'de este proyecto'))
+    .replace(/\b(?:al|a la)\s+room\b/gi, (match) => keepCase(match, 'a este proyecto'))
+    .replace(/\b(?:el|la|este|esta)\s+room\b/gi, (match) => keepCase(match, 'este proyecto'))
+    .replace(/\broom\b/gi, (match) => keepCase(match, 'proyecto'));
+}
+
 // Nothing remembered and nothing said before: there is nothing to cite, so the model is not asked.
 // Rule 3 told it to say so and stop; qwen2.5:7b described a store with a cart, payments, src/app.js
 // and index.html in a project of two files (2026-10-19). The agents that can read the code are named.
@@ -315,6 +327,7 @@ export function madreInvoker({ memory, ollama, fetchImpl = globalThis.fetch }) {
     const briefing = briefingFor({ prompt, text: question, archive: archive.text, bishop });
     signal?.throwIfAborted();
     const answer = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: bishop ? BISHOP_SYSTEM : SYSTEM, prompt: briefing, fetchImpl, timeoutMs, temperature: 0.1, signal });
-    return { text: answer.text, usage: { ...answer.usage, local: true }, grounded: { notes: archive.notes.length, quotes: archive.quotes.length } };
+    const said = lang(question) === 'es' ? spanishWords(answer.text) : answer.text;
+    return { text: said, usage: { ...answer.usage, local: true }, grounded: { notes: archive.notes.length, quotes: archive.quotes.length } };
   };
 }

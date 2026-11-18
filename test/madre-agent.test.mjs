@@ -50,7 +50,7 @@ test('@madre: answers from the whole archive with a grounded system prompt, and 
     assert.equal(answer.usage.totalTokens, 520);
     assert.deepEqual(answer.grounded, { notes: 1, quotes: archive.quotes.length });
     assert.equal(calls[0].model, 'qwen2.5:3b');
-    assert.match(calls[0].messages[0].content, /You are @madre, the memory of this MADRE project room/);
+    assert.match(calls[0].messages[0].content, /You are @madre, the memory of this MADRE project, running locally/);
     assert.match(calls[0].messages[1].content, /ARCHIVE \(what the room remembers[\s\S]*Decision: RIPLEY renders HTML[\s\S]*QUESTION FROM THE HUMAN:\nwhat did we decide about RIPLEY and scripts\?/);
     assert.match(calls[0].messages[1].content, /REMINDER: You are @madre[\s\S]*not Claude, Codex, Gemini or OpenCode[\s\S]*QUESTION FROM THE HUMAN/, 'identity repeated right before the question');
     assert.equal(calls[0].options.num_ctx, 8192, 'a window wide enough that the system prompt is never dropped');
@@ -288,4 +288,19 @@ test('the round summary says why an agent did not answer in the language of the 
   assert.doesNotMatch(es, /rejected/);
   const en = roundBullets({ answers: [{ agent: 'gemini', failed: true, error: 'Google rechazó las credenciales de Gemini. Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.' }] }, { es: false });
   assert.match(en, /@gemini: did not answer \(Google rejected the Gemini credentials\./);
+});
+
+// Q-28 (2026-11-18): «El room nunca discutió el horario de atención por teléfono». Its rules said
+// «the room», and a 7B model carried the word into Spanish. The rules now speak of the project, and a
+// Spanish reply never keeps «room».
+test('@madre in Spanish says «este proyecto», never «room» (Q-28)', async () => {
+  const quote = { sequence: 9, role: 'user', sender: 'you', timestamp: '', excerpt: 'Publicamos en Instagram martes y jueves.' };
+  const memory = { embedQuery: async () => null, recallMemories: () => [], recall: () => ({ entries: [quote] }) };
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ message: { content: 'El room nunca discutió el horario de atención por teléfono. En el room solo se habló de Instagram [#9].' }, prompt_eval_count: 5, eval_count: 2 }) }; };
+  const reply = await madreInvoker({ memory, ollama: () => running, fetchImpl })({ prompt: 'p', text: '¿Cuál es el horario de atención por teléfono?' });
+  assert.equal(reply.text, 'Este proyecto nunca discutió el horario de atención por teléfono. En este proyecto solo se habló de Instagram [#9].');
+  assert.doesNotMatch(calls[0].messages[0].content, /\broom\b/i, 'its rules no longer say «room»');
+  const english = madreInvoker({ memory, ollama: () => running, fetchImpl: async () => ({ ok: true, json: async () => ({ message: { content: 'The room never discussed phone hours.' }, prompt_eval_count: 1, eval_count: 1 }) }) });
+  assert.equal((await english({ prompt: 'p', text: 'What are the phone hours?' })).text, 'The room never discussed phone hours.', 'English is left alone');
 });
