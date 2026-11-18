@@ -60,3 +60,23 @@ test('terms: inside the desktop app the license is the app\'s own, a text of its
   assert.deepEqual(termsLinks(browser), TERMS_LINKS, 'GitHub and npm keep their license');
   assert.match(APP_TERMS_LINKS.license.es, /^https:\/\/madre\.run\//);
 });
+
+// Q-26 (2026-11-17, the author: «son 7 dias de prueba de todas las funciones de madre y despues
+// gratis pero solo 1 proyecto … npm y github se mantienen bsl»): MADRE App never says it is free for
+// you. With the author's switch on it names the first days with everything and then one project for
+// free; with it off it promises nothing either way. The source code's words (BSL) stay as they are.
+test('terms: the app never promises it is free; with the switch on it names the days and the one project', async () => {
+  const read = (file) => readFile(new URL(`../${file}`, import.meta.url), 'utf8');
+  const [gate, attribution, server, manual, content] = await Promise.all(['public/terms.js', 'public/attribution.js', 'src/server.mjs', 'public/manual.js', 'public/manual-content.js'].map(read));
+  for (const said of ["t('MADRE is free for you. Two quick things and you are in.')", "t('It is still free for you. Two quick things and you carry on where you left off.')", "t('Free for you')", "t('Use it on your computers and in your projects without paying anything. Everything you make with it is yours.')"]) assert.ok(!gate.includes(said), `the gate no longer says ${said}`);
+  assert.ok(!attribution.includes("t('Free for you. What you make with MADRE is yours.')"), 'Settings no longer says it');
+  assert.ok(gate.includes("'The first {days} days you have all of MADRE App; then it stays free with one project. Two quick things and you are in.'"));
+  assert.match(gate, /answer\.trialDays/);
+  assert.match(server, /trialDays: termsKind\(\) === 'app' \? await trialDaysNow\(\) : null/);
+  // The manual inside the app tells the app's license, not the source code's.
+  assert.match(manual, /copy\.appLicense/);
+  assert.equal(content.split("appLicense: {\n      id: 'licencia',").length - 1, 2, 'the app\'s chapter, in Spanish and in English');
+  assert.ok(content.includes('Después sigue gratis con un proyecto activo a la vez') && content.includes('Then it stays free with one active project at a time'));
+  // The source code keeps its words.
+  assert.ok(gate.includes("t('MADRE is free for you and for teams of up to 10 people. Two quick things and you are in.')"));
+});

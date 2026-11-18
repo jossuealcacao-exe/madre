@@ -158,7 +158,7 @@ import { forgetFromMarket, installFromMarket, installSkillFromMarket, installedF
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
 import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
-import { acceptTerms, cameFromBefore, readTerms, termsLinks } from './terms.mjs';
+import { acceptTerms, cameFromBefore, readTerms, termsKind, termsLinks } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, keepOpenProject, knownRooms, listFolders, markProject, projectRoomId, projectTitle, renameProject, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { UNIT_NAME, disableService, enableService, launcherScript, refreshLauncher, serviceState } from './service.mjs';
@@ -782,6 +782,12 @@ export async function createPulseServer({
   const switchKey = billingKeys.switchKey ?? undefined;
   const billingKey = billingKeys.billingKey ?? BILLING_PUBLIC_KEY;
   const billingView = () => billing.view;
+  // The days with everything the author's switch gives, or null while it is off (Q-26): the gate
+  // and the manual name them only when they exist.
+  const trialDaysNow = async () => {
+    const now = await billingNow().catch(() => billing);
+    return now.view.state === 'off' ? null : now.view.trialDays ?? null;
+  };
   async function billingNow({ ask = false } = {}) {
     if (!billingInApp()) return billing;
     if (ask && salasRoom) {
@@ -4284,7 +4290,7 @@ export async function createPulseServer({
       if (url.pathname === '/api/terms' && request.method === 'GET') {
         const terms = viaPhone ? { accepted: true, version: null } : await readTerms(root);
         const before = !terms.accepted && ((await cameFromBefore(root)) || (hadInstallId && !existsSync(join(root, 'lifecycle.json'))));
-        return sendJson(response, 200, { ...terms, before, language: roomLanguage(), languageChosen, diagnostics: await diagnosticsNow(), diagnosticsFixed: process.env.PULSE_TELEMETRY === '0', links: termsLinks() });
+        return sendJson(response, 200, { ...terms, before, language: roomLanguage(), languageChosen, diagnostics: await diagnosticsNow(), diagnosticsFixed: process.env.PULSE_TELEMETRY === '0', links: termsLinks(), trialDays: termsKind() === 'app' ? await trialDaysNow() : null });
       }
       if (url.pathname === '/api/terms' && request.method === 'POST') {
         const site = request.headers['sec-fetch-site'];

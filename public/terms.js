@@ -100,8 +100,16 @@ function askTerms(answer, done) {
     // would not install it»): free, two quick things, and each one's detail one click away.
     const title = el('h1', 'terms-title', returning ? (app ? t('MADRE is an app now') : t('MADRE 1.1 has a new license')) : t('Before you start'));
     title.id = 'terms-title';
+    // Q-26 (2026-11-17, the author): the app never says it is free for you. With the author's switch
+    // on (answer.trialDays) it names the first days with everything and the one project after them;
+    // with it off it promises nothing either way. The source code keeps its words (BSL).
+    const days = Number.isInteger(answer.trialDays) && answer.trialDays > 0 ? answer.trialDays : null;
     const lead = el('p', 'terms-lead', app
-      ? (returning ? t('It is still free for you. Two quick things and you carry on where you left off.') : t('MADRE is free for you. Two quick things and you are in.'))
+      ? (days
+        ? (returning
+          ? t('The first {days} days you have all of MADRE App; then it stays free with one project. Two quick things and you carry on where you left off.', { days })
+          : t('The first {days} days you have all of MADRE App; then it stays free with one project. Two quick things and you are in.', { days }))
+        : (returning ? t('Two quick things and you carry on where you left off.') : t('MADRE App is ready. Two quick things and you are in.')))
       : returning
         ? t('It is still free for you and for teams of up to 10 people. Two quick things and you carry on where you left off.')
         : t('MADRE is free for you and for teams of up to 10 people. Two quick things and you are in.'));
@@ -129,9 +137,11 @@ function askTerms(answer, done) {
     about.append(points);
     const license = el('section', 'terms-block');
     license.append(
-      el('h2', null, app ? t('Free for you') : t('Free for you and your team')),
+      el('h2', null, app ? t('Your license') : t('Free for you and your team')),
       el('p', null, app
-        ? t('Use it on your computers and in your projects without paying anything. Everything you make with it is yours.')
+        ? (days
+          ? t('A personal license: the first {days} days with everything, then free with one project, or everything with the subscription. What you make with it is yours.', { days })
+          : t('A personal license, for your computers and your projects. Everything you make with it is yours.'))
         : t('Use it, change it and share it. Everything you make with it is yours; a company of more than 10 people writes to us for its license.')),
       link(pick(answer.links?.license), t('Read the license')),
     );

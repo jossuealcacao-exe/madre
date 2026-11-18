@@ -474,6 +474,22 @@ export const MANUAL = {
       },
     ],
     closing: 'MADRE es gratis para personas y equipos de hasta 10 (licencia BSL 1.1). Ayuda y novedades en madre.run.',
+    // Inside MADRE App (Q-26): its own license in place of the source code's. `trial` goes first only
+    // while the author's switch gives days (public/manual.js).
+    appLicense: {
+      id: 'licencia',
+      part: 'help',
+      icon: 'book',
+      title: 'La licencia, en corto',
+      lead: 'MADRE App usa una licencia personal: es para ti, en tus computadoras y en tus proyectos, también si trabajas por tu cuenta para tus clientes.',
+      trial: 'Los primeros {days} días tienes todo MADRE App. Después sigue gratis con un proyecto activo a la vez, o te suscribes y lo tienes todo. Nada de lo tuyo se borra.',
+      steps: [
+        'Lo que haces con MADRE App es tuyo.',
+        'Una empresa u organización necesita una licencia aparte: escríbenos desde madre.run.',
+      ],
+      expert: 'El texto completo está en madre.run/app/licencia. El código de MADRE en npm y GitHub sigue con su propia licencia, la Business Source License 1.1.',
+    },
+    appClosing: 'MADRE App, con licencia personal. Ayuda y novedades en madre.run.',
     pdf: 'Descargar en PDF',
     language: 'English',
   },
@@ -928,6 +944,20 @@ export const MANUAL = {
       },
     ],
     closing: 'MADRE is free for individuals and teams of up to 10 (BSL 1.1 license). Help and news at madre.run.',
+    appLicense: {
+      id: 'licencia',
+      part: 'help',
+      icon: 'book',
+      title: 'The license, briefly',
+      lead: 'MADRE App has a personal license: it is for you, on your computers and in your projects, also when you work on your own for your clients.',
+      trial: 'The first {days} days you have all of MADRE App. Then it stays free with one active project at a time, or you subscribe and have everything. Nothing of yours is deleted.',
+      steps: [
+        'What you make with MADRE App is yours.',
+        'A company or organization needs a license of its own: write to us from madre.run.',
+      ],
+      expert: 'The full text is at madre.run/en/app/license. MADRE\'s code on npm and GitHub keeps its own license, the Business Source License 1.1.',
+    },
+    appClosing: 'MADRE App, with a personal license. Help and news at madre.run.',
     pdf: 'Download as PDF',
     language: 'Español',
   },

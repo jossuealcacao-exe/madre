@@ -133,7 +133,8 @@ test('13 nov · the opening runs again, the language key lives on the window, th
   assert.ok(!/const beat = since/.test(loader));
   assert.match(loader, /const throb = since < 2600/);
   assert.match(terms, /dialog\.querySelector\(':scope > \.terms-lang'\)\?\.remove\(\);\n    dialog\.append\(tongue\);/);
-  assert.match(terms, /t\('MADRE is free for you\. Two quick things and you are in\.'\)/);
+  // Still two quick things, said in seconds; since Q-26 (2026-11-17) the app no longer says it is free.
+  assert.match(terms, /t\('MADRE App is ready\. Two quick things and you are in\.'\)/);
   assert.ok(!/terms-daily/.test(terms));
 });
 

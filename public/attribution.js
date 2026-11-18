@@ -98,7 +98,7 @@ export function drawLegal(host, { app = false } = {}) {
   // Short and calm (2026-11-17, the author: «no se entiende y da miedo»): what the person gets, in two
   // lines; the whole text lives on madre.run for whoever wants to read it.
   words.append(make('h3', null, t('License')), make('p', null, app
-    ? t('Free for you. What you make with MADRE is yours.')
+    ? t('A personal license. What you make with MADRE is yours.')
     : t('Free for individuals and teams of up to 10. What you make with MADRE is yours.')));
   head.append(words);
   const rows = make('div', 'sx-rows');

@@ -214,8 +214,23 @@ async function version() {
   } catch { return null; }
 }
 
-function draw(lang, madre) {
-  const copy = MANUAL[lang];
+// Inside MADRE App (Q-26) the license chapter and the closing are the app's own; its first days are
+// named only while the author's switch gives them (src/server.mjs, /api/terms `trialDays`).
+async function license() {
+  try {
+    const answer = await fetch('/api/terms', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null));
+    return { app: answer?.kind === 'app', days: Number.isInteger(answer?.trialDays) && answer.trialDays > 0 ? answer.trialDays : null };
+  } catch { return { app: false, days: null }; }
+}
+function forApp(copy, { app, days }) {
+  if (!app || !copy.appLicense) return copy;
+  const { trial, ...chapter } = copy.appLicense;
+  chapter.steps = [...(days ? [trial.replace('{days}', String(days))] : []), ...chapter.steps];
+  return { ...copy, sections: copy.sections.map((one) => (one.id === 'licencia' ? chapter : one)), closing: copy.appClosing };
+}
+
+function draw(lang, madre, kind = { app: false, days: null }) {
+  const copy = forApp(MANUAL[lang], kind);
   const other = lang === 'es' ? 'en' : 'es';
   document.documentElement.lang = lang;
   document.title = `MADRE · ${copy.title}`;
@@ -423,5 +438,5 @@ function draw(lang, madre) {
 }
 
 if (printing) document.documentElement.classList.add('printing');
-const [room, madre] = await Promise.all([roomLanguage(), version()]);
-draw(pick(asked.get('lang')) ?? room ?? browser, asked.get('version') ?? madre);
+const [room, madre, kind] = await Promise.all([roomLanguage(), version(), license()]);
+draw(pick(asked.get('lang')) ?? room ?? browser, asked.get('version') ?? madre, kind);
