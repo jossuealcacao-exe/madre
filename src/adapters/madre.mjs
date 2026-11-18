@@ -282,12 +282,15 @@ export function quotedAcks(text) {
   return [...new Set([...String(text ?? '').matchAll(ACK_ORDER)].map((match) => match[1].trim().toLowerCase()).filter(Boolean))];
 }
 export function withoutAck(text, acks = []) {
-  let out = String(text ?? '').trim();
+  const said = String(text ?? '').trim();
+  let out = said;
   for (const ack of acks) {
     const escaped = ack.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     out = out.replace(new RegExp(`^[«"“']?${escaped}[»"”']?[.!¡,:;]*\\s*`, 'i'), '').trim();
   }
-  return out;
+  // Taken the word off, what is left with no word in it (a bare «#[3]») is no answer either. A reply
+  // nothing was taken from stays as it was, a lone number included.
+  return out === said || /\p{L}/u.test(out) ? out : '';
 }
 
 // Q-28 (2026-11-18): «El room nunca discutió…». Its rules used to say «the room», and a 7B model
