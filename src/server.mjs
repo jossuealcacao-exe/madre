@@ -37,7 +37,7 @@ import { webPreview } from './web-preview.mjs';
 import { Telemetry, telemetryOn } from './telemetry.mjs';
 import { hostFacts, inRoomLanguage, language as roomLanguage, say, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 import { BILLING_PUBLIC_KEY } from './billing-key.mjs';
-import { ORDER_EVERY_MS, ORDER_FAST_MS, SWITCH_EVERY_MS, askOrder, askSwitch, billingInApp, billingSite, chooseProject, claimProject, dueMoment, loadBilling, markSeen as markBillingSeen, newOrder, portalUrl, renewKey, saveKey, signSwitch, verifiedSwitch } from './billing.mjs';
+import { ORDER_EVERY_MS, ORDER_FAST_MS, PRICE_MXN, SWITCH_EVERY_MS, TRIAL_DAYS, askOrder, askSwitch, billingInApp, billingSite, chooseProject, claimProject, dueMoment, loadBilling, markSeen as markBillingSeen, newOrder, portalUrl, renewKey, saveKey, signSwitch, verifiedSwitch } from './billing.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
 const BOOT_ID = `${process.pid}-${Date.now().toString(36)}`;
@@ -4925,7 +4925,7 @@ export async function createPulseServer({
         if (typeof payload.on !== 'boolean') return sendJson(response, 422, { error: t('Say whether it is on or off.') });
         if (payload.on && !billingKey) return sendJson(response, 409, { error: t('First make the key of the subscription keys: node scripts/billing-key.mjs. Without it nobody could pay.') });
         const at = new Date().toISOString();
-        const sent = signSwitch({ on: payload.on, from: at, trialDays: 7, price: { mxn: 109 }, at }, await readFile(NOTICES_KEY_FILE, 'utf8'));
+        const sent = signSwitch({ on: payload.on, from: at, trialDays: TRIAL_DAYS, price: { mxn: PRICE_MXN }, at }, await readFile(NOTICES_KEY_FILE, 'utf8'));
         const token = await readSecret(root, OWNER_VAULT, 'usage');
         const answer = await globalThis.fetch(`${billingSite()}/api/cobro`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(sent), signal: AbortSignal.timeout(10000) }).catch(() => null);
         const said = answer ? await answer.json().catch(() => ({})) : {};

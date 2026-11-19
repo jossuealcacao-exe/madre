@@ -277,3 +277,16 @@ test('billing · the routes: a price only inside the app with the switch on; a l
     for (const dir of [state, project]) await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
+
+// 2026-11-18, the author: «Van a ser 30 días gratis y después el precio de la suscripción».
+test('billing · the author\'s switch gives thirty days with everything, then $109 MXN a month', async () => {
+  const billing = await import('../src/billing.mjs');
+  assert.equal(billing.TRIAL_DAYS, 30);
+  assert.equal(billing.PRICE_MXN, 109);
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /signSwitch\(\{ on: payload\.on, from: at, trialDays: TRIAL_DAYS, price: \{ mxn: PRICE_MXN \}, at \}/, 'the switch is signed with other days or another price');
+  // Thirty days is still within what a copy accepts, and the count starts at thirty.
+  const now = Date.parse('2026-11-18T12:00:00Z');
+  const sw = { on: true, from: new Date(now - 1000).toISOString(), trialDays: billing.TRIAL_DAYS, price: { mxn: billing.PRICE_MXN }, at: new Date(now - 1000).toISOString() };
+  assert.equal(billing.billingState({ env: { MADRE_APP: '1' }, sw, saved: { trial: new Date(now).toISOString() }, now }).daysLeft, 30);
+});

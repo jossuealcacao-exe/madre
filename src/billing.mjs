@@ -3,7 +3,7 @@
 // MADRE App's subscription (2026-11-17, docs/private/SUSCRIPCION.md §12). Off everywhere except inside
 // the desktop app (MADRE_APP=1), and there only once the author turns it on with a switch signed on
 // their computer (the notices' key, src/notices-key.mjs) and served by madre.run. Then each copy gets
-// seven days with everything, and after them a subscription (a key madre.run signs once Stripe says it
+// thirty days with everything (TRIAL_DAYS), and after them a subscription (a key madre.run signs once Stripe says it
 // was paid, src/billing-key.mjs) or the limited mode: one project takes messages, no plans among
 // several AIs, no Coordinator. Never a lock and never a deletion: what is past the limit stays, to be
 // read. MADRE from npm or from source never sees any of this.
@@ -17,6 +17,11 @@ import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path';
 import { BILLING_PUBLIC_KEY } from './billing-key.mjs';
 import { NOTICES_PUBLIC_KEY } from './notices-key.mjs';
+
+// What the author's switch says (2026-11-18, the author: «Van a ser 30 días gratis y después el precio
+// de la suscripción»): thirty days with everything, then $109 MXN a month, VAT included.
+export const TRIAL_DAYS = 30;
+export const PRICE_MXN = 109;
 
 export const BILLING_SITE = 'https://madre.run';
 export const billingSite = (env = process.env) => String(env.PULSE_COBRO_URL || BILLING_SITE).replace(/\/+$/, '');
