@@ -15314,3 +15314,17 @@ html.chat-shell .split:not(.chats) > :is(.side-grip, .panel-grip, .dock-grip)::a
 #messages#messages .command-card.terminal.has-undo > .undo svg { width: 13px; height: 13px; flex: none; }
 #messages#messages .command-card.terminal.has-undo > .undo:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--terror) 10%, transparent); }
 #messages#messages .command-card.terminal.has-undo.open > .undo { margin-top: 0; }
+
+/* ---------- «Copiar» junto a un campo que pide escribir un nombre (2026-11-19) ----------
+   El autor: «agregar botón copiar a un lado para que el usuario pueda copiar el nombre y pegarlo
+   fácilmente». La tecla pone el nombre en el portapapeles y nunca llena el campo: escribirlo (o
+   pegarlo) sigue siendo la confirmación (public/copy-key.js). */
+.copy-wrap { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+.copy-wrap > input { flex: 1 1 auto; min-width: 0; }
+.copy-key { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px 0 9px; border: 1px solid var(--line, rgba(0, 0, 0, .12)); border-radius: 999px; background: var(--panel, transparent); color: var(--text-2); font: 550 12.5px/1 var(--read, var(--sans)); letter-spacing: 0; text-transform: none; white-space: nowrap; cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.copy-key svg { width: 14px; height: 14px; flex: none; }
+.copy-key:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--text) 6%, var(--panel, transparent)); color: var(--text); }
+.copy-key:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor, #10b981) 55%, transparent); outline-offset: 1px; }
+.copy-key.copied { color: var(--ok, #10b981); border-color: color-mix(in srgb, var(--ok, #10b981) 45%, transparent); }
+.copy-key[hidden] { display: none; }
+dialog.room-ask.console .copy-key { border-color: var(--ph-faint); background: transparent; color: var(--ph-dim); font-family: var(--mono); }

@@ -44,6 +44,7 @@ import { mountActivity } from './activity.js';
 import { ensureTerms } from './terms.js';
 import { createNewsScene } from './news-scenes.js';
 import { autoOpenOn, csvRows, kindOf, pickToOpen, setAutoOpen } from './auto-open.js';
+import { copyKey, hideCopyKey } from './copy-key.js';
 
 // Nothing of MADRE starts before its license and privacy notice are accepted on this computer
 // (public/terms.js, src/terms.mjs): the page waits here.
@@ -1270,6 +1271,8 @@ function roomAsk({ title, body = '', choices, input = null, command = null, icon
     sheet.field.querySelector('.k').textContent = inConsole ? t('DESIGNATION ›') : (input?.label ?? t('Project'));
     sheet.input.value = '';
     sheet.input.placeholder = input?.placeholder ?? '';
+    // «Copiar» beside a field that asks for a name (input.copy: the name), never filling it in.
+    if (input?.copy) copyKey(sheet.input, input.copy); else hideCopyKey(sheet.input);
     // Help to fill it in, under the field (2026-11-10, a new file: its folder and its format): keys that
     // complete what is written, drawn again as it changes. `input.hints(value)` → [{ label, value }].
     if (!sheet.hints) { sheet.hints = el('div', 'room-ask-hints'); sheet.field.after(sheet.hints); }
@@ -1578,7 +1581,7 @@ async function saveEdited(content, { said = null } = {}) {
     const word = await roomAsk({
       title: t('A FILE THE PROJECT GUARDS'),
       body: t('This file is one the project guards. Type the project name to save it.'),
-      input: { placeholder: t('the project folder\'s name') },
+      input: { placeholder: t('the project folder\'s name'), copy: projectDesignation },
       choices: [{ value: 'no', label: t('CANCEL') }, { value: 'save', label: t('SAVE'), tone: 'primary', submit: true }],
     });
     if (!word) return false;
@@ -4030,7 +4033,7 @@ const keepAttachmentUI = (() => {
     let { response, result } = await send();
     // A place the project guards asks for its name, as a new file in Archivos does.
     if (response?.status === 403 && result.guarded) {
-      const word = await roomAsk({ title: t('A file the project guards'), body: t('This file is one the project guards. Type the project name to save it.'), input: { placeholder: t('the project folder\'s name') }, choices: [{ value: 'no', label: t('CANCEL') }, { value: 'save', label: t('SAVE'), tone: 'primary', submit: true }] });
+      const word = await roomAsk({ title: t('A file the project guards'), body: t('This file is one the project guards. Type the project name to save it.'), input: { placeholder: t('the project folder\'s name'), copy: projectDesignation }, choices: [{ value: 'no', label: t('CANCEL') }, { value: 'save', label: t('SAVE'), tone: 'primary', submit: true }] });
       if (!word) return;
       ({ response, result } = await send({ designation: word }));
     }
@@ -9826,6 +9829,7 @@ function markBishopLink({ plan, index, by = null, contract = null, expires = nul
     designation.placeholder = t('type {room} to sign', { room: receiving });
     designation.setAttribute('aria-label', designation.placeholder);
     side.append(designation);
+    copyKey(designation, receiving);
   }
   sign.addEventListener('click', () => bishopPress('/api/x/bishop/link', { plan, index: Number(index), designation: designation?.value ?? null }, parts));
   side.append(sign);
@@ -12627,7 +12631,7 @@ function finderShowClip() {
 //
 // What is being asked is a line of its own, above the box, and it says WHERE: a placeholder is
 // gone the moment the first letter is typed, and in a narrow panel it was cut off before that.
-function finderAsk({ label, value = '', hint = '', where = null }) {
+function finderAsk({ label, value = '', hint = '', where = null, copy = null }) {
   return new Promise((resolve) => {
     if (!finder.clip) { resolve(null); return; }
     const form = el('form', 'tree-ask');
@@ -12648,6 +12652,7 @@ function finderAsk({ label, value = '', hint = '', where = null }) {
     form.append(head);
     if (hint) form.append(el('div', 'ask-hint', hint));
     form.append(input, actions);
+    if (copy) copyKey(input, copy);
     const done = (answer) => { finderShowClip(); resolve(answer); };
     form.addEventListener('submit', (event) => { event.preventDefault(); done(input.value.trim() || null); });
     no.addEventListener('click', () => done(null));
@@ -12702,7 +12707,7 @@ function finderRefresh(landed) {
 async function finderRun(body, { say }) {
   const guarded = [body.from, body.to].filter(Boolean).find((path) => finderGuarded(path));
   if (guarded) {
-    const typed = await finderAsk({ label: t('CONFIRM WITH THE PROJECT NAME'), hint: t('{path} is a location MADRE protects. Type the project name to confirm.', { path: guarded }) });
+    const typed = await finderAsk({ label: t('CONFIRM WITH THE PROJECT NAME'), hint: t('{path} is a location MADRE protects. Type the project name to confirm.', { path: guarded }), copy: projectDesignation });
     if (!typed) return false;
     body.designation = typed;
   }
@@ -14362,7 +14367,7 @@ document.querySelector('#tree-new')?.addEventListener('click', async () => {
     .then(async (response) => ({ response, result: await response.json().catch(() => ({})) }));
   let { response, result } = await send();
   if (response.status === 403 && result.guarded) {
-    const word = await roomAsk({ title: t('A file the project guards'), body: t('This file is one the project guards. Type the project name to save it.'), input: { placeholder: t('the project folder\'s name') }, choices: [{ value: 'no', label: t('Cancel') }, { value: 'make', label: t('Create'), tone: 'primary', submit: true }] });
+    const word = await roomAsk({ title: t('A file the project guards'), body: t('This file is one the project guards. Type the project name to save it.'), input: { placeholder: t('the project folder\'s name'), copy: projectDesignation }, choices: [{ value: 'no', label: t('Cancel') }, { value: 'make', label: t('Create'), tone: 'primary', submit: true }] });
     if (!word) return;
     ({ response, result } = await send({ designation: word }));
   }
@@ -24149,7 +24154,7 @@ function drawPrivacy(host, data) {
       console: true,
       title: t('ERASE PRIVATE DATA'),
       body: t('All hidden data already recorded becomes the marker, in the ledger, the index and the memories. This cannot be undone. Type the project name to confirm.'),
-      input: { placeholder: t('the project folder\'s name') },
+      input: { placeholder: t('the project folder\'s name'), copy: projectDesignation },
       choices: [{ value: 'no', label: t('CANCEL'), focus: true }, { value: 'purge', label: t('PURGE'), tone: 'danger', submit: true }],
     });
     if (!designation) return;
@@ -24340,6 +24345,7 @@ nostromo.button?.addEventListener('click', () => {
   nostromo.gate.reply.textContent = '';
   nostromo.gate.reply.className = 'key-reply';
   nostromo.gate.input.value = '';
+  copyKey(nostromo.gate.input, nostromoDesignation);
   nostromo.gate.dialog.showModal();
   nostromo.gate.input.focus();
 });

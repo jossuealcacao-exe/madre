@@ -59,3 +59,21 @@ test('agents: Grok is black on a light ground and Cursor grey, so the two read a
   assert.equal(BRANDS.cursor.colorLight, '#6B7380');
   assert.equal(BRANDS.cursor.color, '#A3ABB6');
 });
+
+test('names: every field that asks to type a name has «Copiar» beside it, and the key never fills it in', async () => {
+  // 2026-11-19, the author: «agregar botón copiar a un lado… replicar donde aplique».
+  const app = await read('app.js');
+  assert.match(app, /if \(input\?\.copy\) copyKey\(sheet\.input, input\.copy\); else hideCopyKey\(sheet\.input\);/);
+  assert.equal((app.match(/input: \{ placeholder: t\('the project folder\\'s name'\), copy: projectDesignation \}/g) ?? []).length, 4, 'a project-name ask without its copy key');
+  assert.match(app, /copyKey\(nostromo\.gate\.input, nostromoDesignation\);/);
+  assert.match(app, /Type the project name to confirm\.', \{ path: guarded \}\), copy: projectDesignation \}\)/);
+  assert.match(app, /copyKey\(designation, receiving\);/);
+  assert.match(await read('salas-mac.js'), /copyKey\(typed, name\);/);
+  const key = await read('copy-key.js');
+  assert.match(key, /navigator\.clipboard\.writeText\(text\)/);
+  assert.doesNotMatch(key, /input\.value\s*=/, 'the key filled the field: typing the name is the confirmation');
+  // Served to the page and through the phone's bridge, or app.js cannot import it.
+  const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
+  assert.match(server, /'\/copy-key\.js'/);
+  assert.match(await readFile(join(import.meta.dirname, '..', 'src', 'bridge', 'policy.mjs'), 'utf8'), /'\/copy-key\.js'/);
+});

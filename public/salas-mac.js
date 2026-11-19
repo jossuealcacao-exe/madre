@@ -10,6 +10,7 @@
 import { browserLanguage, dateWords, sessionDetail, setLanguage, t } from './i18n.js';
 import { brandOf, monogram } from './brands.js';
 import { installTips } from './tips.js';
+import { copyKey } from './copy-key.js';
 import { startReviewAsk } from './review-ask.js';
 import { mountNotices } from './notices.js';
 import { drawSubscription, mountSubscription, subscriptionLine, subscriptionShown } from './subscription.js';
@@ -3536,6 +3537,7 @@ function openLinkSheet({ reader = null, source = null } = {}) {
         const said = row(sayBold('Type the name of {room} to allow orders into it', { room: name }), null, null);
         said.classList.add('lw-stack');
         said.append(typed);
+        copyKey(typed, name);
         box.append(said);
       }
       page.append(box);
