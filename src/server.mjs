@@ -225,9 +225,13 @@ async function body(request, { limit = BODY_LIMIT, tooLarge = null } = {}) {
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > limit) throw Object.assign(new Error(tooLarge ?? t('That is too much to send at once.')), { status: 413 });
-    chunks.push(chunk);
+    if (size <= limit) { chunks.push(chunk); continue; }
+    // Past the limit the rest is read and dropped, so the answer that says why reaches the page: cut
+    // in the middle of the upload, Node 22 lost it and the page waited forever (CI of 1.1.4,
+    // D-40). Only something many times the limit is cut.
+    if (size > limit * 8) break;
   }
+  if (size > limit) throw Object.assign(new Error(tooLarge ?? t('That is too much to send at once.')), { status: 413 });
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 

@@ -35,6 +35,9 @@ test('an installer that cannot be run at all is said, not an unhandled rejection
     await writeFile(fake, 'just some words\n');
     await chmod(fake, 0o755);
     const result = await runInstaller({ command: fake, args: [], projectRoot: root, timeoutMs: 5000 });
+    // On Linux the system hands a file without an interpreter line to /bin/sh, which says «command not
+    // found» and ends with 127: an ordinary failed run. Elsewhere it cannot start at all, and that is said.
+    if (process.platform === 'linux' && result.code === 127) return;
     assert.equal(result.code, 1);
     assert.match(String(result.error ?? ''), /cannot be run|ENOEXEC|exec format/i);
   } finally {

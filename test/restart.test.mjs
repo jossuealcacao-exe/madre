@@ -61,12 +61,15 @@ test('restart · Home and every open project come back as new processes on the s
     for (let waited = 0; waited < 60000; waited += 300) {
       await pause(300);
       now = Object.fromEntries((await knownRooms(state)).filter((one) => one.open).map((one) => [one.id, one.open]));
-      const back = Object.keys(before).every((id) => now[id] && now[id].pid !== before[id].pid);
+      // A new start stamps its mark again. On Linux the new MADRE takes the old one's place with the
+      // same number (Q-23, src/updates.mjs takesItsPlace): there, only the stamp says it restarted.
+      const back = Object.keys(before).every((id) => now[id] && (now[id].pid !== before[id].pid || now[id].at !== before[id].at));
       if (back && await fetch(`http://127.0.0.1:${port}/api/version`).then((answer) => answer.ok).catch(() => false) && await fetch(`http://127.0.0.1:${before[alfaId].port}/api/version`).then((answer) => answer.ok).catch(() => false)) break;
     }
     for (const id of Object.keys(before)) {
       assert.ok(now[id], `${id} did not come back`);
-      assert.notEqual(now[id].pid, before[id].pid, `${id} is the same process`);
+      assert.ok(now[id].pid !== before[id].pid || now[id].at !== before[id].at, `${id} did not restart`);
+      if (process.platform !== 'linux') assert.notEqual(now[id].pid, before[id].pid, `${id} is the same process`);
       assert.equal(now[id].port, before[id].port, `${id} came back on another port`);
     }
   } finally {
