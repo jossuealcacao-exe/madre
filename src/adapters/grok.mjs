@@ -157,7 +157,19 @@ export function grokImagesIn(events) {
   return [...new Set(paths)];
 }
 
-export function parseGrokOutput(output) {
+// The tool a turn was waiting on when it was cancelled: the last call nothing answered.
+function pendingTool(events) {
+  const answered = new Set(events.filter((event) => event?.type === 'user').flatMap((event) => event.message?.content ?? []).filter((part) => part?.type === 'tool_result').map((part) => part.tool_use_id));
+  const calls = events.filter((event) => event?.type === 'assistant').flatMap((event) => event.message?.content ?? []).filter((part) => part?.type === 'tool_use' && !answered.has(part.id));
+  return calls.at(-1)?.name ?? null;
+}
+
+// `code` is how the process ended (src/adapters/process.mjs). Grok writes the same close —
+// `errors: ["cancelled"]` — when a step waits for an approval (exit 0) and when something outside
+// stops it (2026-11-19: a SIGTERM leaves it too, with exit 143). Only the first is an approval; the
+// second is said by the exit code, as for any agent (the author saw «a step needed an approval» for
+// a turn that had been stopped).
+export function parseGrokOutput(output, { code = 0 } = {}) {
   const events = jsonLines(output);
   const images = grokImagesIn(events);
   const last = events.filter((event) => event?.type === 'result').at(-1);
@@ -170,9 +182,14 @@ export function parseGrokOutput(output) {
   if (last.is_error) {
     const errors = Array.isArray(last.errors) ? last.errors.map(String) : [];
     const said = errors.join(' ');
+    const cancelled = errors.length === 1 && errors[0] === 'cancelled';
+    if (cancelled && code !== 0 && code !== null && code !== undefined) return { text: '', usage: null };
+    const waiting = cancelled ? pendingTool(events) : null;
     const error = grokFailure(said)
-      ?? (errors.length === 1 && errors[0] === 'cancelled'
-        ? t('Grok stopped the turn: a step needed an approval that a turn cannot give.')
+      ?? (cancelled
+        ? (waiting
+          ? t('Grok stopped the turn: {tool} needed an approval that a turn cannot give.', { tool: waiting })
+          : t('Grok stopped the turn: a step needed an approval that a turn cannot give.'))
         : (said.trim() ? t('Grok returned an error: {error}', { error: said.trim().slice(0, 300) }) : t('Grok returned an error.')));
     return { text: '', usage: null, error };
   }

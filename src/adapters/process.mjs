@@ -228,7 +228,9 @@ export function runReadonlyProcess({
     armIdle();
     child.on('error', (error) => finish(() => reject(couldNotStart(error, { label, executable, cwd }))));
     child.on('close', (code, closedBy) => finish(() => {
-      const response = parse(stdout);
+      // How it ended goes along (2026-11-19): a CLI stopped from outside can write the same close as
+      // one that stopped on its own (Grok's «cancelled»), and only the exit code tells them apart.
+      const response = parse(stdout, { code, signal: closedBy });
       if (code === 0 && response.text) return resolve(response);
       // What happened first, what the CLI printed second, and never one dressed as the other.
       // This used to be `stderr.trim() || …`, so anything a CLI wrote on the way out became the
