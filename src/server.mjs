@@ -107,7 +107,7 @@ const LOCAL_TRY_AGAIN_MS = 3 * 24 * 60 * 60 * 1000;
 import { moduleUpdate } from './modules/updates.mjs';
 import { ACTIVITY_SOON_MS, recentInProject } from './activity.mjs';
 import { readReminders } from './modules/reminders.mjs';
-import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, archiveChat, carryChat, pinChat, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
+import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, archiveChat, carryChat, pinChat, searchChats, projectFloor, renameChat, touchChat, nameChatAuto } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
@@ -2045,6 +2045,7 @@ export async function createPulseServer({
       // A message MADRE wrote for the human (results going back) neither names nor previews it.
       const human = event.payload?.role === 'user';
       chatWrites = chatWrites.then(() => touchChat(roomDir, chatId, { text: human && !event.payload?.auto ? saidText(event.payload) : null, counts: human })).catch(() => null);
+      nameAfterAnswer(chatId, room, event.payload);
     });
     unsubscribeActivity = watchActivity(room, chatId);
     sentinel.seed(historicalEvents);
@@ -2178,6 +2179,25 @@ export async function createPulseServer({
     if (held.room.busy() || held.room.hasLiveRuns?.() || held.feed?.clients.size || held.claims) return;
     await closeHeld(id);
   }
+  // THE NAME OF A CHAT (src/chat-names.mjs, 2026-11-19): after an answer, a chat that still has the
+  // name it took on its own is named by an AI in two to five words, once, and every page hears it.
+  // PULSE_CHAT_NAMES=0 leaves the clean first message as the name (the suite, src/../test/setup.mjs).
+  const naming = new Set();
+  function nameAfterAnswer(id, target, payload) {
+    if (process.env.PULSE_CHAT_NAMES === '0') return;
+    if (payload?.role !== 'assistant' || payload.status !== 'completed' || payload.synthetic || !payload.text) return;
+    if (naming.has(id)) return;
+    naming.add(id);
+    void (async () => {
+      await chatWrites;
+      const entry = (await chatIndex(roomDir)).chats[id];
+      if (!entry || entry.autoTitle !== true || entry.aiNamed) return;
+      let name = null;
+      try { name = await target.nameConversation({ ask: entry.firstAsk ?? entry.title, answer: payload.text, agentId: payload.sender, language: roomLanguage() }); } catch { name = null; }
+      const named = await nameChatAuto(roomDir, id, name, { tried: true });
+      if (named) sayToAll('chat.named', { chatId: id, title: named.title });
+    })().catch(() => null).finally(() => naming.delete(id));
+  }
   // A conversation's turns starting and ending, said to every page whichever conversation it shows.
   // The settle after an end is read a moment later: the turn leaves the room after its last event.
   function watchActivity(target, id) {
@@ -2200,6 +2220,7 @@ export async function createPulseServer({
       if (event?.type !== 'message.created' || event.ghost) return;
       const human = event.payload?.role === 'user';
       chatWrites = chatWrites.then(() => touchChat(roomDir, id, { text: human && !event.payload?.auto ? saidText(event.payload) : null, counts: human })).catch(() => null);
+      nameAfterAnswer(id, target, event.payload);
     });
     const offActivity = watchActivity(target, id);
     const offModules = wireModules(target, id);

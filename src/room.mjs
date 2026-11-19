@@ -35,6 +35,7 @@ import { VectorWorker } from './room/vectors.mjs';
 import { Archivist, distillDefaults, LOCAL_DISTILL_MS } from './room/archivist.mjs';
 import { machineBusy } from './room/busy.mjs';
 import { OLLAMA_ARCHIVIST } from './distiller.mjs';
+import { namePrompt, parseName } from './chat-names.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
 import { CODE000_STRIKES } from './mother.mjs';
 import { parseDirectives } from './directives.mjs';
@@ -297,6 +298,22 @@ export class Room {
 
   // Durable, non-conversational events from the server (module installs,
   // operator actions). Types are namespaced so the UI can tell them apart.
+  // The name of a chat after its first answer (src/chat-names.mjs, 2026-11-19): the local AI when it
+  // is on, which costs nothing, or else the AI that answered, with a short prompt and its usage
+  // counted like any other. Never MADRE's own @madre agent (it answers with the project's memory),
+  // never a turn: nothing is said in the room, and no file can change. A name that does not read
+  // as one is null.
+  async nameConversation({ ask, answer = '', agentId = null, language = 'es' } = {}) {
+    const invokers = this.#invokers;
+    const local = typeof invokers.ollama === 'function';
+    const agent = local ? OLLAMA_ARCHIVIST : this.#agents.find((one) => one.id === agentId && one.detected && one.ready && !one.local && typeof invokers[one.adapter] === 'function');
+    if (!agent || this.#shuttingDown) return null;
+    const prompt = namePrompt({ ask, answer, language });
+    const result = await invokers[agent.adapter]({ executable: agent.path, projectRoot: this.#projectRoot, prompt, timeoutMs: local ? 60000 : Math.min(this.timeoutFor(agent.id), 120000), model: null, json: false, attachments: [], lease: null, scopes: { web: false, imageGen: false }, imageStudio: null });
+    if (!local) await this.#recordUsage(agent.id, result?.usage ?? null);
+    return parseName(result?.text);
+  }
+
   async record(type, payload) {
     if (!/^[a-z]+(\.[a-z]+)+$/.test(type) || type.startsWith('message.') || type.startsWith('agent.')) {
       throw new Error(`Refusing to record reserved or malformed event type: ${type}`);

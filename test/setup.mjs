@@ -28,6 +28,9 @@ process.env.PULSE_NOTICES_URL ??= 'http://127.0.0.1:9/api/avisos';
 process.env.PULSE_BUSY_SHARE ??= '1000';
 // Nor does madre-logs' widget look at this computer's real agent sessions (src/madre-logs.mjs).
 process.env.MADRE_LOGS_ACTIVITY ??= '0';
+// Nor does an AI name each chat after its first answer (src/chat-names.mjs): a test's fake agent
+// would be called once more than the test counts. test/chat-names.test.mjs turns it on itself.
+process.env.PULSE_CHAT_NAMES ??= '0';
 // MADRE's license is accepted for the suite (src/terms.mjs); test/terms.test.mjs checks the gate itself.
 process.env.PULSE_TERMS ??= 'accepted';
 

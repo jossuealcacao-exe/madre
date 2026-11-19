@@ -21,6 +21,7 @@ import { readFile, mkdir, rm, readdir, open, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { oneAtATime, writeWhole } from './json-file.mjs';
+import { provisionalTitle } from './chat-names.mjs';
 
 export const MAIN_CHAT = 'main';
 export const CHAT_TITLE_MAX = 80;
@@ -147,8 +148,27 @@ async function renameChatNow(roomDir, id, title) {
   if (!index.chats[id]) return null;
   const named = String(title ?? '').trim().slice(0, CHAT_TITLE_MAX);
   index.chats[id].title = named || null;
+  // A name the person gave is theirs: the AI never names that chat again (src/chat-names.mjs).
+  index.chats[id].autoTitle = false;
   await writeIndex(roomDir, index);
   return shape(id, index.chats[id], index.active);
+}
+
+// The name an AI gave after the first answer (src/chat-names.mjs). Only over a name the chat took
+// on its own, and once: false when the person named it meanwhile, or it was already named.
+export function nameChatAuto(roomDir, ...rest) {
+  return indexTurn(roomDir, () => nameChatAutoNow(roomDir, ...rest));
+}
+async function nameChatAutoNow(roomDir, id, title, { tried = false } = {}) {
+  const index = await chatIndex(roomDir);
+  const entry = index.chats[id];
+  if (!entry || entry.autoTitle !== true || entry.aiNamed) return null;
+  const named = String(title ?? '').trim().slice(0, CHAT_TITLE_MAX);
+  if (named) { entry.title = named; entry.aiNamed = true; }
+  // Tried and no name came: one more try on the next answer, then the clean first message stays.
+  else if (tried) { entry.nameTries = Number(entry.nameTries ?? 0) + 1; if (entry.nameTries >= 2) entry.aiNamed = true; }
+  await writeIndex(roomDir, index);
+  return named ? shape(id, entry, index.active) : null;
 }
 
 // Pinned: kept at the top of the list, whatever came after it. Archived (2026-11-11): out of the
@@ -202,7 +222,13 @@ async function touchChatNow(roomDir, id, { text = null, now = new Date().toISOSt
     const line = String(text).replace(/\s+/g, ' ').trim().slice(0, 120);
     if (line) {
       entry.preview = line;
-      if (!entry.title) entry.title = line.slice(0, CHAT_TITLE_MAX);
+      // At once a clean line, not the message as it came (2026-11-19); an AI names it after the
+      // first answer (src/chat-names.mjs). `firstAsk` is what it is asked about.
+      if (!entry.title) {
+        entry.title = provisionalTitle(text) || line.slice(0, CHAT_TITLE_MAX);
+        entry.autoTitle = true;
+        entry.firstAsk = String(text).replace(/\s+/g, ' ').trim().slice(0, 600);
+      }
     }
   }
   await writeIndex(roomDir, index);

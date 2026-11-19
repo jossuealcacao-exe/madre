@@ -10691,6 +10691,13 @@ function renderEventNode(event) {
       break;
     case 'choice.offered': node = renderChoice(event); break;
     case 'chat.activity': onChatActivity(event.payload); return;
+    // An AI named a chat after its first answer (src/chat-names.mjs, 2026-11-19): the list, the bar
+    // and any window or half that shows it take the new name at once.
+    case 'chat.named': {
+      const named = chats.list.find((chat) => chat.id === event.payload?.chatId);
+      if (named && typeof event.payload?.title === 'string') { named.title = event.payload.title; named.named = true; renderChats(); paintShellTitle(); }
+      return;
+    }
     case 'run.requested': node = renderRunRequest(event); break;
     case 'run.started': markRun(event.payload, 'running', null, event.timestamp); return;
     case 'run.serving': markRun(event.payload, 'serving', event.payload); return;

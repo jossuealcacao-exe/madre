@@ -37,14 +37,14 @@ test('chats: a conversation takes its name from the first thing said in it, and 
     await touchChat(dir, made.id, { text: '  Why does the webhook   verify after parsing?  ' });
     const find = async (id) => (await listChats(dir)).chats.find((chat) => chat.id === id);
     const first = await find(made.id);
-    assert.equal(first.title, 'Why does the webhook verify after parsing?');
+    assert.equal(first.title, 'Why does the webhook verify after parsing', 'the name is the first message, clean (src/chat-names.mjs)');
     assert.equal(first.preview, 'Why does the webhook verify after parsing?');
     assert.equal(first.messages, 1);
 
     // What is said later moves the preview but never renames what is already named.
     await touchChat(dir, made.id, { text: 'And the refunds?' });
     const again = await find(made.id);
-    assert.equal(again.title, 'Why does the webhook verify after parsing?');
+    assert.equal(again.title, 'Why does the webhook verify after parsing');
     assert.equal(again.preview, 'And the refunds?');
     assert.equal(again.messages, 2);
 

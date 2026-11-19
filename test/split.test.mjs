@@ -77,7 +77,7 @@ test('split: a conversation held beside the open one has its own state, stream a
     assert.ok(said((await get(`/api/state?chat=${second}`)).events, 'beside one'));
     assert.ok(!said((await get('/api/state')).events, 'beside one'));
     // The list follows what was said in it, like any other conversation.
-    await until(async () => (await get('/api/chats')).chats.find((chat) => chat.id === second)?.title === 'beside one', 'the list took the title');
+    await until(async () => (await get('/api/chats')).chats.find((chat) => chat.id === second)?.title === 'Beside one', 'the list took the title');
 
     // And one sent to the open conversation stays there.
     assert.equal((await post('/api/messages', { text: 'on screen', target: 'codex' })).status, 202);
