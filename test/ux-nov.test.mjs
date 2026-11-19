@@ -180,8 +180,11 @@ test('rebranding 13 nov · the M of one stroke, its dot apart, «madre» in Spac
   assert.match(css, /@font-face \{ font-family: 'Space Grotesk'; font-style: normal; font-weight: 700;[^}]*SpaceGrotesk-latin\.woff2/);
   assert.match(css, /\.brand-logo \.word \{ fill: var\(--brand-word\); stroke: none; font-family: 'Space Grotesk'/);
   assert.match(readFileSync(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8'), /\['\/assets\/brand\/SpaceGrotesk-latin\.woff2', 'font\/woff2'\]/);
-  // The favicon and the web icon: the M in its gradient on #0B0B0E.
-  assert.match(pub('assets/brand/madre-favicon.svg'), /<linearGradient id="m"[\s\S]*#0B0B0E/);
+  // The favicon (2026-11-18, the author: «¿por qué sigue apareciendo el favicon con el logo anterior?»): the
+  // white M and its emerald dot on #0B0B0E, like the app's icon; the gradient was the logo before.
+  const favicon = pub('assets/brand/madre-favicon.svg');
+  assert.doesNotMatch(favicon, /linearGradient/);
+  assert.match(favicon, /fill="#0B0B0E"[\s\S]*stroke="#FFFFFF"[\s\S]*fill="#34D399"/);
 });
 
 test('13 nov · the welcome and the second conversation, as the author asked', () => {
