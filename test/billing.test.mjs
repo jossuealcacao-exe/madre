@@ -383,3 +383,16 @@ test('billing · turning it on with the email of the payment: nothing to paste, 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// 2026-11-18, the author's review of Settings › Subscription: «Ya tengo una suscripción» showed a bare
+// folded box (▼), a field that cut its own words and a button out of line. Now it is a row like the
+// others, and pressed it opens to its full width: the email and its button side by side.
+test('billing · «I already have a subscription» is a Settings row that opens to an email and its button', async () => {
+  const page = await readFile(new URL('../public/subscription.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(page, /el\('details'/, 'a bare folded box again');
+  assert.match(page, /const line = row\(t\('I already have a subscription'\), t\('We send a button to the email you paid with; you press it and this computer turns on by itself\. A subscription works on up to two computers\.'\), null\);/);
+  assert.match(page, /line\.classList\.add\('stack'\);[\s\S]*?el\('form', 'madre-sub-email'\)[\s\S]*?el\('input', 'sx-input'\)[\s\S]*?el\('button', 'sx-btn primary', t\('Send me the email'\)\)/);
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.madre-sub-email \{ display: flex; align-items: center; gap: 8px; width: 100%; \}/);
+  assert.doesNotMatch(css, /\.madre-sub-paste|\.madre-sub-key/, 'the styles of the old pasted key are back');
+});

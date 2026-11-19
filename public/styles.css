@@ -14984,14 +14984,15 @@ html.chat-shell #settings .settings-detail-head .settings-line, #settings .setti
 :root[data-scheme="light"] .madre-sub-btn.primary:hover { background: color-mix(in srgb, var(--phosphor) 86%, #000000); }
 .madre-sub-said { margin: 10px 0 0; font-size: 12.5px; color: var(--text-2); }
 .madre-sub-said:empty { display: none; }
+/* «Ya tengo una suscripción», abierta (2026-11-18): el correo a lo ancho y su botón al lado, como un campo de Ajustes. */
+.madre-sub-email { display: flex; align-items: center; gap: 8px; width: 100%; }
+.madre-sub-email .sx-input { flex: 1; width: auto; }
+.madre-sub-email .sx-btn { flex: none; }
 .madre-sub-toast { position: fixed; right: 20px; bottom: max(20px, calc(100vh - var(--composer-top, 100vh) + 14px)); z-index: 60; width: min(360px, calc(100vw - 32px)); padding: 14px 16px; border: 0; border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); animation: madre-sub-in calc(220ms * var(--motion-scale, 1)) ease; }
 @keyframes madre-sub-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .madre-sub-toast p { margin: 4px 0 12px; font-size: 13.5px; line-height: 1.5; }
 .madre-sub-settings .sx-btn.primary { border: 0; background: var(--phosphor); color: #04120c; font-weight: 600; }
 :root[data-scheme="light"] .madre-sub-settings .sx-btn.primary { color: #ffffff; }
-.madre-sub-paste summary { cursor: pointer; font-size: 13px; color: var(--text-2); padding: 8px 0; }
-.madre-sub-key { display: flex; gap: 8px; padding-bottom: 8px; }
-.madre-sub-key input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 10px; border: 0; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
 .madre-sub-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--phosphor) 30%, transparent); border-top-color: var(--phosphor); animation: madre-sub-spin 900ms linear infinite; }
 @keyframes madre-sub-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .madre-sub-spin { animation: none; } }

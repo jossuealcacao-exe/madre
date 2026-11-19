@@ -174,26 +174,34 @@ export function drawSubscription(host, { projectPage = false } = {}) {
         if (answer.ok) took(answer.body);
       }));
     } else if (info.state !== 'active') {
-      const have = el('details', 'madre-sub-paste');
-      have.append(el('summary', null, t('I already have a subscription')));
-      const form = el('form', 'madre-sub-key');
-      const input = el('input');
-      input.type = 'email';
-      input.autocomplete = 'email';
-      input.required = true;
-      input.placeholder = t('The email you paid with');
-      input.setAttribute('aria-label', t('The email you paid with'));
-      form.append(el('p', 'sx-hint', t('We send a button to that email. Press it and this computer turns on by itself. A subscription works on up to two computers.')), input, el('button', 'sx-btn', t('Send me the email')));
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const sending = form.querySelector('button');
-        sending.disabled = true;
-        const done = await recover(input.value);
-        sending.disabled = false;
-        said.textContent = done.error ?? '';
-      });
-      have.append(form);
-      rows.append(have);
+      // A row like every other one in Settings (2026-11-18, the author's review: the folded box showed its
+      // bare ▼, a narrow field that cut its own words, and a button out of line). Pressed, the row opens
+      // to its full width: the email and the button side by side.
+      const line = row(t('I already have a subscription'), t('We send a button to the email you paid with; you press it and this computer turns on by itself. A subscription works on up to two computers.'), null);
+      const box = line.querySelector('.sx-control');
+      const ask = () => {
+        line.classList.add('stack');
+        const form = el('form', 'madre-sub-email');
+        const input = el('input', 'sx-input');
+        input.type = 'email';
+        input.autocomplete = 'email';
+        input.required = true;
+        input.placeholder = t('The email you paid with');
+        input.setAttribute('aria-label', t('The email you paid with'));
+        const send = el('button', 'sx-btn primary', t('Send me the email'));
+        send.type = 'submit';
+        form.append(input, send);
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          send.disabled = true;
+          const done = await recover(input.value);
+          send.disabled = false;
+          said.textContent = done.error ?? '';
+        });
+        box.replaceChildren(form);
+        input.focus();
+      };
+      box.append(button('sx-btn', t('Use my email'), ask));
     }
     lists(rows);
     rows.append(said);
