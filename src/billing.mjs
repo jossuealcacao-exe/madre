@@ -80,11 +80,13 @@ export function readKey(text, publicKey = BILLING_PUBLIC_KEY) {
   let payload;
   try { payload = JSON.parse(json); } catch { return null; }
   if (payload?.v !== 1 || typeof payload.sub !== 'string' || !payload.sub || !isDate(payload.until) || !isDate(payload.at)) return null;
-  return { sub: payload.sub, plan: typeof payload.plan === 'string' ? payload.plan : PLAN, until: payload.until, at: payload.at };
+  if (payload.equipo !== undefined && !ORDER.test(String(payload.equipo))) return null;
+  return { sub: payload.sub, plan: typeof payload.plan === 'string' ? payload.plan : PLAN, until: payload.until, at: payload.at, equipo: payload.equipo ?? null };
 }
-// The same format madre.run signs (its tests, and these).
-export function signKey({ sub, plan = PLAN, until, at = new Date().toISOString() }, privateKeyPem) {
-  const json = JSON.stringify({ v: 1, sub, plan, until, at });
+// The same format madre.run signs (its tests, and these). Since 2026-11-18 each key names the
+// computer it was given to (`equipo`): this copy takes no key of another.
+export function signKey({ sub, plan = PLAN, until, at = new Date().toISOString(), equipo }, privateKeyPem) {
+  const json = JSON.stringify(equipo === undefined ? { v: 1, sub, plan, until, at } : { v: 1, sub, plan, until, at, equipo });
   return `MADRE1.${Buffer.from(json).toString('base64url')}.${sign(null, Buffer.from(`madre-clave:${json}`), createPrivateKey(privateKeyPem)).toString('base64url')}`;
 }
 
@@ -106,7 +108,10 @@ export async function readBilling(root, { switchKey, billingKey } = {}) {
   const served = await readJson(join(folder(root), 'interruptor.json'));
   const saved = (await readJson(join(folder(root), 'estado.json'))) ?? {};
   const keyText = (await readFile(join(folder(root), 'clave'), 'utf8').catch(() => '')).trim();
-  return { sw: verifiedSwitch(served, switchKey), served, saved, key: keyText ? readKey(keyText, billingKey) : null, keyText };
+  const key = keyText ? readKey(keyText, billingKey) : null;
+  // A key given to another computer is no key here (copied over by hand, or a home folder restored).
+  const mine = key && (!key.equipo || key.equipo === saved.equipo) ? key : null;
+  return { sw: verifiedSwitch(served, switchKey), served, saved, key: mine, keyText };
 }
 export async function saveBilling(root, patch) {
   const saved = { ...((await readJson(join(folder(root), 'estado.json'))) ?? {}), ...patch };
@@ -122,7 +127,7 @@ export function billingState({ env = process.env, sw, saved = {}, key = null, no
   const trialStart = isDate(saved.trial) ? Date.parse(saved.trial) : now;
   const trialEnds = trialStart + sw.trialDays * DAY;
   const live = key && Date.parse(key.until) > now;
-  const base = { price: sw.price, trialDays: sw.trialDays, trialEnds: new Date(trialEnds).toISOString(), waiting: Boolean(saved.order && !live) };
+  const base = { price: sw.price, trialDays: sw.trialDays, trialEnds: new Date(trialEnds).toISOString(), waiting: Boolean(saved.order && !live), recovering: Boolean(saved.recovery && !live), moved: Boolean(saved.moved && !live) };
   if (live) return { ...base, state: 'active', until: key.until, plan: key.plan };
   if (now < trialEnds) return { ...base, state: 'trial', daysLeft: Math.max(1, Math.ceil((trialEnds - now) / DAY)) };
   return { ...base, state: 'limited', active: saved.active ?? null, lapsed: Boolean(key) };
@@ -147,11 +152,13 @@ export function dueMoment(view, saved = {}) {
     if (view.daysLeft <= 1 && !seen.last) return 'last';
     if (view.daysLeft <= 2 && !seen.soon && !seen.last) return 'soon';
   }
+  // The subscription turned on in two other computers, and this one went out (2026-11-18).
+  if (view.state === 'limited' && view.moved && !seen.moved) return 'moved';
   if (view.state === 'limited' && !seen.limited) return 'limited';
   if (view.state === 'active' && !seen.paid) return 'paid';
   return null;
 }
-export const MOMENTS = ['intro', 'soon', 'last', 'limited', 'paid'];
+export const MOMENTS = ['intro', 'soon', 'last', 'limited', 'moved', 'paid'];
 export async function markSeen(root, moment, now = Date.now()) {
   if (!MOMENTS.includes(moment)) return null;
   const { saved } = await readBilling(root);
@@ -211,7 +218,7 @@ export async function saveKey(root, text, { billingKey = BILLING_PUBLIC_KEY } = 
   const key = readKey(text, billingKey);
   if (!key) return null;
   await writeAtomic(join(folder(root), 'clave'), `${String(text).trim()}\n`);
-  await saveBilling(root, { order: undefined, lapsed: undefined, renewedAt: new Date().toISOString() });
+  await saveBilling(root, { order: undefined, recovery: undefined, moved: undefined, lapsed: undefined, renewedAt: new Date().toISOString() });
   return key;
 }
 
@@ -224,7 +231,8 @@ export const ORDER_FAST_MS = 30 * 60 * 1000;
 export async function askOrder(root, { env = process.env, fetchImpl = globalThis.fetch, billingKey = BILLING_PUBLIC_KEY, now = Date.now() } = {}) {
   const { saved } = await readBilling(root, { billingKey });
   if (!ORDER.test(saved.order?.id ?? '')) return null;
-  const answer = await fetchImpl(`${billingSite(env)}/api/suscripcion/clave?pedido=${saved.order.id}`, { headers: { accept: 'application/json' }, signal: quiet(8000) }).catch(() => null);
+  const equipo = await deviceId(root);
+  const answer = await fetchImpl(`${billingSite(env)}/api/suscripcion/clave?pedido=${saved.order.id}&equipo=${equipo}`, { headers: { accept: 'application/json' }, signal: quiet(8000) }).catch(() => null);
   const data = answer?.ok ? await answer.json().catch(() => null) : null;
   if (data?.estado === 'activa' && data.clave) return saveKey(root, data.clave, { billingKey });
   const age = now - (isDate(saved.order.at) ? Date.parse(saved.order.at) : 0);
@@ -239,11 +247,63 @@ export async function renewKey(root, { env = process.env, fetchImpl = globalThis
   if (!key) return null;
   const last = isDate(saved.renewedAt) ? Date.parse(saved.renewedAt) : 0;
   if (!force && now - last < RENEW_EVERY_MS && Date.parse(key.until) - now > 3 * DAY) return key;
-  const answer = await fetchImpl(`${billingSite(env)}/api/suscripcion/renovar`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ clave: keyText }), signal: quiet(8000) }).catch(() => null);
+  const answer = await fetchImpl(`${billingSite(env)}/api/suscripcion/renovar`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ clave: keyText, equipo: await deviceId(root) }), signal: quiet(8000) }).catch(() => null);
   const data = answer?.ok ? await answer.json().catch(() => null) : null;
   if (data?.estado === 'activa' && data.clave) return (await saveKey(root, data.clave, { billingKey })) ?? key;
   if (data?.estado === 'vencida') await saveBilling(root, { renewedAt: new Date(now).toISOString(), lapsed: true });
+  // Turned on in two other computers since: this one goes back to the limited mode now, and is told why.
+  if (data?.estado === 'otra-computadora') {
+    await rm(join(folder(root), 'clave'), { force: true });
+    await saveBilling(root, { renewedAt: new Date(now).toISOString(), moved: new Date(now).toISOString() });
+    return null;
+  }
   return key;
+}
+
+// This copy's name for madre.run (2026-11-18): 32 random bytes, made once and kept. It says nothing
+// about the computer; it only lets a subscription count its computers (two at most) and give each
+// its own key.
+export async function deviceId(root) {
+  const { saved } = await readBilling(root);
+  if (ORDER.test(saved.equipo ?? '')) return saved.equipo;
+  const equipo = randomBytes(32).toString('base64url');
+  await saveBilling(root, { equipo });
+  return equipo;
+}
+
+// Turning the subscription on in this computer with the email it was paid with (2026-11-18, the
+// author: «todo automático sin que tengan que pegar cosas»). madre.run sends that email a button;
+// once it is pressed and confirmed, wherever it was opened, this copy's key arrives on its own.
+// madre.run answers the same whether or not that email pays: so does this.
+export const RECOVERY_KEEP_MS = 30 * 60 * 1000;
+const EMAIL = /^[^\s@<>()]{1,64}@[^\s@<>()]{1,189}\.[^\s@<>()]{2,}$/;
+export async function startRecovery(root, { email, env = process.env, fetchImpl = globalThis.fetch, language = 'es', now = Date.now() } = {}) {
+  const correo = String(email ?? '').trim().toLowerCase();
+  if (correo.length > 254 || !EMAIL.test(correo)) return { error: 'email' };
+  const solicitud = randomBytes(32).toString('base64url');
+  const answer = await fetchImpl(`${billingSite(env)}/api/suscripcion/recuperar`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ correo, equipo: await deviceId(root), solicitud, idioma: language === 'en' ? 'en' : 'es' }), signal: quiet(10000) }).catch(() => null);
+  if (answer?.status === 429) return { error: 'too_many' };
+  if (!answer?.ok) return { error: 'unreachable' };
+  await saveBilling(root, { recovery: { id: solicitud, at: new Date(now).toISOString() } });
+  return { ok: true };
+}
+// The recovery waiting: its key once the button in the email is confirmed. Dropped after half an
+// hour, as madre.run drops it, or when madre.run says it ended.
+export async function askRecovery(root, { env = process.env, fetchImpl = globalThis.fetch, billingKey = BILLING_PUBLIC_KEY, now = Date.now() } = {}) {
+  const { saved } = await readBilling(root, { billingKey });
+  if (!ORDER.test(saved.recovery?.id ?? '')) return null;
+  if (now - (isDate(saved.recovery.at) ? Date.parse(saved.recovery.at) : 0) > RECOVERY_KEEP_MS) {
+    await saveBilling(root, { recovery: undefined });
+    return null;
+  }
+  const answer = await fetchImpl(`${billingSite(env)}/api/suscripcion/recuperar?solicitud=${saved.recovery.id}&equipo=${await deviceId(root)}`, { headers: { accept: 'application/json' }, signal: quiet(8000) }).catch(() => null);
+  const data = answer?.ok ? await answer.json().catch(() => null) : null;
+  if (data?.estado === 'activa' && data.clave) return saveKey(root, data.clave, { billingKey });
+  if (data?.estado === 'vencida') await saveBilling(root, { recovery: undefined });
+  return null;
+}
+export async function stopRecovery(root) {
+  await saveBilling(root, { recovery: undefined });
 }
 
 // Where the person cancels, changes the card or reads the invoices: Stripe's own page, opened by

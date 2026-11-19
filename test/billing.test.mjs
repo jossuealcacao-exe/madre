@@ -10,8 +10,8 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  askOrder, askSwitch, billingState, chooseProject, claimProject, dueMoment, loadBilling, markSeen, newOrder,
-  portalUrl, readKey, renewKey, saveBilling, saveKey, signKey, signSwitch, verifiedSwitch,
+  askOrder, askRecovery, askSwitch, billingState, chooseProject, claimProject, deviceId, dueMoment, loadBilling, markSeen, newOrder,
+  portalUrl, readKey, renewKey, saveBilling, saveKey, signKey, signSwitch, startRecovery, verifiedSwitch,
 } from '../src/billing.mjs';
 import { signNotice } from '../src/notices.mjs';
 
@@ -47,7 +47,7 @@ test('billing: a key reads only whole and signed by madre.run', () => {
   const until = iso(Date.now() + 30 * DAY);
   const text = signKey({ sub: 'sub-1', until }, site.priv);
   assert.match(text, /^MADRE1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-  assert.deepEqual({ ...readKey(text, site.pub), at: null }, { sub: 'sub-1', plan: 'mensual', until, at: null });
+  assert.deepEqual({ ...readKey(text, site.pub), at: null }, { sub: 'sub-1', plan: 'mensual', until, at: null, equipo: null });
   assert.equal(readKey(text, other.pub), null, 'signed by someone else');
   assert.equal(readKey(text, null), null, 'no key to check against: nothing is accepted');
   const [head, body, sig] = text.split('.');
@@ -266,9 +266,17 @@ test('billing · the routes: a price only inside the app with the switch on; a l
     assert.equal(chosen.active.room, projectRoomId(project));
     assert.notEqual((await post('/api/messages', { text: 'hola' })).status, 402, 'the project chosen takes messages');
 
-    // Paid on another computer: the key pasted here.
-    assert.equal((await post('/api/subscription/key', { key: 'MADRE1.a.b' })).status, 422);
-    const paid = await (await post('/api/subscription/key', { key: signKey({ sub: 'sub-1', until: iso(now + 30 * DAY) }, site.priv) })).json();
+    // Already subscribed (2026-11-18): the email of the payment, never a key pasted.
+    assert.equal((await post('/api/subscription/key', { key: signKey({ sub: 'sub-1', until: iso(now + 30 * DAY) }, site.priv) })).status, 404, 'a key is pasted again');
+    assert.equal((await post('/api/subscription/recover', { email: 'no es correo' })).status, 422);
+    assert.equal((await post('/api/subscription/recover', { email: 'persona@ejemplo.com' })).status, 502, 'madre.run unreachable');
+    await saveBilling(state, { recovery: { id: 'r'.repeat(43), at: iso(Date.now()) } });
+    assert.equal((await get()).recovering, true);
+    assert.equal((await (await post('/api/subscription/recover/stop')).json()).recovering, false);
+    // The key arrives (here, saved as madre.run would give it to this computer).
+    const { saveKey, deviceId } = await import('../src/billing.mjs');
+    await saveKey(state, signKey({ sub: 'sub-1', until: iso(now + 7 * DAY), equipo: await deviceId(state) }, site.priv), { billingKey: site.pub });
+    const paid = await get();
     assert.equal(paid.state, 'active');
     assert.equal(paid.moment, 'paid');
   } finally {
@@ -289,4 +297,89 @@ test('billing · the author\'s switch gives thirty days with everything, then $1
   const now = Date.parse('2026-11-18T12:00:00Z');
   const sw = { on: true, from: new Date(now - 1000).toISOString(), trialDays: billing.TRIAL_DAYS, price: { mxn: billing.PRICE_MXN }, at: new Date(now - 1000).toISOString() };
   assert.equal(billing.billingState({ env: { MADRE_APP: '1' }, sw, saved: { trial: new Date(now).toISOString() }, now }).daysLeft, 30);
+});
+
+// 2026-11-18, the author: up to two computers per subscription, and turning it on in another one with
+// the email of the payment, «todo automático sin que tengan que pegar cosas».
+test('billing · each copy has its name for madre.run, and takes no key given to another computer', async () => {
+  const root = await house();
+  try {
+    const now = Date.now();
+    const equipo = await deviceId(root);
+    assert.match(equipo, /^[A-Za-z0-9_-]{43}$/);
+    assert.equal(await deviceId(root), equipo, 'made once and kept');
+    await keep(root, switchOn(now));
+    const asked = [];
+    const fetchImpl = async (url) => { asked.push(new URL(url)); return { ok: true, status: 200, json: async () => ({ estado: 'activa', clave: signKey({ sub: 'sub-2', until: iso(now + 7 * DAY), equipo: 'z'.repeat(43) }, site.priv) }) }; };
+    await newOrder(root, { env: APP, now });
+    await askOrder(root, { env: APP, fetchImpl, billingKey: site.pub, now });
+    assert.equal(asked[0].searchParams.get('equipo'), equipo, 'the order is asked about for this computer');
+    assert.equal((await loadBilling(root, { env: APP, now, ...keys })).view.state, 'trial', 'a key of another computer turned this one on');
+    await saveKey(root, signKey({ sub: 'sub-2', until: iso(now + 7 * DAY), equipo }, site.priv), { billingKey: site.pub });
+    assert.equal((await loadBilling(root, { env: APP, now, ...keys })).view.state, 'active');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('billing · turned on in two other computers: the renewal says so, the key goes and the person is told once', async () => {
+  const root = await house();
+  try {
+    const now = Date.now();
+    await keep(root, switchOn(now));
+    await saveBilling(root, { trial: iso(now - 40 * DAY) });
+    const equipo = await deviceId(root);
+    await saveKey(root, signKey({ sub: 'sub-3', until: iso(now + 7 * DAY), equipo }, site.priv), { billingKey: site.pub });
+    let body = null;
+    const fetchImpl = async (url, options) => { body = JSON.parse(options.body); return { ok: true, status: 200, json: async () => ({ estado: 'otra-computadora' }) }; };
+    assert.equal(await renewKey(root, { env: APP, fetchImpl, billingKey: site.pub, now, force: true }), null);
+    assert.equal(body.equipo, equipo, 'the renewal says which computer');
+    const after = await loadBilling(root, { env: APP, now, ...keys });
+    assert.equal(after.view.state, 'limited');
+    assert.equal(after.view.moved, true);
+    assert.equal(dueMoment(after.view, after.saved), 'moved');
+    assert.equal(dueMoment(after.view, { seen: { moved: 'x' } }), 'limited');
+    await markSeen(root, 'moved');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('billing · turning it on with the email of the payment: nothing to paste, the key arrives on its own', async () => {
+  const root = await house();
+  try {
+    const now = Date.now();
+    await keep(root, switchOn(now));
+    const equipo = await deviceId(root);
+    const calls = [];
+    let confirmed = false;
+    const fetchImpl = async (url, options = {}) => {
+      const where = new URL(url);
+      calls.push({ method: options.method ?? 'GET', where, body: options.body ? JSON.parse(options.body) : null });
+      if ((options.method ?? 'GET') === 'POST') return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return { ok: true, status: 200, json: async () => (confirmed ? { estado: 'activa', clave: signKey({ sub: 'sub-4', until: iso(now + 7 * DAY), equipo }, site.priv) } : { estado: 'pendiente' }) };
+    };
+    assert.deepEqual(await startRecovery(root, { email: 'no es correo', env: APP, fetchImpl }), { error: 'email' });
+    assert.deepEqual(await startRecovery(root, { email: '  Persona@Ejemplo.com ', env: APP, fetchImpl, language: 'en', now }), { ok: true });
+    assert.equal(calls[0].where.pathname, '/api/suscripcion/recuperar');
+    assert.deepEqual({ ...calls[0].body, solicitud: undefined }, { correo: 'persona@ejemplo.com', equipo, solicitud: undefined, idioma: 'en' });
+    const waiting = await loadBilling(root, { env: APP, now, ...keys });
+    assert.equal(waiting.view.recovering, true);
+    assert.equal(await askRecovery(root, { env: APP, fetchImpl, billingKey: site.pub, now }), null);
+    assert.equal(calls[1].where.searchParams.get('solicitud'), calls[0].body.solicitud);
+    assert.equal(calls[1].where.searchParams.get('equipo'), equipo);
+    confirmed = true;
+    assert.equal((await askRecovery(root, { env: APP, fetchImpl, billingKey: site.pub, now })).sub, 'sub-4');
+    const on = await loadBilling(root, { env: APP, now, ...keys });
+    assert.equal(on.view.state, 'active');
+    assert.equal(on.saved.recovery, undefined);
+
+    // Too many asks, and one never confirmed: dropped after half an hour.
+    assert.deepEqual(await startRecovery(root, { email: 'a@b.co', env: APP, fetchImpl: async () => ({ ok: false, status: 429, json: async () => ({}) }) }), { error: 'too_many' });
+    await saveBilling(root, { recovery: { id: 'q'.repeat(43), at: iso(now - 31 * 60 * 1000) } });
+    assert.equal(await askRecovery(root, { env: APP, fetchImpl, billingKey: site.pub, now }), null);
+    assert.equal((await loadBilling(root, { env: APP, now, ...keys })).saved.recovery, undefined);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

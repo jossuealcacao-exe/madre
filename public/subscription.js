@@ -73,6 +73,23 @@ async function manage() {
   return answer.ok ? { ok: true } : { error: answer.body.error };
 }
 
+// Turning it on with the email of the payment: the server asks madre.run every few seconds for half
+// an hour, and this page reads it until the subscription is on here.
+let recovering = null;
+async function recover(email) {
+  const answer = await post('/api/subscription/recover', { email });
+  if (!answer.ok) return { error: answer.body.error ?? t('madre.run did not answer. Try again in a moment.') };
+  took(answer.body);
+  if (!recovering) {
+    const started = Date.now();
+    recovering = setInterval(async () => {
+      const now = await readSubscription();
+      if (now.state === 'active' || !now.recovering || Date.now() - started > 31 * 60 * 1000) { clearInterval(recovering); recovering = null; }
+    }, 3000);
+  }
+  return { ok: true };
+}
+
 function lists(host) {
   const both = el('div', 'madre-sub-lists');
   for (const [title, lines, kind] of [[t('With the subscription'), GIVES(), 'gives'], [t('In the limited mode'), KEEPS(), 'keeps']]) {
@@ -148,25 +165,35 @@ export function drawSubscription(host, { projectPage = false } = {}) {
         if (answer.ok) took(answer.body); else said.textContent = answer.body.error ?? '';
       }));
     }
-    // Paid on another computer: the key from madre.run's page, pasted here.
-    if (info.state !== 'active') {
-      const paste = el('details', 'madre-sub-paste');
-      paste.append(el('summary', null, t('I already paid on another computer')));
+    // Already subscribed (2026-11-18): the email of the payment gets a button, and this computer turns
+    // on by itself once it is pressed, wherever the email was opened. Nothing to copy or paste.
+    if (info.state !== 'active' && info.recovering) {
+      row(t('Check your email'), t('Open the email from MADRE and press its button: this computer turns on by itself. If it does not arrive in a few minutes, look in spam, or check it is the email you paid with.'), button('sx-btn', t('Cancel'), async (event) => {
+        event.currentTarget.disabled = true;
+        const answer = await post('/api/subscription/recover/stop');
+        if (answer.ok) took(answer.body);
+      }));
+    } else if (info.state !== 'active') {
+      const have = el('details', 'madre-sub-paste');
+      have.append(el('summary', null, t('I already have a subscription')));
       const form = el('form', 'madre-sub-key');
       const input = el('input');
-      input.type = 'text';
-      input.spellcheck = false;
-      input.autocomplete = 'off';
-      input.placeholder = 'MADRE1.…';
-      input.setAttribute('aria-label', t('Your subscription key'));
-      form.append(input, el('button', 'sx-btn', t('Use the key')));
+      input.type = 'email';
+      input.autocomplete = 'email';
+      input.required = true;
+      input.placeholder = t('The email you paid with');
+      input.setAttribute('aria-label', t('The email you paid with'));
+      form.append(el('p', 'sx-hint', t('We send a button to that email. Press it and this computer turns on by itself. A subscription works on up to two computers.')), input, el('button', 'sx-btn', t('Send me the email')));
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const answer = await post('/api/subscription/key', { key: input.value });
-        if (answer.ok) took(answer.body); else said.textContent = answer.body.error ?? '';
+        const sending = form.querySelector('button');
+        sending.disabled = true;
+        const done = await recover(input.value);
+        sending.disabled = false;
+        said.textContent = done.error ?? '';
       });
-      paste.append(form);
-      rows.append(paste);
+      have.append(form);
+      rows.append(have);
     }
     lists(rows);
     rows.append(said);
@@ -223,6 +250,7 @@ function corner(moment) {
     soon: t('Two days left of your MADRE App trial.'),
     last: t('Today is the last day of your MADRE App trial.'),
     paid: t('Done: your subscription is on. Thank you for keeping MADRE going.'),
+    moved: t('Your subscription was turned on in two other computers, so this one is back in the limited mode. To use it here again, turn it on from Settings › Subscription.'),
   }[moment];
   card.append(el('p', null, words));
   const actions = el('div', 'madre-sub-actions');

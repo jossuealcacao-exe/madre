@@ -37,7 +37,7 @@ import { webPreview } from './web-preview.mjs';
 import { Telemetry, telemetryOn } from './telemetry.mjs';
 import { hostFacts, inRoomLanguage, language as roomLanguage, say, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 import { BILLING_PUBLIC_KEY } from './billing-key.mjs';
-import { ORDER_EVERY_MS, ORDER_FAST_MS, PRICE_MXN, SWITCH_EVERY_MS, TRIAL_DAYS, askOrder, askSwitch, billingInApp, billingSite, chooseProject, claimProject, dueMoment, loadBilling, markSeen as markBillingSeen, newOrder, portalUrl, renewKey, saveKey, signSwitch, verifiedSwitch } from './billing.mjs';
+import { ORDER_EVERY_MS, ORDER_FAST_MS, PRICE_MXN, RECOVERY_KEEP_MS, SWITCH_EVERY_MS, TRIAL_DAYS, askOrder, askRecovery, askSwitch, billingInApp, billingSite, chooseProject, claimProject, dueMoment, loadBilling, markSeen as markBillingSeen, newOrder, portalUrl, renewKey, signSwitch, startRecovery, stopRecovery, verifiedSwitch } from './billing.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
 const BOOT_ID = `${process.pid}-${Date.now().toString(36)}`;
@@ -794,12 +794,15 @@ export async function createPulseServer({
       const due = Date.now() - billingAsked > SWITCH_EVERY_MS;
       if (due) { billingAsked = Date.now(); await askSwitch(root, { switchKey }).catch(() => null); }
       if (billing.saved?.order && Date.now() - orderAsked > ORDER_EVERY_MS) { orderAsked = Date.now(); await askOrder(root, { billingKey }).catch(() => null); }
+      // Turning it on with the email of the payment (2026-11-18): the key arrives once the button is confirmed.
+      if (billing.saved?.recovery && Date.now() - recoveryAsked > ORDER_EVERY_MS) { recoveryAsked = Date.now(); await askRecovery(root, { billingKey }).catch(() => null); }
     }
     billing = { ...(await loadBilling(root, { switchKey, billingKey }).catch(() => ({ view: { state: 'off' }, saved: {} }))), at: Date.now() };
     return billing;
   }
   let billingAsked = 0;
   let orderAsked = 0;
+  let recoveryAsked = 0;
   // Home keeps the copy current: the switch every half hour, a key it waits for every few seconds,
   // and a fresh key every twelve hours.
   if (billingInApp() && salasRoom && !testMode) {
@@ -810,7 +813,11 @@ export async function createPulseServer({
     void tick();
     const billingTimer = setInterval(() => void tick(), 60000);
     billingTimer.unref?.();
-    const orderTimer = setInterval(() => { if (billing.saved?.order && Date.now() - Date.parse(billing.saved.order.at) < ORDER_FAST_MS) void billingNow({ ask: true }).catch(() => null); }, ORDER_EVERY_MS);
+    const orderTimer = setInterval(() => {
+      const paying = billing.saved?.order && Date.now() - Date.parse(billing.saved.order.at) < ORDER_FAST_MS;
+      const recovering = billing.saved?.recovery && Date.now() - Date.parse(billing.saved.recovery.at) < RECOVERY_KEEP_MS;
+      if (paying || recovering) void billingNow({ ask: true }).catch(() => null);
+    }, ORDER_EVERY_MS);
     orderTimer.unref?.();
   } else void billingNow().catch(() => null);
   // What the page reads: where this copy stands and the one thing to tell the person now, if any.
@@ -4895,9 +4902,19 @@ export async function createPulseServer({
           await billingNow();
           return sendJson(response, 200, { url: order.url });
         }
-        if (url.pathname === '/api/subscription/key') {
-          const key = await saveKey(root, String(payload.key ?? ''), { billingKey });
-          if (!key) return sendJson(response, 422, { error: t('That key is not valid. Copy it whole from the page where you paid, and paste it again.') });
+        // Already subscribed, on another computer or before (2026-11-18): the email of the payment gets a
+        // button, and this copy's key arrives on its own once it is confirmed. Nothing to paste.
+        if (url.pathname === '/api/subscription/recover') {
+          if (!billingKey) return sendJson(response, 503, { error: t('Subscriptions are not open yet. Try again in a few days.') });
+          const started = await startRecovery(root, { email: payload.email, language: roomLanguage() });
+          if (started.error === 'email') return sendJson(response, 422, { error: t('Write the email you paid with.') });
+          if (started.error === 'too_many') return sendJson(response, 429, { error: t('You asked several times already. Wait an hour and try again.') });
+          if (started.error) return sendJson(response, 502, { error: t('madre.run did not answer. Try again in a moment.') });
+          recoveryAsked = 0;
+          return sendJson(response, 200, await billingForPage({ ask: false }));
+        }
+        if (url.pathname === '/api/subscription/recover/stop') {
+          await stopRecovery(root);
           return sendJson(response, 200, await billingForPage({ ask: false }));
         }
         if (url.pathname === '/api/subscription/manage') {
