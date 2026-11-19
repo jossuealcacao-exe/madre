@@ -4,7 +4,9 @@ Every published version of `@jossuealcala/madre`. Dates in ISO format.
 
 A version closes when it is on npm: until then its section is called **Unreleased** and it can keep growing. Each published version has exactly one `vX.Y.Z` tag, one GitHub release and one section here; the patch number can reach two digits (`0.2.10`) before the minor goes up. See `docs/ROADMAP.md` for the criteria on what bumps each number. This is the English translation of [CHANGELOG.md](CHANGELOG.md); the Spanish file is the original.
 
-## 1.1.4 · Unreleased
+## 1.1.5 · Unreleased
+
+## 1.1.4 · 2026-11-19
 
 - **MADRE is an app now (first beta).** For Mac, signed by Apple: it opens from your applications with no terminal, tells you when an AI finishes, brings its own browser (showing its size as you change the width, and the page's errors one click away) and its terminal, and updates from madre.run with your permission. Its icon turns light or dark with your system's theme. It is free for you under its personal license. If you use MADRE in the browser, after updating it asks whether you stay there or download the app; your projects come along as they are.
 - **You see what changed in every answer.** Under every answer that touches your project, a card says in plain words what changed, with «View» and «Undo» (which asks first). What an AI makes, a page, an image, a PDF or a sheet, opens by itself beside the conversation.

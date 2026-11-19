@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.1.4 · Sin publicar
+## 1.1.5 · Sin publicar
+
+## 1.1.4 · 2026-11-19
 
 - **MADRE ya es una app (primera beta).** Para Mac, firmada por Apple: se abre desde tus aplicaciones sin terminal, te avisa cuando una IA termina, trae su propio navegador (con sus medidas al cambiar el ancho y los errores de la página a un clic) y su terminal, y se actualiza desde madre.run con tu permiso. Su ícono cambia a claro u oscuro con el tema de tu sistema. Es gratis para ti con su licencia personal. Si usas MADRE en el navegador, después de actualizar te pregunta si te quedas ahí o bajas la app; tus proyectos llegan tal como están.
 - **Ves qué cambió en cada respuesta.** Bajo cada respuesta que toca tu proyecto, una tarjeta dice en palabras simples qué cambió, con «Ver» y «Deshacer» (que pregunta antes). Lo que una IA crea, una página, una imagen, un PDF o una hoja, se abre solo al lado de la conversación.
