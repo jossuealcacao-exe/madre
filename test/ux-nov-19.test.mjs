@@ -50,11 +50,12 @@ test('agents: an @ in the field, the @ menu and the panel «En marcha» use the 
   for (const id of ['grok', 'cursor']) assert.ok(BRANDS[id].colorLight, `${id} has no colour for a light ground`);
 });
 
-test('agents: Grok has its own blue in words, and keeps its grey-white disc behind the official mark', async () => {
+test('agents: Grok is black on a light ground and Cursor grey, so the two read apart; Grok keeps its disc', async () => {
+  // 2026-11-19, the author: «grok debe ser más negro y cursor más gris».
   const { BRANDS } = await import('../public/brands.js');
-  assert.equal(BRANDS.grok.colorLight, '#1F63C9');
-  assert.equal(BRANDS.grok.color, '#5AA9FF');
+  assert.equal(BRANDS.grok.colorLight, '#0A0A0A');
+  assert.equal(BRANDS.grok.color, '#F5F5F5');
   assert.equal(BRANDS.grok.solid, '#E6E6E6');
-  // No other AI drawn in blue: it stands apart from all of them.
-  for (const [id, brand] of Object.entries(BRANDS)) if (id !== 'grok') assert.notEqual(brand.colorLight, '#1F63C9', id);
+  assert.equal(BRANDS.cursor.colorLight, '#6B7380');
+  assert.equal(BRANDS.cursor.color, '#A3ABB6');
 });

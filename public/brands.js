@@ -62,19 +62,20 @@ export const BRANDS = {
   cursor: {
     label: 'Cursor',
     vendor: 'Cursor',
-    color: '#D9DEE5',
-    colorLight: '#3A3F47',
+    // Grey, so it reads apart from Grok's black and from the text (2026-11-19, the author).
+    color: '#A3ABB6',
+    colorLight: '#6B7380',
     ink: '#111111',
     mark: () => glyph('<path fill="currentColor" d="M16 3.2 27.4 9.6 16 16 4.6 9.6z"/><path fill="currentColor" opacity=".42" d="M4.6 9.6 16 16v12.8L4.6 22.4z"/><path fill="currentColor" fill-rule="evenodd" opacity=".7" d="M27.4 9.6v12.8L16 28.8V16zM16 16l11.4-6.4-6.2 12-1.9-3.9z"/>'),
   },
   grok: {
     label: 'Grok',
     vendor: 'xAI',
-    // Its own blue in words and marks (2026-11-19, the author: «dale otro tono a grok para que
-    // resalte»): xAI's black and white read as the text around it. Blue was the hue no other AI
-    // had. Its disc keeps the grey-white behind the official mark.
-    color: '#5AA9FF',
-    colorLight: '#1F63C9',
+    // Black on a light ground and white on a dark one, as xAI draws it (2026-11-19, the author:
+    // «grok debe ser más negro y cursor más gris»; a blue was tried the same day and taken back).
+    // Its disc keeps the grey-white behind the official mark.
+    color: '#F5F5F5',
+    colorLight: '#0A0A0A',
     solid: '#E6E6E6',
     ink: '#111111',
     // xAI's Grok mark, official and unaltered (2026-11-06, the author's choice).
