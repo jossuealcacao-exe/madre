@@ -1164,6 +1164,38 @@ export async function createPulseServer({
       ...(ollama.host && !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?\/?$/i.test(String(ollama.host)) ? { remote: true } : {}),
     });
   }
+  // Ollama started by MADRE (`ollama serve`, detached): from Settings › Local AI and the welcome, and
+  // quietly when the local AI was found closed in the middle of a try (2026-11-19, the author: «La IA
+  // local no contestó: fetch failed»). Quiet, it leaves no install card in the room.
+  async function startOllama({ quiet = false } = {}) {
+    if (ollama.running) return { ok: true, already: true };
+    const binary = await findOnPath('ollama');
+    if (!binary) return { ok: false, error: t('Ollama is not on this computer yet.') };
+    if (!quiet) await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: 'ollama serve', platforms: [], alreadyInstalled: true });
+    // A binary this user cannot run (EACCES: an install that stopped halfway, a file of another
+    // user's) is said, not thrown: without a listener the error ended MADRE's process as an
+    // uncaught exception (diagnostics of 1.1.1, 3 copies in WSL).
+    const failed = new Promise((settle) => {
+      const child = spawn(binary, ['serve'], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' });
+      child.on('error', (error) => settle(error));
+      child.on('spawn', () => settle(null));
+      child.unref();
+    });
+    const refused = await failed;
+    if (refused) {
+      const words = refused.code === 'EACCES' ? t('Ollama is at {path}, but this user cannot run it. Install it again, or give it permission to run.', { path: binary }) : t('Ollama did not start: {error}', { error: refused.message });
+      if (!quiet) await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: true, detail: refused.code === 'EACCES' ? `cannot run ${binary} (EACCES)` : refused.message, trouble: refused.code === 'EACCES' ? 'permission' : 'unknown', ollama });
+      return { ok: false, error: words };
+    }
+    // It answers in a moment or it does not: poll its own port rather than guess.
+    let status = ollama;
+    for (let attempt = 0; attempt < 20 && !status.running; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      status = await wireOllama();
+    }
+    if (!quiet) await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: status.running, installed: true, detail: status.running ? `running · ${status.chatModel ? `@madre with ${status.chatModel}` : 'no chat model yet'}` : 'Ollama did not answer; open the Ollama app and press RECHECK.', ollama: status });
+    return status.running ? { ok: true } : { ok: false, error: t('Ollama did not answer. Open the Ollama app, then press RECHECK.') };
+  }
   async function wireOllama({ probe: doProbe = true } = {}) {
     if (doProbe) { ollama = await ollamaProbe(); ollama.autoModel = ollama.chatModel; }
     // A model trained on this room (docs/training) is named madre-<project>: @madre uses it when it exists.
@@ -2546,35 +2578,7 @@ export async function createPulseServer({
             })();
             return { ok: true, command: plan.display };
           },
-          start: async () => {
-            if (ollama.running) return { ok: true, already: true };
-            const binary = await findOnPath('ollama');
-            if (!binary) return { ok: false, error: t('Ollama is not on this computer yet.') };
-            await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: 'ollama serve', platforms: [], alreadyInstalled: true });
-            // A binary this user cannot run (EACCES: an install that stopped halfway, a file of another
-            // user's) is said, not thrown: without a listener the error ended MADRE's process as an
-            // uncaught exception (diagnostics of 1.1.1, 3 copies in WSL).
-            const failed = new Promise((settle) => {
-              const child = spawn(binary, ['serve'], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' });
-              child.on('error', (error) => settle(error));
-              child.on('spawn', () => settle(null));
-              child.unref();
-            });
-            const refused = await failed;
-            if (refused) {
-              const words = refused.code === 'EACCES' ? t('Ollama is at {path}, but this user cannot run it. Install it again, or give it permission to run.', { path: binary }) : t('Ollama did not start: {error}', { error: refused.message });
-              await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: true, detail: refused.code === 'EACCES' ? `cannot run ${binary} (EACCES)` : refused.message, trouble: refused.code === 'EACCES' ? 'permission' : 'unknown', ollama });
-              return { ok: false, error: words };
-            }
-            // It answers in a moment or it does not: poll its own port rather than guess.
-            let status = ollama;
-            for (let attempt = 0; attempt < 20 && !status.running; attempt += 1) {
-              await new Promise((resolve) => setTimeout(resolve, 500));
-              status = await wireOllama();
-            }
-            await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: status.running, installed: true, detail: status.running ? `running · ${status.chatModel ? `@madre with ${status.chatModel}` : 'no chat model yet'}` : 'Ollama did not answer; open the Ollama app and press RECHECK.', ollama: status });
-            return status.running ? { ok: true } : { ok: false, error: t('Ollama did not answer. Open the Ollama app, then press RECHECK.') };
-          },
+          start: () => startOllama(),
           // After an upgrade the binary is new and the server answering on the port is still the old
           // one, so the card kept reading the old version and the update looked like it did nothing.
           // An `ollama serve` this user started is stopped and started again from the new binary;
@@ -4257,16 +4261,32 @@ export async function createPulseServer({
         // The response's close, not the request's: the request's was over once its body was read, so
         // a page that went away left Ollama answering it for up to two minutes.
         response.on('close', () => { if (!response.writableFinished) stop.abort(); });
+        const ask = () => reportFetch(`${ollama.host}/api/chat`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ model: ollama.chatModel, stream: true, options: { temperature: 0.5, num_ctx: 4096 }, messages: [{ role: 'system', content: LOCAL_TRY_SYSTEM }, ...turns] }),
+          signal: AbortSignal.any([stop.signal, AbortSignal.timeout(120000)]),
+        });
         let upstream = null;
         try {
-          upstream = await reportFetch(`${ollama.host}/api/chat`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ model: ollama.chatModel, stream: true, options: { temperature: 0.5, num_ctx: 4096 }, messages: [{ role: 'system', content: LOCAL_TRY_SYSTEM }, ...turns] }),
-            signal: AbortSignal.any([stop.signal, AbortSignal.timeout(120000)]),
-          });
+          upstream = await ask();
         } catch (error) {
-          return sendJson(response, 502, { error: t('The local AI did not answer: {error}', { error: error.message }) });
+          if (stop.signal.aborted) return;
+          // Ollama closed after MADRE last saw it open (2026-11-19, the author: «La IA local no
+          // contestó: fetch failed»): MADRE looks again and, when it is on this computer and closed,
+          // opens it and asks once more. Only when that fails is it said, in words a person reads.
+          const local = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?\/?$/i.test(String(ollama.host ?? ''));
+          let back = (await wireOllama().catch(() => ollama)).running;
+          if (!back && local) back = (await startOllama({ quiet: true }).catch(() => ({ ok: false }))).ok;
+          if (back && ollama.chatModel) upstream = await ask().catch(() => null);
+          if (!upstream) {
+            const words = !local
+              ? t('The computer with the local AI ({host}) did not answer. Check that it is on and that Ollama is open there.', { host: ollama.host })
+              : back
+                ? t('Ollama is open but did not answer. Try again in a moment.')
+                : t('Ollama closed and MADRE could not open it again. Open it in Settings › Local AI and try again.');
+            return sendJson(response, 502, { error: words, stopped: !back, detail: error.message });
+          }
         }
         if (!upstream.ok) return sendJson(response, 502, { error: t('The local AI did not answer: {error}', { error: `HTTP ${upstream.status}` }) });
         response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-cache', 'x-madre-model': ollama.chatModel });
