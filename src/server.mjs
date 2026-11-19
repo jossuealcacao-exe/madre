@@ -584,7 +584,10 @@ export async function createPulseServer({
   // THE MARKET from madre.run (src/market-remote.mjs): read when MADRE opens, while Look for new
   // versions is on (PULSE_MARKET=0 says no to it alone). A module got from it updates itself and
   // says so once, the next time a page asks (market/updates.json).
-  const marketOn = () => process.env.PULSE_MARKET !== '0' && updatesEnabled();
+  // Inside MADRE App it is read always (2026-11-19): the app turns PULSE_UPDATE_CHECK off only so
+  // MADRE does not offer npm, since the app updates itself, and that also shut the Market, which
+  // is apart from MADRE's version on purpose. Nobody in the app saw a skill or module from it.
+  const marketOn = () => process.env.PULSE_MARKET !== '0' && (updatesEnabled() || process.env.MADRE_APP === '1');
   const marketKeyed = marketKey ? { publicKey: marketKey } : {};
   const factoryKeyed = factoryKey ? { factoryKey } : {};
   const licenseKeyed = licenseApi ? { api: licenseApi } : {};
