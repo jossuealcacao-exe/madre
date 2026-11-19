@@ -125,7 +125,7 @@ test('nostromo 3d: dragging turns the archive, Shift+drag moves the camera, and 
 function shader() {
   return new Function(`
     ${block('PLANETS')} ${block('planetOf')} ${block('PLANET_HALO')} ${block('SUN_LIGHT')} ${block('PLANET_AMBIENT')}
-    ${block('ALBEDO_W')} ${block('ALBEDO_H')} ${block('PLANET_STRIDE')} ${block('planetMaps')} ${block('globeTables')} ${block('CRATER')} ${block('smooth')}
+    ${block('ALBEDO_W')} ${block('ALBEDO_H')} ${block('PLANET_STRIDE')} ${block('planetMaps')} ${block('globeTables')} ${block('GLOBE_STRIDE')} ${block('CRATER')} ${block('smooth')}
     ${block('NOISE_PERM')} ${fn('gradientNoise')} ${fn('fractalNoise')} ${fn('craterField')} ${fn('planetSurface')} ${fn('planetMap')}
     ${fn('globeTable')} ${fn('lightTexel')} ${fn('haloInto')} ${fn('shadePlanet')} ${block('PLANET_ROWS_PER_FRAME')} ${fn('buildPlanets')}
     return { planetMap, globeTable, shadePlanet, buildPlanets, planetMaps, PLANETS, PLANET_STRIDE, ALBEDO_W, ALBEDO_H };
@@ -456,4 +456,19 @@ test('nostromo on a phone: a chart that is drawn when something changes, with th
   assert.match(fn('flatTouch'), /flat\.touches\.size === 2/, 'two fingers no longer zoom');
   // The card says where a memory stands, and what that means, without a tooltip.
   assert.match(fn('showNostromoCard'), /el\('b', 'zone-word', zoneWord\(standing\)\), el\('span', 'zone-note', ZONE_NOTE\[standing\] \?\? ''\)/);
+});
+
+// Each planet turns about its own leaning axis, its own way and slowly (2026-11-19, the author:
+// «rotación sobre su propio eje de forma aleatoria y en diferentes velocidades, que no sean tan rápidas»).
+test('nostromo 3d: every planet leans its own way, turns its own sense, and takes 50 to 140 seconds a turn', () => {
+  const { globeTable } = shader();
+  const flat = globeTable(40, 1, 0);
+  const leaning = globeTable(40, 1, 0.26);
+  // The same pixel reads another place on the body when the axis leans.
+  let differs = 0;
+  for (let i = 0; i < flat.disc.length; i += 13) if (Math.abs(flat.disc[i + 5] - leaning.disc[i + 5]) > 0.5) differs += 1;
+  assert.ok(differs > 50, `a leaning axis reads the same map rows: ${differs}`);
+  assert.equal(flat.disc.length % 13, 0, 'a globe cell is 13 numbers: east has its height too');
+  assert.match(source, /tilt: PLANET_TILTS\[Math\.floor\(Math\.random\(\) \* PLANET_TILTS\.length\)\], sense: Math\.random\(\) < 0\.5 \? -1 : 1, period: 50 \+ Math\.random\(\) \* 90/);
+  assert.match(source, /node\.axisAge = \(node\.axisAge \?\? 0\) \+ dt \/ 60;/, 'the turn does not run on seconds');
 });

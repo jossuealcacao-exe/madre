@@ -14249,7 +14249,8 @@ html.chat-shell dialog.viewer.code > .viewer-head > .code-more { order: 3; }
    Both · Preview, then Read · Edit · Open raw; the window's keys (beside, window, close) always at
    the top right, as on every window of MADRE — they had no order and fell to the start of the line. */
 html.chat-shell dialog.viewer.code > .viewer-head > .code-views { margin-right: 0; }
-html.chat-shell dialog.viewer.code > .viewer-head > .viewer-seg:not(.code-views) { margin-left: 4px; padding-left: 8px !important; box-shadow: inset 1px 0 0 var(--cs-line, var(--line)); border-radius: 0; }
+/* Without the «|» before READ (2026-11-19, the author: «quita el | de los botones de herramientas de archivos»). */
+html.chat-shell dialog.viewer.code > .viewer-head > .viewer-seg:not(.code-views) { margin-left: 4px; }
 html.chat-shell dialog.viewer.code > .viewer-head > .surface-modes { order: 4; margin-left: auto !important; }
 html.chat-shell dialog.viewer.code > .viewer-head > .code-more { margin-left: 4px; }
 html.chat-shell dialog.viewer.code > .viewer-head > .code-tabs { order: 10; flex: 1 1 100%; min-width: 0; }
@@ -15292,3 +15293,24 @@ html.chat-shell .split:not(.chats) > :is(.side-grip, .panel-grip, .dock-grip)::a
 .sx-sent b { font-weight: 600; color: var(--text); }
 .sx-never { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text); }
 .sx-more.sx-raw { margin-top: 4px; }
+
+/* ---------- Comando con «Deshacer»: el comando primero (2026-11-19) ----------
+   El autor eligió «C · Comando primero» entre seis opciones: el comando arriba, a todo lo ancho;
+   abajo el estado y quién lo corrió a la izquierda, «↺ Deshacer» y la flecha a la derecha. Antes
+   el estado y @agente se centraban en las líneas del comando y el botón rojo, debajo, descuadraba
+   la tarjeta. «Deshacer» es la tecla callada que debe ser: borde y letra rojos, sin relleno.
+   La tecla vive fuera del encabezado (un botón no va dentro de otro), en la misma celda de la
+   rejilla, abajo a la derecha, dejando el sitio de la flecha. */
+:root:not([data-term="step"]) #messages#messages .command-card.terminal.has-undo { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-radius: 14px; width: auto; justify-self: stretch; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo > .term-head { grid-row: 1; grid-column: 1 / -1; flex-wrap: wrap; row-gap: 9px; column-gap: 10px; padding: 11px 12px 9px; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo > :not(.term-head):not(.undo) { grid-column: 1 / -1; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo .term-head > .term-line { order: -3; flex: 1 1 100%; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo .term-head > .term-tag { order: -2; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo .term-head > .term-status { order: -1; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo .term-head > .term-who { order: 0; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo .term-head > .term-count { order: 1; }
+:root:not([data-term="step"]) #messages .command-card.terminal.has-undo .term-head > .chev-icon { order: 2; margin-left: auto; }
+#messages#messages .command-card.terminal.has-undo > .undo { grid-row: 1; grid-column: 2; align-self: end; justify-self: end; position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 5px; margin: 0 37px 7px 0; padding: 3px 11px 3px 9px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--terror) 35%, transparent); background: transparent; color: var(--terror); font-family: var(--read, var(--sans)); font-size: 12px; font-weight: 550; line-height: 18px; }
+#messages#messages .command-card.terminal.has-undo > .undo svg { width: 13px; height: 13px; flex: none; }
+#messages#messages .command-card.terminal.has-undo > .undo:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--terror) 10%, transparent); }
+#messages#messages .command-card.terminal.has-undo.open > .undo { margin-top: 0; }

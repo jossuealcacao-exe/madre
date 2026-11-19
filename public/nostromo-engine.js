@@ -725,9 +725,17 @@ function sphereTable(size) {
 // relief tilts the light along those). For the ring past the limb: which way it points and how far
 // out it is. Worked out once per size and kept.
 const globeTables = new Map();
-function globeTable(size, halo = 1) {
-  const key = `${size}:${halo}`;
+// Each planet turns about its own axis, leaning a little to one side or the other (2026-11-19, the
+// author: «rotación sobre su propio eje de forma aleatoria y en diferentes velocidades, que no sean
+// tan rápidas»). The lean is one of a few, so the faces stay worked out once and kept like the rest;
+// the oldest are let go when there are many sizes, since a zoom makes a new size of every body.
+export const PLANET_TILTS = [-0.42, -0.26, -0.12, 0.12, 0.26, 0.42];
+const GLOBE_STRIDE = 13;
+function globeTable(size, halo = 1, tilt = 0) {
+  const key = `${size}:${halo}:${tilt}`;
   if (globeTables.has(key)) return globeTables.get(key);
+  if (globeTables.size > 48) globeTables.delete(globeTables.keys().next().value);
+  const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
   const half = size / 2;
   const R = half / halo;
   const disc = [];
@@ -741,11 +749,18 @@ function globeTable(size, halo = 1) {
       const cover = Math.min(1, Math.max(0, (1 - rho) * R + 0.5));
       if (cover > 0) {
         const z = Math.sqrt(Math.max(0, 1 - rr));
-        const lon = Math.atan2(x, z);
-        const lat = Math.asin(Math.max(-1, Math.min(1, y)));
+        // Where this pixel is on the body, whose axis leans `tilt` in the plane of the view.
+        const bx = x * cosT + y * sinT;
+        const by = -x * sinT + y * cosT;
+        const lon = Math.atan2(bx, z);
+        const lat = Math.asin(Math.max(-1, Math.min(1, by)));
         const v = Math.max(0, Math.min(ALBEDO_H - 1.001, (lat / Math.PI + 0.5) * ALBEDO_H - 0.5));
-        const cl = Math.hypot(x, z) || 1e-6;
-        disc.push(py * size + px, x, y, z, (lon / (Math.PI * 2)) * ALBEDO_W, v, cover, z / cl, -x / cl, (-y * x) / cl, cl, (-y * z) / cl);
+        const cl = Math.hypot(bx, z) || 1e-6;
+        // East and south on the body, turned back into the view for the relief.
+        const ebx = z / cl, ebz = -bx / cl;
+        const sbx = (-by * bx) / cl, sby = cl, sbz = (-by * z) / cl;
+        disc.push(py * size + px, x, y, z, (lon / (Math.PI * 2)) * ALBEDO_W, v, cover,
+          ebx * cosT, ebz, sbx * cosT - sby * sinT, sbx * sinT + sby * cosT, sbz, ebx * sinT);
       }
       if (halo > 1 && cover < 1 && rho < halo) ring.push(py * size + px, x / (rho || 1), y / (rho || 1), rho, cover);
     }
@@ -759,10 +774,10 @@ function globeTable(size, halo = 1) {
 // texels), (x, y, z) where it is on the sphere in view space, (ex, ez) and (sx, sy, sz) the ways east
 // and south run there, `L` the direction of the sun and `H` the half-way direction between the sun
 // and the eye (for the glint). Writes the colour as seen, 0..1, into `rgb`.
-function lightTexel(planet, s, x, y, z, ex, ez, sx, sy, sz, L, H, exposure, fade, fill, rgb) {
+function lightTexel(planet, s, x, y, z, ex, ez, sx, sy, sz, L, H, exposure, fade, fill, rgb, ey = 0) {
   const k = planet.bump;
   let nx = x - k * (s[6] * ex + s[7] * sx);
-  let ny = y - k * s[7] * sy;
+  let ny = y - k * (s[6] * ey + s[7] * sy);
   let nz = z - k * (s[6] * ez + s[7] * sz);
   const nn = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
   nx *= nn; ny *= nn; nz *= nn;
@@ -876,7 +891,7 @@ function shadePlanet(out, table, map, { kind, light, turn = 0, exposure = 1, fad
     const c = (r1 * ALBEDO_W + c0) * PLANET_STRIDE + channel, d = (r1 * ALBEDO_W + c1) * PLANET_STRIDE + channel;
     return (map[a] * (1 - fu) + map[b] * fu) * (1 - fv) + (map[c] * (1 - fu) + map[d] * fu) * fv;
   };
-  for (let i = 0; i < cells.length; i += 12) {
+  for (let i = 0; i < cells.length; i += GLOBE_STRIDE) {
     // Read between texels, never from one: a close planet is larger than its map.
     const u = cells[i + 4] + shift;
     const v = cells[i + 5];
@@ -892,7 +907,7 @@ function shadePlanet(out, table, map, { kind, light, turn = 0, exposure = 1, fad
     const wa = (1 - fu) * (1 - fv), wb = fu * (1 - fv), wc = (1 - fu) * fv, wd = fu * fv;
     for (let k = 0; k < PLANET_STRIDE; k += 1) s[k] = map[a + k] * wa + map[b + k] * wb + map[c + k] * wc + map[d + k] * wd;
     if (planet.clouds) s[4] = read(cells[i + 4] + shift + drift, v, 4);
-    lightTexel(planet, s, cells[i + 1], cells[i + 2], cells[i + 3], cells[i + 7], cells[i + 8], cells[i + 9], cells[i + 10], cells[i + 11], L, H, exposure, fade, fill, rgb);
+    lightTexel(planet, s, cells[i + 1], cells[i + 2], cells[i + 3], cells[i + 7], cells[i + 8], cells[i + 9], cells[i + 10], cells[i + 11], L, H, exposure, fade, fill, rgb, cells[i + 12]);
     const p = cells[i] * 4;
     out[p] = 255 * rgb[0];
     out[p + 1] = 255 * rgb[1];
@@ -955,7 +970,7 @@ function chipFace(key, size, faded) {
   const step = 2.2 / size;
   const cells = table.disc;
   const at = (lon, lat, into) => { const cl = Math.cos(lat); return planetSurface(key, cl * Math.sin(lon), Math.sin(lat), cl * Math.cos(lon), into); };
-  for (let i = 0; i < cells.length; i += 12) {
+  for (let i = 0; i < cells.length; i += GLOBE_STRIDE) {
     const x = cells[i + 1], y = cells[i + 2], z = cells[i + 3];
     const lon = Math.atan2(x, z) + planet.face;
     const lat = Math.asin(Math.max(-1, Math.min(1, y)));
@@ -2381,7 +2396,8 @@ export function createNostromo(nostromo) {
     let sprite = node.sprite;
     // A body that has never been painted at this size waits its turn like any other: when a whole
     // planet becomes ready at once it is introduced a few dozen a frame, not all in one.
-    const anew = !sprite || sprite.size !== size || sprite.kind !== kind;
+    const tilt = node.tilt ?? 0;
+    const anew = !sprite || sprite.size !== size || sprite.kind !== kind || sprite.tilt !== tilt;
     if (anew && shading.painted >= SHADE_BUDGET) return sprite?.kind === kind ? sprite.canvas : null;
     if (anew) {
       const canvas = document.createElement('canvas');
@@ -2389,11 +2405,12 @@ export function createNostromo(nostromo) {
       canvas.height = size;
       const paint = canvas.getContext('2d');
       if (!paint?.createImageData) return null;
-      sprite = node.sprite = { canvas, paint, image: paint.createImageData(size, size), size, kind, turn: NaN, light: [0, 0, 0], exposure: -1, fade: -1, fill: -1 };
+      sprite = node.sprite = { canvas, paint, image: paint.createImageData(size, size), size, kind, tilt, turn: NaN, light: [0, 0, 0], exposure: -1, fade: -1, fill: -1 };
     }
     // For whoever asked for stillness a planet does not spin, and its clouds stay where they are;
     // the light on it still follows the map when they turn it by hand.
-    const turn = (nostromo.reduced ? 0 : node.spin * 0.3) + node.seed;
+    // Each one at its own pace and in its own sense: a whole turn every 50 to 140 seconds.
+    const turn = (nostromo.reduced ? 0 : (node.sense ?? 1) * (node.axisAge ?? 0) * ((Math.PI * 2) / (node.period ?? 90))) + node.seed;
     const [lx, ly, lz] = look.light;
     const moved = !(sprite.turn === sprite.turn)
       || Math.abs(turn - sprite.turn) * size > 1
@@ -2403,7 +2420,7 @@ export function createNostromo(nostromo) {
       || Math.abs(look.fill - sprite.fill) > 0.04;
     if (moved && shading.painted < SHADE_BUDGET) {
       shading.painted += 1;
-      shadePlanet(sprite.image.data, globeTable(size, halo), map, { kind, light: look.light, turn, exposure: look.exposure, fade: look.fade, fill: look.fill });
+      shadePlanet(sprite.image.data, globeTable(size, halo, tilt), map, { kind, light: look.light, turn, exposure: look.exposure, fade: look.fade, fill: look.fill });
       sprite.paint.putImageData(sprite.image, 0, 0);
       sprite.turn = turn;
       sprite.light = [lx, ly, lz];
@@ -2486,7 +2503,7 @@ export function createNostromo(nostromo) {
     // A far universe in the Macroverso is `frozen`: its bodies already settled, it only lives —
     // it turns, beats and sends its pulses — without paying for the forces every frame.
     if (nostromo.frozen) {
-      for (const node of nodes) node.spin = (node.spin ?? node.seed) + dt * 0.012 * (1 + (node.seed % 1));
+      for (const node of nodes) { node.spin = (node.spin ?? node.seed) + dt * 0.012 * (1 + (node.seed % 1)); node.axisAge = (node.axisAge ?? 0) + dt / 60; }
     } else {
       for (const node of nodes) {
         let fx = 0;
@@ -2551,6 +2568,8 @@ export function createNostromo(nostromo) {
         node.wy += node.wvy * dt;
         node.wz += node.wvz * dt;
         node.spin = (node.spin ?? node.seed) + dt * 0.012 * (1 + (node.seed % 1));
+        // The planet's own turn runs on seconds (dt counts frames of 1/60 s).
+        node.axisAge = (node.axisAge ?? 0) + dt / 60;
       }
     }
     // A forgotten memory goes on the clock, not by a fixed step a frame, so the implosion takes
@@ -3527,7 +3546,7 @@ export function createNostromo(nostromo) {
       const sector = kinds.indexOf(memory.kind) < 0 ? 1 : kinds.indexOf(memory.kind);
       const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
       const distance = 0.42 + Math.random() * 0.5;
-      return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * bodyOf(known[index], richest), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: travels(memory) ? (MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact) : hexMix(MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, '#0b0f16', 0.52), placed: false };
+      return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * bodyOf(known[index], richest), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, tilt: PLANET_TILTS[Math.floor(Math.random() * PLANET_TILTS.length)], sense: Math.random() < 0.5 ? -1 : 1, period: 50 + Math.random() * 90, color: travels(memory) ? (MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact) : hexMix(MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, '#0b0f16', 0.52), placed: false };
     });
     return nostromo.nodes;
   }

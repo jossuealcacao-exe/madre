@@ -1186,13 +1186,12 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#34d
 
   // Pointer: a drag on the space moves it; a drag on the chosen universe turns it; a click picks a
   // universe, or a memory inside the chosen one; the wheel brings the space closer round the pointer.
+  // Covered is what the browser itself puts over the space at that point (2026-11-19, the author:
+  // «no puedo hacer giro ni arrastrar»): every open dialog used to count by its rectangle, also one
+  // under the map or out of sight, and then every drag there was ignored.
   const covered = (event) => {
-    const panels = [...windows.map((win) => win.el), card, ...document.querySelectorAll('dialog[open], .tree.window, .surface.window, .conv-window, .browser-dock.window')];
-    return panels.some((panel) => {
-      if (panel.hidden || panel.contains(canvas)) return false;
-      const rect = panel.getBoundingClientRect();
-      return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
-    });
+    const top = document.elementFromPoint?.(event.clientX, event.clientY);
+    return Boolean(top) && top !== canvas;
   };
   canvas.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || covered(event)) return;

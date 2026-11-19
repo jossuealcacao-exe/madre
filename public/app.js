@@ -1887,11 +1887,17 @@ function codeActionsFor(path, family, reading) {
       item.addEventListener('click', () => { closeMore(); key.click(); });
       return item;
     }));
+    // It opens from the «⋯» toward the inside of the panel, and always fits in it (2026-11-19, the
+    // author: «los 3 puntos no muestran las herramientas»). It was measured from the panel's right
+    // edge, so with the «⋯» at the left it opened outside the panel, which clipped it to an empty box.
     const at = code.more.getBoundingClientRect();
     const box = viewer.dialog.getBoundingClientRect();
+    moreMenu.style.right = '';
     moreMenu.style.top = `${Math.round(at.bottom - box.top + 4)}px`;
-    moreMenu.style.right = `${Math.max(8, Math.round(box.right - at.right))}px`;
+    moreMenu.style.left = '0px';
     moreMenu.hidden = false;
+    const wide = moreMenu.getBoundingClientRect().width;
+    moreMenu.style.left = `${Math.round(Math.max(8, Math.min(at.left - box.left, box.width - wide - 8)))}px`;
     code.more.setAttribute('aria-expanded', 'true');
   });
   document.addEventListener('pointerdown', (event) => { if (!moreMenu.hidden && !moreMenu.contains(event.target) && event.target !== code.more) closeMore(); }, true);
@@ -17853,7 +17859,11 @@ function renderTerminalCard(event) {
     // A command the human ran by hand was photographed first: the same UNDO as a CONTROL turn.
     if (run.checkpointId && run.files?.length) {
       node.id = `control-${run.checkpointId}`;
-      const undo = el('button', 'undo', t('UNDO · GO BACK TO THE RESTORE POINT'));
+      // «↺ Deshacer», at the end of the card's lower line, across from how it went and who ran it
+      // (2026-11-19, the author chose «command first»): the command reads first and whole, and
+      // undoing is the quiet key it should be, not the loudest thing in the card.
+      const undo = el('button', 'undo');
+      undo.innerHTML = `${trazo('reset')}<span>${escapeHtml(t('Undo'))}</span>`; // trusted: our own SVG and escaped words
       undo.type = 'button';
       undo.title = t('Put the project files back exactly as they were before this command. What it sent off this machine does not come back.');
       undo.addEventListener('click', async () => {
@@ -25028,16 +25038,13 @@ function stopNostromo() {
 const drag = { active: false, moved: false, pan: false, x: 0, y: 0 };
 // Floating memory cards and other open windows keep their entire visible rectangle. A click on a
 // command or a window's glass must never be interpreted as a click on the map behind it.
+// What is covered is what the browser itself puts over the map at that point (2026-11-19, the
+// author: «no puedo hacer giro ni arrastrar, esto es grave»). Every open dialog used to count by its
+// rectangle, and the Files panel docked beside the chat is an open dialog: with it open, the map,
+// full-screen over it, ignored every drag on the part of the screen the panel takes underneath.
 function nostromoCovered(event) {
-  const panels = [...nostromo.cards, ...floatingWindows(), ...document.querySelectorAll('dialog[open]')];
-  // As a window, only what stands over it covers it: a window behind it does not.
-  const mine = nostromoFramed() ? Number(nostromo.dialog.style.zIndex) || 0 : -1;
-  return panels.some((panel) => {
-    if (panel.hidden || panel === nostromo.dialog || panel.contains(nostromo.canvas)) return false;
-    if (mine >= 0 && !nostromo.cards.includes(panel) && !panel.matches?.(':modal') && (Number(getComputedStyle(panel).zIndex) || 0) < mine) return false;
-    const rect = panel.getBoundingClientRect();
-    return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
-  });
+  const top = document.elementFromPoint?.(event.clientX, event.clientY);
+  return Boolean(top) && top !== nostromo.canvas;
 }
 nostromo.canvas?.addEventListener('mousedown', (event) => { if (event.button !== 0 || nostromoCovered(event)) return; drag.active = true; drag.moved = false; drag.pan = event.shiftKey; drag.x = event.clientX; drag.y = event.clientY; });
 nostromo.canvas?.addEventListener('mousemove', (event) => {
