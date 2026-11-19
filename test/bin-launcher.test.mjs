@@ -12,7 +12,9 @@ const run = promisify(execFile);
 // instead of stopping on the syntax of madre.mjs before its own check could speak.
 test('launcher · an old Node is told it needs 22.5 and how to get it; a current one goes on to MADRE', async () => {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.deepEqual(pkg.bin, { madre: './bin/madre.cjs', pulse: './bin/madre.cjs' });
+  // Without «./» (2026-11-18): npm 11.16 took «./bin/madre.cjs» for an invalid name and removed both
+  // commands from the package it published, so `npx @jossuealcala/madre` would not have started.
+  assert.deepEqual(pkg.bin, { madre: 'bin/madre.cjs', pulse: 'bin/madre.cjs' });
   const dir = await mkdtemp(join(tmpdir(), 'madre-launcher-'));
   const old = join(dir, 'old-node.cjs');
   await writeFile(old, "Object.defineProperty(process, 'versions', { value: Object.assign({}, process.versions, { node: '12.22.9' }) });\nObject.defineProperty(process, 'version', { value: 'v12.22.9' });\n");
