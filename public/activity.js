@@ -7,6 +7,15 @@
 // GET /api/activity?everywhere=1); a project's page and Home's mount the same panel.
 import { language, t } from './i18n.js';
 import { brandOf } from './brands.js';
+
+// An agent's colour for the ground it is drawn on (2026-11-19): Grok's and Cursor's are near white,
+// made for a dark ground, and their bar and name all but vanished on a light one. The ground is the
+// theme chosen in MADRE, or the system's when it follows it (as agentColor in app.js).
+const lightGround = () => {
+  const scheme = document.documentElement?.dataset?.scheme;
+  return scheme ? scheme === 'light' : Boolean(globalThis.matchMedia?.('(prefers-color-scheme: light)').matches);
+};
+const toneOf = (id) => { const brand = brandOf(id); return lightGround() && brand.colorLight ? brand.colorLight : brand.color; };
 import { trazo } from './icons.js';
 
 // How often it asks: often while the panel is open, seldom for the number on the key, never while
@@ -212,7 +221,7 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
       const busy = helpers.filter((one) => one.status === 'running').length;
       const doing = busy ? t('{n} subagents at work', { n: busy }) : t('Working on it…');
       return row({
-        id: uid, face: avatar(item.agent, { busy: true }), tint: brandOf(item.agent).color,
+        id: uid, face: avatar(item.agent, { busy: true }), tint: toneOf(item.agent),
         title: item.text || t('A turn of {agent}', { agent: brandOf(item.agent).label }),
         sub: `${where} · ${doing}`,
         time: item.timeoutMs ? () => t('{now} of {limit}', { now: clock(since(item.startedAt)()), limit: clock(item.timeoutMs) }) : () => clock(since(item.startedAt)()),
@@ -236,7 +245,7 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
       const working = steps[0] ? brandOf(steps[0].agent).label : null;
       const others = new Set(listed.map((one) => one.agent).filter((one) => one !== item.orchestrator));
       return row({
-        id: uid, face: avatar(item.orchestrator, { busy: true }), tint: brandOf(item.orchestrator).color,
+        id: uid, face: avatar(item.orchestrator, { busy: true }), tint: toneOf(item.orchestrator),
         title: others.size ? t('{agent} puts {n} AIs to work', { agent: brandOf(item.orchestrator).label, n: others.size }) : t('Plan by {agent} · {n} steps', { agent: brandOf(item.orchestrator).label, n: item.total }),
         sub: `${where} · ${t('Step {step} of {total}', { step: stepNow, total: item.total })}${working ? ` · ${t('{agent} is answering', { agent: working })}` : ''}`,
         time: () => clock(since(item.startedAt)()),
@@ -250,7 +259,7 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
           segs.setAttribute('aria-hidden', 'true');
           road.forEach((step, index) => {
             const seg = el('i', index + 1 < stepNow ? 'done' : index + 1 === stepNow ? 'now' : 'wait');
-            seg.style.setProperty('--seg', brandOf(step.agent).color);
+            seg.style.setProperty('--seg', toneOf(step.agent));
             segs.append(seg);
           });
           inside.append(segs);

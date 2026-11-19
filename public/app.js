@@ -16471,7 +16471,10 @@ function renderHighlight() {
     }
     if (sigil === '@') {
       if (!agents.includes(key)) return whole;
-      return `${lead}<span class="chip agent" style="--agent:${brandOf(key).color}">@${escapeHtml(name)}</span>`;
+      // In the colour for this ground (2026-11-19, the author: «los arroba de cursor y grok no se ven
+      // bien»): the dark ground's grey-white of Grok and Cursor all but vanished on a light field.
+      // data-tint lets a change of theme repaint it.
+      return `${lead}<span class="chip agent" data-tint="${escapeHtml(key)}" style="--agent:${agentColor(key)}">@${escapeHtml(name)}</span>`;
     }
     const command = commands.find((item) => item.name === key);
     if (!command) return whole;
@@ -16557,7 +16560,7 @@ function renderMenu() {
     return showMenu(items, { ...found, hint: t('MODE · ↑↓ · TAB OR ENTER') });
   }
   const items = found.kind === '@'
-    ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : t('{label} · not ready', { label: label(id) }), color: brandOf(id).color, off: !state.agents.get(id)?.ready, agent: id }))
+    ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : t('{label} · not ready', { label: label(id) }), color: agentColor(id), off: !state.agents.get(id)?.ready, agent: id }))
     // A command matches while you are still typing it AND once you have typed past it: somebody
     // reaching for /module types /modules about as often, and an empty menu reads as "no such
     // thing" rather than "close, try again".

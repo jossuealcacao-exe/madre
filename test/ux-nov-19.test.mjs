@@ -38,3 +38,14 @@ test('commands: with «Deshacer» the command reads first, and undoing is a quie
   assert.match(styles, /\.command-card\.terminal\.has-undo \.term-head > \.term-line \{ order: -3; flex: 1 1 100%; \}/);
   assert.match(styles, /\.command-card\.terminal\.has-undo > \.undo \{ grid-row: 1; grid-column: 2; align-self: end;[^}]*background: transparent;/);
 });
+
+test('agents: an @ in the field, the @ menu and the panel «En marcha» use the colour for the ground they are on', async () => {
+  // Grok's #E6E6E6 and Cursor's #D9DEE5 are made for a dark ground; on a light one they all but
+  // vanished (2026-11-19, the author: «los arroba de cursor y grok no se ven bien»).
+  const app = await read('app.js');
+  assert.match(app, /<span class="chip agent" data-tint="\$\{escapeHtml\(key\)\}" style="--agent:\$\{agentColor\(key\)\}">/);
+  assert.match(app, /color: agentColor\(id\), off:/);
+  for (const name of ['app.js', 'activity.js']) assert.doesNotMatch(await read(name), /brandOf\([^)]*\)\.color\b/, `${name} paints an agent in its dark-ground colour whatever the ground`);
+  const { BRANDS } = await import('../public/brands.js');
+  for (const id of ['grok', 'cursor']) assert.ok(BRANDS[id].colorLight, `${id} has no colour for a light ground`);
+});
