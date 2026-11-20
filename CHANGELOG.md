@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.1.5 · Sin publicar
+## 1.1.6 · Sin publicar
+
+## 1.1.5 · 2026-11-20
 
 - **La app ya ve el Mercado.** En MADRE App no aparecían las habilidades ni los módulos de la comunidad, y los módulos de MADRE no se actualizaban solos: la app apagaba la búsqueda de versiones de npm, y con ella, sin querer, el Mercado. Ahora lo lee siempre, como con npm.
 - **Los chats se nombran solos, como en ChatGPT o Claude.** Mientras la IA contesta, el chat toma tu primer mensaje sin saludos ni rodeos («Hacer una landing para mi tienda de café»). En cuanto llega la primera respuesta, una IA le pone un nombre corto, de dos a cinco palabras. Usa la IA de tu computadora si la tienes, que no cuesta nada; si no, la misma que te respondió. Un nombre que tú pusiste nunca se cambia.
