@@ -6,6 +6,15 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.5 · Unreleased
 
+- **The app sees the Market now.** MADRE App did not show the skills or the community modules, and MADRE's own modules did not update themselves: the app turned off npm's update check, and with it, by mistake, the Market. It reads it always now, as npm does.
+- **Chats name themselves, as in ChatGPT or Claude.** While the AI answers, the chat takes your first message without greetings or detours («Make a landing page for my coffee shop»). As soon as the first answer arrives, an AI gives it a short name of two to five words. It uses the AI on your computer if you have it, which costs nothing; otherwise, the one that answered you. A name you gave is never changed.
+- **The maps move again.** With Files open, the Memory map and the projects map ignored dragging over much of the screen. They turn and move anywhere now. And each planet turns slowly on its own axis, with its own tilt and in its own direction.
+- **The AI on your computer recovers by itself.** If Ollama closed, MADRE no longer answers «fetch failed»: it opens it again and asks your question once more. If it cannot, it tells you what happened and where to open it.
+- **«Copy» beside every name you have to type.** When MADRE asks you to type the project's name to confirm something (opening the memory, allowing orders, saving a protected file, erasing private data), there is now a key to copy it and paste it. Typing or pasting it is still your confirmation.
+- **Grok says why it stopped.** If something stopped it in the middle of an answer, MADRE said a step needed an approval. Now it says it was stopped, and when it really waits for an approval, it names the tool that asked for it.
+- **Grok and Cursor read well in the light theme.** Their @ in the box you write in, in the @ menu and in «Current plan» could barely be seen on white. Grok is black now and Cursor grey.
+- **Details you notice.** A command with a restore point shows first what ran, with «Undo» as a quiet key beside it. The «⋯» in Files shows its options when the panel is narrow, and the line beside «Read» is gone. In the app, the chat's title no longer slides under the window's buttons when you close the chats bar. «I already have a subscription» is a row like the others in Settings › Subscription. And the tab's icon is today's logo.
+
 ## 1.1.4 · 2026-11-19
 
 - **MADRE is an app now (first beta).** For Mac, signed by Apple: it opens from your applications with no terminal, tells you when an AI finishes, brings its own browser (showing its size as you change the width, and the page's errors one click away) and its terminal, and updates from madre.run with your permission. Its icon turns light or dark with your system's theme. It is free for you under its personal license. If you use MADRE in the browser, after updating it asks whether you stay there or download the app; your projects come along as they are.

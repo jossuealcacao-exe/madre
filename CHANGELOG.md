@@ -6,6 +6,15 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.5 · Sin publicar
 
+- **La app ya ve el Mercado.** En MADRE App no aparecían las habilidades ni los módulos de la comunidad, y los módulos de MADRE no se actualizaban solos: la app apagaba la búsqueda de versiones de npm, y con ella, sin querer, el Mercado. Ahora lo lee siempre, como con npm.
+- **Los chats se nombran solos, como en ChatGPT o Claude.** Mientras la IA contesta, el chat toma tu primer mensaje sin saludos ni rodeos («Hacer una landing para mi tienda de café»). En cuanto llega la primera respuesta, una IA le pone un nombre corto, de dos a cinco palabras. Usa la IA de tu computadora si la tienes, que no cuesta nada; si no, la misma que te respondió. Un nombre que tú pusiste nunca se cambia.
+- **Los mapas vuelven a moverse.** Con Archivos abierto, el Mapa de memoria y el mapa de proyectos ignoraban el arrastre en buena parte de la pantalla. Ya giran y se mueven en cualquier lugar. De paso, cada planeta gira despacio sobre su propio eje, con su propia inclinación y en su propio sentido.
+- **La IA de tu computadora se recupera sola.** Si Ollama se cerró, MADRE ya no responde «fetch failed»: lo vuelve a abrir y repite tu pregunta. Si no puede, te dice qué pasó y dónde abrirlo.
+- **«Copiar» junto a cada nombre que hay que escribir.** Cuando MADRE te pide escribir el nombre del proyecto para confirmar algo (abrir la memoria, permitir órdenes, guardar un archivo protegido, borrar datos privados), ahora tiene un botón para copiarlo y pegarlo. Escribirlo o pegarlo sigue siendo tu confirmación.
+- **Grok dice bien por qué se detuvo.** Si algo lo detenía a mitad de una respuesta, MADRE decía que un paso necesitaba una aprobación. Ahora dice que lo detuvieron, y cuando de verdad espera una aprobación, nombra la herramienta que la pidió.
+- **Grok y Cursor se leen en tema claro.** Sus @ en el cuadro de escribir, en el menú de @ y en «Plan actual» casi no se veían sobre fondo blanco. Ahora Grok va en negro y Cursor en gris.
+- **Detalles que se notan.** Un comando con punto de restauración muestra primero lo que se ejecutó, con «Deshacer» como un botón discreto al lado. El «⋯» de Archivos ya muestra sus opciones cuando el panel es angosto, y sin la raya junto a «Leer». En la app, el título del chat ya no pasa por debajo de los botones de la ventana al cerrar la barra de chats. «Ya tengo una suscripción» es un renglón como los demás en Ajustes › Suscripción. Y el ícono de la pestaña es el logo de hoy.
+
 ## 1.1.4 · 2026-11-19
 
 - **MADRE ya es una app (primera beta).** Para Mac, firmada por Apple: se abre desde tus aplicaciones sin terminal, te avisa cuando una IA termina, trae su propio navegador (con sus medidas al cambiar el ancho y los errores de la página a un clic) y su terminal, y se actualiza desde madre.run con tu permiso. Su ícono cambia a claro u oscuro con el tema de tu sistema. Es gratis para ti con su licencia personal. Si usas MADRE en el navegador, después de actualizar te pregunta si te quedas ahí o bajas la app; tus proyectos llegan tal como están.
