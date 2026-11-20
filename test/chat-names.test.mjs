@@ -145,3 +145,29 @@ test('chat names: after the first answer the server names the chat and tells eve
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('chat names: an answer MADRE wrote without a model also names the chat (found in the test of 1.1.5)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'madre-chat-names-synthetic-'));
+  const { createPulseServer } = await import('../src/server.mjs');
+  const before = process.env.PULSE_CHAT_NAMES;
+  process.env.PULSE_CHAT_NAMES = '1';
+  const codex = async ({ prompt }) => (/Ponle un título|Give this conversation a title/.test(prompt)
+    ? { text: 'Promoción de fin de mes', usage: null }
+    : { text: 'Todavía no hay nada sobre esto en la memoria.', usage: null, synthetic: 'nothing-yet' });
+  const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+  const { server } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: { 'codex-readonly': codex }, broadcastIntervalMs: 30 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const get = (path) => fetch(`${base}${path}`).then((response) => response.json());
+  try {
+    const active = (await get('/api/chats')).active;
+    await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'una promoción de fin de mes para mi cafetería', target: 'codex' }) });
+    let title = null;
+    for (let i = 0; i < 500 && title !== 'Promoción de fin de mes'; i += 1) { title = (await get('/api/chats')).chats.find((chat) => chat.id === active)?.title; await new Promise((resolve) => setTimeout(resolve, 10)); }
+    assert.equal(title, 'Promoción de fin de mes');
+  } finally {
+    if (before === undefined) delete process.env.PULSE_CHAT_NAMES; else process.env.PULSE_CHAT_NAMES = before;
+    await new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve()); });
+    await rm(root, { recursive: true, force: true });
+  }
+});

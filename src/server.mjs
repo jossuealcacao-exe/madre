@@ -2217,7 +2217,10 @@ export async function createPulseServer({
   const naming = new Set();
   function nameAfterAnswer(id, target, payload) {
     if (process.env.PULSE_CHAT_NAMES === '0') return;
-    if (payload?.role !== 'assistant' || payload.status !== 'completed' || payload.synthetic || !payload.text) return;
+    // Also after an answer MADRE wrote without a model (`synthetic`, such as @madre's «nothing in the
+    // memory yet»): the name comes from the local AI or the one that answered, not from that answer
+    // (found in the test of 1.1.5: a chat whose first answer was one kept its first message).
+    if (payload?.role !== 'assistant' || payload.status !== 'completed' || !payload.text) return;
     if (naming.has(id)) return;
     naming.add(id);
     void (async () => {
